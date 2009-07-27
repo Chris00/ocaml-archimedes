@@ -1,0 +1,10 @@
+*.cm[ioax]
+*.cmxa
+src/META
+src/Makefile
+configure
+config.status
+config.log
+autom4te.cache
+aclocal.m4
+Makefile.ocaml
