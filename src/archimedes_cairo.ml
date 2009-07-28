@@ -44,8 +44,12 @@ struct
     Cairo.set_source_rgba cr
       (Color.red c) (Color.green c) (Color.blue c) (Color.alpha c)
 
+  (* FIXME: must be reworked *)
   let text cr ~size ~x ~y txt =
-    ()
+    Cairo.move_to cr ~x ~y;
+    Cairo.set_font_size cr size;
+    Cairo.show_text cr txt
+
 
   (* FIXME: better error message for options *)
   let make ~options width height =
