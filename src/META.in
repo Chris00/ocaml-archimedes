@@ -1,0 +1,7 @@
+# Findlib META file for cairo                                       -*-conf-*-
+name = "archimedes"
+version = "@PACKAGE_VERSION@"
+description = "A 2D scientific plotting library"
+requires = "bigarray"
+archive(byte) = "archimedes.cma"
+archive(native) = "archimedes.cmxa"

@@ -1,0 +1,42 @@
+ROOT=..
+include $(ROOT)/Makefile.conf
+
+CPPFLAGS = @CPPFLAGS@
+LDFLAGS = @LDFLAGS@
+LIBS = @LIBS@
+OS_TYPE = @OCAML_OS_TYPE@
+
+DOC_FILES = $(wildcard *.mli)
+DOC_DIR = $(ROOT)/doc/html/
+
+# Native code versions must be installed if and only if make opt was
+# called previously (i.e. the files exist):
+INSTALL_FILES = $(wildcard *.mli *.cmi *.cma *.cmx *.a *.cmxa)
+
+.PHONY: default all opt byte native
+default: @OCAMLBEST@
+all: byte
+opt: native
+byte: archimedes.cma
+native: archimedes.cmxa
+
+ARCHIMEDES_FILES=backend.ml
+
+archimedes.cma: $(ARCHIMEDES_FILES:.ml=.cmo)
+archimedes.cmxa: $(ARCHIMEDES_FILES:.ml=.cmx)
+
+.PHONY: doc
+OCAMLDOC_FLAGS += $(if $(OCAMLINCLUDES), $(addprefix -I , $(OCAMLINCLUDES)))
+doc:
+	if [ ! -d "$(DOC_DIR)" ]; then mkdir -p $(DOC_DIR); fi
+	$(OCAMLDOC) -html -d $(DOC_DIR) $(OCAMLDOC_FLAGS) $(DOC_FILES)
+
+.PHONY: install uninstall
+# TODO: copy HTML doc
+install: META $(INSTALL_FILES)
+	ocamlfind install $(PACKAGE) $^
+
+uninstall:
+	ocamlfind remove $(PACKAGE)
+
+include $(ROOT)/Makefile.ocaml

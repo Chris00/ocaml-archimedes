@@ -1,5 +1,7 @@
 *.cm[ioax]
 *.cmxa
+*.annot
+.depend.ocaml
 src/META
 src/Makefile
 configure
