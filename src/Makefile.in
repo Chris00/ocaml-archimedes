@@ -1,3 +1,4 @@
+#							-*- makefile-gmake -*-
 ROOT=..
 include $(ROOT)/Makefile.conf
 
@@ -13,17 +14,36 @@ DOC_DIR = $(ROOT)/doc/html/
 # called previously (i.e. the files exist):
 INSTALL_FILES = $(wildcard *.mli *.cmi *.cma *.cmx *.a *.cmxa)
 
+ifneq "@OCAML_PKG_cairo2@" "no"
+  PLUGINS += archimedes_cairo.ml
+endif
+ifneq "@OCAML_PKG_graphics@" "no"
+  PLUGINS += archimedes_graphics.ml
+endif
+
 .PHONY: default all opt byte native
 default: @OCAMLBEST@
 all: byte
 opt: native
-byte: archimedes.cma
-native: archimedes.cmxa
+byte: archimedes.cma $(PLUGINS:.ml=.cmo)
+native: archimedes.cmxa $(PLUGINS:.ml=.cmxs)
 
 ARCHIMEDES_FILES=backend.ml
 
 archimedes.cma: $(ARCHIMEDES_FILES:.ml=.cmo)
 archimedes.cmxa: $(ARCHIMEDES_FILES:.ml=.cmx)
+
+# Plugins
+archimedes_graphics.cmo: archimedes_graphics.ml archimedes.cma
+	$(OCAMLFIND) ocamlc -c -o $@ -package graphics $<
+archimedes_graphics.cmxs: archimedes_graphics.ml archimedes.cmxa
+	$(OCAMLFIND) ocamlopt -c -o $@ -package graphics $<
+
+archimedes_cairo.cmo: archimedes_cairo.ml archimedes.cma
+	$(OCAMLFIND) ocamlc -c -o $@ -package cairo2 $<
+archimedes_cairo.cmxs: archimedes_cairo.ml archimedes.cmxa
+	$(OCAMLFIND) ocamlopt -c -o $@ -package cairo2 $<
+
 
 .PHONY: doc
 OCAMLDOC_FLAGS += $(if $(OCAMLINCLUDES), $(addprefix -I , $(OCAMLINCLUDES)))

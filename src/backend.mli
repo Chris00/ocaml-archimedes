@@ -50,10 +50,6 @@ sig
   type t
     (** Handle of a backend or a coordinate system. *)
 
-  val close : t -> unit
-    (** Close the handle.  For some backends, the output will not be
-        complete until this function is called. *)
-
   val set_color : t -> Color.t -> unit
   val set_line_width : t -> float -> unit
   val set_line_cap : t -> line_cap -> unit
@@ -95,7 +91,7 @@ sig
   val scale : t -> x:float -> y:float -> unit
   val rotate : t -> angle:float -> unit
 
-  val text : t -> ?size:float -> x:float -> y:float -> string -> unit
+  val text : t -> size:float -> x:float -> y:float -> string -> unit
 end
 
 include T
@@ -119,6 +115,10 @@ val make : ?dirs:string list -> string -> float -> float -> t
       for the graphics backend or "Cairo PNG" for the Cairo backend,
       using a PNG surface. *)
 
+val close : t -> unit
+  (** Close the handle.  For some backends, the output will not be
+      complete until this function is called. *)
+
 val height : t -> float
   (** Returns the width of the backend canvas. *)
 
@@ -139,14 +139,19 @@ module type Capabilities =
 sig
   include T
 
-  val make : string list -> float -> float -> t
+  val name : string
+    (** Name under which to register the backend. *)
+
+  val make : options:string list -> float -> float -> t
     (** [create options width height] must creates a new handle of
         size [width]×[height] (in units proper to the module) on which
         the subsequent drawing functions operate.  [options] allows to
         pass options to the backend (this is backend specific). *)
 
-  val name : string
-    (** Name under which to register the backend. *)
+  val close : options:string list -> t -> unit
+    (** Close the handle.  This function will be given the options
+        specified at backend creation so it can react appropriately if
+        some final work need to be done for some of them. *)
 end
 
 module Register(B: Capabilities) : sig end

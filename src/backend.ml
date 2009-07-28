@@ -48,8 +48,6 @@ module type T =
 sig
   type t
 
-  val close : t -> unit
-
   (* val set_pointstyle : t -> pointstyle -> unit *)
   (* val set_pattern : t -> pattern -> unit *)
   val set_color : t -> Color.t -> unit
@@ -110,7 +108,7 @@ sig
   val get_coord : t -> coord
   val reset_to_id : t -> unit
 *)
-  val text : t -> ?size:float -> x:float -> y:float -> string -> unit
+  val text : t -> size:float -> x:float -> y:float -> string -> unit
 (*  val put_image :
     t -> x:float -> y:float -> ?scale:float -> string -> unit*)
 
@@ -175,7 +173,7 @@ type t = {
   get_coord : 'a -> coord;
   reset_to_id : 'a -> unit;
 *)
-  text: ?size:float -> x:float -> y:float -> string -> unit;
+  text: size:float -> x:float -> y:float -> string -> unit;
   (* put_image: 'a -> x:float -> y:float -> ?scale:float -> string -> unit; *)
 }
 
@@ -185,8 +183,9 @@ type t = {
 module type Capabilities =
 sig
   include T
-  val make: string list -> float -> float -> t
   val name: string
+  val make : options:string list -> float -> float -> t
+  val close : options:string list -> t -> unit
 end
 
 module M = Map.Make(String)
@@ -201,7 +200,7 @@ struct
     let make options w h =
       let handle = B.make options w h in
       { width = w;  height = h;
-        close = (fun () -> B.close handle);
+        close = (fun () -> B.close ~options handle);
         set_color = B.set_color handle;
         set_line_width = B.set_line_width handle;
         set_line_cap = B.set_line_cap handle;
@@ -321,8 +320,8 @@ let rec split_on_spaces s i0 i1 =
 let backend_options b =
   let len = String.length b in
   let i = index_of_space b 0 len in
-  if i = len then (b, []) (* no options *)
-  else (String.sub b 0 i, split_on_spaces b (i+1) len)
+  if i = len then (String.lowercase b, []) (* no options *)
+  else (String.lowercase(String.sub b 0 i), split_on_spaces b (i+1) len)
 
 (* Return a fully qualified path to the [fname] or raise [Not_found]. *)
 let rec find_file dirs fname =
@@ -381,6 +380,7 @@ let make ?(dirs=[]) b width height =
       with Not_found -> raise(Error(Not_registering backend))
   in
   make options width height
+
 
 
 (* [s.[i]] and [p.[i]] are identical for all [i] s.t. [i0 <= i < i1]. *)
