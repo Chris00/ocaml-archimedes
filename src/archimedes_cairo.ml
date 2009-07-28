@@ -40,7 +40,9 @@ struct
 
   let set_dash cr ofs arr = set_dash cr ~ofs arr
 
-  let set_color cr color = ()
+  let set_color cr c =
+    Cairo.set_source_rgba cr
+      (Color.red c) (Color.green c) (Color.blue c) (Color.alpha c)
 
   let text cr ~size ~x ~y txt =
     ()
