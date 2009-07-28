@@ -26,6 +26,12 @@ type line_join =
   | JOIN_ROUND
   | JOIN_BEVEL
 
+type rectangle = {x:float; y:float; w:float; h:float}
+
+type slant = Upright | Italic
+
+type weight = Normal | Bold
+
 type text_position =
   | CC  (** centrer horizontally and vertically *)
   | LC  (** align left horizontally and center vertically *)
@@ -92,9 +98,9 @@ sig
   val save : t -> unit
   val restore : t -> unit
 
-  val translate : t -> float -> float -> unit
-  val scale : t -> float -> float -> unit
-  val rotate : t -> float -> unit
+  val translate : t -> x:float -> y:float -> unit
+  val scale : t -> x:float -> y:float -> unit
+  val rotate : t -> angle:float -> unit
 (*  val transform : t -> float -> float -> float * float
   val transform_dist : t -> float -> float -> float * float
   val invert : t -> coord
@@ -107,10 +113,16 @@ sig
   val text : t -> ?size:float -> x:float -> y:float -> string -> unit
 (*  val put_image :
     t -> x:float -> y:float -> ?scale:float -> string -> unit*)
+
+
+(* FIXME: Are [save] and [restore] needed?  Is [clip] needed ?  How to
+   implement it for graphics ?  Do we want to rotate text ?
+*)
 end
 
 
-(* Internals of a backend handle *)
+(* Internals of a backend handle
+ ***********************************************************************)
 type t = {
   width: float;  (* width of the backend canvas in its original units *)
   height: float; (* height of the backend canvas in its original units *)
@@ -138,8 +150,8 @@ type t = {
                                             x3:float -> y3:float -> unit;
   rectangle : x:float -> y:float -> width:float -> height:float -> unit;
   arc : x:float -> y:float -> r:float -> a1:float -> a2:float -> unit;
-  close_path : t -> unit;
-  path_extents : t -> rectangle;
+  close_path : unit -> unit;
+  path_extents : unit -> rectangle;
 
   stroke : unit -> unit;
   stroke_preserve : unit -> unit;
@@ -153,7 +165,7 @@ type t = {
 
   translate : x:float -> y:float -> unit;
   scale : x:float -> y:float -> unit;
-  rotate : float -> unit;
+  rotate : angle:float -> unit;
 (*  transform : 'a -> float -> float -> float * float;
   transform_dist : 'a -> float -> float -> float * float;
   invert : 'a -> coord;
@@ -166,6 +178,72 @@ type t = {
   text: ?size:float -> x:float -> y:float -> string -> unit;
   (* put_image: 'a -> x:float -> y:float -> ?scale:float -> string -> unit; *)
 }
+
+(* Registering
+ ***********************************************************************)
+
+module type Capabilities =
+sig
+  include T
+  val make: string list -> float -> float -> t
+  val name: string
+end
+
+module M = Map.Make(String)
+
+let registry = ref M.empty
+  (* Global registry holding the modules registered. *)
+
+module Register(B: Capabilities) =
+struct
+  (* Register, only if not previously registered. *)
+  if not(M.mem B.name !registry) then
+    let make options w h =
+      let handle = B.make options w h in
+      { width = w;  height = h;
+        close = (fun () -> B.close handle);
+        set_color = B.set_color handle;
+        set_line_width = B.set_line_width handle;
+        set_line_cap = B.set_line_cap handle;
+        set_dash = B.set_dash handle;
+        set_line_join = B.set_line_join handle;
+        get_line_width = (fun () -> B.get_line_width handle);
+        get_line_cap = (fun () -> B.get_line_cap handle);
+        get_dash = (fun () -> B.get_dash handle);
+        get_line_join = (fun () -> B.get_line_join handle);
+
+        move_to = B.move_to handle;
+        line_to = B.line_to handle;
+        rel_move_to = B.rel_move_to handle;
+        rel_line_to = B.rel_line_to handle;
+        curve_to = B.curve_to handle;
+        rectangle = B.rectangle handle;
+        arc = B.arc handle;
+        close_path = (fun () -> B.close_path handle);
+        path_extents = (fun () -> B.path_extents handle);
+        stroke = (fun () -> B.stroke handle);
+        stroke_preserve = (fun () -> B.stroke_preserve handle);
+        fill = (fun () -> B.fill handle);
+        fill_preserve = (fun () -> B.fill_preserve handle);
+        clip = (fun () -> B.clip handle);
+        clip_preserve = (fun () -> B.clip_preserve handle);
+
+        save = (fun () -> B.save handle);
+        restore = (fun () -> B.restore handle);
+
+        translate = B.translate handle;
+        scale = B.scale handle;
+        rotate = B.rotate handle;
+
+        text = B.text handle;
+      }
+    in
+    registry := M.add B.name make !registry
+  ;;
+end
+
+(* Dynamic loading
+ ***********************************************************************)
 
 (* Allow partial evaluation on [t] to recover the function (allows to
    avoid indirections) *)
@@ -203,66 +281,127 @@ let scale t = t.scale
 let rotate t = t.rotate
 let text t = t.text
 
+type error =
+  | Corrupted_dependency of string
+  | Non_loadable_dependency of string
+  | Nonexistent of string
+  | Corrupted of string
+  | Not_registering of string
 
-module type Capabilities =
-sig
-  include T
-  val create : float -> float -> t
-  val name : string
-end
+exception Error of error
 
-module M = Map.Make(String)
+let registered () = M.fold (fun name _ l -> name :: l) !registry []
 
-let registry = ref M.empty
-  (* Global registry holding the modules registered. *)
+let is_space c = c = ' ' || c = '\t' || c = '\n' || c = '\r'
 
-module Register(B: Capabilities) =
-struct
-  (* Register, only if not previously registered. *)
-  if not(M.mem B.name !registry) then
-    let make options w h =
-      let handle = B.make options w h in
-      { width = w;  height = h;
-        close = (fun () -> B.close handle);
-        set_color = B.set_color handle;
-        set_line_width = B.set_line_width handle;
-        set_line_cap = B.set_line_cap handle;
-        set_dash = B.set_dash handle;
-        set_line_join = B.set_line_join handle;
-        get_line_width = (fun () -> B.get_line_width handle);
-        get_line_cap = (fun () -> B.get_line_cap handle);
-        get_dash = (fun () -> B.get_dash handle);
-        get_line_join = (fun () -> B.get_line_join handle);
+(* Return the index of the first space in s.[i0 .. i1-1] or [i1] if
+   none was found.  s.[i0 .. i1-1] is assumed to be a valid substring
+   of s.  *)
+let rec index_of_space s i0 i1 =
+  if i0 >= i1 then i1
+  else if is_space s.[i0] then i0
+  else index_of_space s (i0 + 1) i1
 
-        move_to = B.move_to handle;
-        line_to = B.line_to handle;
-        rel_move_to = B.rel_move_to handle;
-        rel_line_to = B.rel_line_to handle;
-        curve_to = B.curve_to handle;
-        rectangle = B.rectangle handle;
-        arc = B.arc handle;
-        close_path = (fun () -> B.close_path handle);
-        path_extents = (fun () -> path_extents handle);
-        stroke = (fun () -> B.stroke handle);
-        stroke_preserve = (fun () -> B.stroke_preserve handle);
-        fill = (fun () -> B.fill());
-        fill_preserve = (fun () -> B.fill_preserve());
-        clip = (fun () -> B.clip());
-        clip_preserve = (fun () -> clip_preserve handle);
+let rec index_of_non_space s i0 i1 =
+  if i0 >= i1 then i1
+  else if is_space s.[i0] then index_of_non_space s (i0 + 1) i1
+  else i0
 
-        save = (fun () -> B.save handle);
-        restore = (fun () -> B.restore handle);
+(* Return a list of substrings of s.[i0 .. i1-1] which are separated
+   by one or several spaces. *)
+let rec split_on_spaces s i0 i1 =
+  let i0 = index_of_non_space s i0 i1 in (* skip spaces *)
+  if i0 >= i1 then []
+  else (
+    let i01 = index_of_space s i0 i1 in
+    String.sub s i0 (i01 - i0) :: split_on_spaces s (i01 + 1) i1
+  )
 
-        translate = B.translate handle;
-        scale = B.scale handle;
-        rotate = B.rotate handle;
+(* Split the backend from its option list *)
+let backend_options b =
+  let len = String.length b in
+  let i = index_of_space b 0 len in
+  if i = len then (b, []) (* no options *)
+  else (String.sub b 0 i, split_on_spaces b (i+1) len)
 
-        text = B.text handle;
-      }
-    in
-    registry := M.add B.name backend !registry
+(* Return a fully qualified path to the [fname] or raise [Not_found]. *)
+let rec find_file dirs fname =
+  match dirs with
+  | [] -> raise Not_found (* no more paths to explore *)
+  | d :: tl ->
+      let fname = Filename.concat d fname in
+      if Sys.file_exists fname then fname else find_file tl fname
 
-end
+(* Get the list of dependencies for a given backend.  Beware that
+   order is important. *)
+let get_dependencies dirs basename =
+  try
+    let dep = find_file dirs (basename ^ ".dep") in
+    try
+      let fh = open_in dep in
+      let lines = ref [] in
+      try
+        while true do lines := input_line fh :: !lines done;
+        assert false
+      with End_of_file -> List.rev !lines
+    with Sys_error _ -> raise(Error(Corrupted_dependency dep))
+  with Not_found -> [] (* assuming it implies no deps *)
 
-exception Non_existent
 
+let loaded_dependencies = ref []
+
+let make ?(dirs=[]) b width height =
+  (* FIXME: must always include several system dirs detected at compile time *)
+  let backend, options = backend_options b in
+  let make =
+    try M.find backend !registry (* backend already loaded *)
+    with Not_found ->
+      (* Load the backend and all its dependencies -- that usually
+         means modules with stubs. *)
+      Dynlink.allow_unsafe_modules true;
+      let base = "archimedes_" ^ backend in
+      let dyn = (try find_file dirs (Dynlink.adapt_filename(base ^ ".cmo"))
+                 with Not_found -> raise(Error(Nonexistent backend))) in
+      (* Load dependencies *)
+      List.iter begin fun dep ->
+        if not(List.mem dep !loaded_dependencies) then (
+          try
+            let fdep = Dynlink.adapt_filename(dep ^ ".cmo") in
+            let fdep = find_file dirs fdep in
+            Dynlink.loadfile fdep;
+            loaded_dependencies := dep :: !loaded_dependencies
+          with _ -> raise(Error(Non_loadable_dependency dep))
+        )
+      end (get_dependencies dirs base);
+      (* Load the main module *)
+      (try Dynlink.loadfile dyn
+       with _ -> raise(Error(Corrupted backend)));
+      (* Check that the backend correctly updated the registry *)
+      try M.find backend !registry
+      with Not_found -> raise(Error(Not_registering backend))
+  in
+  make options width height
+
+
+(* [s.[i]] and [p.[i]] are identical for all [i] s.t. [i0 <= i < i1]. *)
+let rec identical s p i0 i1 =
+  i0 >= i1 || (s.[i0] = p.[i0] && identical s p (i0 + 1) i1)
+
+let start_with s p =
+  let len_p = String.length p in
+  String.length s >= len_p && identical s p 0 len_p
+
+let available ~dirs =
+  let ext = if Dynlink.is_native then ".cmxs" else ".cmo" in
+  List.fold_left begin fun bk d ->
+    try
+      let files = Sys.readdir d in
+      Array.fold_left begin fun bk fname ->
+        if start_with fname "archimedes_"
+          && Filename.check_suffix fname ext then
+            let fname = Filename.chop_suffix fname ext in
+            String.sub fname 11 (String.length fname - 11) :: bk
+        else bk
+      end bk files
+    with Sys_error _ -> bk (* e.g. if [d] not a dir, not readable,... *)
+  end [] dirs

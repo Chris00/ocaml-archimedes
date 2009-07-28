@@ -32,18 +32,17 @@ type line_join =
   | JOIN_BEVEL (** use a cut-off join, the join is cut off at half the line
                    width from the joint point *)
 
+(** A data structure for holding a rectangle. *)
+type rectangle = {
+  x:float;   (** X coordinate of the left side of the rectangle *)
+  y:float;   (** Y coordinate of the the top side of the rectangle  *)
+  w:float;   (** width of the rectangle *)
+  h:float;   (** height of the rectangle  *)
+}
+
 type slant = Upright | Italic
 
 type weight = Normal | Bold
-
-
-exception Non_existent
-
-val registered: unit -> string list
-  (** Return the list of registered backends. *)
-
-val load: ?exts:string * string * string -> ?dep:string  -> ?unsafe:bool ->
-  string -> unit
 
 
 module type T =
@@ -101,13 +100,36 @@ end
 
 include T
 
-val make : string -> float -> float -> t
+type error =
+  | Corrupted_dependency of string
+  | Non_loadable_dependency of string
+  | Nonexistent of string  (** Cannot find the backend in the directories *)
+  | Corrupted of string    (** Cannot load the backend *)
+  | Not_registering of string (** Not applying the {!Backend.Register}
+                                  functor. *)
+
+exception Error of error
+
+val make : ?dirs:string list -> string -> float -> float -> t
+  (** [make backend width height] creates a new backend of the given
+      dimensions.
+
+      [backend] is the name of the underlying engine, followed by one
+      or several options separated by spaces.  For example, "Graphics"
+      for the graphics backend or "Cairo PNG" for the Cairo backend,
+      using a PNG surface. *)
 
 val height : t -> float
   (** Returns the width of the backend canvas. *)
 
 val width : t -> float
   (** Returns the height of the backend canvas. *)
+
+val registered: unit -> string list
+  (** Return the list of registered (i.e. loaded) backends. *)
+
+val available : dirs:string list -> string list
+  (** Return the list of available backends in the given directories. *)
 
 
 (************************************************************************)
@@ -117,7 +139,7 @@ module type Capabilities =
 sig
   include T
 
-  val make : string -> float -> float -> t
+  val make : string list -> float -> float -> t
     (** [create options width height] must creates a new handle of
         size [width]×[height] (in units proper to the module) on which
         the subsequent drawing functions operate.  [options] allows to
@@ -136,7 +158,3 @@ module Register(B: Capabilities) : sig end
       application must be executed as part of the initialisation code.
       We recommend the use of [let module U = Register(B) in ()] to
       perform the registration.  *)
-
-(* Are [save] and [restore] needed?  Is [clip] needed ?  How to
-   implement it for graphics ?  Do we want to rotate text ?
-*)
