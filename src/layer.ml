@@ -40,17 +40,18 @@ type t =
       mutable downmargin: float;
       mutable leftmargin: float;
       mutable rightmargin: float;
-      autoscale: scaling;
       orders: (B.t -> unit) Q.t}
 
-type error = No_current_point
+type error =
+    No_current_point
+  | Restore_without_saving
 
 exception Error of error
 
 
 (*IDEA: optional argument "clipping in this rectangle"?*)
 
-let make ?(autoscale=(Uniform Unlimited)) () =
+let make () =
     {
       current = None; coord = Coord.identity ();
       dash = 0., [||]; lj = B.JOIN_BEVEL; lc = B.BUTT;
@@ -63,29 +64,8 @@ let make ?(autoscale=(Uniform Unlimited)) () =
       ymin = max_float; ymax = -. max_float;
       upmargin = 0.; downmargin = 0.;
       leftmargin = 0.; rightmargin = 0.;
-      autoscale = autoscale;
       orders = Q.create ()
     }
-(*
-let make_first_point t x y limitx limity =
-  let epsilon_graph limit len =
-    match limit with
-      Unlimited
-    | Limited_out(_) ->
-        1.E-15 *. len
-    | Limited_in(lim)
-    | Limited(lim,_) -> len *. lim /. 2.
-  in
-  let ex = epsilon_graph limitx (abs_float t.width)
-  and ey = epsilon_graph limity (abs_float t.height) in
-  t.xmin <- x -. ex;
-  t.xmax <- x +. ex;
-  t.ymin <- y -. ey;
-  t.ymax <- y +. ey;
-  t.upmargin <- ey;
-  t.downmargin <- ey;
-  t.leftmargin <- ex;
-  t.rightmargin <- ex*)
 
 let update t x y =
   if x < t.xmin then t.xmin <- x;
@@ -316,19 +296,23 @@ let save t =
 
 let restore t =
   Q.add B.restore t.orders;
-  let dash, lj, lc, lw, coord, fname, fsize, fslant, fweight =
-    Stack.pop t.stack
-  in
-  t.dash <- dash;
-  t.lj <- lj;
-  t.lc <- lc;
-  t.lw <- lw;
-  t.font <- fname;
-  t.fsize <- fsize;
-  t.fslant <- fslant;
-  t.fweight <- fweight;
-  Coord.reset_to_id t.coord;
-  Coord.apply ~next_t:coord t.coord
+  try
+    let dash, lj, lc, lw, coord, fname, fsize, fslant, fweight =
+      Stack.pop t.stack
+    in
+    t.dash <- dash;
+    t.lj <- lj;
+    t.lc <- lc;
+    t.lw <- lw;
+    t.font <- fname;
+    t.fsize <- fsize;
+    t.fslant <- fslant;
+    t.fweight <- fweight;
+    Coord.reset_to_id t.coord;
+    Coord.apply ~next_t:coord t.coord
+  with Stack.Empty ->
+    raise (Error Restore_without_saving)
+
 
 let close_path t =
   Q.add B.close_path t.orders
@@ -377,7 +361,7 @@ let adjust_scale scale limit =
 
 
 (*FIXME: Can a flushed layer be reusable?*)
-let flush t ~ofsx ~ofsy ~width ~height handle=
+let flush ?(autoscale=(Uniform Unlimited)) t ~ofsx ~ofsy ~width ~height handle=
   let rec make_orders () =
     if not (Q.is_empty t.orders) then
       (Q.pop t.orders handle;
@@ -388,7 +372,7 @@ let flush t ~ofsx ~ofsy ~width ~height handle=
   B.translate handle ofsx ofsy;
   Coord.translate c ofsx ofsy;
   let scalopt =
-    match t.autoscale with
+    match autoscale with
       Not_allowed -> None
     | Uniform(limit) ->
         let scalx, scaly =
@@ -415,7 +399,7 @@ let flush t ~ofsx ~ofsy ~width ~height handle=
                 B.translate handle tx ty*)
   in
   (match scalopt with
-    Some(scalx, scaly) -> 
+    Some(scalx, scaly) ->
       B.scale handle scalx scaly;
       Coord.scale c scalx scaly;
       (*let tx, ty = Coord.inv_transform_dist c t.leftmargin t.downmargin in
