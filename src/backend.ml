@@ -15,6 +15,9 @@
    WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the file
    LICENSE for more details. *)
+module X_ = Hashtbl
+module Y_ = Callback
+
 
 type line_cap =
   | BUTT
@@ -47,8 +50,6 @@ type text_position =
 module type T =
 sig
   type t
-
-  val close : t -> unit
 
   (* val set_pointstyle : t -> pointstyle -> unit *)
   (* val set_pattern : t -> pattern -> unit *)
@@ -110,7 +111,7 @@ sig
   val get_coord : t -> coord
   val reset_to_id : t -> unit
 *)
-  val text : t -> ?size:float -> x:float -> y:float -> string -> unit
+  val text : t -> size:float -> x:float -> y:float -> string -> unit
 (*  val put_image :
     t -> x:float -> y:float -> ?scale:float -> string -> unit*)
 
@@ -175,7 +176,7 @@ type t = {
   get_coord : 'a -> coord;
   reset_to_id : 'a -> unit;
 *)
-  text: ?size:float -> x:float -> y:float -> string -> unit;
+  text: size:float -> x:float -> y:float -> string -> unit;
   (* put_image: 'a -> x:float -> y:float -> ?scale:float -> string -> unit; *)
 }
 
@@ -185,8 +186,9 @@ type t = {
 module type Capabilities =
 sig
   include T
-  val make: string list -> float -> float -> t
   val name: string
+  val make : options:string list -> float -> float -> t
+  val close : options:string list -> t -> unit
 end
 
 module M = Map.Make(String)
@@ -201,7 +203,7 @@ struct
     let make options w h =
       let handle = B.make options w h in
       { width = w;  height = h;
-        close = (fun () -> B.close handle);
+        close = (fun () -> B.close ~options handle);
         set_color = B.set_color handle;
         set_line_width = B.set_line_width handle;
         set_line_cap = B.set_line_cap handle;
@@ -321,16 +323,16 @@ let rec split_on_spaces s i0 i1 =
 let backend_options b =
   let len = String.length b in
   let i = index_of_space b 0 len in
-  if i = len then (b, []) (* no options *)
-  else (String.sub b 0 i, split_on_spaces b (i+1) len)
+  if i = len then (String.lowercase b, []) (* no options *)
+  else (String.lowercase(String.sub b 0 i), split_on_spaces b (i+1) len)
 
 (* Return a fully qualified path to the [fname] or raise [Not_found]. *)
 let rec find_file dirs fname =
   match dirs with
   | [] -> raise Not_found (* no more paths to explore *)
   | d :: tl ->
-      let fname = Filename.concat d fname in
-      if Sys.file_exists fname then fname else find_file tl fname
+      let dirfile = Filename.concat d fname in
+      if Sys.file_exists dirfile then dirfile else find_file tl fname
 
 (* Get the list of dependencies for a given backend.  Beware that
    order is important. *)
@@ -367,20 +369,35 @@ let make ?(dirs=[]) b width height =
         if not(List.mem dep !loaded_dependencies) then (
           try
             let fdep = Dynlink.adapt_filename(dep ^ ".cmo") in
-            let fdep = find_file dirs fdep in
-            Dynlink.loadfile fdep;
-            loaded_dependencies := dep :: !loaded_dependencies
-          with _ -> raise(Error(Non_loadable_dependency dep))
+            let fdep =
+              try
+                find_file dirs fdep
+              with Not_found ->
+                if Dynlink.is_native then find_file dirs (dep ^".cmxa")
+                else find_file dirs (dep ^".cma")
+
+            in
+            try
+              Dynlink.loadfile fdep;
+              loaded_dependencies := dep :: !loaded_dependencies
+            with Dynlink.Error q ->
+              let s = Dynlink.error_message q in
+              raise(Error(Non_loadable_dependency (dep^" - "^s)))
+          with Not_found ->
+            raise(Error(Non_loadable_dependency (dep^" - not found")))
         )
       end (get_dependencies dirs base);
       (* Load the main module *)
       (try Dynlink.loadfile dyn
-       with _ -> raise(Error(Corrupted backend)));
+       with Dynlink.Error q ->
+         let s = Dynlink.error_message q in
+         raise(Error(Corrupted (backend^" - "^s))));
       (* Check that the backend correctly updated the registry *)
       try M.find backend !registry
       with Not_found -> raise(Error(Not_registering backend))
   in
   make options width height
+
 
 
 (* [s.[i]] and [p.[i]] are identical for all [i] s.t. [i0 <= i < i1]. *)

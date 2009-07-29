@@ -49,3 +49,8 @@ val copy:t -> t
 
 val reset_to_id : t -> unit
   (**Resets the current transformation to the identity transformation.*)
+
+
+(*Local variables:*)
+(*compile-command: "make -k byte native"*)
+(*End:*)

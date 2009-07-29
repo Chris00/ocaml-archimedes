@@ -37,5 +37,5 @@ type operator =
 val add : ?op:operator -> t -> t -> t
 
 (*Local variables:*)
-(*compile-command: "ocamlc -c color.mli"*)
+(*compile-command: "make -k byte native"*)
 (*End:*)

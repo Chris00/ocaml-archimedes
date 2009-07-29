@@ -110,5 +110,5 @@ let add ?(op=OVER) init newc =
    a = alpha}
 
 (*Local variables:*)
-(*compile-command: "ocamlc -c color.ml"*)
+(*compile-command: "make -k byte native"*)
 (*End:*)
