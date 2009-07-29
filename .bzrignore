@@ -1,5 +1,5 @@
 *.cm[ioax]
-*.cmxa
+*.cmx[as]
 *.annot
 .depend.ocaml
 src/META
@@ -10,3 +10,7 @@ config.log
 autom4te.cache
 aclocal.m4
 Makefile.ocaml
+*.com
+*.exe
+*.png
+*.pdf

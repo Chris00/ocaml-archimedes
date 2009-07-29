@@ -52,5 +52,5 @@ val reset_to_id : t -> unit
 
 
 (*Local variables:*)
-(*compile-command: "make -k byte native"*)
+(*compile-command: "ocamlc -c coordinate.mli"*)
 (*End:*)

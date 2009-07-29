@@ -94,5 +94,5 @@ let reset_to_id t =
   t.yx <- 0.; t.yy <- 1.; t.yt <- 0.
 
 (*Local variables:*)
-(*compile-command: "make -k byte native coordinate.ml"*)
+(*compile-command: "ocamlc -c coordinate.ml && ocamlopt -c coordinate.ml"*)
 (*End:*)
