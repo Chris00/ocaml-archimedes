@@ -4,6 +4,11 @@ module Coord = Coordinate
 type t =
     {h:B.t; mutable c:Coord.t; s:Coord.t Stack.t}
 
+let make ?dirs name ?coord width height =
+  {h = B.make ?dirs name width height;
+   c = (match coord with None -> Coord.identity () | Some c -> c);
+   s = Stack.create ()}
+
 let use handle coord = {h = handle; c = coord; s = Stack.create ()}
 
 let get_handle t = t.h
@@ -14,6 +19,7 @@ let translate t = Coord.translate t.c
 let scale t = Coord.scale t.c
 (*let rotate t = Coord.rotate t.c*)
 
+let change_coord t coord = t.c <- coord
 
 (*Backend primitives*)
 
@@ -30,6 +36,8 @@ let get_line_cap t = B.get_line_cap t.h
 let get_dash t = B.get_dash t.h
 let get_line_join t = B.get_line_join t.h
 
+(*The operations of drawing need transforming the point first, then
+  doing the order*)
 
 let move_to t x y =
   let x', y' = Coord.transform t.c x y in
@@ -40,8 +48,8 @@ let line_to t x y =
   B.line_to t.h x' y'
 
 let rel_move_to t x y =
-    let x', y' = Coord.transform_dist t.c x y in
-    B.rel_move_to t.h x' y'
+  let x', y' = Coord.transform_dist t.c x y in
+  B.rel_move_to t.h x' y'
 
 let rel_line_to t x y =
   let x', y' = Coord.transform_dist t.c x y in
@@ -54,10 +62,10 @@ let curve_to t ~x1 ~y1 ~x2 ~y2 ~x3 ~y3 =
   B.curve_to t.h ~x1 ~y1 ~x2 ~y2 ~x3 ~y3
 
 (*FIXME: these two primitives do not translate well in Backend.t
-coordinates -- due to scaling
+  coordinates -- due to scaling
 (*
-let rectangle t = B.rectangle t
-let arc t = B.arc t*)*)
+  let rectangle t = B.rectangle t
+  let arc t = B.arc t*)*)
 
 let close_path t = B.close_path t.h
 let path_extents t = B.path_extents t.h

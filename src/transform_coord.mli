@@ -1,8 +1,11 @@
-type t = { h : Backend.t; mutable c : Coordinate.t; s : Coordinate.t Stack.t; }
+type t
+val make : ?dirs:string list -> string -> ?coord:Coordinate.t ->
+  float -> float -> t
 val use : Backend.t -> Coordinate.t -> t
 val get_handle : t -> Backend.t
 val translate : t -> float -> float -> unit
 val scale : t -> float -> float -> unit
+val change_coord: t -> Coordinate.t -> unit
 val width : t -> float
 val height : t -> float
 (*FIXME: needed, or done after querying the underlying backend?*)
@@ -36,3 +39,9 @@ val save : t -> unit
 val restore : t -> unit
 val text : t -> size:float -> x:float -> y:float -> string -> unit
 val text_extents : t -> size:float -> string -> Backend.text_extents
+
+
+
+(*Local Variables:*)
+(*compile-command: "ocamlc -c transform_coord.mli"*)
+(*End:*)

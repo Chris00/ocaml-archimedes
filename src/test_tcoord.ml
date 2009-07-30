@@ -3,40 +3,27 @@ module T = Transform_coord
 let () =
   let f s =
     try
-      let cr =
-        B.make ~dirs:[".";
+      let coord = Coordinate.create 100. 0. 50. 0. 100. 0. in
+      let t = T.make ~dirs:[".";
                       "C:\\Program Files\\Objective Caml\\lib";
                       "C:\\Program Files\\Objective Caml\\lib\\site-lib\\cairo2"]
-          s 150. 150.
-      in
-     (* B.set_color cr (Color.color ~a:0.7 0.9 0. 0.2);*)
-      let coord = Coordinate.create 100. 0. 50. 0. 100. 0. in
-      let layer = T.use cr coord in
-      T.line_to layer 0. 0.;
-      T.line_to layer 1. 0.;
-      T.line_to layer 0. 1.;
-      T.line_to layer 1. 1.;
-      T.close_path layer;
-      T.stroke layer;
-      (*let layer1 =  in
-      Layer.move_to layer1 1. 1.;
-      Layer.line_to layer1 2. 2.;
-      Layer.line_to layer1 3. 1.;
-      Layer.line_to layer1 2. 0.;
-      Layer.close_path layer1;
-   (*   Layer.curve_to layer1 1. 0. 0. 1. 0. 0.;
-      Layer.close_path layer1;*)
-      Layer.fill layer1;
-
-      B.set_color cr (Color.color ~a:0.7 0. 0.2 0.7);
-      Layer.flush ~autoscale:(Layer.Uniform (Layer.Limited(1.,100.)))
-        layer ~ofsx:25. ~ofsy:0. ~width:100. ~height:100. cr;
-      (*B.stroke cr;*)
-      B.set_color cr (Color.color ~a:0.7 0.9 0.2 0.);
-      Layer.flush ~autoscale:(Layer.Free(Layer.Unlimited, Layer.Limited_out 30.))
-        layer1 ~ofsx:50. ~ofsy:50. ~width:100. ~height:100. cr;
-     (* B.fill cr;*)*)
-      B.close cr
+        s ~coord 150. 150. in
+      T.set_color t (Color.color ~a:0.7 0. 0.2 0.7);
+      T.line_to t 0. 0.;
+      T.line_to t 1. 0.;
+      T.line_to t 0. 1.;
+      T.line_to t 1. 1.;
+      T.close_path t;
+      T.stroke t;
+      T.change_coord t (Coordinate.create 25. 0. 50. 0. 25. 50.);
+      T.set_color t (Color.color ~a:0.7 0.9 0. 0.2);
+      T.move_to t 1. 1.;
+      T.line_to t 2. 2.;
+      T.line_to t 3. 1.;
+      T.line_to t 2. 0.;
+      T.close_path t;
+      T.fill t;
+      T.close t
     with
       B.Error e ->
         Printf.printf "Error of backend: \n%s"
