@@ -2,7 +2,7 @@
 
    Copyright (C) 2009
 
-     Bertrand Desmons <Bertrand.Desmons@student.umons.ac.be>
+     Bertrand Desmons <Bertrand.Desmons@umons.ac.be>
      Christophe Troestler <Christophe.Troestler@umons.ac.be>
      WWW: http://math.umh.ac.be/an/software/
 
@@ -28,6 +28,7 @@ struct
   type t = Cairo.context
   let path_extents = Cairo.Path.extents
   let close_path = Cairo.Path.close
+  let clear_path = Cairo.Path.clear
 
   (* Same type (same internal representation), just in different modules *)
   let set_line_cap cr c = set_line_cap cr (Obj.magic c : Cairo.line_cap)
@@ -38,11 +39,20 @@ struct
 
   let path_extents cr = (Obj.magic (path_extents cr) : Backend.rectangle)
 
+  let set_matrix cr m = set_matrix cr (Obj.magic m : Cairo.matrix)
+  let get_matrix cr = (Obj.magic (get_matrix cr) : Backend.matrix)
+
+
   let set_dash cr ofs arr = set_dash cr ~ofs arr
 
   let set_color cr c =
     Cairo.set_source_rgba cr
       (Color.red c) (Color.green c) (Color.blue c) (Color.alpha c)
+
+  let clip_rectangle cr ~x ~y ~w ~h =
+    Cairo.Path.clear cr;
+    Cairo.rectangle cr ~x ~y ~w ~h;
+    Cairo.clip cr
 
   (* FIXME: must be reworked *)
   let text cr ~size ~x ~y txt =
@@ -68,6 +78,10 @@ struct
      | ["PNG"; fname] -> PNG.write surface fname;
      | _ -> ());
     Surface.finish surface
+
+
+  let show_text cr ~size ~x ~y txt =
+    failwith "NotImplemented"
 end
 
 let () =

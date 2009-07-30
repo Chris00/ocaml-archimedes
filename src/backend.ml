@@ -2,7 +2,7 @@
 
    Copyright (C) 2009
 
-     Bertrand Desmons <Bertrand.Desmons@student.umons.ac.be>
+     Bertrand Desmons <Bertrand.Desmons@umons.ac.be>
      Christophe Troestler <Christophe.Troestler@umons.ac.be>
      WWW: http://math.umh.ac.be/an/software/
 
@@ -27,6 +27,10 @@ type line_join =
   | JOIN_BEVEL
 
 type rectangle = {x:float; y:float; w:float; h:float}
+
+type matrix = { mutable xx: float; mutable yx: float;
+                mutable xy: float; mutable yy: float;
+                mutable x0: float; mutable y0: float; }
 
 type slant = Upright | Italic
 
@@ -55,6 +59,7 @@ sig
   val set_line_cap : t -> line_cap -> unit
   val set_dash : t -> float -> float array -> unit
   val set_line_join : t -> line_join -> unit
+  (* val set_miter_limit : t -> float -> unit *)
 
   (* val get_pointstyle: t -> pointstyle *)
   (* val get_pattern: t -> pattern *)
@@ -73,7 +78,7 @@ sig
   val curve_to : t ->
     x1:float -> y1:float -> x2:float -> y2:float -> x3:float -> y3:float -> unit
 
-  val rectangle : t -> x:float -> y:float -> width:float -> height:float -> unit
+  val rectangle : t -> x:float -> y:float -> w:float -> h:float -> unit
 
   val arc : t -> x:float -> y:float -> r:float -> a1:float -> a2:float -> unit
     (* Do we need arc_negative (path orientation)? *)
@@ -83,15 +88,15 @@ sig
     x:float -> y:float -> a:float -> b:float -> a1:float -> a2:float -> unit
   *)
   val close_path : t -> unit
-
+  val clear_path : t -> unit
   val path_extents : t -> rectangle
 
   val stroke : t -> unit
   val stroke_preserve : t -> unit
   val fill : t -> unit
   val fill_preserve : t -> unit
-  val clip : t -> unit
-  val clip_preserve : t -> unit
+
+  val clip_rectangle : t -> x:float -> y:float -> w:float -> h:float -> unit
 
   val save : t -> unit
   val restore : t -> unit
@@ -99,16 +104,10 @@ sig
   val translate : t -> x:float -> y:float -> unit
   val scale : t -> x:float -> y:float -> unit
   val rotate : t -> angle:float -> unit
-(*  val transform : t -> float -> float -> float * float
-  val transform_dist : t -> float -> float -> float * float
-  val invert : t -> coord
-  val inv_transform : t -> float -> float -> float * float
-  val inv_transform_dist : t -> float -> float -> float * float
-  val apply : next:coord -> t -> unit
-  val get_coord : t -> coord
-  val reset_to_id : t -> unit
-*)
-  val text : t -> size:float -> x:float -> y:float -> string -> unit
+  val set_matrix : t -> matrix -> unit
+  val get_matrix : t -> matrix
+
+  val show_text : t -> size:float -> x:float -> y:float -> string -> unit
 (*  val put_image :
     t -> x:float -> y:float -> ?scale:float -> string -> unit*)
 
@@ -146,17 +145,17 @@ type t = {
 
   curve_to: x1:float -> y1:float -> x2:float -> y2:float ->
                                             x3:float -> y3:float -> unit;
-  rectangle : x:float -> y:float -> width:float -> height:float -> unit;
+  rectangle : x:float -> y:float -> w:float -> h:float -> unit;
   arc : x:float -> y:float -> r:float -> a1:float -> a2:float -> unit;
   close_path : unit -> unit;
+  clear_path : unit -> unit;
   path_extents : unit -> rectangle;
 
   stroke : unit -> unit;
   stroke_preserve : unit -> unit;
   fill : unit -> unit;
   fill_preserve : unit -> unit;
-  clip : unit -> unit;
-  clip_preserve : unit -> unit;
+  clip_rectangle : x:float -> y:float -> w:float -> h:float -> unit;
 
   save: unit -> unit;
   restore: unit -> unit;
@@ -164,16 +163,10 @@ type t = {
   translate : x:float -> y:float -> unit;
   scale : x:float -> y:float -> unit;
   rotate : angle:float -> unit;
-(*  transform : 'a -> float -> float -> float * float;
-  transform_dist : 'a -> float -> float -> float * float;
-  invert : 'a -> coord;
-  inv_transform : 'a -> float -> float -> float * float;
-  inv_transform_dist : 'a -> float -> float -> float * float;
-  apply : next:coord -> 'a -> unit;
-  get_coord : 'a -> coord;
-  reset_to_id : 'a -> unit;
-*)
-  text: size:float -> x:float -> y:float -> string -> unit;
+  set_matrix : matrix -> unit;
+  get_matrix : unit -> matrix;
+
+  show_text: size:float -> x:float -> y:float -> string -> unit;
   (* put_image: 'a -> x:float -> y:float -> ?scale:float -> string -> unit; *)
 }
 
@@ -219,13 +212,13 @@ struct
         rectangle = B.rectangle handle;
         arc = B.arc handle;
         close_path = (fun () -> B.close_path handle);
+        clear_path = (fun () -> B.clear_path handle);
         path_extents = (fun () -> B.path_extents handle);
         stroke = (fun () -> B.stroke handle);
         stroke_preserve = (fun () -> B.stroke_preserve handle);
         fill = (fun () -> B.fill handle);
         fill_preserve = (fun () -> B.fill_preserve handle);
-        clip = (fun () -> B.clip handle);
-        clip_preserve = (fun () -> B.clip_preserve handle);
+        clip_rectangle = B.clip_rectangle handle;
 
         save = (fun () -> B.save handle);
         restore = (fun () -> B.restore handle);
@@ -233,8 +226,10 @@ struct
         translate = B.translate handle;
         scale = B.scale handle;
         rotate = B.rotate handle;
+        set_matrix = B.set_matrix handle;
+        get_matrix = (fun () -> B.get_matrix handle);
 
-        text = B.text handle;
+        show_text = B.show_text handle;
       }
     in
     registry := M.add B.name make !registry
@@ -266,19 +261,21 @@ let curve_to t = t.curve_to
 let rectangle t = t.rectangle
 let arc t = t.arc
 let close_path t = t.close_path()
+let clear_path t = t.clear_path()
 let path_extents t = t.path_extents()
 let stroke t = t.stroke()
 let stroke_preserve t = t.stroke_preserve()
 let fill t = t.fill()
 let fill_preserve t = t.fill_preserve()
-let clip t = t.clip()
-let clip_preserve t = t.clip_preserve()
+let clip_rectangle t = t.clip_rectangle
 let save t = t.save()
 let restore t = t.restore()
 let translate t = t.translate
 let scale t = t.scale
 let rotate t = t.rotate
-let text t = t.text
+let set_matrix t m = t.set_matrix m
+let get_matrix t = t.get_matrix()
+let show_text t = t.show_text
 
 type error =
   | Corrupted_dependency of string

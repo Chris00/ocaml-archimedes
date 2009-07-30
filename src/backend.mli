@@ -26,7 +26,7 @@ type line_cap =
   | SQUARE (** use squared ending, the center of the square is the end point *)
 
 type line_join =
-  | JOIN_MITER (** use a sharp (angled) corner, see {!Cairo.set_miter_limit} *)
+  | JOIN_MITER (** use a sharp (angled) corner *)
   | JOIN_ROUND (** use a rounded join, the center of the circle is the
                    joint point *)
   | JOIN_BEVEL (** use a cut-off join, the join is cut off at half the line
@@ -39,6 +39,18 @@ type rectangle = {
   w:float;   (** width of the rectangle *)
   h:float;   (** height of the rectangle  *)
 }
+
+(** Holds an affine transformation, such as a scale, rotation, shear,
+    or a combination of those. The transformation of a point (x, y) is
+    given by:
+    {[
+    x_new = xx *. x +. xy *. y +. x0;
+    y_new = yx *. x +. yy *. y +. y0;
+    ]} *)
+type matrix = { mutable xx: float; mutable yx: float;
+                mutable xy: float; mutable yy: float;
+                mutable x0: float; mutable y0: float; }
+
 
 type slant = Upright | Italic
 
@@ -69,29 +81,54 @@ sig
   val curve_to : t ->
     x1:float -> y1:float -> x2:float -> y2:float -> x3:float -> y3:float -> unit
 
-  val rectangle : t -> x:float -> y:float -> width:float -> height:float -> unit
+  val rectangle : t -> x:float -> y:float -> w:float -> h:float -> unit
 
   val arc : t -> x:float -> y:float -> r:float -> a1:float -> a2:float -> unit
 
   val close_path : t -> unit
-
+    (** Adds a line segment to the path from the current point to the
+        beginning of the current sub-path (the most recent point
+        passed to {!Bmove_to}) and closes this sub-path. *)
+  val clear_path : t -> unit
+    (** Clears the current path. After this call there will be no path.
+        Nothing is guaranteed about the current point. *)
   val path_extents : t -> rectangle
 
   val stroke : t -> unit
   val stroke_preserve : t -> unit
   val fill : t -> unit
   val fill_preserve : t -> unit
-  val clip : t -> unit
-  val clip_preserve : t -> unit
+
+  val clip_rectangle : t -> x:float -> y:float -> w:float -> h:float -> unit
+    (** Establishes a new clip rectangle by intersecting the current
+        clip rectangle.  This {i may clear} the current path. *)
 
   val save : t -> unit
   val restore : t -> unit
 
   val translate : t -> x:float -> y:float -> unit
+    (** [translate cr tx ty] modifies the current transformation
+        matrix by translating the user-space origin by ([tx],[ty]). *)
   val scale : t -> x:float -> y:float -> unit
+    (** [scale sx sy] modifies the current transformation matrix by
+        scaling the X and Y user-space axes by [sx] and [sy]
+        respectively. *)
   val rotate : t -> angle:float -> unit
+    (** Modifies the current transformation matrix by rotating the
+        user-space axes by [angle] radians. *)
+  val set_matrix : t -> matrix -> unit
+    (** Set the current transformation matrix which is the matrix
+        transorming user to device coordinates. *)
+  val get_matrix : t -> matrix
+    (** Return the current transformation matrix.  Modifying this
+        matrix should not affect the matrix held in [t]. *)
 
-  val text : t -> size:float -> x:float -> y:float -> string -> unit
+  val show_text : t -> size:float -> x:float -> y:float -> string -> unit
+    (** [show_text x y txt] display [txt] at the point ([x],[y]).  The
+        point ([x],[y]) is in the current coordinate system but the
+        current transformation matrix will NOT be applied to the text
+        itself.  This is an immediate operation: no [stroke] nor
+        [fill] are required (or will have any effect).  *)
 end
 
 include T
@@ -112,8 +149,8 @@ val make : ?dirs:string list -> string -> float -> float -> t
 
       [backend] is the name of the underlying engine, followed by one
       or several options separated by spaces.  For example, "Graphics"
-      for the graphics backend or "Cairo PNG" for the Cairo backend,
-      using a PNG surface. *)
+      for the graphics backend or "Cairo PNG filename" for the Cairo
+      backend, using a PNG surface to be saved in [filename]. *)
 
 val close : t -> unit
   (** Close the handle.  For some backends, the output will not be
