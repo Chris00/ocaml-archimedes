@@ -360,11 +360,13 @@ let adjust_scale scale limit =
   | Limited(l_in, l_out) -> max l_in (min l_out scale)
 
 
-(*FIXME: Can a flushed layer be reusable?*)
+(*FIXME: a flushed layer can be reusable; flush does not kill nor
+  modify the preevious orders.*)
 let flush ?(autoscale=(Uniform Unlimited)) t ~ofsx ~ofsy ~width ~height handle=
+  let q = Q.copy t.orders in
   let rec make_orders () =
-    if not (Q.is_empty t.orders) then
-      (Q.pop t.orders handle;
+    if not (Q.is_empty q) then
+      (Q.pop q handle;
        make_orders ())
   in
   let c = Coord.identity () in
