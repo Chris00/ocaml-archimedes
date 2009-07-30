@@ -46,6 +46,14 @@ type text_position =
   | RT
   | RB
 
+type text_extents =
+    {
+      x_bearing : float;
+      y_bearing : float;
+      width : float;
+      height : float;
+      x_advance : float;
+      y_advance : float; }
 
 module type T =
 sig
@@ -112,6 +120,7 @@ sig
   val reset_to_id : t -> unit
 *)
   val text : t -> size:float -> x:float -> y:float -> string -> unit
+  val text_extents: t -> size:float -> string -> text_extents
 (*  val put_image :
     t -> x:float -> y:float -> ?scale:float -> string -> unit*)
 
@@ -177,6 +186,8 @@ type t = {
   reset_to_id : 'a -> unit;
 *)
   text: size:float -> x:float -> y:float -> string -> unit;
+  text_extents: size:float -> string -> text_extents;
+
   (* put_image: 'a -> x:float -> y:float -> ?scale:float -> string -> unit; *)
 }
 
@@ -238,6 +249,7 @@ struct
         rotate = B.rotate handle;
 
         text = B.text handle;
+        text_extents = B.text_extents handle;
       }
     in
     registry := M.add B.name make !registry
@@ -282,6 +294,7 @@ let translate t = t.translate
 let scale t = t.scale
 let rotate t = t.rotate
 let text t = t.text
+let text_extents t = t.text_extents
 
 type error =
   | Corrupted_dependency of string

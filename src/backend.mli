@@ -44,6 +44,15 @@ type slant = Upright | Italic
 
 type weight = Normal | Bold
 
+type text_extents =
+    {
+      x_bearing : float;
+      y_bearing : float;
+      width : float;
+      height : float;
+      x_advance : float;
+      y_advance : float; }
+
 
 module type T =
 sig
@@ -92,6 +101,8 @@ sig
   val rotate : t -> angle:float -> unit
 
   val text : t -> size:float -> x:float -> y:float -> string -> unit
+  val text_extents: t -> size:float -> string -> text_extents
+
 end
 
 include T

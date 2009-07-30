@@ -50,6 +50,10 @@ struct
     Cairo.set_font_size cr size;
     Cairo.show_text cr txt
 
+  let text_extents cr ~size txt =
+    Cairo.set_font_size cr size;
+    (Obj.magic (text_extents cr txt) : Backend.text_extents)
+
 
   (* FIXME: better error message for options *)
   let make ~options width height =
