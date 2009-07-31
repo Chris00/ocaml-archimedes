@@ -49,12 +49,9 @@ struct
     Cairo.set_source_rgba cr
       (Color.red c) (Color.green c) (Color.blue c) (Color.alpha c)
 
-  let rectangle cr ~x ~y ~w ~h =
-    Cairo.rectangle cr ~x ~y ~width:w ~height:h
-
   let clip_rectangle cr ~x ~y ~w ~h =
     Cairo.Path.clear cr;
-    rectangle cr ~x ~y ~w ~h;
+    Cairo.rectangle cr ~x ~y ~w ~h;
     Cairo.clip cr
 
   (* FIXME: must be reworked *)
