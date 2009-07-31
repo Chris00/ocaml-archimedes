@@ -65,6 +65,7 @@ struct
   let make ~options width height =
     let surface =match options with
       | ["PDF"; fname] -> PDF.create fname width height
+      | ["PS"; fname] -> PS.create fname width height
       | ["PNG"; _] -> (* We need to modify the close function *)
           Image.create Image.ARGB32 (truncate width) (truncate height)
       | [""] -> (* interactive display. FIXME: when ready *)
@@ -80,8 +81,37 @@ struct
     Surface.finish surface
 
 
-  let show_text cr ~size ~x ~y txt =
-    failwith "NotImplemented"
+  let select_font_face cr slant weight family =
+    (* Could be (unsafely) optimized *)
+    let slant = match slant with
+      | Backend.Upright -> Cairo.Upright
+      | Backend.Italic -> Cairo.Italic
+    and weight = match weight with
+      | Backend.Normal -> Cairo.Normal
+      | Backend.Bold -> Cairo.Bold in
+    Cairo.select_font_face cr ~slant ~weight family
+
+  (* identity CTM -- never modified *)
+  let id = { Cairo.xx = 1.; xy = 0.;  yx = 0.; yy = 1.;  x0 = 0.; y0 = 0. }
+
+  let show_text cr ~rotate ~x ~y pos text =
+    Cairo.save cr;
+    Cairo.move_to cr x y;
+    let angle = rotate in (* FIXME: in CTM coord *)
+    Cairo.set_matrix cr id;
+    let te = Cairo.text_extents cr text in
+    let x0 = match pos with
+      | Backend.CC | Backend.CT | Backend.CB -> x -. 0.5 *. te.width
+      | Backend.RC | Backend.RT | Backend.RB -> x
+      | Backend.LC | Backend.LT | Backend.LB -> x -. te.width
+    and y0 = match pos with
+      | Backend.CC | Backend.RC | Backend.LC -> y -. 0.5 *. te.height
+      | Backend.CT | Backend.RT | Backend.LT -> y -. te.height
+      | Backend.CB | Backend.RB | Backend.LB -> y  in
+    Cairo.rel_move_to cr (-. te.x_bearing) (-. te.y_bearing);
+
+    Cairo.show_text cr text;
+    Cairo.restore cr
 end
 
 let () =

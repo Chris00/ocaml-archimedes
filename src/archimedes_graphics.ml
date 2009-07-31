@@ -56,10 +56,12 @@ struct
     mutable line_width: float;
     mutable dash_offset: float;
     mutable dash: float array;
-    mutable x: float; (* current x pos -- when creating a path *)
-    mutable y: float; (* current y pos -- when creating a path *)
+    (* (x,y): current position (when creating a path), in user coordinates. *)
+    mutable x: float;
+    mutable y: float;
     mutable current_path: path_data list; (* Path actions in reverse order *)
     mutable path_extents: Backend.rectangle;
+    (* The extent of the current path, in device coordinates. *)
     mutable ctm : matrix; (* current transformation matrix from the
                              user coordinates to the device ones. *)
   }
@@ -159,7 +161,8 @@ struct
     let st = get_state t in
     st.x <- x;
     st.y <- y;
-    st.current_path <- MOVE_TO(x,y) :: st.current_path
+    let x', y' = transform_point st.ctm x y in
+    st.current_path <- MOVE_TO(x',y') :: st.current_path
       
       (* FIXME: Update extents *)
 
@@ -167,7 +170,8 @@ struct
     let st = get_state t in
     st.x <- x;
     st.y <- y;
-    st.current_path <- LINE_TO(x,y) :: st.current_path
+    let x', y' = transform_point st.ctm x y in
+    st.current_path <- LINE_TO(x',y') :: st.current_path
       (* FIXME: Update extents *)
 
   let rel_move_to t ~x ~y =
@@ -177,7 +181,13 @@ struct
     let st = get_state t in line_to t (st.x +. x) (st.y +. y)
 
   let curve_to t ~x1 ~y1 ~x2 ~y2 ~x3 ~y3 =
-    ()
+    (* Suffices to transform the control point by the affine
+       transformation to have the affine image of the curve *)
+    let x1', y1' = transform_point st.ctm x1 y1 in
+    let x2', y2' = transform_point st.ctm x2 y2 in
+    let x3', y3' = transform_point st.ctm x3 y3 in
+    st.current_path <- CURVE_TO(x1',y1', x2',y2', x3',y3') :: st.current_path
+
 
   let rectangle t ~x ~y ~w ~h =
     let st = get_state t in

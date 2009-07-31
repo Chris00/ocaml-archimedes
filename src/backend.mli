@@ -53,8 +53,21 @@ type matrix = { mutable xx: float; mutable yx: float;
 
 
 type slant = Upright | Italic
+    (** Specifies variants of a font face based on their slant. *)
 
 type weight = Normal | Bold
+    (** Specifies variants of a font face based on their weight. *)
+
+type text_position =
+  | CC  (** centrer horizontally and vertically *)
+  | LC  (** align left horizontally and center vertically *)
+  | RC  (** align right horizontally and center vertically *)
+  | CT  (** center horizontally and align top vertically *)
+  | CB
+  | LT
+  | LB
+  | RT
+  | RB
 
 
 module type T =
@@ -123,12 +136,22 @@ sig
     (** Return the current transformation matrix.  Modifying this
         matrix should not affect the matrix held in [t]. *)
 
-  val show_text : t -> size:float -> x:float -> y:float -> string -> unit
-    (** [show_text x y txt] display [txt] at the point ([x],[y]).  The
-        point ([x],[y]) is in the current coordinate system but the
-        current transformation matrix will NOT be applied to the text
-        itself.  This is an immediate operation: no [stroke] nor
-        [fill] are required (or will have any effect).  *)
+  val select_font_face : t -> slant -> weight -> string -> unit
+    (** [select_font_face t slant weight family] selects a family
+      and style of font from a simplified description as a family
+      name, slant and weight.  Family names are bakend dependent.  *)
+  val set_font_size : t -> float -> unit
+    (** Set the scaling of the font. *)
+  val show_text : t -> rotate:float -> x:float -> y:float ->
+    text_position -> string -> unit
+    (** [show_text angle x y pos txt] display [txt] at the point
+        ([x],[y]) as indicated by [pos].  The point ([x],[y]) is in
+        the current coordinate system but the current transformation
+        matrix will NOT be applied to the text itself.  [angle]
+        indicates by how many radians (in the current coordinate
+        system) the text must be rotated -- [rotate <> 0.] may not be
+        supported on all devices.  This is an immediate operation: no
+        [stroke] nor [fill] are required (nor will have any effect).  *)
 end
 
 include T

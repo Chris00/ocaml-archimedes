@@ -107,14 +107,13 @@ sig
   val set_matrix : t -> matrix -> unit
   val get_matrix : t -> matrix
 
-  val show_text : t -> size:float -> x:float -> y:float -> string -> unit
+  val select_font_face : t -> slant -> weight -> string -> unit
+  val set_font_size : t -> float -> unit
+  val show_text : t -> rotate:float -> x:float -> y:float ->
+    text_position -> string -> unit
+
 (*  val put_image :
     t -> x:float -> y:float -> ?scale:float -> string -> unit*)
-
-
-(* FIXME: Are [save] and [restore] needed?  Is [clip] needed ?  How to
-   implement it for graphics ?  Do we want to rotate text ?
-*)
 end
 
 
@@ -166,7 +165,10 @@ type t = {
   set_matrix : matrix -> unit;
   get_matrix : unit -> matrix;
 
-  show_text: size:float -> x:float -> y:float -> string -> unit;
+  select_font_face: slant -> weight -> string -> unit;
+  set_font_size: float -> unit;
+  show_text: rotate:float -> x:float -> y:float ->
+                                text_position -> string -> unit
   (* put_image: 'a -> x:float -> y:float -> ?scale:float -> string -> unit; *)
 }
 
@@ -229,6 +231,8 @@ struct
         set_matrix = B.set_matrix handle;
         get_matrix = (fun () -> B.get_matrix handle);
 
+        select_font_face = B.select_font_face handle;
+        set_font_size = B.set_font_size handle;
         show_text = B.show_text handle;
       }
     in
@@ -275,6 +279,8 @@ let scale t = t.scale
 let rotate t = t.rotate
 let set_matrix t m = t.set_matrix m
 let get_matrix t = t.get_matrix()
+let select_font_face t = t.select_font_face
+let set_font_size t = t.set_font_size
 let show_text t = t.show_text
 
 type error =
