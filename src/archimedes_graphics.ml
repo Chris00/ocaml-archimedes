@@ -163,7 +163,7 @@ struct
     st.y <- y;
     let x', y' = transform_point st.ctm x y in
     st.current_path <- MOVE_TO(x',y') :: st.current_path
-      
+
       (* FIXME: Update extents *)
 
   let line_to t ~x ~y =
@@ -183,6 +183,7 @@ struct
   let curve_to t ~x1 ~y1 ~x2 ~y2 ~x3 ~y3 =
     (* Suffices to transform the control point by the affine
        transformation to have the affine image of the curve *)
+    let st = get_state t in
     let x1', y1' = transform_point st.ctm x1 y1 in
     let x2', y2' = transform_point st.ctm x2 y2 in
     let x3', y3' = transform_point st.ctm x3 y3 in
@@ -248,7 +249,11 @@ struct
     (* Make a copy of the matrix *)
     let st = get_state t in { st.ctm with xx = st.ctm.xx }
 
-  let show_text t ~size ~x ~y txt =
+  let select_font_face t slant weight family = ()
+
+  let set_font_size t size = ()
+
+  let show_text t ~rotate ~x ~y pos txt =
     ()
 end
 
