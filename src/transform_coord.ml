@@ -11,6 +11,9 @@ let make ?dirs name ?coord width height =
 
 let use handle coord = {h = handle; c = coord; s = Stack.create ()}
 
+let use_unit_square handle x1 y1 x2 y2 =
+  use handle (Coord.create (x2 -. x1) 0. x1 0. (y2 -. y1) y1)
+
 let get_handle t = t.h
 
 

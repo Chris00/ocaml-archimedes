@@ -99,13 +99,36 @@ sig
   val translate : t -> x:float -> y:float -> unit
   val scale : t -> x:float -> y:float -> unit
   val rotate : t -> angle:float -> unit
-
   val text : t -> size:float -> x:float -> y:float -> string -> unit
   val text_extents: t -> size:float -> string -> text_extents
 
 end
 
+module Position :
+sig
+  type t
+  val up : t
+  val down : t
+  val left : t
+  val right : t
+  val center : t
+  val upleft : t
+  val downleft : t
+  val upright : t
+  val downright : t
+  val make_position : float -> float -> t
+  val get_downleft :
+    x:float -> y:float -> t -> width:float -> height:float -> float * float
+  val get_rect :
+    x:float -> y:float -> t -> width:float -> height:float -> rectangle
+end
+
 include T
+(*
+val text :
+  t -> size:float -> pos:Position.t -> x:float -> y:float -> string -> unit
+*)
+
 
 type error =
   | Corrupted_dependency of string

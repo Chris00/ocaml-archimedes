@@ -409,7 +409,54 @@ let flush ?(autoscale=(Uniform Unlimited)) t ~ofsx ~ofsy ~width ~height handle=
       B.translate handle (-.t.xmin) (-.t.ymin)
   | None -> ());
   make_orders ();
-  B.restore handle;
+  B.restore handle
+
+
+let make_axes t data mode ticx ticy =
+  let diffx = t.xmax -. t.xmin and diffy = t.ymax -. t.ymin in
+  (*Axes*)
+  let ofsx, ofsy =
+    match mode with
+      Axes.Rectangle(_,_) ->
+        rectangle t ~x:t.xmin ~y:t.ymin diffx diffy;
+        0.,0.
+    | Axes.Two_lines(x,y,_,_) ->
+        move_to t t.xmin y;
+        line_to t t.xmax y;
+        move_to t x t.ymin;
+        line_to t x t.ymax;
+        x,y
+  in
+  (*Tics or like*)
+  match data with
+    Axes.Graph(majx,majy) ->
+      let stepx = diffx /. (float majx) and stepy = diffy /. (float majy) in
+      let tic x y x_axis ticstyle =
+        match ticstyle with
+          Axes.Line(r) ->
+            move_to t x y;
+            (*FIXME: tic have to be independent of zoom: how to do that?*)
+            if x_axis then
+              (rel_line_to t 0. (-.r/.2.);
+               rel_line_to t 0. r;
+               text t ~size:10. (*~pos:B.Position.down*)
+                 ~x ~y:(y+.r) (string_of_float x))
+            else (*y_axis*)
+              (rel_line_to t (-.r/.2.) 0.;
+               rel_line_to t r 0.;
+               text t ~size:10. (*~pos:B.Position.left*)
+                 ~x ~y:(y+.r) (string_of_float y))
+      in
+      for i = 0 to majx do (*major tics in X axis*)
+        let xi = t.xmin +. (float i) *. stepx in
+        (*Tic to put, centered in (xi, ofsy), with label 'xi'*)
+        tic xi ofsy true ticx
+      done;
+      for j = 0 to majy do (*major tics in Y axis*)
+        let yi = t.ymin +. (float j) *. stepy in
+        tic ofsx yi false ticy
+      done
+
 
 (*Local Variables:*)
 (*compile-command: "ocamlc -c layer.ml && ocamlopt -c layer.ml"*)

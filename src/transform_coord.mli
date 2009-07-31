@@ -2,6 +2,8 @@ type t
 val make : ?dirs:string list -> string -> ?coord:Coordinate.t ->
   float -> float -> t
 val use : Backend.t -> Coordinate.t -> t
+val use_unit_square: Backend.t -> float -> float -> float -> float -> t
+(*FIXME:needed?*)
 val get_handle : t -> Backend.t
 val translate : t -> float -> float -> unit
 val scale : t -> float -> float -> unit

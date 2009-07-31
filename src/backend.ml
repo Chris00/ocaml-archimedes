@@ -35,6 +35,7 @@ type slant = Upright | Italic
 
 type weight = Normal | Bold
 
+(*
 type text_position =
   | CC  (** centrer horizontally and vertically *)
   | LC  (** align left horizontally and center vertically *)
@@ -44,7 +45,7 @@ type text_position =
   | LT
   | LB
   | RT
-  | RB
+  | RB*)
 
 type text_extents =
     {
@@ -295,6 +296,49 @@ let scale t = t.scale
 let rotate t = t.rotate
 let text t = t.text
 let text_extents t = t.text_extents
+
+module Position =
+struct
+  type t = float * float
+      (*FIXME: position of the box, relative to the point considered. This seems
+        to be more natural.*)
+  let up = 0.5,0.
+  let down = 0.5,1.
+  let left = 1.,0.5
+  let right = 0.,0.5
+  let center = 0.5,0.5
+  let upleft = 1.,0.
+  let downleft = 1.,1.
+  let upright = 0.,0.
+  let downright = 0.,1.
+
+  (*Careful: arguments of make_position have the meaning '% of the box
+    rendered to the left' and resp. 'to the bottom'. As an example,
+    make_position 0. 0. should give the same data as [upright]*)
+  let make_position x y = x,y
+
+  let get_downleft ~x ~y pos ~width ~height =
+    let p1,p2 = pos in
+    x -. p1 *. width, y -. p2 *. height
+
+  let get_rect ~x ~y pos ~width ~height =
+    let p1,p2 = pos in
+    {x=x -. p1 *. width; y=y -. p2 *. height; w=width; h=height}
+
+(*
+  let get_zone rect winwidth winheight =
+  let x,y,w,h = B.get_data_rect rect in
+  let x', y' = max x 0., max y 0. in
+  let w = min w (winwidth -. x')
+  and h = min h (winheight -. y') in
+  B.make_rect x' y' w h*)
+end
+
+(*
+let text t ~size ~pos ~x ~y txt =
+  let te = text_extents t ~size txt in
+  let box_text = Position.get_rect x y pos te.x_advance te.y_advance in
+  t.text ~size ~x:box_text.x ~y:box_text.y txt*)
 
 type error =
   | Corrupted_dependency of string
