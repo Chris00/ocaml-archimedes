@@ -16,6 +16,9 @@
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the file
    LICENSE for more details. *)
 
+module X_ = Callback
+module Y_ = Hashtbl
+
 type line_cap =
   | BUTT
   | ROUND
@@ -331,8 +334,8 @@ let rec find_file dirs fname =
   match dirs with
   | [] -> raise Not_found (* no more paths to explore *)
   | d :: tl ->
-      let fname = Filename.concat d fname in
-      if Sys.file_exists fname then fname else find_file tl fname
+      let path_file = Filename.concat d fname in
+      if Sys.file_exists path_file then path_file else find_file tl fname
 
 (* Get the list of dependencies for a given backend.  Beware that
    order is important. *)
@@ -367,12 +370,24 @@ let make ?(dirs=[]) b width height =
       (* Load dependencies *)
       List.iter begin fun dep ->
         if not(List.mem dep !loaded_dependencies) then (
-          try
+           try
             let fdep = Dynlink.adapt_filename(dep ^ ".cmo") in
-            let fdep = find_file dirs fdep in
-            Dynlink.loadfile fdep;
-            loaded_dependencies := dep :: !loaded_dependencies
-          with _ -> raise(Error(Non_loadable_dependency dep))
+            let fdep =
+              try
+                find_file dirs fdep
+              with Not_found ->
+                if Dynlink.is_native then find_file dirs (dep ^".cmxa")
+                else find_file dirs (dep ^".cma")
+
+            in
+            try
+              Dynlink.loadfile fdep;
+              loaded_dependencies := dep :: !loaded_dependencies
+            with Dynlink.Error q ->
+              let s = Dynlink.error_message q in
+              raise(Error(Non_loadable_dependency (dep^" - "^s)))
+          with Not_found ->
+            raise(Error(Non_loadable_dependency (dep^" - not found")))
         )
       end (get_dependencies dirs base);
       (* Load the main module *)

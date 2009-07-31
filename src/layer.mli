@@ -67,10 +67,10 @@ type error =
 
 
 exception Error of error
-(**Raised when there is a nonvalid task to perform -- see above.*)
+  (**Raised when there is a nonvalid task to perform -- see above.*)
 
 val make : unit -> t
-(**Creates a new layer*)
+  (**Creates a new layer*)
 
 val translate : t -> float -> float -> unit
   (**[translate layer x y] makes a translation of the [layer] in the
@@ -85,14 +85,14 @@ val scale : t -> float -> float -> unit
      that is, those which have been scaled by [x] and [y].*)
 
 (*FIXME: useful?
-val transform : t -> float -> float -> float * float
+  val transform : t -> float -> float -> float * float
 (**[transform layer x y] returns the point x,y transformed by the coordinate
-changing on [layer].*)
+  changing on [layer].*)
 
-val transform_dist : t -> float -> float -> float * float
-val invert : t -> Coordinate.t
-val inv_transform : t -> float -> float -> float * float
-val inv_transform_dist : t -> float -> float -> float * float
+  val transform_dist : t -> float -> float -> float * float
+  val invert : t -> Coordinate.t
+  val inv_transform : t -> float -> float -> float * float
+  val inv_transform_dist : t -> float -> float -> float * float
 *)
 
 val apply : next:Coordinate.t -> t -> unit
@@ -167,7 +167,7 @@ val curve_to :
   x1:float -> y1:float -> x2:float -> y2:float -> float -> float -> unit
   (**Alias for [curve] without optional arguments.*)
 
-val rel_curve :
+val rel_curve_to :
   t ->
   x1:float -> y1:float -> ?x2:float -> ?y2:float -> float -> float -> unit
   (**Relative Bezier curve.*)
@@ -194,8 +194,8 @@ val stroke : t -> unit
 val fill : t -> unit
   (**Fills the current path and start a new one.*)
 
-val clip : t -> unit
-  (**Clips along the current path and start a new one.*)
+(*val clip : t -> unit
+(**Clips along the current path and start a new one.*)*)
 
 val stroke_preserve : t -> unit
   (**Same as [stroke], but preserves the current path.*)
@@ -203,11 +203,30 @@ val stroke_preserve : t -> unit
 val fill_preserve : t -> unit
   (**Same as [fill], but preserves the current path.*)
 
-val clip_preserve : t -> unit
-  (**Same as [clip], but preserves the current path.*)
+(*val clip_preserve : t -> unit
+(**Same as [clip], but preserves the current path.*)*)
 
-val text : t -> size:float -> x:float -> y:float -> string -> unit
-  (**Draws the text on the layer, given the position and the size.*)
+val clip_rectangle : t -> x:float -> y:float -> w:float -> h:float -> unit
+  (** Establishes a new clip rectangle by intersecting the current
+      clip rectangle.  This {i may clear} the current path. *)
+
+
+val select_font_face : t -> Backend.slant -> Backend.weight -> string -> unit
+  (** [select_font_face t slant weight family] selects a family
+      and style of font from a simplified description as a family
+      name, slant and weight.  Family names are bakend dependent.  *)
+val set_font_size : t -> float -> unit
+  (** Set the scaling of the font. *)
+val show_text : t -> rotate:float -> x:float -> y:float ->
+  Backend.text_position -> string -> unit
+  (** [show_text angle x y pos txt] display [txt] at the point
+      ([x],[y]) as indicated by [pos].  The point ([x],[y]) is in
+      the current coordinate system but the current transformation
+      matrix will NOT be applied to the text itself.  [angle]
+      indicates by how many radians (in the current coordinate
+      system) the text must be rotated -- [rotate <> 0.] may not be
+      supported on all devices.  This is an immediate operation: no
+      [stroke] nor [fill] are required (nor will have any effect).  *)
 
 val flush : ?autoscale:scaling -> t -> ofsx:float -> ofsy:float ->
   width:float -> height:float -> Backend.t -> unit
@@ -225,6 +244,9 @@ val flush : ?autoscale:scaling -> t -> ofsx:float -> ofsy:float ->
      Optional argument [autoscale] is by default fixed at [Uniform
      Unlimited], so there's by default no limitations on scaling, but
      if scaling, then it is done uniformly along the two axes.*)
+
+val make_axes :
+  t -> Axes.data -> Axes.mode -> unit
 
 (*Local Variables:*)
 (*compile-command: "ocamlc -c layer.mli"*)

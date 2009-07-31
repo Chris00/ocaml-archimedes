@@ -28,6 +28,9 @@ let () =
    (*   Layer.curve_to layer1 1. 0. 0. 1. 0. 0.;
       Layer.close_path layer1;*)
       Layer.fill layer1;
+      Layer.set_color layer1 (Color.color 0. 0. 0.);
+      Layer.make_axes layer1
+        (Axes.Graph(6,4)) (Axes.Two_lines(0.,0.,Axes.Line 0.2, Axes.Line 0.2));
 
       B.set_color cr (Color.color ~a:0.7 0. 0.2 0.7);
       Layer.flush ~autoscale:(Layer.Uniform (Layer.Limited(1.,100.)))
