@@ -2,7 +2,7 @@
 
    Copyright (C) 2009
 
-     Bertrand Desmons <Bertrand.Desmons@student.umons.ac.be>
+     Bertrand Desmons <Bertrand.Desmons@umons.ac.be>
      Christophe Troestler <Christophe.Troestler@umons.ac.be>
      WWW: http://math.umh.ac.be/an/software/
 
@@ -15,9 +15,6 @@
    WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the file
    LICENSE for more details. *)
-module X_ = Hashtbl
-module Y_ = Callback
-
 
 type line_cap =
   | BUTT
@@ -31,11 +28,14 @@ type line_join =
 
 type rectangle = {x:float; y:float; w:float; h:float}
 
+type matrix = { mutable xx: float; mutable yx: float;
+                mutable xy: float; mutable yy: float;
+                mutable x0: float; mutable y0: float; }
+
 type slant = Upright | Italic
 
 type weight = Normal | Bold
 
-(*
 type text_position =
   | CC  (** centrer horizontally and vertically *)
   | LC  (** align left horizontally and center vertically *)
@@ -45,16 +45,8 @@ type text_position =
   | LT
   | LB
   | RT
-  | RB*)
+  | RB
 
-type text_extents =
-    {
-      x_bearing : float;
-      y_bearing : float;
-      width : float;
-      height : float;
-      x_advance : float;
-      y_advance : float; }
 
 module type T =
 sig
@@ -67,6 +59,7 @@ sig
   val set_line_cap : t -> line_cap -> unit
   val set_dash : t -> float -> float array -> unit
   val set_line_join : t -> line_join -> unit
+  (* val set_miter_limit : t -> float -> unit *)
 
   (* val get_pointstyle: t -> pointstyle *)
   (* val get_pattern: t -> pattern *)
@@ -85,7 +78,7 @@ sig
   val curve_to : t ->
     x1:float -> y1:float -> x2:float -> y2:float -> x3:float -> y3:float -> unit
 
-  val rectangle : t -> x:float -> y:float -> width:float -> height:float -> unit
+  val rectangle : t -> x:float -> y:float -> w:float -> h:float -> unit
 
   val arc : t -> x:float -> y:float -> r:float -> a1:float -> a2:float -> unit
     (* Do we need arc_negative (path orientation)? *)
@@ -95,15 +88,15 @@ sig
     x:float -> y:float -> a:float -> b:float -> a1:float -> a2:float -> unit
   *)
   val close_path : t -> unit
-
+  val clear_path : t -> unit
   val path_extents : t -> rectangle
 
   val stroke : t -> unit
   val stroke_preserve : t -> unit
   val fill : t -> unit
   val fill_preserve : t -> unit
-  val clip : t -> unit
-  val clip_preserve : t -> unit
+
+  val clip_rectangle : t -> x:float -> y:float -> w:float -> h:float -> unit
 
   val save : t -> unit
   val restore : t -> unit
@@ -111,24 +104,16 @@ sig
   val translate : t -> x:float -> y:float -> unit
   val scale : t -> x:float -> y:float -> unit
   val rotate : t -> angle:float -> unit
-(*  val transform : t -> float -> float -> float * float
-  val transform_dist : t -> float -> float -> float * float
-  val invert : t -> coord
-  val inv_transform : t -> float -> float -> float * float
-  val inv_transform_dist : t -> float -> float -> float * float
-  val apply : next:coord -> t -> unit
-  val get_coord : t -> coord
-  val reset_to_id : t -> unit
-*)
-  val text : t -> size:float -> x:float -> y:float -> string -> unit
-  val text_extents: t -> size:float -> string -> text_extents
+  val set_matrix : t -> matrix -> unit
+  val get_matrix : t -> matrix
+
+  val select_font_face : t -> slant -> weight -> string -> unit
+  val set_font_size : t -> float -> unit
+  val show_text : t -> rotate:float -> x:float -> y:float ->
+    text_position -> string -> unit
+
 (*  val put_image :
     t -> x:float -> y:float -> ?scale:float -> string -> unit*)
-
-
-(* FIXME: Are [save] and [restore] needed?  Is [clip] needed ?  How to
-   implement it for graphics ?  Do we want to rotate text ?
-*)
 end
 
 
@@ -159,17 +144,17 @@ type t = {
 
   curve_to: x1:float -> y1:float -> x2:float -> y2:float ->
                                             x3:float -> y3:float -> unit;
-  rectangle : x:float -> y:float -> width:float -> height:float -> unit;
+  rectangle : x:float -> y:float -> w:float -> h:float -> unit;
   arc : x:float -> y:float -> r:float -> a1:float -> a2:float -> unit;
   close_path : unit -> unit;
+  clear_path : unit -> unit;
   path_extents : unit -> rectangle;
 
   stroke : unit -> unit;
   stroke_preserve : unit -> unit;
   fill : unit -> unit;
   fill_preserve : unit -> unit;
-  clip : unit -> unit;
-  clip_preserve : unit -> unit;
+  clip_rectangle : x:float -> y:float -> w:float -> h:float -> unit;
 
   save: unit -> unit;
   restore: unit -> unit;
@@ -177,18 +162,13 @@ type t = {
   translate : x:float -> y:float -> unit;
   scale : x:float -> y:float -> unit;
   rotate : angle:float -> unit;
-(*  transform : 'a -> float -> float -> float * float;
-  transform_dist : 'a -> float -> float -> float * float;
-  invert : 'a -> coord;
-  inv_transform : 'a -> float -> float -> float * float;
-  inv_transform_dist : 'a -> float -> float -> float * float;
-  apply : next:coord -> 'a -> unit;
-  get_coord : 'a -> coord;
-  reset_to_id : 'a -> unit;
-*)
-  text: size:float -> x:float -> y:float -> string -> unit;
-  text_extents: size:float -> string -> text_extents;
+  set_matrix : matrix -> unit;
+  get_matrix : unit -> matrix;
 
+  select_font_face: slant -> weight -> string -> unit;
+  set_font_size: float -> unit;
+  show_text: rotate:float -> x:float -> y:float ->
+                                text_position -> string -> unit
   (* put_image: 'a -> x:float -> y:float -> ?scale:float -> string -> unit; *)
 }
 
@@ -234,13 +214,13 @@ struct
         rectangle = B.rectangle handle;
         arc = B.arc handle;
         close_path = (fun () -> B.close_path handle);
+        clear_path = (fun () -> B.clear_path handle);
         path_extents = (fun () -> B.path_extents handle);
         stroke = (fun () -> B.stroke handle);
         stroke_preserve = (fun () -> B.stroke_preserve handle);
         fill = (fun () -> B.fill handle);
         fill_preserve = (fun () -> B.fill_preserve handle);
-        clip = (fun () -> B.clip handle);
-        clip_preserve = (fun () -> B.clip_preserve handle);
+        clip_rectangle = B.clip_rectangle handle;
 
         save = (fun () -> B.save handle);
         restore = (fun () -> B.restore handle);
@@ -248,9 +228,12 @@ struct
         translate = B.translate handle;
         scale = B.scale handle;
         rotate = B.rotate handle;
+        set_matrix = B.set_matrix handle;
+        get_matrix = (fun () -> B.get_matrix handle);
 
-        text = B.text handle;
-        text_extents = B.text_extents handle;
+        select_font_face = B.select_font_face handle;
+        set_font_size = B.set_font_size handle;
+        show_text = B.show_text handle;
       }
     in
     registry := M.add B.name make !registry
@@ -282,63 +265,23 @@ let curve_to t = t.curve_to
 let rectangle t = t.rectangle
 let arc t = t.arc
 let close_path t = t.close_path()
+let clear_path t = t.clear_path()
 let path_extents t = t.path_extents()
 let stroke t = t.stroke()
 let stroke_preserve t = t.stroke_preserve()
 let fill t = t.fill()
 let fill_preserve t = t.fill_preserve()
-let clip t = t.clip()
-let clip_preserve t = t.clip_preserve()
+let clip_rectangle t = t.clip_rectangle
 let save t = t.save()
 let restore t = t.restore()
 let translate t = t.translate
 let scale t = t.scale
 let rotate t = t.rotate
-let text t = t.text
-let text_extents t = t.text_extents
-
-module Position =
-struct
-  type t = float * float
-      (*FIXME: position of the box, relative to the point considered. This seems
-        to be more natural.*)
-  let up = 0.5,0.
-  let down = 0.5,1.
-  let left = 1.,0.5
-  let right = 0.,0.5
-  let center = 0.5,0.5
-  let upleft = 1.,0.
-  let downleft = 1.,1.
-  let upright = 0.,0.
-  let downright = 0.,1.
-
-  (*Careful: arguments of make_position have the meaning '% of the box
-    rendered to the left' and resp. 'to the bottom'. As an example,
-    make_position 0. 0. should give the same data as [upright]*)
-  let make_position x y = x,y
-
-  let get_downleft ~x ~y pos ~width ~height =
-    let p1,p2 = pos in
-    x -. p1 *. width, y -. p2 *. height
-
-  let get_rect ~x ~y pos ~width ~height =
-    let p1,p2 = pos in
-    {x=x -. p1 *. width; y=y -. p2 *. height; w=width; h=height}
-
-(*
-  let get_zone rect winwidth winheight =
-  let x,y,w,h = B.get_data_rect rect in
-  let x', y' = max x 0., max y 0. in
-  let w = min w (winwidth -. x')
-  and h = min h (winheight -. y') in
-  B.make_rect x' y' w h*)
-end
-
-(*
-let text t ~size ~pos ~x ~y txt =
-  let te = text_extents t ~size txt in
-  let box_text = Position.get_rect x y pos te.x_advance te.y_advance in
-  t.text ~size ~x:box_text.x ~y:box_text.y txt*)
+let set_matrix t m = t.set_matrix m
+let get_matrix t = t.get_matrix()
+let select_font_face t = t.select_font_face
+let set_font_size t = t.set_font_size
+let show_text t = t.show_text
 
 type error =
   | Corrupted_dependency of string
@@ -388,8 +331,8 @@ let rec find_file dirs fname =
   match dirs with
   | [] -> raise Not_found (* no more paths to explore *)
   | d :: tl ->
-      let dirfile = Filename.concat d fname in
-      if Sys.file_exists dirfile then dirfile else find_file tl fname
+      let fname = Filename.concat d fname in
+      if Sys.file_exists fname then fname else find_file tl fname
 
 (* Get the list of dependencies for a given backend.  Beware that
    order is important. *)
@@ -426,29 +369,15 @@ let make ?(dirs=[]) b width height =
         if not(List.mem dep !loaded_dependencies) then (
           try
             let fdep = Dynlink.adapt_filename(dep ^ ".cmo") in
-            let fdep =
-              try
-                find_file dirs fdep
-              with Not_found ->
-                if Dynlink.is_native then find_file dirs (dep ^".cmxa")
-                else find_file dirs (dep ^".cma")
-
-            in
-            try
-              Dynlink.loadfile fdep;
-              loaded_dependencies := dep :: !loaded_dependencies
-            with Dynlink.Error q ->
-              let s = Dynlink.error_message q in
-              raise(Error(Non_loadable_dependency (dep^" - "^s)))
-          with Not_found ->
-            raise(Error(Non_loadable_dependency (dep^" - not found")))
+            let fdep = find_file dirs fdep in
+            Dynlink.loadfile fdep;
+            loaded_dependencies := dep :: !loaded_dependencies
+          with _ -> raise(Error(Non_loadable_dependency dep))
         )
       end (get_dependencies dirs base);
       (* Load the main module *)
       (try Dynlink.loadfile dyn
-       with Dynlink.Error q ->
-         let s = Dynlink.error_message q in
-         raise(Error(Corrupted (backend^" - "^s))));
+       with _ -> raise(Error(Corrupted backend)));
       (* Check that the backend correctly updated the registry *)
       try M.find backend !registry
       with Not_found -> raise(Error(Not_registering backend))
