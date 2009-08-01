@@ -331,8 +331,8 @@ let rec find_file dirs fname =
   match dirs with
   | [] -> raise Not_found (* no more paths to explore *)
   | d :: tl ->
-      let fname = Filename.concat d fname in
-      if Sys.file_exists fname then fname else find_file tl fname
+      let path_file = Filename.concat d fname in
+      if Sys.file_exists path_file then path_file else find_file tl fname
 
 (* Get the list of dependencies for a given backend.  Beware that
    order is important. *)
