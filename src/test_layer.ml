@@ -17,7 +17,7 @@ let () =
       Layer.line_to layer 1. 1.;
       (*Layer.line_to layer 0. 0.;*)
       Layer.close_path layer;
-      Layer.set_line_width layer 0.05;
+      (*Layer.set_line_width layer 0.05;*)
       Layer.stroke layer;
       let layer1 = Layer.make () in
       Layer.move_to layer1 1. 1.;
@@ -29,7 +29,8 @@ let () =
       Layer.close_path layer1;*)
       Layer.fill layer1;
       Layer.set_color layer1 (Color.color 0. 0. 0.);
-      Layer.make_axes layer1
+      Layer.set_line_width layer1 0.5;
+      Layer.make_axes layer1 ~color_labels:(Color.color 1. 0. 0.)
         (Axes.Graph(6,4)) (Axes.Two_lines(0.,0.,Axes.Line 0.2, Axes.Line 0.2));
 
       B.set_color cr (Color.color ~a:0.7 0. 0.2 0.7);
@@ -38,7 +39,7 @@ let () =
       (*B.stroke cr;*)
       B.set_color cr (Color.color ~a:0.7 0.9 0.2 0.);
       Layer.flush ~autoscale:(Layer.Free(Layer.Unlimited, Layer.Limited_out 30.))
-        layer1 ~ofsx:50. ~ofsy:50. ~width:100. ~height:100. cr;
+        layer1 ~ofsx:50. ~ofsy:120. ~width:100. ~height:(-100.) cr;
      (* B.fill cr;*)
       B.close cr
     with

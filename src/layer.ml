@@ -54,9 +54,8 @@ exception Error of error
   scalings. This permits to make a reverse transformation, to pass the
   'good' data to the backend used.*)
 
-let flush_x = ref 1.
-
-let flush_y = ref 1.
+let inv_zoomx = ref 1. (*Inverse of scaling factor on X axis*)
+let inv_zoomy = ref 1. (*Inverse of scaling factor on Y axis*)
 
 (*IDEA: optional argument "clipping in this rectangle"?*)
 
@@ -138,7 +137,9 @@ let set_color t c =
   t.styles.color <- c
 
 let set_line_width t w =
-  Q.add (fun t -> B.set_line_width t w) t.orders;
+  Q.add 
+    (fun t -> B.set_line_width t w)
+    t.orders;
   t.styles.lw <- w
 
 let set_line_cap t lc =
@@ -326,8 +327,51 @@ let path_extents t =
   else
     {B.x = t.pxmin; y = t.pymin; w = t.pxmax -. t.pxmin; h = t.pymax -. t.pymin}
 
-let stroke t =
-  Q.add B.stroke t.orders;
+
+let stroke_fun t backend =
+  B.save backend;
+  (*CTM in backend = t.coord * (TM flush) * (CTM before flush).
+    To recover correct line width, we want as backend's CTM:
+    t.coord * (CTM before flush).
+    So we make the following operation:
+    CTM := t.coord * (TM flush)^{-1} * (t.coord)^{-1} * CTM.
+  *)
+  (*
+    let coord_kill_transform = Coord.invert t.styles.coord in
+    Coord.scale coord_kill_transform !inv_zoomx !inv_zoomy;
+    Coord.apply ~next_t:t.styles.coord coord_kill_transform;
+    Coord.apply ~next_t:coord_kill_transform (B.get_matrix backend);*)
+  print_string "stroke: ";
+  print_float !inv_zoomx;
+  print_string " ";
+  print_float !inv_zoomy;
+  flush stdout;
+  (*B.scale backend !inv_zoomx !inv_zoomy;*)
+  let coord_kill_transform = Coord.invert t.styles.coord in
+  Coord.scale coord_kill_transform !inv_zoomx !inv_zoomy;
+  Coord.apply ~next_t:t.styles.coord coord_kill_transform;
+  let matrix = B.get_matrix backend in
+  Coord.apply ~next_t:coord_kill_transform matrix;
+  B.set_matrix backend matrix;
+  B.stroke backend;
+  B.restore backend
+  (*in let matrix = B.get_matrix t in
+    B.restore t;
+    B.stroke_preserve t;
+    B.save t;
+    B.set_matrix t matrix*)
+
+type coord_linewidth =
+    Layer
+  | Backend
+
+let stroke ?(lw = Backend) t =
+  let stroke_fun =
+    match lw with
+      Backend -> stroke_fun t
+    | Layer -> B.stroke
+  in
+  Q.add stroke_fun t.orders;
   reinit_path_ext t
 
 let fill t =
@@ -340,8 +384,13 @@ let clip t =
   reinit_path_ext t
 *)
 
-let stroke_preserve t =
-  Q.add B.stroke_preserve t.orders
+let stroke_preserve ?(lw = Backend) t =
+  let stroke_fun =
+    match lw with
+      Backend -> stroke_fun t
+    | Layer -> B.stroke
+  in
+  Q.add stroke_fun t.orders
 
 let fill_preserve t =
   Q.add B.fill_preserve t.orders
@@ -364,11 +413,13 @@ let show_text t ~rotate ~x ~y pos str =
   Q.add (fun t -> B.show_text t ~rotate ~x ~y pos str) t.orders
 
 let adjust_scale scale limit =
-  match limit with
+  let sign = if scale >= 0. then 1. else -1. in
+  let scale = abs_float scale in
+  sign *. (match limit with
     Unlimited -> scale
   | Limited_in l_in -> max l_in scale
   | Limited_out l_out -> min l_out scale
-  | Limited(l_in, l_out) -> max l_in (min l_out scale)
+  | Limited(l_in, l_out) -> max l_in (min l_out scale))
 
 
 (*FIXME: a flushed layer can be reusable; flush does not kill nor
@@ -386,7 +437,10 @@ let flush ?(autoscale=(Uniform Unlimited)) t ~ofsx ~ofsy ~width ~height handle=
   Coord.translate c ofsx ofsy;
   let scalopt =
     match autoscale with
-      Not_allowed -> None
+      Not_allowed ->
+        inv_zoomx := 1.;
+        inv_zoomy := 1.;
+        None
     | Uniform(limit) ->
         let scalx, scaly =
           let scx =
@@ -397,6 +451,8 @@ let flush ?(autoscale=(Uniform Unlimited)) t ~ofsx ~ofsy ~width ~height handle=
           adjust_scale scx limit, adjust_scale scy limit
         in
         let scal = min (min scalx scaly) 1.E15 in
+        inv_zoomx := 1./. scal;
+        inv_zoomy := 1./. scal;
         Some(scal, scal)
     | Free(limitx,limity) ->
         let scalx, scaly =
@@ -407,26 +463,29 @@ let flush ?(autoscale=(Uniform Unlimited)) t ~ofsx ~ofsy ~width ~height handle=
           in
           adjust_scale scx limitx, adjust_scale scy limity
         in
+        inv_zoomx := 1./. scalx;
+        inv_zoomy := 1./. scaly;
         Some((min scalx 1.E15), (min scaly 1.E15));
         (*      let tx, ty = Coord.inv_transform_dist c t.leftmargin t.downmargin in
                 B.translate handle tx ty*)
   in
   (match scalopt with
-    Some(scalx, scaly) ->
-      B.scale handle scalx scaly;
-      Coord.scale c scalx scaly;
-      (*let tx, ty = Coord.inv_transform_dist c t.leftmargin t.downmargin in
+     Some(scalx, scaly) ->
+       B.scale handle scalx scaly;
+       Coord.scale c scalx scaly;
+       (*let tx, ty = Coord.inv_transform_dist c t.leftmargin t.downmargin in
          B.translate handle tx ty;*)
-      B.translate handle (-.t.xmin) (-.t.ymin);
-      flush_x := scalx;
-      flush_y := scaly
-  | None ->
-      flush_x := 1.; flush_y := 1.);
+       B.translate handle (-.t.xmin) (-.t.ymin);
+   | None ->()
+  );
   make_orders ();
   B.restore handle
 
 
-let make_axes t data mode =
+let make_axes t ?color_axes ?color_labels data mode =
+  (match color_axes with
+     Some c -> save t; set_color t c
+   | None -> ());
   (*Axes*)
   let ofsx, ofsy, ticx, ticy =
     match mode with
@@ -449,7 +508,6 @@ let make_axes t data mode =
     previous axes.*)
   let xmin = t.xmin and ymin = t.ymin in
   let xmax = t.xmax and ymax = t.ymax in
-
   match data with
     Axes.Graph(majx,majy) ->
       let stepx = (xmax -. xmin) /. (float majx)
@@ -459,16 +517,27 @@ let make_axes t data mode =
           Axes.Line(r) ->
             move_to t x y;
             (*FIXME: tic have to be independent of zoom: how to do that?*)
-            if x_axis then
-              (rel_line_to t 0. (-.r/.2.);
-               rel_line_to t 0. r;
-               show_text t ~rotate:0. (*~pos:B.Position.down*)
-                 ~x ~y:(y+.r) B.CB (string_of_float x))
-            else (*y_axis*)
-              (rel_line_to t (-.r/.2.) 0.;
-               rel_line_to t r 0.;
-               show_text t ~rotate:0.(*~pos:B.Position.left*)
-                 ~x ~y:(y+.r) B.LC (string_of_float y))
+            let x,y =
+              if x_axis then
+                (rel_line_to t 0. (-.r/.2.);
+                 rel_line_to t 0. r;
+                 x, y+.r)
+              else (*y_axis*)
+                (rel_line_to t (-.r/.2.) 0.;
+                 rel_line_to t r 0.;
+                 x-.r,y)
+            in
+            (match color_labels with
+               Some c ->
+                 save t;
+                 set_color t c
+             | None -> ());
+            show_text t ~rotate:0.(*~pos:B.Position.left*)
+              ~x ~y (if x_axis then B.CB else B.LC)
+              (string_of_float (if x_axis then x else y));
+            (match color_labels with
+               Some c -> restore t;
+             | None -> ())
       in
       for i = 0 to majx do (*major tics in X axis*)
         let xi = xmin +. (float i) *. stepx in
@@ -479,8 +548,10 @@ let make_axes t data mode =
         let yi = ymin +. (float j) *. stepy in
         tic ofsx yi false ticy
       done;
-      set_line_width t 0.05;
-      stroke t
+      stroke t;
+      (match color_axes with
+         Some c -> restore t
+       | None -> ());
 
 (*Local Variables:*)
 (*compile-command: "ocamlc -c layer.ml && ocamlopt -c layer.ml"*)

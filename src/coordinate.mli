@@ -1,4 +1,4 @@
-type t
+type t = Backend.matrix
   (**The type storing a coordinate transformation.*)
 
 val identity : unit -> t

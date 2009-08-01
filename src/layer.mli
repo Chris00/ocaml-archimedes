@@ -188,8 +188,17 @@ val close_path : t -> unit
 val path_extents : t -> Backend.rectangle
   (**Returns the current path extents.*)
 
-val stroke : t -> unit
-  (**Strokes the current path and start a new one.*)
+type coord_linewidth =
+    Layer (**Expressed in layer coordinates*)
+  | Backend (**Expressed in backend coordinates*)
+      (**Type indicating how to interpret the line width and dash
+         styles. A [Backend] interpretation makes the same stroking
+         independently of the zoom applied when flushing. *)
+
+val stroke : ?lw:coord_linewidth -> t -> unit
+  (**Strokes the current path and start a new one. The [lw] argument
+     indicates how to stroke. Default is [Backend]: make it invariant
+     under deformation.*)
 
 val fill : t -> unit
   (**Fills the current path and start a new one.*)
@@ -197,7 +206,7 @@ val fill : t -> unit
 (*val clip : t -> unit
 (**Clips along the current path and start a new one.*)*)
 
-val stroke_preserve : t -> unit
+val stroke_preserve : ?lw:coord_linewidth -> t -> unit
   (**Same as [stroke], but preserves the current path.*)
 
 val fill_preserve : t -> unit
@@ -246,7 +255,9 @@ val flush : ?autoscale:scaling -> t -> ofsx:float -> ofsy:float ->
      if scaling, then it is done uniformly along the two axes.*)
 
 val make_axes :
-  t -> Axes.data -> Axes.mode -> unit
+  t ->
+  ?color_axes:Color.t ->
+  ?color_labels:Color.t -> Axes.data -> Axes.mode -> unit
 
 (*Local Variables:*)
 (*compile-command: "ocamlc -c layer.mli"*)
