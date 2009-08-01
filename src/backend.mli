@@ -2,7 +2,7 @@
 
    Copyright (C) 2009
 
-     Bertrand Desmons <Bertrand.Desmons@student.umons.ac.be>
+     Bertrand Desmons <Bertrand.Desmons@umons.ac.be>
      Christophe Troestler <Christophe.Troestler@umons.ac.be>
      WWW: http://math.umh.ac.be/an/software/
 
@@ -63,11 +63,11 @@ type text_position =
   | LC  (** align left horizontally and center vertically *)
   | RC  (** align right horizontally and center vertically *)
   | CT  (** center horizontally and align top vertically *)
-  | CB
-  | LT
-  | LB
-  | RT
-  | RB
+  | CB  (** center horizontally and align bottom vertically *)
+  | LT  (** align left horizontally and top vertically *)
+  | LB  (** align left horizontally and bottom vertically *)
+  | RT  (** align right horizontally and top vertically *)
+  | RB  (** align right horizontally and bottom vertically *)
 
 
 module type T =
