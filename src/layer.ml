@@ -137,7 +137,7 @@ let set_color t c =
   t.styles.color <- c
 
 let set_line_width t w =
-  Q.add 
+  Q.add
     (fun t -> B.set_line_width t w)
     t.orders;
   t.styles.lw <- w
@@ -482,7 +482,7 @@ let flush ?(autoscale=(Uniform Unlimited)) t ~ofsx ~ofsy ~width ~height handle=
   B.restore handle
 
 
-let make_axes t ?color_axes ?color_labels data mode =
+let make_axes t ?color_axes ?color_labels datax datay mode =
   (match color_axes with
      Some c -> save t; set_color t c
    | None -> ());
@@ -493,7 +493,7 @@ let make_axes t ?color_axes ?color_labels data mode =
         rectangle t ~x:t.xmin ~y:t.ymin (t.xmax -. t.xmin) (t.ymax -. t.ymin);
         t.xmin, t.ymin, tx, ty
     | Axes.Two_lines(x,y,tx,ty) ->
-        (*Need to update -before- so that mins/maxs are correctedly
+        (*Need to update -before- so that mins/maxs are correctly
           initialized for making the axes lines.*)
         update t x y;
         move_to t t.xmin y;
@@ -508,50 +508,59 @@ let make_axes t ?color_axes ?color_labels data mode =
     previous axes.*)
   let xmin = t.xmin and ymin = t.ymin in
   let xmax = t.xmax and ymax = t.ymax in
-  match data with
-    Axes.Graph(majx,majy) ->
-      let stepx = (xmax -. xmin) /. (float majx)
-      and stepy = (ymax -. ymin) /. (float majy) in
-      let tic x y x_axis ticstyle =
-        match ticstyle with
-          Axes.Line(r) ->
-            move_to t x y;
-            (*FIXME: tic have to be independent of zoom: how to do that?*)
-            let x,y =
-              if x_axis then
-                (rel_line_to t 0. (-.r/.2.);
-                 rel_line_to t 0. r;
-                 x, y+.r)
-              else (*y_axis*)
-                (rel_line_to t (-.r/.2.) 0.;
-                 rel_line_to t r 0.;
-                 x-.r,y)
-            in
-            (match color_labels with
-               Some c ->
-                 save t;
-                 set_color t c
-             | None -> ());
-            show_text t ~rotate:0.(*~pos:B.Position.left*)
-              ~x ~y (if x_axis then B.CB else B.LC)
-              (string_of_float (if x_axis then x else y));
-            (match color_labels with
-               Some c -> restore t;
-             | None -> ())
-      in
-      for i = 0 to majx do (*major tics in X axis*)
-        let xi = xmin +. (float i) *. stepx in
-        (*Tic to put, centered in (xi, ofsy), with label 'xi'*)
-        tic xi ofsy true ticx
-      done;
-      for j = 0 to majy do (*major tics in Y axis*)
-        let yi = ymin +. (float j) *. stepy in
-        tic ofsx yi false ticy
-      done;
-      stroke t;
-      (match color_axes with
-         Some c -> restore t
-       | None -> ());
+  let tic x y x_axis ticstyle =
+    match ticstyle with
+      Axes.Line(r) ->
+        move_to t x y;
+        (*FIXME: tic have to be independent of zoom:
+          using [Backend] mode for stroking*)
+        let x,y =
+          if x_axis then
+            (rel_line_to t 0. (-.r/.2.);
+             rel_line_to t 0. r;
+             x, y+.r)
+          else (*y_axis*)
+            (rel_line_to t (-.r/.2.) 0.;
+             rel_line_to t r 0.;
+             x-.r,y)
+        in
+        (match color_labels with
+           Some c ->
+             save t;
+             set_color t c
+         | None -> ());
+        show_text t ~rotate:0.(*~pos:B.Position.left*)
+          ~x ~y (if x_axis then B.CB else B.LC)
+          (string_of_float (if x_axis then x else y));
+        (match color_labels with
+           Some c -> restore t;
+         | None -> ())
+  in
+  let make_data data ticmode x_axis =
+    match data with
+     Axes.Graph(major,minor) ->
+       let step =
+         let diff = if x_axis then xmax -. xmin else ymax -. ymin in
+         diff /. (float major) in
+       for i = 0 to major do (*major tics in X axis*)
+         let ofs = (float i) *. step in
+         let x, y =
+           if x_axis then xmin +. ofs, ofsy
+           else ofsx, ymin +. ofs
+         in
+         (*Tic to put, centered in (x, y), with label 'x' or 'y' as
+           given by x_axis.*)
+         tic x y x_axis ticmode
+       done
+  in
+  (*Make data for X axis*)
+  make_data datax ticx true;
+  (*Make data for Y axis*)
+  make_data datay ticy false;
+  stroke t;
+  (match color_axes with
+     Some c -> restore t
+   | None -> ())
 
 (*Local Variables:*)
 (*compile-command: "ocamlc -c layer.ml && ocamlopt -c layer.ml"*)

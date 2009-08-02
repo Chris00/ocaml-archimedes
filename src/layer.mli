@@ -257,7 +257,7 @@ val flush : ?autoscale:scaling -> t -> ofsx:float -> ofsy:float ->
 val make_axes :
   t ->
   ?color_axes:Color.t ->
-  ?color_labels:Color.t -> Axes.data -> Axes.mode -> unit
+  ?color_labels:Color.t -> Axes.data -> Axes.data -> Axes.mode -> unit
 
 (*Local Variables:*)
 (*compile-command: "ocamlc -c layer.mli"*)

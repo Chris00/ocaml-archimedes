@@ -50,6 +50,9 @@ val copy:t -> t
 val reset_to_id : t -> unit
   (**Resets the current transformation to the identity transformation.*)
 
+val has_shear:t -> bool
+  (**Tests whether the transformation has shears. This is also the
+     case if the transformation does a rotation*)
 
 (*Local variables:*)
 (*compile-command: "ocamlc -c coordinate.mli"*)

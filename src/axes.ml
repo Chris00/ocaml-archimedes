@@ -1,3 +1,5 @@
+(**Styles definitions to make axes*)
+
 type data =
     Graph of int * int
 
@@ -8,6 +10,7 @@ type mode =
     Rectangle of ticstyle * ticstyle
   | Two_lines of float * float * ticstyle * ticstyle
 
+(*
 type t =
     {xmin:float;
      xmax:float;
@@ -21,7 +24,7 @@ type t =
 let make ~xmin ~xmax ~ymin ~ymax ~datax ~datay ~mode =
   {xmin = xmin; xmax = xmax; ymin = ymin; ymax = ymax;
    datax = datax; datay = datay; mode = mode}
-
+*)
 (*
 let print handle t =
   let diffx = t.xmax -. t.xmin and diffy = t.ymax -. t.ymin in
@@ -81,6 +84,9 @@ let print handle t =
   in
   make_tics true; make_tics false;
   D.move handle posx posy*)
+
+
+
 
 
 (*Local variables:*)

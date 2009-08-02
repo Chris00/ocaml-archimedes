@@ -5,8 +5,8 @@ let () =
     try
       let coord = Coordinate.create 100. 0. 50. 0. 100. 0. in
       let t = T.make ~dirs:[".";
-                      "C:\\Program Files\\Objective Caml\\lib";
-                      "C:\\Program Files\\Objective Caml\\lib\\site-lib\\cairo2"]
+                            "C:\\Program Files\\Objective Caml\\lib";
+                            "C:\\Program Files\\Objective Caml\\lib\\site-lib\\cairo2"]
         s ~coord 150. 150. in
       T.set_color t (Color.color ~a:0.7 0. 0.2 0.7);
       T.line_to t 0. 0.;
@@ -23,6 +23,8 @@ let () =
       T.line_to t 2. 0.;
       T.close_path t;
       T.fill t;
+      T.make_axes t 0. 3. 0. 2. (Axes.Graph(6,1)) (Axes.Graph(4,1))
+        (Axes.Rectangle(Axes.Line 0.2, Axes.Line 0.2));
       T.close t
     with
       B.Error e ->

@@ -93,6 +93,9 @@ let reset_to_id t =
   t.xx <- 1.; t.xy <- 0.; t.x0 <- 0.;
   t.yx <- 0.; t.yy <- 1.; t.y0 <- 0.
 
+
+let has_shear t =
+  t.yx <> 0. || t.xy <> 0.
 (*Local variables:*)
 (*compile-command: "ocamlc -c coordinate.ml && ocamlopt -c coordinate.ml"*)
 (*End:*)
