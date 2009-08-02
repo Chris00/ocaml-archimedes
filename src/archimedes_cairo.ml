@@ -19,6 +19,7 @@
 (** Cairo Archimedes plugin *)
 
 open Cairo
+open Archimedes
 
 module B : Backend.Capabilities =
 struct

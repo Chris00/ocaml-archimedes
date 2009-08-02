@@ -19,6 +19,7 @@
 (** Graphics Archimedes plugin *)
 
 open Printf
+open Archimedes
 
 exception Invalid_matrix
 
