@@ -1,4 +1,5 @@
 module B = Backend
+module A = Axes.Print(Layer)
 
 let () =
   let f s =
@@ -30,7 +31,11 @@ let () =
       Layer.fill layer1;
       Layer.set_color layer1 (Color.color 0. 0. 0.);
       Layer.set_line_width layer1 0.5;
-      Layer.make_axes layer1 ~color_labels:(Color.color 1. 0. 0.)
+      let rect = Layer.layer_extents layer1 in
+      let xmin, ymin = rect.B.x, rect.B.y in
+      let xmax, ymax = rect.B.w +. xmin, rect.B.h +. ymin in
+      A.make_axes layer1 ~color_labels:(Color.color 1. 0. 0.)
+        xmin xmax ymin ymax
         (Axes.Graph(6,1)) (Axes.Graph(4,1))
         (Axes.Two_lines(0.,0.,Axes.Line 0.2, Axes.Line 0.2));
 
@@ -56,5 +61,5 @@ let () =
   in List.iter f ["cairo PDF layer.pdf";"cairo PNG layer.png"]
 
 (*Local Variables:*)
-(*compile-command: "ocamlopt -o test_layer.com dynlink.cmxa color.cmx archimedes.cmxa layer.cmx test_layer.ml && ocamlc -o test_layer.exe dynlink.cma color.cmo archimedes.cma layer.cmo test_layer.ml"*)
+(*compile-command: "ocamlopt -o test_layer.com dynlink.cmxa color.cmx archimedes.cmxa axes.cmx layer.cmx test_layer.ml && ocamlc -o test_layer.exe dynlink.cma color.cmo archimedes.cma axes.cmo layer.cmo test_layer.ml"*)
 (*End:*)

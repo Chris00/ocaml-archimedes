@@ -15,8 +15,8 @@ type scaling =
 
 type styles =
     {(* mutable ps: B.pointstyle;*)
-      coord:Backend.matrix;
-      mutable dash: float * float array;
+      mutable coord:Backend.matrix;
+      mutable dash: float array * float;
       mutable lj: B.line_join;
       mutable lc: B.line_cap;
       (*  mutable pat:B.pattern;(*FIXME: ? Pattern.t;*)*)
@@ -63,7 +63,7 @@ let make () =
   let styles =
     {
       coord = Coord.identity ();
-      dash = 0., [||]; lj = B.JOIN_BEVEL; lc = B.BUTT;
+      dash = [||], 0.; lj = B.JOIN_BEVEL; lc = B.BUTT;
       color = Color.color 0. 0. 0.; lw = 1.;
       font="Sans serif"; fsize=10;
       fslant = B.Upright; fweight = B.Normal;
@@ -95,18 +95,18 @@ let reinit_path_ext t =
   t.pymin <- max_float; t.pymax <- -. max_float;
   t.current <- None
 
-let translate t x y =
+let translate t ~x ~y =
   Q.add (fun t -> B.translate t x y) t.orders;
   Coord.translate t.styles.coord x y
 
-let scale t x y =
+let scale t ~x ~y =
   Q.add (fun t -> B.scale t x y) t.orders;
   Coord.scale t.styles.coord x y
-(*
-let rotate t a =
-  Q.add (fun t -> B.rotate t a) t.orders;
-  Coord.rotate t.coord a
-*)
+
+let rotate t ~angle =
+  Q.add (fun t -> B.rotate t angle) t.orders;
+  Coord.rotate t.styles.coord angle
+
 
 let transform t =  Coord.transform t.styles.coord
 let transform_dist t = Coord.transform_dist t.styles.coord
@@ -146,14 +146,17 @@ let set_line_cap t lc =
   Q.add (fun t -> B.set_line_cap t lc) t.orders;
   t.styles.lc <- lc
 
-let set_dash t s =
-  let ofs, array = s in
+let set_dash t ofs array =
   Q.add (fun t -> B.set_dash t ofs array) t.orders;
-  t.styles.dash <- s
+  t.styles.dash <- array, ofs
 
 let set_line_join t s =
   Q.add (fun t -> B.set_line_join t s) t.orders;
   t.styles.lj <- s
+
+let set_matrix t matrix =
+  Q.add (fun t -> B.set_matrix t matrix) t.orders;
+  t.styles.coord <- matrix
 
 (*let get_pointstyle t = t.ps
 let get_pattern t = t.pat*)
@@ -161,8 +164,9 @@ let get_line_width t = t.styles.lw
 let get_line_cap t = t.styles.lc
 let get_dash t = t.styles.dash
 let get_line_join t = t.styles.lj
+let get_matrix t = t.styles.coord
 
-let move_to t x y =
+let move_to t ~x ~y =
   update t x y;
   t.current <- Some (x,y);
   Q.add (fun t -> B.move_to t x y) t.orders
@@ -175,26 +179,26 @@ let line t ?x ?y x1 y1 =
   Q.add (fun t -> B.line_to t x1 y1) t.orders;
   t.current <- Some(x1,y1)
 
-let line_to t x1 y1 = line t x1 y1
+let line_to t ~x ~y = line t x y
 
 let get_point t =
   match t.current with
     Some(x,y) -> x,y
   | None -> raise (Error No_current_point)
 
-let rel_move_to t dx dy =
-  let x,y = get_point t in
-  let x',y' = (x+.dx), (y+.dy) in
+let rel_move_to t ~x ~y =
+  let x',y' = get_point t in
+  let x',y' = (x+.x'), (y+.y') in
   update t x' y';
   t.current <- Some (x',y');
-  Q.add (fun t -> B.rel_move_to t dx dy) t.orders
+  Q.add (fun t -> B.rel_move_to t x y) t.orders
 
-let rel_line_to t dx dy =
-  let x,y = get_point t in
-  let x',y' = (x+.dx), (y+.dy) in
+let rel_line_to t ~x ~y =
+  let x',y' = get_point t in
+  let x',y' = (x+.x'), (y+.y') in
   update t x' y';
   t.current <- Some(x',y');
-  Q.add (fun t -> B.rel_line_to t dx dy) t.orders
+  Q.add (fun t -> B.rel_line_to t x y) t.orders
 
 
 
@@ -215,9 +219,9 @@ let curve t ?x0 ?y0 ~x1 ~y1 ?x2 ?y2 x3 y3 =
   Q.add (fun t -> B.curve_to t ~x1 ~y1 ~x2 ~y2 ~x3 ~y3) t.orders;
   t.current <- Some(x3,y3)
 
-let curve_to t ~x1 ~y1 ~x2 ~y2 x3 y3 = curve t ~x1 ~y1 ~x2 ~y2 x3 y3
+let curve_to t ~x1 ~y1 ~x2 ~y2 ~x3 ~y3 = curve t ~x1 ~y1 ~x2 ~y2 x3 y3
 
-let rel_curve_to t ~x1 ~y1 ?x2 ?y2 x3 y3 =
+let rel_curve_to t ~x1 ~y1 ?x2 ?y2 ~x3 ~y3 =
   let x,y = get_point t in
   let x1, y1, x3, y3 = x +. x1, y +. y1, x +. x3, y +. y3 in
   update t x1 y1;
@@ -292,15 +296,24 @@ let circle t ?x ?y ~r =
   Q.add (fun t -> B.circle t ?x ?y ~r) t.orders
 *)
 
-let rectangle t ?x ?y w h =
-  let x', y' = match x,y with
-      Some x', Some y' ->
-        update t x' y';
-        x',y'
-    | _,_ ->  get_point t
-  in
-  update t (x'+.w) (y'+.h);
-  Q.add (fun t -> B.rectangle t ~x:x' ~y:y' ~w ~h) t.orders
+let arc t ~x ~y ~r ~a1 ~a2=
+  (*FIXME: cf. ellipse_arc*)
+  update t (x+.r) (y+.r);
+  update t (x-.r) (y-.r);
+  let ct1 = cos a1
+  and ct2 = cos a2
+  and st1 = sin a1
+  and st2 = sin a2 in
+  let x1,y1 = x +. r *. ct1, y +. r *. st1
+  and x2,y2 = x +. r *. ct2, y +. r *. st2 in
+  t.current <- Some(x2,y2);
+  Q.add (fun t -> B.arc t x y r a1 a2) t.orders
+
+
+let rectangle t ~x ~y ~w ~h =
+  update t x y;
+  update t (x+.w) (y+.h);
+  Q.add (fun t -> B.rectangle t ~x ~y ~w ~h) t.orders
 
 
 let save t =
@@ -328,7 +341,7 @@ let path_extents t =
     {B.x = t.pxmin; y = t.pymin; w = t.pxmax -. t.pxmin; h = t.pymax -. t.pymin}
 
 
-let stroke_fun t backend =
+let stroke_fun t preserve backend =
   B.save backend;
   (*CTM in backend = t.coord * (TM flush) * (CTM before flush).
     To recover correct line width, we want as backend's CTM:
@@ -353,7 +366,7 @@ let stroke_fun t backend =
   let matrix = B.get_matrix backend in
   Coord.apply ~next:coord_kill_transform matrix;
   B.set_matrix backend matrix;
-  B.stroke backend;
+  (if preserve then B.stroke_preserve else B.stroke) backend;
   B.restore backend
   (*in let matrix = B.get_matrix t in
     B.restore t;
@@ -365,13 +378,8 @@ type coord_linewidth =
     Layer
   | Backend
 
-let stroke ?(lw = Backend) t =
-  let stroke_fun =
-    match lw with
-      Backend -> stroke_fun t
-    | Layer -> B.stroke
-  in
-  Q.add stroke_fun t.orders;
+let stroke t =
+  Q.add (stroke_fun t false) t.orders;
   reinit_path_ext t
 
 let fill t =
@@ -384,13 +392,8 @@ let clip t =
   reinit_path_ext t
 *)
 
-let stroke_preserve ?(lw = Backend) t =
-  let stroke_fun =
-    match lw with
-      Backend -> stroke_fun t
-    | Layer -> B.stroke
-  in
-  Q.add stroke_fun t.orders
+let stroke_preserve t =
+  Q.add (stroke_fun t true) t.orders
 
 let fill_preserve t =
   Q.add B.fill_preserve t.orders
@@ -403,6 +406,13 @@ let clip_preserve t =
 let clip_rectangle t ~x ~y ~w ~h =
   Q.add (fun t -> B.clip_rectangle t x y w h) t.orders
 
+let stroke_layer t =
+  Q.add B.stroke t.orders
+
+let stroke_layer_preserve t =
+  Q.add B.stroke_preserve t.orders
+
+
 let select_font_face t slant weight family =
   Q.add (fun t -> B.select_font_face t slant weight family) t.orders
 
@@ -411,6 +421,10 @@ let set_font_size t size =
 
 let show_text t ~rotate ~x ~y pos str =
   Q.add (fun t -> B.show_text t ~rotate ~x ~y pos str) t.orders
+
+
+let layer_extents t =
+  {B.x = t.xmin; y = t.ymin; w = (t.xmax -. t.xmin); h = (t.ymax -. t.ymin)}
 
 let adjust_scale scale limit =
   let sign = if scale >= 0. then 1. else -1. in
@@ -482,6 +496,7 @@ let flush ?(autoscale=(Uniform Unlimited)) t ~ofsx ~ofsy ~width ~height handle=
   B.restore handle
 
 
+(*
 let make_axes t ?color_axes ?color_labels datax datay mode =
   (match color_axes with
      Some c -> save t; set_color t c
@@ -508,50 +523,45 @@ let make_axes t ?color_axes ?color_labels datax datay mode =
     previous axes.*)
   let xmin = t.xmin and ymin = t.ymin in
   let xmax = t.xmax and ymax = t.ymax in
-  let tic x y x_axis ticstyle =
-    match ticstyle with
-      Axes.Line(r) ->
-        move_to t x y;
-        (*FIXME: tic have to be independent of zoom:
-          using [Backend] mode for stroking*)
-        let x,y =
-          if x_axis then
-            (rel_line_to t 0. (-.r/.2.);
-             rel_line_to t 0. r;
-             x, y+.r)
-          else (*y_axis*)
-            (rel_line_to t (-.r/.2.) 0.;
-             rel_line_to t r 0.;
-             x-.r,y)
-        in
-        (match color_labels with
-           Some c ->
-             save t;
-             set_color t c
-         | None -> ());
-        show_text t ~rotate:0.(*~pos:B.Position.left*)
-          ~x ~y (if x_axis then B.CB else B.LC)
-          (string_of_float (if x_axis then x else y));
-        (match color_labels with
-           Some c -> restore t;
-         | None -> ())
-  in
+
   let make_data data ticmode x_axis =
     match data with
-     Axes.Graph(major,minor) ->
-       let step =
-         let diff = if x_axis then xmax -. xmin else ymax -. ymin in
-         diff /. (float major) in
-       for i = 0 to major do (*major tics in X axis*)
-         let ofs = (float i) *. step in
-         let x, y =
-           if x_axis then xmin +. ofs, ofsy
-           else ofsx, ymin +. ofs
-         in
-         (*Tic to put, centered in (x, y), with label 'x' or 'y' as
-           given by x_axis.*)
-         tic x y x_axis ticmode
-       done
+      Axes.Graph(major,minor) ->
+        let step =
+          let diff = if x_axis then xmax -. xmin else ymax -. ymin in
+          diff /. (float major) in
+        let ministep = step /. (float minor) in
+        for i = 0 to major do (*major tics in X axis*)
+          let ofs = (float i) *. step in
+          let x, y =
+            if x_axis then xmin +. ofs, ofsy
+            else ofsx, ymin +. ofs
+          in
+          (*Tic to put, centered in (x, y), with label 'x' or 'y' as
+            given by x_axis.*)
+          Axes.tic true x y x_axis ticmode;
+          if i < major then
+            for j = 1 to minor - 1 do
+              let x,y =
+                if x_axis then x +. (float j) *. ministep, y
+                else x, y +. (float j) *. ministep
+              in
+              Axes.tic false x y x_axis ticmode
+            done
+        done
+    | Axes.Tics(minor,num_minors) ->
+        let rec make_tic x y x_axis ticmode n =
+          if not ((x_axis && x > xmax) || (not x_axis && y > ymax)) then
+            let xnew, ynew =
+              if x_axis then
+                x+.minor, y
+              else x, y+.minor
+            in
+            (Axes.tic (n=num_minors) x y x_axis ticmode;
+             make_tic xnew ynew ((n mod num_minors)+1))
+
+        in make_tic xmin ymin true ticx 0;
+        make_tic xmin ymin false ticy 0
   in
   (*Make data for X axis*)
   make_data datax ticx true;
@@ -561,6 +571,7 @@ let make_axes t ?color_axes ?color_labels datax datay mode =
   (match color_axes with
      Some c -> restore t
    | None -> ())
+*)
 
 (*Local Variables:*)
 (*compile-command: "ocamlc -c layer.ml && ocamlopt -c layer.ml"*)

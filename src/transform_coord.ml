@@ -18,12 +18,12 @@ let get_handle t = t.h
 
 
 (*Coordinate transformations are performed by the Backend.matrix part*)
-let translate t = Coord.translate t.c
-let scale t = Coord.scale t.c
-(*let rotate t = Coord.rotate t.c*)
+let translate t ~x ~y = Coord.translate t.c x y
+let scale t ~x ~y = Coord.scale t.c x y
+let rotate t ~angle = Coord.rotate t.c angle
 
-let change_coord t coord = t.c <- coord
-
+let set_matrix t coord = t.c <- coord
+let get_matrix t = Coord.copy t.c
 (*Backend primitives*)
 
 let width t = B.width t.h
@@ -42,19 +42,19 @@ let get_line_join t = B.get_line_join t.h
 (*The operations of drawing need transforming the point first, then
   doing the order*)
 
-let move_to t x y =
+let move_to t ~x ~y =
   let x', y' = Coord.transform t.c x y in
   B.move_to t.h x' y'
 
-let line_to t x y =
+let line_to t ~x ~y =
   let x', y' = Coord.transform t.c x y in
   B.line_to t.h x' y'
 
-let rel_move_to t x y =
+let rel_move_to t ~x ~y =
   let x', y' = Coord.transform_dist t.c x y in
   B.rel_move_to t.h x' y'
 
-let rel_line_to t x y =
+let rel_line_to t ~x ~y =
   let x', y' = Coord.transform_dist t.c x y in
   B.rel_line_to t.h x' y'
 
@@ -77,10 +77,11 @@ let rectangle t ~x ~y ~w ~h =
      B.rel_line_to t.h (-.w) (-.w');
      B.close_path t.h)
   else B.rectangle t.h x y w h
-(*
-  let arc t = B.arc t*)
+
+let arc t = failwith "NI due to scalings"
 
 let close_path t = B.close_path t.h
+let clear_path t = B.clear_path t.h
 let path_extents t = B.path_extents t.h
 let stroke t = B.stroke t.h
 let stroke_preserve t = B.stroke_preserve t.h
@@ -105,6 +106,8 @@ let show_text t ~rotate ~x ~y =
   B.show_text t.h ~rotate ~x ~y
 (*let text_extents t = B.text_extents t.h*)
 
+
+(*
 let make_axes t  ?color_axes ?color_labels xmin xmax ymin ymax
     datax datay mode =
   (match color_axes with
@@ -176,7 +179,7 @@ let make_axes t  ?color_axes ?color_labels xmin xmax ymin ymax
   stroke t;
   (match color_axes with
      Some c -> restore t
-   | None -> ())
+   | None -> ())*)
 
 
 (*Local Variables:*)

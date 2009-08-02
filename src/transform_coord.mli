@@ -5,9 +5,9 @@ val use : Backend.t -> Backend.matrix -> t
 val use_unit_square: Backend.t -> float -> float -> float -> float -> t
   (*FIXME:needed?*)
 val get_handle : t -> Backend.t
-val translate : t -> float -> float -> unit
-val scale : t -> float -> float -> unit
-val change_coord: t -> Backend.matrix -> unit
+val translate : t -> x:float -> y:float -> unit
+val scale : t -> x:float -> y:float -> unit
+val rotate: t -> angle:float -> unit
 val width : t -> float
 val height : t -> float
   (*FIXME: needed, or done after querying the underlying backend?*)
@@ -16,15 +16,17 @@ val set_color : t -> Color.t -> unit
 val set_line_width : t -> float -> unit
 val set_line_cap : t -> Backend.line_cap -> unit
 val set_dash : t -> float -> float array -> unit
+val set_matrix: t -> Backend.matrix -> unit
 val set_line_join : t -> Backend.line_join -> unit
 val get_line_width : t -> float
 val get_line_cap : t -> Backend.line_cap
 val get_dash : t -> float array * float
 val get_line_join : t -> Backend.line_join
-val move_to : t -> float -> float -> unit
-val line_to : t -> float -> float -> unit
-val rel_move_to : t -> float -> float -> unit
-val rel_line_to : t -> float -> float -> unit
+val get_matrix : t -> Backend.matrix
+val move_to : t -> x:float -> y:float -> unit
+val line_to : t -> x:float -> y:float -> unit
+val rel_move_to : t -> x:float -> y:float -> unit
+val rel_line_to : t -> x:float -> y:float -> unit
 val curve_to :
   t ->
   x1:float ->
@@ -32,7 +34,9 @@ val curve_to :
 val rectangle : t -> x:float -> y:float -> w:float -> h:float -> unit
   (**Note that this [rectangle] does not always use [Backend.rectangle],
      because of possible shears in the coordinate transformation.*)
+val arc: t -> x:float -> y:float -> r:float -> a1:float -> a2:float -> unit
 val close_path : t -> unit
+val clear_path : t -> unit
 val path_extents : t -> Backend.rectangle
 val stroke : t -> unit
 val stroke_preserve : t -> unit
@@ -53,9 +57,10 @@ val show_text : t -> rotate:float -> x:float -> y:float ->
   Backend.text_position -> string -> unit
   (*val text_extents : t -> size:float -> string -> Backend.text_extents*)
 
+(*
 val make_axes: t -> ?color_axes:Color.t -> ?color_labels:Color.t
   -> float -> float -> float -> float
-  -> Axes.data -> Axes.data -> Axes.mode -> unit
+  -> Axes.data -> Axes.data -> Axes.mode -> unit*)
 
 
 (*Local Variables:*)

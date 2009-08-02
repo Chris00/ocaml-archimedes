@@ -72,28 +72,29 @@ exception Error of error
 val make : unit -> t
   (**Creates a new layer*)
 
-val translate : t -> float -> float -> unit
+val translate : t -> x:float -> y:float -> unit
   (**[translate layer x y] makes a translation of the [layer] in the
      direction ([x],[y]). All subsequent drawings will be expressed in
      the new coordinates, that is, those which have been translated by
      the vector ([x],[y]).*)
 
-val scale : t -> float -> float -> unit
+val scale : t -> x:float -> y:float -> unit
   (**[scale layer x y] makes a rescaling of the [layer] with factors
      [x] and [y], respectively on abscissas and ordinates. All
      subsequent drawings will be expressed in the new coordinates,
      that is, those which have been scaled by [x] and [y].*)
 
-(*FIXME: useful?
-  val transform : t -> float -> float -> float * float
-(**[transform layer x y] returns the point x,y transformed by the coordinate
-  changing on [layer].*)
+val rotate: t -> angle:float -> unit
+  (*FIXME: useful?
+    val transform : t -> float -> float -> float * float
+  (**[transform layer x y] returns the point x,y transformed by the coordinate
+    changing on [layer].*)
 
-  val transform_dist : t -> float -> float -> float * float
-  val invert : t -> Backend.matrix
-  val inv_transform : t -> float -> float -> float * float
-  val inv_transform_dist : t -> float -> float -> float * float
-*)
+    val transform_dist : t -> float -> float -> float * float
+    val invert : t -> Backend.matrix
+    val inv_transform : t -> float -> float -> float * float
+    val inv_transform_dist : t -> float -> float -> float * float
+  *)
 
 val apply : next:Backend.matrix -> t -> unit
   (**[apply next layer] composes the existing transformation in [layer]
@@ -115,7 +116,7 @@ val set_line_width : t -> float -> unit
 val set_line_cap : t -> Backend.line_cap -> unit
   (**Sets the layer's line cap mode.*)
 
-val set_dash : t -> float * float array -> unit
+val set_dash : t -> float  -> float array -> unit
   (**Sets the layer's dash mode.*)
 
 val set_line_join : t -> Backend.line_join -> unit
@@ -127,30 +128,39 @@ val get_line_width : t -> float
 val get_line_cap : t -> Backend.line_cap
   (**Returns the current line cap mode.*)
 
-val get_dash : t -> float * float array
+val get_dash : t -> float array * float
   (**Returns the current dash mode.*)
 
 val get_line_join : t -> Backend.line_join
   (**Returns the current line join mode.*)
 
-val move_to : t -> float -> float -> unit
+val set_matrix : t -> Backend.matrix -> unit
+  (** Set the current transformation matrix which is the matrix
+      transforming user to layer coordinates. *)
+
+val get_matrix : t -> Backend.matrix
+  (** Return the current transformation matrix on the layer.  Modifying this
+      matrix does not affect the matrix held in [t]. *)
+
+
+val move_to : t -> x:float -> y:float -> unit
   (**Moves the current point to ([x],[y]).*)
 
 val line : t -> ?x:float -> ?y:float -> float -> float -> unit
   (**Makes a line between ([x],[y]) (or, if not given, the current
      point) and the point specified.*)
 
-val line_to : t -> float -> float -> unit
+val line_to : t -> x:float -> y:float -> unit
   (**Alias for line, without optional argument.*)
 
 val get_point : t -> float * float
   (**Returns the current point. If there's no current point, an [Error
      (No_current_point)] is raised.*)
 
-val rel_move_to : t -> float -> float -> unit
+val rel_move_to : t -> x:float -> y:float -> unit
   (**Relative move to.*)
 
-val rel_line_to : t -> float -> float -> unit
+val rel_line_to : t -> x:float -> y:float -> unit
   (**Relative line to.*)
 
 val curve :
@@ -164,15 +174,17 @@ val curve :
 
 val curve_to :
   t ->
-  x1:float -> y1:float -> x2:float -> y2:float -> float -> float -> unit
+  x1:float -> y1:float -> x2:float -> y2:float -> x3:float -> y3:float -> unit
   (**Alias for [curve] without optional arguments.*)
 
 val rel_curve_to :
   t ->
-  x1:float -> y1:float -> ?x2:float -> ?y2:float -> float -> float -> unit
+  x1:float -> y1:float -> ?x2:float -> ?y2:float -> x3:float -> y3:float -> unit
   (**Relative Bezier curve.*)
 
-val rectangle : t -> ?x:float -> ?y:float -> float -> float -> unit
+val arc : t -> x:float -> y:float -> r:float -> a1:float -> a2:float -> unit
+
+val rectangle : t -> x:float -> y:float -> w:float -> h:float -> unit
   (**Draws a rectangle.*)
 
 val save : t -> unit
@@ -185,20 +197,15 @@ val restore : t -> unit
 val close_path : t -> unit
   (**Closes the current path.*)
 
+val clear_path: t -> unit
+
 val path_extents : t -> Backend.rectangle
   (**Returns the current path extents.*)
 
-type coord_linewidth =
-    Layer (**Expressed in layer coordinates*)
-  | Backend (**Expressed in backend coordinates*)
-      (**Type indicating how to interpret the line width and dash
-         styles. A [Backend] interpretation makes the same stroking
-         independently of the zoom applied when flushing. *)
-
-val stroke : ?lw:coord_linewidth -> t -> unit
-  (**Strokes the current path and start a new one. The [lw] argument
-     indicates how to stroke. Default is [Backend]: make it invariant
-     under deformation.*)
+val stroke : t -> unit
+  (**Strokes the current path and start a new one. Using this function
+     makes the line width interpreted in backend coordinates, so it is
+     invariant under deformation.*)
 
 val fill : t -> unit
   (**Fills the current path and start a new one.*)
@@ -206,7 +213,7 @@ val fill : t -> unit
 (*val clip : t -> unit
 (**Clips along the current path and start a new one.*)*)
 
-val stroke_preserve : ?lw:coord_linewidth -> t -> unit
+val stroke_preserve :  t -> unit
   (**Same as [stroke], but preserves the current path.*)
 
 val fill_preserve : t -> unit
@@ -219,6 +226,13 @@ val clip_rectangle : t -> x:float -> y:float -> w:float -> h:float -> unit
   (** Establishes a new clip rectangle by intersecting the current
       clip rectangle.  This {i may clear} the current path. *)
 
+val stroke_layer: t -> unit
+  (**Same as [stroke] except that line width is understood as {i
+     layer} coordinates.*)
+
+val stroke_layer_preserve: t -> unit
+  (**Same as [stroke] except that line width is understood as {i
+     layer} coordinates.*)
 
 val select_font_face : t -> Backend.slant -> Backend.weight -> string -> unit
   (** [select_font_face t slant weight family] selects a family
@@ -237,6 +251,8 @@ val show_text : t -> rotate:float -> x:float -> y:float ->
       supported on all devices.  This is an immediate operation: no
       [stroke] nor [fill] are required (nor will have any effect).  *)
 
+val layer_extents: t -> Backend.rectangle
+
 val flush : ?autoscale:scaling -> t -> ofsx:float -> ofsy:float ->
   width:float -> height:float -> Backend.t -> unit
   (**[flush layer ofsx ofsy width height backend] copies the resulting
@@ -254,10 +270,10 @@ val flush : ?autoscale:scaling -> t -> ofsx:float -> ofsy:float ->
      Unlimited], so there's by default no limitations on scaling, but
      if scaling, then it is done uniformly along the two axes.*)
 
-val make_axes :
+(*val make_axes :
   t ->
   ?color_axes:Color.t ->
-  ?color_labels:Color.t -> Axes.data -> Axes.data -> Axes.mode -> unit
+  ?color_labels:Color.t -> Axes.data -> Axes.data -> Axes.mode -> unit*)
 
 (*Local Variables:*)
 (*compile-command: "ocamlc -c layer.mli"*)
