@@ -43,14 +43,14 @@ $(ARCHIMEDES_FILES:.ml=.cmx): OCAMLOPT_FLAGS += -for-pack Archimedes
 
 # Plugins
 archimedes_graphics.cmo: archimedes_graphics.ml archimedes.cma
-	$(OCAMLFIND) ocamlc -c -o $@ -package graphics $<
+	$(OCAMLFIND) ocamlc -c -o $@ -dtypes -package graphics $<
 archimedes_graphics.cmxs: archimedes_graphics.ml archimedes.cmxa
-	$(OCAMLFIND) ocamlopt -c -o $@ -package graphics $<
+	$(OCAMLFIND) ocamlopt -c -o $@ -dtypes -package graphics $<
 
 archimedes_cairo.cmo: archimedes_cairo.ml archimedes.cma
-	$(OCAMLFIND) ocamlc -c -o $@ -package cairo2 $<
+	$(OCAMLFIND) ocamlc -c -o $@ -dtypes -package cairo2 $<
 archimedes_cairo.cmxs: archimedes_cairo.ml archimedes.cmxa
-	$(OCAMLFIND) ocamlopt -c -o $@ -package cairo2 $<
+	$(OCAMLFIND) ocamlopt -c -o $@ -dtypes -package cairo2 $<
 
 
 .PHONY: doc

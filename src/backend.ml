@@ -18,6 +18,12 @@
 
 open Printf
 
+(* The following modules are needed by some backends and are not
+   loadable dynamically so must be referenced here so that pluging
+   linking succeeds. *)
+module ForLinking_1__ = Callback
+
+
 type line_cap =
   | BUTT
   | ROUND
@@ -377,20 +383,19 @@ let make ?(dirs=[]) b width height =
          means modules with stubs. *)
       Dynlink.allow_unsafe_modules true;
       let base = "archimedes_" ^ backend in
-      let dyn = (try find_file dirs (Dynlink.adapt_filename(base ^ ".cmo"))
-                 with Not_found -> raise(Error(Nonexistent backend))) in
       (* Load dependencies *)
       List.iter begin fun dep ->
         if not(List.mem dep !loaded_dependencies) then (
+          let fdep = Dynlink.adapt_filename dep in
           try
-            let fdep = Dynlink.adapt_filename(dep ^ ".cmo") in
-            let fdep = find_file dirs fdep in
             Dynlink.loadfile fdep;
             loaded_dependencies := dep :: !loaded_dependencies
-          with _ -> raise(Error(Non_loadable_dependency dep))
+          with Dynlink.Error e -> raise(Error(Not_loadable(fdep, e)))
         )
       end (get_dependencies dirs base);
       (* Load the main module *)
+      let dyn = (try find_file dirs (Dynlink.adapt_filename(base ^ ".cmo"))
+                 with Not_found -> raise(Error(Nonexistent backend))) in
       (try Dynlink.loadfile dyn
        with Dynlink.Error e -> raise(Error(Not_loadable(backend, e))));
       (* Check that the backend correctly updated the registry *)

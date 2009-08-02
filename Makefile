@@ -1,15 +1,15 @@
 ROOT=.
 include Makefile.conf
 
-.PHONY: default all opt byte native install uninstall htdoc doc examples
+.PHONY: default all opt byte native install uninstall htdoc doc examples tests
 default: byte opt
 all: byte
 opt: native
 htdoc: doc
 byte native install uninstall doc:
 	$(MAKE) -C src $@
-examples: native
-	$(MAKE) -C examples
+examples tests: byte
+	$(MAKE) -C $@
 
 # Depends on the version number set in delimited_overloading.mli :
 cairo.godiva: cairo.godiva.in
@@ -29,10 +29,6 @@ godi: cairo.godiva
 tar:
 	bzr export /tmp/$(TARBALL) -r "tag:$(VERSION)"
 	@echo "Created tarball '/tmp/$(TARBALL)'."
-
-.PHONY: tests
-tests: native
-	$(MAKE) -C tests
 
 .PHONY: web web-html tutorial
 web-html: doc
