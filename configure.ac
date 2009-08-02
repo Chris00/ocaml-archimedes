@@ -18,8 +18,16 @@ fi
 AC_CHECK_OCAML_OS_TYPE
 
 AC_CHECK_OCAML_PKG([graphics])
-AC_CHECK_OCAML_PKG([cairo2])
+if test "OCAML_PKG_graphics" != "no"; then
+   GRAPHICS_PATH=`$OCAMLFIND query graphics`
+   AC_SUBST([GRAPHICS_PATH])
+fi
 
+AC_CHECK_OCAML_PKG([cairo2])
+if test "OCAML_PKG_cairo2" != "no"; then
+   CAIRO2_PATH=`$OCAMLFIND query cairo2`
+   AC_SUBST([CAIRO2_PATH])
+fi
 
 # substitutions to perform
 AC_SUBST(PACKAGE_NAME)
@@ -32,4 +40,6 @@ AC_SUBST(LIBS)
 AC_CONFIG_FILES([Makefile.ocaml],[chmod a-w Makefile.ocaml])
 AC_CONFIG_FILES([src/META])
 AC_CONFIG_FILES([src/Makefile], [chmod a-w src/Makefile])
+AC_CONFIG_FILES([src/archimedes_graphics.dep])
+AC_CONFIG_FILES([src/archimedes_cairo.dep])
 AC_OUTPUT
