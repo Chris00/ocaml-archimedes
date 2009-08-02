@@ -464,10 +464,22 @@ let flush ?(autoscale=(Uniform Unlimited)) t ~ofsx ~ofsy ~width ~height handle=
           in
           adjust_scale scx limit, adjust_scale scy limit
         in
-        let scal = min (min scalx scaly) 1.E15 in
-        inv_zoomx := 1./. scal;
-        inv_zoomy := 1./. scal;
-        Some(scal, scal)
+        (*We got two scales satisfying the limits. To get the scales
+          which will be applied, we proceed like this:
+
+          - Determine sign of the two factors.
+          - Determine the minimal scale: it will be taken without sign.
+          - Then we create the scalings by multiplying by (-1) if necessary.
+        *)
+        let ex,ey =
+          (if scalx >= 0. then 1. else -1.),
+          (if scaly >= 0. then 1. else -1.)
+        in
+        let scal = min (min (abs_float scalx) (abs_float scaly)) 1.E15 in
+        inv_zoomx :=  ex /. scal;
+        inv_zoomy :=  ey /. scal;
+        (*Division or multiplication by 1. or -1. gives the same result*)
+        Some(ex *. scal, ey *. scal)
     | Free(limitx,limity) ->
         let scalx, scaly =
           let scx =
