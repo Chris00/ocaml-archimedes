@@ -118,6 +118,8 @@ struct
       | Backend.CB | Backend.RB | Backend.LB -> te.y_bearing  in
     Cairo.rel_move_to cr (-. x0) (-. y0);
     Cairo.show_text cr text;
+    Cairo.stroke cr; (* without this, the current position is the end
+                        of the text which is not desired. *)
     Cairo.restore cr
 end
 

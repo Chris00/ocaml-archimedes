@@ -49,10 +49,10 @@ type slant = Upright | Italic
 type weight = Normal | Bold
 
 type text_position =
-  | CC  (** centrer horizontally and vertically *)
-  | LC  (** align left horizontally and center vertically *)
-  | RC  (** align right horizontally and center vertically *)
-  | CT  (** center horizontally and align top vertically *)
+  | CC
+  | LC
+  | RC
+  | CT
   | CB
   | LT
   | LB
