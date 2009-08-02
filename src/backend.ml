@@ -16,6 +16,8 @@
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the file
    LICENSE for more details. *)
 
+open Printf
+
 type line_cap =
   | BUTT
   | ROUND
@@ -287,8 +289,21 @@ type error =
   | Corrupted_dependency of string
   | Non_loadable_dependency of string
   | Nonexistent of string
-  | Corrupted of string
+  | Not_loadable of string * Dynlink.error
   | Not_registering of string
+
+let string_of_error = function
+  | Corrupted_dependency fname ->
+      sprintf "The dependency file %s is corrupted." fname
+  | Non_loadable_dependency fname ->
+      sprintf "The libray %s (occurring as a plugin dependency) cannot \
+        be loaded" fname
+  | Nonexistent bk -> sprintf "The backend %S is not found" bk
+  | Not_loadable(bk, e) ->
+      sprintf "The backend %S is not loadble because:\n%s"
+        bk (Dynlink.error_message e)
+  | Not_registering bk ->
+      sprintf "The backend %S does not register itself properly" bk
 
 exception Error of error
 
@@ -377,7 +392,7 @@ let make ?(dirs=[]) b width height =
       end (get_dependencies dirs base);
       (* Load the main module *)
       (try Dynlink.loadfile dyn
-       with _ -> raise(Error(Corrupted backend)));
+       with Dynlink.Error e -> raise(Error(Not_loadable(backend, e))));
       (* Check that the backend correctly updated the registry *)
       try M.find backend !registry
       with Not_found -> raise(Error(Not_registering backend))
