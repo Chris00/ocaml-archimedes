@@ -2,14 +2,15 @@ ROOT=.
 include Makefile.conf
 
 .PHONY: default all opt byte native install uninstall htdoc doc examples tests
-default: byte opt
+OCAML_ALL = byte $(filter-out byte, @OCAMLBEST@)
+default: $(OCAML_ALL)
 all: byte
 opt: native
 htdoc: doc
 byte native install uninstall doc:
 	$(MAKE) -C src $@
-examples tests: byte
-	$(MAKE) -C $@
+examples tests: default
+	$(MAKE) -C $@ $(OCAML_ALL)
 
 # Depends on the version number set in delimited_overloading.mli :
 cairo.godiva: cairo.godiva.in
@@ -45,9 +46,9 @@ sync-scm sync_scm:
 clean:
 	$(RM) $(wildcard *~ *.pdf *.ps *.png *.svg) cairo.godiva
 	$(MAKE) -C src $@
+	$(MAKE) -C tests $@
 	$(MAKE) -C examples $@
 #	$(MAKE) -C doc $@
-#	$(MAKE) -C tests $@
 
 dist-clean::
 	$(RM) -r aclocal.m4 autom4te.cache config.log config.status

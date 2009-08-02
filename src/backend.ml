@@ -23,6 +23,10 @@ open Printf
    linking succeeds. *)
 module ForLinking_1__ = Callback
 
+(* Without the following, the native version reports "undefined
+   symbol: caml_hash_variant" when loading Cairo. *)
+external for_linking_1__ : unit -> unit = "caml_hash_variant"
+
 
 type line_cap =
   | BUTT
