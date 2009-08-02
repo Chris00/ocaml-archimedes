@@ -1,7 +1,7 @@
 type t
 (**The type for colors*)
 
-val color : ?a:float -> float -> float -> float -> t
+val make : ?a:float -> float -> float -> float -> t
 (**[color ~a r g b] creates the color with transparency [~a], red
 component [r], green component [g] and blue component [b]. All values
 must be between [0.] and [1.]; raises [Invalid_argument] otherwise.*)
