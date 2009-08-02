@@ -31,7 +31,8 @@ let () =
       Layer.set_color layer1 (Color.color 0. 0. 0.);
       Layer.set_line_width layer1 0.5;
       Layer.make_axes layer1 ~color_labels:(Color.color 1. 0. 0.)
-        (Axes.Graph(6,4)) (Axes.Two_lines(0.,0.,Axes.Line 0.2, Axes.Line 0.2));
+        (Axes.Graph(6,1)) (Axes.Graph(4,1))
+        (Axes.Two_lines(0.,0.,Axes.Line 0.2, Axes.Line 0.2));
 
       B.set_color cr (Color.color ~a:0.7 0. 0.2 0.7);
       Layer.flush ~autoscale:(Layer.Uniform (Layer.Limited(1.,100.)))
@@ -55,5 +56,5 @@ let () =
   in List.iter f ["cairo PDF layer.pdf";"cairo PNG layer.png"]
 
 (*Local Variables:*)
-(*compile-command: "ocamlopt -o test_layer.com dynlink.cmxa color.cmx archimedes.cmxa coordinate.cmx layer.cmx test_layer.ml && ocamlc -o test_layer.exe dynlink.cma color.cmo archimedes.cma coordinate.cmo layer.cmo test_layer.ml"*)
+(*compile-command: "ocamlopt -o test_layer.com dynlink.cmxa color.cmx archimedes.cmxa layer.cmx test_layer.ml && ocamlc -o test_layer.exe dynlink.cma color.cmo archimedes.cma layer.cmo test_layer.ml"*)
 (*End:*)

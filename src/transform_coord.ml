@@ -1,8 +1,8 @@
 module B = Backend
-module Coord = Coordinate
+module Coord = Backend.Coordinate
 
 type t =
-    {h:B.t; mutable c:Coord.t; s:Coord.t Stack.t}
+    {h:B.t; mutable c:Backend.matrix; s:Backend.matrix Stack.t}
 
 let make ?dirs name ?coord width height =
   {h = B.make ?dirs name width height;
@@ -17,7 +17,7 @@ let use_unit_square handle x1 y1 x2 y2 =
 let get_handle t = t.h
 
 
-(*Coordinate transformations are performed by the Coord.t part*)
+(*Coordinate transformations are performed by the Backend.matrix part*)
 let translate t = Coord.translate t.c
 let scale t = Coord.scale t.c
 (*let rotate t = Coord.rotate t.c*)
@@ -99,7 +99,10 @@ let restore t =
   B.restore t.h
 let select_font_face t = B.select_font_face t.h
 let set_font_size t = B.set_font_size t.h
-let show_text t = B.show_text t.h
+let show_text t ~rotate ~x ~y =
+  let x,y = Coord.transform t.c x y in
+  (*FIXME: need to know how t.c rotates, to get a better rotation of text*)
+  B.show_text t.h ~rotate ~x ~y
 (*let text_extents t = B.text_extents t.h*)
 
 let make_axes t  ?color_axes ?color_labels xmin xmax ymin ymax
@@ -121,30 +124,30 @@ let make_axes t  ?color_axes ?color_labels xmin xmax ymin ymax
         x,y, tx, ty
   in
   (*Tics or like*)
-  let tic x y x_axis ticstyle =
+  let tic x' y' x_axis ticstyle =
     match ticstyle with
       Axes.Line(r) ->
-        move_to t x y;
+        move_to t x' y';
         (*FIXME: tic have to be independent of zoom:
           using [Backend] mode for stroking*)
         let x,y =
           if x_axis then
             (rel_line_to t 0. (-.r/.2.);
              rel_line_to t 0. r;
-             Coord.transform t.c x (y+.r))
+             x',(y'+.r))
           else (*y_axis*)
             (rel_line_to t (-.r/.2.) 0.;
              rel_line_to t r 0.;
-             Coord.transform t.c (x-.r) y)
+             (x'-.r),y')
         in
         (match color_labels with
            Some c ->
              save t;
              set_color t c
          | None -> ());
-        show_text t ~rotate:0.(*~pos:B.Position.left*)
+        show_text t ~rotate:0.
           ~x ~y (if x_axis then B.CB else B.LC)
-          (string_of_float (if x_axis then x else y));
+          (string_of_float (if x_axis then x' else y'));
         (match color_labels with
            Some c -> restore t;
          | None -> ())

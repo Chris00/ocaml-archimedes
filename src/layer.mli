@@ -90,17 +90,17 @@ val scale : t -> float -> float -> unit
   changing on [layer].*)
 
   val transform_dist : t -> float -> float -> float * float
-  val invert : t -> Coordinate.t
+  val invert : t -> Backend.matrix
   val inv_transform : t -> float -> float -> float * float
   val inv_transform_dist : t -> float -> float -> float * float
 *)
 
-val apply : next:Coordinate.t -> t -> unit
+val apply : next:Backend.matrix -> t -> unit
   (**[apply next layer] composes the existing transformation in [layer]
      with [next]. The coordinate system in [layer] is modified by applying
      [next] to the existing transformation.*)
 
-val get_coord : t -> Coordinate.t
+val get_coord : t -> Backend.matrix
   (**Returns the coordinate system currently affecting the layer.*)
 
 val reset_to_id : t -> unit

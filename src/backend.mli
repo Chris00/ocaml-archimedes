@@ -223,3 +223,59 @@ module Register(B: Capabilities) : sig end
       application must be executed as part of the initialisation code.
       We recommend the use of [let module U = Register(B) in ()] to
       perform the registration.  *)
+
+module Coordinate :
+sig
+  val identity : unit -> matrix
+    (**Identity transformation.*)
+
+  val create : float -> float -> float -> float -> float -> float -> matrix
+    (**To create a transformation, specify the four components of the
+       rotation matrix, and two components of translation.*)
+
+  val translate : matrix -> float -> float -> unit
+    (**Modify t so that after the initial transformation, a translation
+       of the specified vector is performed.*)
+
+  val scale : matrix -> float -> float -> unit
+    (**Modify t so that a rescaling is done.*)
+
+  val rotate : matrix -> float -> unit
+    (**Rotation of angle*)
+
+  val transform : matrix -> float -> float -> float * float
+    (**[transform t x y] transforms the point (x,y) under the transformation [t]*)
+
+  val transform_dist : matrix -> float -> float -> float * float
+    (**[transform t x y] transforms the distance (vector) (x,y) under the
+       transformation [t]. (This implies that no translation is done.*)
+
+  val det : matrix -> float
+    (**Returns the determinant of the rotation transformation. It is
+       precisely, up to sign, the area that gets the unit square after
+       transformation.*)
+
+  val invert : matrix -> matrix
+    (**Gets the inverse transformation of the parameter.*)
+
+  val inv_transform : matrix -> float -> float -> float * float
+    (**Makes the inverse transformation of a point.*)
+
+  val inv_transform_dist : matrix -> float -> float -> float * float
+    (**Makes the inverse transformation of a distance (vector).*)
+
+  val apply : ?result:matrix -> next:matrix -> matrix -> unit
+    (**Applies the transformations contained in [next_t] to the results
+       given by [t]. The resulting transformation is stored in [result] or,
+       if not given, in [t].*)
+
+  val copy:matrix -> matrix
+    (**Returns a fresh copy of its argument.*)
+
+  val reset_to_id : matrix -> unit
+    (**Resets the current transformation to the identity transformation.*)
+
+  val has_shear:matrix -> bool
+    (**Tests whether the transformation has shears. This is also the
+       case if the transformation does a rotation*)
+end

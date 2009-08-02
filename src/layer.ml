@@ -1,6 +1,6 @@
 module B = Backend
 module Q = Queue
-module Coord = Coordinate
+module Coord = B.Coordinate
 
 type limitation =
     Unlimited
@@ -15,7 +15,7 @@ type scaling =
 
 type styles =
     {(* mutable ps: B.pointstyle;*)
-      coord:Coord.t;
+      coord:Backend.matrix;
       mutable dash: float * float array;
       mutable lj: B.line_join;
       mutable lc: B.line_cap;
@@ -115,7 +115,7 @@ let inv_transform t =  Coord.inv_transform t.styles.coord
 let inv_transform_dist t = Coord.inv_transform_dist t.styles.coord
 let apply ~next t =
   (*Q.add (fun t -> B.apply ~next t) t.orders;*)
-  Coord.apply ~next_t:next t.styles.coord
+  Coord.apply ~next t.styles.coord
 
 let get_coord t = t.styles.coord
 let reset_to_id t =
@@ -349,9 +349,9 @@ let stroke_fun t backend =
   (*B.scale backend !inv_zoomx !inv_zoomy;*)
   let coord_kill_transform = Coord.invert t.styles.coord in
   Coord.scale coord_kill_transform !inv_zoomx !inv_zoomy;
-  Coord.apply ~next_t:t.styles.coord coord_kill_transform;
+  Coord.apply ~next:t.styles.coord coord_kill_transform;
   let matrix = B.get_matrix backend in
-  Coord.apply ~next_t:coord_kill_transform matrix;
+  Coord.apply ~next:coord_kill_transform matrix;
   B.set_matrix backend matrix;
   B.stroke backend;
   B.restore backend
