@@ -64,14 +64,17 @@ struct
 
   (* FIXME: better error message for options *)
   let make ~options width height =
-    let surface =match options with
+    let surface = match options with
       | ["PDF"; fname] -> PDF.create fname width height
       | ["PS"; fname] -> PS.create fname width height
       | ["PNG"; _] -> (* We need to modify the close function *)
           Image.create Image.ARGB32 (truncate width) (truncate height)
-      | [""] -> (* interactive display. FIXME: when ready *)
+      | [] -> (* interactive display. FIXME: when ready *)
           Image.create Image.ARGB32 (truncate width) (truncate height)
-      | _ -> failwith "Archimedes_cairo.make" in
+      | _ ->
+          let opt = String.concat "; " options in
+          failwith("Archimedes_cairo.make: options [" ^ opt
+                   ^ "] not understood") in
     Cairo.create surface
 
   let close ~options cr =
