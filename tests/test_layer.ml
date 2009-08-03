@@ -38,11 +38,11 @@ let () =
         (Axes.Two_lines(0.,0.,Axes.Line 0.2, Axes.Line 0.2));*)
 
       B.set_color cr (Color.make ~a:0.7 0. 0.2 0.7);
-      Layer.flush ~autoscale:(Layer.Uniform (Layer.Limited(1.,100.)))
+      Layer.flush_backend ~autoscale:(Layer.Uniform (Layer.Limited(1.,30.)))
         layer ~ofsx:25. ~ofsy:0. ~width:100. ~height:100. cr;
       (*B.stroke cr;*)
       B.set_color cr (Color.make ~a:0.7 0.9 0.2 0.);
-      Layer.flush ~autoscale:(Layer.Free(Layer.Unlimited, Layer.Limited_out 30.))
+      Layer.flush_backend ~autoscale:(Layer.Free(Layer.Unlimited, Layer.Limited_out 30.))
         layer1 ~ofsx:50. ~ofsy:120. ~width:100. ~height:(-100.) cr;
      (* B.fill cr;*)
       B.close cr
@@ -53,5 +53,5 @@ let () =
   in List.iter f ["cairo PDF layer.pdf";"cairo PNG layer.png"]
 
 (*Local Variables:*)
-(*compile-command: "ocamlopt -o layer.com -I ../src dynlink.cmxa archimedes.cmxa axes.cmx layer.cmx test_layer.ml && ocamlc -o layer.exe -I ../src dynlink.cma archimedes.cma axes.cmo layer.cmo test_layer.ml"*)
+(*compile-command: "ocamlopt -o layer.com -I ../src dynlink.cmxa archimedes.cmxa axes.cmx transform_coord.cmx layer.cmx test_layer.ml && ocamlc -o layer.exe -I ../src dynlink.cma archimedes.cma axes.cmo transform_coord.cmo layer.cmo test_layer.ml"*)
 (*End:*)

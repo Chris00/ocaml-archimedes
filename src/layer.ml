@@ -3,6 +3,8 @@ module B = Backend
 module Q = Queue
 module Coord = B.Coordinate
 
+module T = Transform_coord
+
 type limitation =
     Unlimited
   | Limited_out of float
@@ -369,15 +371,6 @@ let stroke_fun t preserve backend =
   B.set_matrix backend matrix;
   (if preserve then B.stroke_preserve else B.stroke) backend;
   B.restore backend
-  (*in let matrix = B.get_matrix t in
-    B.restore t;
-    B.stroke_preserve t;
-    B.save t;
-    B.set_matrix t matrix*)
-
-type coord_linewidth =
-    Layer
-  | Backend
 
 let stroke t =
   Q.add (stroke_fun t false) t.orders;
@@ -427,85 +420,76 @@ let show_text t ~rotate ~x ~y pos str =
 let layer_extents t =
   {B.x = t.xmin; y = t.ymin; w = (t.xmax -. t.xmin); h = (t.ymax -. t.ymin)}
 
-let adjust_scale scale limit =
-  let sign = if scale >= 0. then 1. else -1. in
-  let scale = abs_float scale in
-  sign *. (match limit with
+let sign x = if x >= 0. then 1. else -1.
+
+let adjust_scale sc limit =
+  let scale = abs_float sc in
+  sign sc , (match limit with
     Unlimited -> scale
   | Limited_in l_in -> max l_in scale
   | Limited_out l_out -> min l_out scale
   | Limited(l_in, l_out) -> max l_in (min l_out scale))
 
 
+let get_coord_transform ?(autoscale=(Uniform Unlimited))
+    t ~ofsx ~ofsy ~width ~height=
+    let c = Coord.identity () in
+    Coord.translate c ofsx ofsy;
+    match autoscale with
+      Not_allowed -> c
+    | Uniform(limit) ->
+        let (ex, scalx), (ey, scaly) =
+          let scx = width /. (t.xmax -. t.xmin)
+          and scy = height /. (t.ymax -. t.ymin) in
+          adjust_scale scx limit, adjust_scale scy limit
+        in
+        (*We got two scales satisfying the limits. To get the scales
+          which will be applied, we proceed like this:
+          - Determine the minimal scale: it will be taken without sign.
+          - Then we create the scalings by multiplying by (-1) if necessary.
+        *)
+        let scal = min (min scalx scaly) 1.E15 in
+        Coord.scale c (ex *. scal) (ey *. scal);
+        c
+    | Free(limitx,limity) ->
+        let (ex, scalx), (ey, scaly) =
+          let scx = width /. (t.xmax -. t.xmin)
+          and scy = height /. (t.ymax -. t.ymin) in
+          adjust_scale scx limitx, adjust_scale scy limity
+        in
+        Coord.scale c (ex *. (min scalx 1.E15)) (ey *. (min scaly 1.E15)); c
+
 (*FIXME: a flushed layer can be reusable; flush does not kill nor
-  modify the preevious orders.*)
-let flush ?(autoscale=(Uniform Unlimited)) t ~ofsx ~ofsy ~width ~height handle=
+  modify the previous orders.*)
+let flush_backend ?(autoscale=(Uniform Unlimited))
+    t ~ofsx ~ofsy ~width ~height handle =
   let q = Q.copy t.orders in
   let rec make_orders () =
     if not (Q.is_empty q) then
       (Q.pop q handle;
        make_orders ())
   in
-  let c = Coord.identity () in
   B.save handle;
-  B.translate handle ofsx ofsy;
-  Coord.translate c ofsx ofsy;
-  let scalopt =
-    match autoscale with
-      Not_allowed ->
-        inv_zoomx := 1.;
-        inv_zoomy := 1.;
-        None
-    | Uniform(limit) ->
-        let scalx, scaly =
-          let scx =
-            width /. (t.xmax -. t.xmin)
-          and scy =
-            height /. (t.ymax -. t.ymin)
-          in
-          adjust_scale scx limit, adjust_scale scy limit
-        in
-        (*We got two scales satisfying the limits. To get the scales
-          which will be applied, we proceed like this:
-
-          - Determine sign of the two factors.
-          - Determine the minimal scale: it will be taken without sign.
-          - Then we create the scalings by multiplying by (-1) if necessary.
-        *)
-        let ex,ey =
-          (if scalx >= 0. then 1. else -1.),
-          (if scaly >= 0. then 1. else -1.)
-        in
-        let scal = min (min (abs_float scalx) (abs_float scaly)) 1.E15 in
-        inv_zoomx :=  ex /. scal;
-        inv_zoomy :=  ey /. scal;
-        (*Division or multiplication by 1. or -1. gives the same result*)
-        Some(ex *. scal, ey *. scal)
-    | Free(limitx,limity) ->
-        let scalx, scaly =
-          let scx =
-            width /. (t.xmax -. t.xmin)
-          and scy =
-            height /. (t.ymax -. t.ymin)
-          in
-          adjust_scale scx limitx, adjust_scale scy limity
-        in
-        inv_zoomx := 1./. scalx;
-        inv_zoomy := 1./. scaly;
-        Some((min scalx 1.E15), (min scaly 1.E15));
-        (*      let tx, ty = Coord.inv_transform_dist c t.leftmargin t.downmargin in
-                B.translate handle tx ty*)
-  in
-  (match scalopt with
-     Some(scalx, scaly) ->
-       B.scale handle scalx scaly;
-       Coord.scale c scalx scaly;
-       (*let tx, ty = Coord.inv_transform_dist c t.leftmargin t.downmargin in
-         B.translate handle tx ty;*)
-       B.translate handle (-.t.xmin) (-.t.ymin);
-   | None ->()
-  );
+  let matrix = B.get_matrix handle in
+  let next = get_coord_transform ~autoscale t ~ofsx ~ofsy ~width ~height in
+  Coord.apply ~next matrix;
+  inv_zoomx := 1. /. next.B.xx;
+  inv_zoomy := 1. /. next.B.yy;
+  B.set_matrix handle matrix;
+  B.translate handle (-.t.xmin) (-.t.ymin);
   make_orders ();
+  B.restore handle
+
+let flush ?(autoscale=(Uniform Unlimited)) t ~ofsx ~ofsy ~width ~height handle =
+  let matrix = T.get_matrix handle in
+  let handle = T.get_handle handle in
+  B.save handle;
+  let init_transform = B.get_matrix handle in
+  Coord.apply ~next:matrix init_transform;
+  B.set_matrix handle init_transform;
+  (*Backend handle has now the same transformation coordinates as the
+    initial handle applied to it.*)
+  flush_backend ~autoscale t ~ofsx ~ofsy ~width ~height handle;
   B.restore handle
 
 

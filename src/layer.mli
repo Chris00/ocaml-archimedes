@@ -255,9 +255,12 @@ val show_text : t -> rotate:float -> x:float -> y:float ->
 
 val layer_extents: t -> Backend.rectangle
 
-val flush : ?autoscale:scaling -> t -> ofsx:float -> ofsy:float ->
+val get_coord_transform : ?autoscale:scaling -> t -> ofsx:float -> ofsy:float ->
+  width:float -> height:float -> Backend.matrix
+
+val flush_backend : ?autoscale:scaling -> t -> ofsx:float -> ofsy:float ->
   width:float -> height:float -> Backend.t -> unit
-  (**[flush layer ofsx ofsy width height backend] copies the resulting
+  (**[flush_backend layer ofsx ofsy width height backend] copies the resulting
      drawing in the [layer], to the [backend], in the rectangle
      specified by the quantities [ofsx],[ofsy] (some corner of the
      rectangle), [width] and [height]. If [width] and [height] are
@@ -271,6 +274,9 @@ val flush : ?autoscale:scaling -> t -> ofsx:float -> ofsy:float ->
      Optional argument [autoscale] is by default fixed at [Uniform
      Unlimited], so there's by default no limitations on scaling, but
      if scaling, then it is done uniformly along the two axes.*)
+
+val flush : ?autoscale:scaling -> t -> ofsx:float -> ofsy:float ->
+  width:float -> height:float -> Transform_coord.t -> unit
 
 (*val make_axes :
   t ->
