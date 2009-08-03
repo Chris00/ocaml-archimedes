@@ -1,3 +1,4 @@
+open Archimedes
 module B = Backend
 module Coord = Backend.Coordinate
 

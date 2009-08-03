@@ -1,3 +1,4 @@
+open Archimedes
 module B = Backend
 module Q = Queue
 module Coord = B.Coordinate
@@ -15,12 +16,12 @@ type scaling =
 
 type styles =
     {(* mutable ps: B.pointstyle;*)
-      mutable coord:Backend.matrix;
+      mutable coord:B.matrix;
       mutable dash: float array * float;
       mutable lj: B.line_join;
       mutable lc: B.line_cap;
       (*  mutable pat:B.pattern;(*FIXME: ? Pattern.t;*)*)
-      mutable color: Color.t;
+      mutable color: Archimedes.Color.t;
       mutable lw: float;
       mutable font:string;
       mutable fsize:int;
@@ -64,7 +65,7 @@ let make () =
     {
       coord = Coord.identity ();
       dash = [||], 0.; lj = B.JOIN_BEVEL; lc = B.BUTT;
-      color = Color.color 0. 0. 0.; lw = 1.;
+      color = Color.make 0. 0. 0.; lw = 1.;
       font="Sans serif"; fsize=10;
       fslant = B.Upright; fweight = B.Normal;
     }

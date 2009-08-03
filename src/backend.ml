@@ -309,7 +309,7 @@ let string_of_error = function
         be loaded" fname
   | Nonexistent bk -> sprintf "The backend %S is not found" bk
   | Not_loadable(bk, e) ->
-      sprintf "The backend %S is not loadble because:\n%s"
+      sprintf "The backend %S is not loadable because:\n%s"
         bk (Dynlink.error_message e)
   | Not_registering bk ->
       sprintf "The backend %S does not register itself properly" bk
