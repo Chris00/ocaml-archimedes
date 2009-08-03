@@ -28,10 +28,31 @@ opt: native
 byte: archimedes.cma $(PLUGINS:.ml=.cmo)
 native: archimedes.cmxa $(PLUGINS:.ml=.cmxs)
 
-ARCHIMEDES_FILES=backend.ml
+ARCHIMEDES_FILES=color.ml backend.ml
 
-archimedes.cma: $(ARCHIMEDES_FILES:.ml=.cmo)
-archimedes.cmxa: $(ARCHIMEDES_FILES:.ml=.cmx)
+archimedes.cma: archimedes.cmo
+archimedes.cmxa: archimedes.cmx
+
+archimedes.cmo: $(ARCHIMEDES_FILES:.ml=.cmo)
+	$(OCAMLC) -o $@ $(OCAMLC_FLAGS) -pack $^
+
+archimedes.cmx: $(ARCHIMEDES_FILES:.ml=.cmx)
+	$(OCAMLOPT) -o $@ $(OCAMLOPT_FLAGS) -pack $^
+
+$(ARCHIMEDES_FILES:.ml=.cmx): OCAMLOPT_FLAGS += -for-pack Archimedes
+
+# Plugins
+archimedes_graphics.cmo: archimedes_graphics.ml
+	$(OCAMLFIND) ocamlc -c -o $@ $(OCAMLC_FLAGS) -package graphics $<
+archimedes_graphics.cmxs: archimedes_graphics.ml
+	$(OCAMLFIND) ocamlopt -shared -o $@ $(OCAMLOPT_FLAGS) \
+	  -package graphics $<
+
+archimedes_cairo.cmo: archimedes_cairo.ml
+	$(OCAMLFIND) ocamlc -c -o $@ $(OCAMLC_FLAGS) -package cairo2 $<
+archimedes_cairo.cmxs: archimedes_cairo.ml
+	$(OCAMLFIND) ocamlopt -shared -o $@ $(OCAMLOPT_FLAGS) \
+	  -package cairo2 $<
 
 # Plugins
 archimedes_graphics.cmo: archimedes_graphics.ml archimedes.cma
@@ -60,3 +81,6 @@ uninstall:
 	ocamlfind remove $(PACKAGE)
 
 include $(ROOT)/Makefile.ocaml
+
+dist-clean::
+	$(RM) META Makefile $(wildward *.dep)

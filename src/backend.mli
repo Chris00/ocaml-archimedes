@@ -2,7 +2,7 @@
 
    Copyright (C) 2009
 
-     Bertrand Desmons <Bertrand.Desmons@student.umons.ac.be>
+     Bertrand Desmons <Bertrand.Desmons@umons.ac.be>
      Christophe Troestler <Christophe.Troestler@umons.ac.be>
      WWW: http://math.umh.ac.be/an/software/
 
@@ -63,11 +63,11 @@ type text_position =
   | LC  (** align left horizontally and center vertically *)
   | RC  (** align right horizontally and center vertically *)
   | CT  (** center horizontally and align top vertically *)
-  | CB
-  | LT
-  | LB
-  | RT
-  | RB
+  | CB  (** center horizontally and align bottom vertically *)
+  | LT  (** align left horizontally and top vertically *)
+  | LB  (** align left horizontally and bottom vertically *)
+  | RT  (** align right horizontally and top vertically *)
+  | RB  (** align right horizontally and bottom vertically *)
 
 
 module type T =
@@ -144,14 +144,16 @@ sig
     (** Set the scaling of the font. *)
   val show_text : t -> rotate:float -> x:float -> y:float ->
     text_position -> string -> unit
-    (** [show_text angle x y pos txt] display [txt] at the point
+    (** [show_text t angle x y pos txt] displays [txt] at the point
         ([x],[y]) as indicated by [pos].  The point ([x],[y]) is in
         the current coordinate system but the current transformation
         matrix will NOT be applied to the text itself.  [angle]
-        indicates by how many radians (in the current coordinate
-        system) the text must be rotated -- [rotate <> 0.] may not be
-        supported on all devices.  This is an immediate operation: no
-        [stroke] nor [fill] are required (nor will have any effect).  *)
+        indicates by how many radians the text must be rotated
+        w.r.t. the x-axis (in the current coordinate system, assuming
+        it is orthonormal) -- not all device support rotations off
+        angles [<> 0.] (in device coordinates).  This is an immediate
+        operation: no [stroke] nor [fill] are required (nor will have
+        any effect).  *)
 end
 
 include T
@@ -160,9 +162,12 @@ type error =
   | Corrupted_dependency of string
   | Non_loadable_dependency of string
   | Nonexistent of string  (** Cannot find the backend in the directories *)
-  | Corrupted of string    (** Cannot load the backend *)
+  | Not_loadable of string * Dynlink.error
+      (** Cannot load the backend because of the dynlink error. *)
   | Not_registering of string (** Not applying the {!Backend.Register}
                                   functor. *)
+
+val string_of_error : error -> string
 
 exception Error of error
 

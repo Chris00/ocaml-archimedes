@@ -54,13 +54,13 @@ struct
     Cairo.Path.clear cr;
     Cairo.rectangle cr ~x ~y ~w ~h;
     Cairo.clip cr
-
+(*
   (* FIXME: must be reworked *)
   let text cr ~size ~x ~y txt =
     Cairo.move_to cr ~x ~y;
     Cairo.set_font_size cr size;
     Cairo.show_text cr txt
-
+*)
 
   (* FIXME: better error message for options *)
   let make ~options width height =

@@ -1,7 +1,11 @@
+#						-*- conf-unix -*-
 *.cm[ioax]
 *.cmx[as]
 *.annot
+*.com
+*.exe
 .depend.ocaml
+./Makefile
 src/META
 src/Makefile
 configure
@@ -12,5 +16,8 @@ aclocal.m4
 Makefile.ocaml
 *.com
 *.exe
-*.png
+# Generated dependency files
+*.dep
+# Tests and examples
 *.pdf
+*.png

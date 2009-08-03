@@ -16,8 +16,16 @@
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the file
    LICENSE for more details. *)
 
-module X_ = Callback
-module Y_ = Hashtbl
+open Printf
+
+(* The following modules are needed by some backends and are not
+   loadable dynamically so must be referenced here so that pluging
+   linking succeeds. *)
+module ForLinking_1__ = Callback
+
+(* Without the following, the native version reports "undefined
+   symbol: caml_hash_variant" when loading Cairo. *)
+external for_linking_1__ : unit -> unit = "caml_hash_variant"
 
 type line_cap =
   | BUTT
@@ -40,10 +48,10 @@ type slant = Upright | Italic
 type weight = Normal | Bold
 
 type text_position =
-  | CC  (** centrer horizontally and vertically *)
-  | LC  (** align left horizontally and center vertically *)
-  | RC  (** align right horizontally and center vertically *)
-  | CT  (** center horizontally and align top vertically *)
+  | CC
+  | LC
+  | RC
+  | CT
   | CB
   | LT
   | LB
@@ -290,8 +298,21 @@ type error =
   | Corrupted_dependency of string
   | Non_loadable_dependency of string
   | Nonexistent of string
-  | Corrupted of string
+  | Not_loadable of string * Dynlink.error
   | Not_registering of string
+
+let string_of_error = function
+  | Corrupted_dependency fname ->
+      sprintf "The dependency file %s is corrupted." fname
+  | Non_loadable_dependency fname ->
+      sprintf "The libray %s (occurring as a plugin dependency) cannot \
+        be loaded" fname
+  | Nonexistent bk -> sprintf "The backend %S is not found" bk
+  | Not_loadable(bk, e) ->
+      sprintf "The backend %S is not loadble because:\n%s"
+        bk (Dynlink.error_message e)
+  | Not_registering bk ->
+      sprintf "The backend %S does not register itself properly" bk
 
 exception Error of error
 
@@ -365,11 +386,10 @@ let make ?(dirs=[]) b width height =
          means modules with stubs. *)
       Dynlink.allow_unsafe_modules true;
       let base = "archimedes_" ^ backend in
-      let dyn = (try find_file dirs (Dynlink.adapt_filename(base ^ ".cmo"))
-                 with Not_found -> raise(Error(Nonexistent backend))) in
       (* Load dependencies *)
       List.iter begin fun dep ->
         if not(List.mem dep !loaded_dependencies) then (
+(*<<<<<<< TREE
            try
             let fdep = Dynlink.adapt_filename(dep ^ ".cmo") in
             let fdep =
@@ -388,11 +408,19 @@ let make ?(dirs=[]) b width height =
               raise(Error(Non_loadable_dependency (dep^" - "^s)))
           with Not_found ->
             raise(Error(Non_loadable_dependency (dep^" - not found")))
+            =======*)
+          let fdep = Dynlink.adapt_filename dep in
+          try
+            Dynlink.loadfile fdep;
+            loaded_dependencies := dep :: !loaded_dependencies
+          with Dynlink.Error e -> raise(Error(Not_loadable(fdep, e)))
         )
       end (get_dependencies dirs base);
       (* Load the main module *)
+      let dyn = (try find_file dirs (Dynlink.adapt_filename(base ^ ".cmo"))
+                 with Not_found -> raise(Error(Nonexistent backend))) in
       (try Dynlink.loadfile dyn
-       with _ -> raise(Error(Corrupted backend)));
+       with Dynlink.Error e -> raise(Error(Not_loadable(backend, e))));
       (* Check that the backend correctly updated the registry *)
       try M.find backend !registry
       with Not_found -> raise(Error(Not_registering backend))
