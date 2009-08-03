@@ -35,6 +35,17 @@ let transform_distance m ~dx ~dy =
 let transform_point m ~x ~y =
   (m.xx *. x +. m.xy *. y +. m.x0,  m.yx *. x +. m.yy *. y +. m.y0)
 
+let min a b = if (a:float) < b then a else b
+let max a b = if (a:float) > b then a else b
+
+(** Return the smaller rectangle including the rectangle [r] and the
+    segment joining [(x0,y0)] and [(x1,y1)]. *)
+let update_rectangle r x0 y0 x1 y1 =
+  let x = min r.x (min x0 x1)
+  and y = min r.y (min y0 y1)
+  and x' = max (r.x +. r.w) (max x0 x1)
+  and y' = max (r.y +. r.h) (max y0 y1) in
+  { x = x;  y = y;  w = x' -. x;  h = y' -. y }
 
 module B =
 struct
@@ -57,7 +68,8 @@ struct
     mutable line_width: float;
     mutable dash_offset: float;
     mutable dash: float array;
-    (* (x,y): current position (when creating a path), in user coordinates. *)
+    (* (x,y): current point (when creating a path), in user coordinates. *)
+    mutable curr_pt: bool;
     mutable x: float;
     mutable y: float;
     mutable current_path: path_data list; (* Path actions in reverse order *)
@@ -88,7 +100,12 @@ struct
 
   let restore t =
     check_valid_handle t;
-    try t.state <- Stack.pop t.history
+    try
+      let st = Stack.pop t.history in
+      t.state <- st;
+      (* Re-enable previous settings in case they were changed *)
+      Graphics.set_color st.color;
+      Graphics.set_line_width (truncate st.line_width)
     with Stack.Empty -> ()
 
   (* FIXME: options "x=" and "y=" for the position *)
@@ -102,6 +119,7 @@ struct
       line_width = 1.;
       dash_offset = 0.;
       dash = [| |]; (* no dash *)
+      curr_pt = false;
       x = 0.;
       y = 0.;
       current_path = [];
@@ -118,6 +136,7 @@ struct
     if not(t.closed) then (
       Graphics.close_graph();
       t.closed <- true;
+      in_use := false;
     )
 
   let clear_path t =
@@ -160,20 +179,25 @@ struct
   (* Paths are not acted upon directly but wait for [stroke] or [fill]. *)
   let move_to t ~x ~y =
     let st = get_state t in
-    st.x <- x;
-    st.y <- y;
     let x', y' = transform_point st.ctm x y in
-    st.current_path <- MOVE_TO(x',y') :: st.current_path
-
-      (* FIXME: Update extents *)
+    st.current_path <- MOVE_TO(x',y') :: st.current_path;
+    (* move only updates the current point but not the path extents *)
+    st.curr_pt <- true;
+    st.x <- x;
+    st.y <- y
 
   let line_to t ~x ~y =
     let st = get_state t in
-    st.x <- x;
-    st.y <- y;
     let x', y' = transform_point st.ctm x y in
-    st.current_path <- LINE_TO(x',y') :: st.current_path
-      (* FIXME: Update extents *)
+    st.current_path <- LINE_TO(x',y') :: st.current_path;
+    (* Update extents and current point *)
+    if st.curr_pt then (
+      let x0', y0' = transform_point st.ctm st.x st.y in
+      st.path_extents <- update_rectangle st.path_extents x0' y0' x' y';
+    );
+    st.curr_pt <- true;
+    st.x <- x;
+    st.y <- y
 
   let rel_move_to t ~x ~y =
     let st = get_state t in move_to t (st.x +. x) (st.y +. y)
@@ -193,7 +217,12 @@ struct
 
   let rectangle t ~x ~y ~w ~h =
     let st = get_state t in
+    let x', y' = transform_point st.ctm x y
+    and w', h' =  in
+
     st.current_path <- CLOSE_PATH :: RECTANGLE(x, y, w, h) :: st.current_path
+
+      st.path_extents <- update_rectangle st.path_extents x0' y0' x' y';
 
   let arc t ~x ~y ~r ~a1 ~a2 =
     ()
