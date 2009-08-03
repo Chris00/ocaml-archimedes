@@ -1,6 +1,6 @@
 type t = {r:float; g:float; b:float; a:float}
 
-let color ?(a=1.) r g b =
+let make ?(a=1.) r g b =
   let in_interval ?(min=0.) ?(max=1.) x = x >= min && x <= max in
   if in_interval r && in_interval g && in_interval b && in_interval a then
     if in_interval ~max:a r
@@ -110,5 +110,5 @@ let add ?(op=OVER) init newc =
    a = alpha}
 
 (*Local variables:*)
-(*compile-command: "make -k byte native"*)
+(*compile-command: "ocamlc -c color.ml"*)
 (*End:*)

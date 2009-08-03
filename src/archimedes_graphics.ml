@@ -19,6 +19,7 @@
 (** Graphics Archimedes plugin *)
 
 open Printf
+open Archimedes
 
 exception Invalid_matrix
 
@@ -163,7 +164,7 @@ struct
     st.y <- y;
     let x', y' = transform_point st.ctm x y in
     st.current_path <- MOVE_TO(x',y') :: st.current_path
-      
+
       (* FIXME: Update extents *)
 
   let line_to t ~x ~y =
