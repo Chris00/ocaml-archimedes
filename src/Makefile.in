@@ -45,13 +45,13 @@ $(ARCHIMEDES_FILES:.ml=.cmx): OCAMLOPT_FLAGS += -for-pack Archimedes
 archimedes_graphics.cmo: archimedes_graphics.ml
 	$(OCAMLFIND) ocamlc -c -o $@ $(OCAMLC_FLAGS) -package graphics $<
 archimedes_graphics.cmxs: archimedes_graphics.ml
-	$(OCAMLFIND) ocamlopt -shared -o $@ $(OCAMLOPT_FLAGS) \
+	$(OCAMLFIND) ocamlopt -passopt -shared -o $@ $(OCAMLOPT_FLAGS) \
 	  -package graphics $<
 
 archimedes_cairo.cmo: archimedes_cairo.ml
 	$(OCAMLFIND) ocamlc -c -o $@ $(OCAMLC_FLAGS) -package cairo2 $<
 archimedes_cairo.cmxs: archimedes_cairo.ml
-	$(OCAMLFIND) ocamlopt -shared -o $@ $(OCAMLOPT_FLAGS) \
+	$(OCAMLFIND) ocamlopt -passopt -shared -o $@ $(OCAMLOPT_FLAGS) \
 	  -package cairo2 $<
 
 

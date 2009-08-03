@@ -14,7 +14,10 @@ config.log
 autom4te.cache
 aclocal.m4
 Makefile.ocaml
+*.com
+*.exe
 # Generated dependency files
 *.dep
 # Tests and examples
 *.pdf
+*.png
