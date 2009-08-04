@@ -283,6 +283,10 @@ struct
 
   let set_font_size t size = ()
 
+  (*FIXME: Rough approximation!*)
+  let text_extents t txt =
+    {Backend.x = 0.; y = 0.; w = float (String.length txt) *. 10.; h = 10.}
+
   let show_text t ~rotate ~x ~y pos txt =
     ()
 end

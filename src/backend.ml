@@ -121,6 +121,7 @@ sig
 
   val select_font_face : t -> slant -> weight -> string -> unit
   val set_font_size : t -> float -> unit
+  val text_extents : t -> string -> rectangle
   val show_text : t -> rotate:float -> x:float -> y:float ->
     text_position -> string -> unit
 
@@ -179,6 +180,7 @@ type t = {
 
   select_font_face: slant -> weight -> string -> unit;
   set_font_size: float -> unit;
+  text_extents: string -> rectangle;
   show_text: rotate:float -> x:float -> y:float ->
                                 text_position -> string -> unit
   (* put_image: 'a -> x:float -> y:float -> ?scale:float -> string -> unit; *)
@@ -245,6 +247,7 @@ struct
 
         select_font_face = B.select_font_face handle;
         set_font_size = B.set_font_size handle;
+        text_extents = B.text_extents handle;
         show_text = B.show_text handle;
       }
     in
@@ -293,6 +296,7 @@ let set_matrix t m = t.set_matrix m
 let get_matrix t = t.get_matrix()
 let select_font_face t = t.select_font_face
 let set_font_size t = t.set_font_size
+let text_extents t = t.text_extents
 let show_text t = t.show_text
 
 type error =

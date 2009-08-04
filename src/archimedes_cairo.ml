@@ -121,6 +121,11 @@ struct
     Cairo.stroke cr; (* without this, the current position is the end
                         of the text which is not desired. *)
     Cairo.restore cr
+
+  let text_extents cr text =
+    let te = Cairo.text_extents cr text in
+    { Backend.x = te.x_bearing; y = (-. te.y_bearing);
+      w = te.width; h = te.height }
 end
 
 let () =
