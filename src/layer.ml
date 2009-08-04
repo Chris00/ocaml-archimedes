@@ -354,36 +354,30 @@ let stroke_fun t preserve backend =
     So we make the following operation:
     CTM := t.coord * (TM flush)^{-1} * (t.coord)^{-1} * CTM.
   *)
-(*
-  print_string "stroke with inv_zooms: ";
-  print_float !inv_zoomx;
-  print_string " ";
-  print_float !inv_zoomy;
-  flush stdout;*)
-(*  let sf = string_of_float in*)
+  (*
+    print_string "stroke with inv_zooms: ";
+    print_float !inv_zoomx;
+    print_string " ";
+    print_float !inv_zoomy;
+    flush stdout;*)
+  let debug = true in
+  let print s name matrix =
+    if debug then
+      let sf = string_of_float in
+      Printf.printf " %s -> %s : %s %s %s %s %s %s\n%!" s name
+        (sf matrix.B.xx) (sf matrix.B.xy) (sf matrix.B.x0)
+        (sf matrix.B.yx) (sf matrix.B.yy) (sf matrix.B.y0)
+  in
   let coord_kill_transform = Coord.invert t.styles.coord in
-(*  Printf.printf " -> CKT: %s %s %s %s %s %s\n%!"
-    (sf coord_kill_transform.B.xx) (sf coord_kill_transform.B.xy)
-    (sf coord_kill_transform.B.x0) (sf coord_kill_transform.B.yx)
-    (sf coord_kill_transform.B.yy) (sf coord_kill_transform.B.y0);*)
+  print "" "CKT" coord_kill_transform;
   Coord.scale coord_kill_transform !inv_zoomx !inv_zoomy;
-(*  Printf.printf "scale -> CKT: %s %s %s %s %s %s\n%!"
-    (sf coord_kill_transform.B.xx) (sf coord_kill_transform.B.xy)
-    (sf coord_kill_transform.B.x0) (sf coord_kill_transform.B.yx)
-    (sf coord_kill_transform.B.yy) (sf coord_kill_transform.B.y0);*)
+  print "scale" "CKT" coord_kill_transform;
   Coord.apply ~next:t.styles.coord coord_kill_transform;
- (* Printf.printf "apply coords -> CKT: %s %s %s %s %s %s\n%!"
-    (sf coord_kill_transform.B.xx) (sf coord_kill_transform.B.xy)
-    (sf coord_kill_transform.B.x0) (sf coord_kill_transform.B.yx)
-    (sf coord_kill_transform.B.yy) (sf coord_kill_transform.B.y0);*)
- let matrix = B.get_matrix backend in
-(*  Printf.printf " -> Matrix: %s %s %s %s %s %s\n%!" (sf matrix.B.xx)
-    (sf matrix.B.xy) (sf matrix.B.x0) (sf matrix.B.yx)
-    (sf matrix.B.yy) (sf matrix.B.y0);*)
+  print "apply coords" "CKT" coord_kill_transform;
+  let matrix = B.get_matrix backend in
+  print "" "Matrix" coord_kill_transform;
   Coord.apply ~next:coord_kill_transform matrix;
-(*  Printf.printf " -> Matrix: %s %s %s %s %s %s\n%!" (sf matrix.B.xx)
-    (sf matrix.B.xy) (sf matrix.B.x0) (sf matrix.B.yx)
-    (sf matrix.B.yy) (sf matrix.B.y0);*)
+  print "Apply CKT" "Matrix" coord_kill_transform;
   B.set_matrix backend matrix;
   (if preserve then B.stroke_preserve else B.stroke) backend;
   B.restore backend
@@ -497,10 +491,7 @@ let flush_backend ?(autoscale=(Uniform Unlimited))
       in (order handle;
           make_orders ())
   in make_orders ();
-  B.restore handle;
-  Printf.printf "Box%!";
-  B.rectangle handle ofsx ofsy width height;
-  B.stroke handle
+  B.restore handle
 
 let flush ?(autoscale=(Uniform Unlimited)) t ~ofsx ~ofsy ~width ~height handle =
   let matrix = T.get_matrix handle in
