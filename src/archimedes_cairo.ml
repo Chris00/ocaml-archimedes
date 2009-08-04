@@ -40,8 +40,20 @@ struct
 
   let path_extents cr = (Obj.magic (path_extents cr) : Backend.rectangle)
 
-  let set_matrix cr m = set_matrix cr (Obj.magic m : Cairo.matrix)
-  let get_matrix cr = (Obj.magic (get_matrix cr) : Backend.matrix)
+  let set_matrix cr m =
+    Printf.printf "Cairo.set_matrix%!";
+    set_matrix cr
+    {Cairo.xx = m.Backend.xx; xy = m.Backend.xy;
+     yx = m.Backend.yx; yy = m.Backend.yy;
+     x0 = m.Backend.x0; y0 = m.Backend.y0;}
+
+        (*(Obj.magic m : Cairo.matrix)*)
+  let get_matrix cr =
+    let m = get_matrix cr in
+    {Backend.xx = m.Cairo.xx; xy = m.Cairo.xy;
+     yx = m.Cairo.yx; yy = m.Cairo.yy;
+     x0 = m.Cairo.x0; y0 = m.Cairo.y0;}
+    (*(Obj.magic (get_matrix cr) : Backend.matrix)*)
 
 
   let set_dash cr ofs arr = set_dash cr ~ofs arr

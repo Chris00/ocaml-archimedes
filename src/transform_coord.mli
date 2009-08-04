@@ -1,4 +1,3 @@
-open Archimedes
 type t
 val make : ?dirs:string list -> string -> ?coord:Backend.matrix ->
   float -> float -> t

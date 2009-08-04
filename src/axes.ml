@@ -1,7 +1,7 @@
 (**Styles definitions to make axes*)
 
 open Layer
-module B = Archimedes.Backend
+module B = Backend
 
 type data =
     Graph of int * int
@@ -135,5 +135,5 @@ let tic t major ?color_labels x y x_axis ticstyle =
      | None -> ())
 
 (*Local variables:*)
-(*compile-command: "ocamlopt -c axes.ml && ocamlc -c axes.ml"*)
+(*compile-command: "ocamlopt -c -for-pack Archimedes axes.ml && ocamlc -c -for-pack Archimedes axes.ml"*)
 (*End:*)

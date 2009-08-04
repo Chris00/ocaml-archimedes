@@ -1,6 +1,5 @@
-open Archimedes
 module B = Backend
-module Coord = Backend.Coordinate
+module Coord = Backend.Matrix
 
 type t =
     {h:B.t; mutable c:Backend.matrix; s:Backend.matrix Stack.t}
@@ -13,7 +12,7 @@ let make ?dirs name ?coord width height =
 let use handle coord = {h = handle; c = coord; s = Stack.create ()}
 
 let use_unit_square handle x1 y1 x2 y2 =
-  use handle (Coord.create (x2 -. x1) 0. x1 0. (y2 -. y1) y1)
+  use handle {B.xx = x2 -. x1; xy=0.; x0=x1; yx=0.; yy = y2 -. y1; y0=y1}
 
 let get_handle t = t.h
 
@@ -184,5 +183,5 @@ let make_axes t  ?color_axes ?color_labels xmin xmax ymin ymax
 
 
 (*Local Variables:*)
-(*compile-command: "ocamlopt -c transform_coord.ml && ocamlc -c transform_coord.ml"*)
+(*compile-command: "ocamlopt -c -for-pack Archimedes transform_coord.ml && ocamlc -c -for-pack Archimedes transform_coord.ml"*)
 (*End:*)

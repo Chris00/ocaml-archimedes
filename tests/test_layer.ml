@@ -14,8 +14,8 @@ let () =
         Printf.printf "%s - Matrix: \n%!" s;
         let matrix = B.get_matrix cr in
         let sf = string_of_float in
-        Printf.printf "%s%s%s%s%s%s\n%!" (sf matrix.B.xx) 
-          (sf matrix.B.xy) (sf matrix.B.x0) (sf matrix.B.yx) 
+        Printf.printf "%s%s%s%s%s%s\n%!" (sf matrix.B.xx)
+          (sf matrix.B.xy) (sf matrix.B.x0) (sf matrix.B.yx)
           (sf matrix.B.yy) (sf matrix.B.y0) in
       (* print "Init";
          B.scale cr 50. 50.;
@@ -76,5 +76,5 @@ let () =
   in List.iter f ["cairo PDF layer.pdf";"cairo PNG layer.png"]
 
 (*Local Variables:*)
-(*compile-command: "ocamlopt -o layer.com -I ../src dynlink.cmxa archimedes.cmxa transform_coord.cmx layer.cmx axes.cmx test_layer.ml && ocamlc -o layer.exe -I ../src dynlink.cma archimedes.cma transform_coord.cmo layer.cmo axes.cmo test_layer.ml"*)
+(*compile-command: "ocamlopt -o layer.com -I ../src dynlink.cmxa bigarray.cmxa archimedes.cmxa test_layer.ml && ocamlc -o layer.exe -I ../src dynlink.cma bigarray.cma archimedes.cma test_layer.ml"*)
 (*End:*)

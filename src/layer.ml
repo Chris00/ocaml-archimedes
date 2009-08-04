@@ -1,4 +1,3 @@
-open Archimedes
 module B = Backend
 module Q = Queue
 module Coord = B.Matrix
@@ -23,10 +22,10 @@ type styles =
       mutable lj: B.line_join;
       mutable lc: B.line_cap;
       (*  mutable pat:B.pattern;(*FIXME: ? Pattern.t;*)*)
-      mutable color: Archimedes.Color.t;
+      mutable color: Color.t;
       mutable lw: float;
       mutable font:string;
-      mutable fsize:int;
+      mutable fsize:float;
       mutable fslant:B.slant;
       mutable fweight:B.weight;}
 
@@ -69,7 +68,7 @@ let make () =
       coord = Coord.identity ();
       dash = [||], 0.; lj = B.JOIN_BEVEL; lc = B.BUTT;
       color = Color.make 0. 0. 0.; lw = 1.;
-      font="Sans serif"; fsize=10;
+      font="Sans serif"; fsize=10.;
       fslant = B.Upright; fweight = B.Normal;
     }
   in
@@ -181,9 +180,7 @@ let line t ?x ?y x1 y1 =
      Some x, Some y -> move_to t x y
    | _, _ -> ());
   update t true x1 y1;
-  Q.add (fun t ->
-           print_string ("LT:"^(string_of_float x1)^" "^(string_of_float y1));
-           B.line_to t x1 y1) t.orders;
+  Q.add (fun t -> B.line_to t x1 y1) t.orders;
   t.current <- Some(x1,y1)
 
 let line_to t ~x ~y = line t x y
@@ -369,6 +366,9 @@ let stroke_fun t preserve backend =
       Printf.printf " %s -> %s : %s %s %s %s %s %s\n%!" s name
         (sf matrix.B.xx) (sf matrix.B.xy) (sf matrix.B.x0)
         (sf matrix.B.yx) (sf matrix.B.yy) (sf matrix.B.y0)
+    (*else
+      (ignore matrix.B.xx; ignore matrix.B.xy; ignore matrix.B.x0;
+       ignore matrix.B.yx; ignore matrix.B.yy; ignore matrix.B.y0)*)
   in
   let coord_kill_transform = Coord.invert t.styles.coord in
   print "" "CKT" coord_kill_transform;
@@ -421,21 +421,21 @@ let stroke_layer_preserve t =
 
 let select_font_face t slant weight family =
   let st = t.styles in
-  st.slant <- slant;
-  st.weight <- weight;
-  st.fname <- fname;
+  st.fslant <- slant;
+  st.fweight <- weight;
+  st.font <- family;
   Q.add (fun t -> B.select_font_face t slant weight family) t.orders
 
 let set_font_size t size =
-  st.size <- size;
+  t.styles.fsize <- size;
   Q.add (fun t -> B.set_font_size t size) t.orders
 
 let show_text t ~rotate ~x ~y pos str =
   let st = t.styles in
   let text backend =
     B.save backend;
-    B.select_font_face backend st.slant st.weight st.size;
-    B.set_font_size backend st.size;
+    B.select_font_face backend st.fslant st.fweight st.font;
+    B.set_font_size backend st.fsize;
     let rect = B.text_extents backend str in
     let x0, y0 = Coord.transform st.coord rect.B.x rect.B.y
     and wx, wy = Coord.transform_dist st.coord rect.B.w 0.
@@ -508,14 +508,14 @@ let flush_backend ?(autoscale=(Uniform Unlimited))
   B.translate handle (-.t.xmin) (-.t.ymin);
   inv_zoomx := 1. /. next.B.xx;
   inv_zoomy := 1. /. next.B.yy;
-  let q =  in
-  let rec make_orders q =
+  let rec make_orders s q =
     if not (Q.is_empty q) then
       (Q.pop q handle;
-       make_orders q)
+       Printf.printf "%s%!" s;
+       make_orders s q)
   in
-  make_orders (Q.copy t.bkdep_updates);
-  make_orders (Q.copy t.orders);
+  make_orders "-" (Q.copy t.bkdep_updates);
+  make_orders "*" (Q.copy t.orders);
   B.restore handle
 
 let flush ?(autoscale=(Uniform Unlimited)) t ~ofsx ~ofsy ~width ~height handle =
@@ -609,5 +609,5 @@ let make_axes t ?color_axes ?color_labels datax datay mode =
 *)
 
 (*Local Variables:*)
-(*compile-command: "ocamlc -c layer.ml && ocamlopt -c layer.ml"*)
+(*compile-command: "ocamlc -c -for-pack Archimedes layer.ml && ocamlopt -c -for-pack Archimedes layer.ml"*)
 (*End:*)

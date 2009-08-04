@@ -1,5 +1,3 @@
-open Archimedes
-
 type limitation =
     Unlimited
       (**All zooms are allowed*)
@@ -109,7 +107,7 @@ val get_coord : t -> Backend.matrix
 val reset_to_id : t -> unit
   (**Resets the layer's coordinate system to the identity.*)
 
-val set_color : t -> Archimedes.Color.t -> unit
+val set_color : t -> Color.t -> unit
   (**Sets the layer's current color to the specified [Color.t].*)
 
 val set_line_width : t -> float -> unit

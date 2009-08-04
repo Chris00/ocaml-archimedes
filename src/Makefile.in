@@ -28,7 +28,7 @@ opt: native
 byte: archimedes.cma $(PLUGINS:.ml=.cmo)
 native: archimedes.cmxa $(PLUGINS:.ml=.cmxs)
 
-ARCHIMEDES_FILES=color.ml backend.ml
+include archimedes_files
 
 archimedes.cma: archimedes.cmo
 archimedes.cmxa: archimedes.cmx
