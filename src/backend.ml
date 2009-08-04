@@ -438,89 +438,100 @@ module Matrix =
 struct
   type t = matrix
 
-  let identity () = {xx = 1.; xy = 0.; yx = 0.; yy = 1.; x0 = 0.; y0 = 0.}
+  exception Not_invertible
 
-  let translate t x y =
-    t.x0 <- t.x0 +. x;
-    t.y0 <- t.y0 +. y
+  let init_identity () = { xx=1.; yx=0.; xy=0.; yy=1.; x0=0.; y0=0. }
 
-  let scale t x y =
-    t.xx <- t.xx *. x;
-    t.xy <- t.xy *. x;
-    t.x0 <- t.x0 *. x;
-    t.yx <- t.yx *. y;
-    t.yy <- t.yy *. y;
-    t.y0 <- t.y0 *. y
+  let init_translate ~x ~y =
+    { xx=1.; yx=0.; xy=0.; yy=1.;  x0=x;  y0=y }
 
-  let rotate t angle =
-    let a = cos angle and b = sin angle in
-    let rx x y = a *. x +. b *. y
-    and ry x y = a *. y -. b *. x in
-    t.xx <- rx t.xx t.yx;
-    t.xy <- rx t.xy t.yy;
-    t.x0 <- rx t.x0 t.y0;
-    t.yx <- ry t.xx t.yx;
-    t.yy <- ry t.xy t.yy;
-    t.y0 <- ry t.x0 t.y0
+  let init_scale ~x ~y =
+    { xx=x; yx=0.; xy=0.; yy=y;  x0=0.;  y0=0. }
 
-  let transform t x y =
-    t.xx *. x +. t.xy *. y +. t.x0,
-    t.yx *. x +. t.yy *. y +. t.y0
+  let init_rotate ~angle =
+    { xx=cos(angle);    yx=sin(angle);
+      xy= -. sin(angle); yy=cos(angle);  x0=0.;  y0=0. }
 
-  let transform_dist t x y =
-    t.xx *. x +. t.xy *. y,
-    t.yx *. x +. t.yy *. y
+  let set_to_id m =
+    m.xx <- 1.; m.xy <- 0.; m.x0 <- 0.;
+    m.yx <- 0.; m.yy <- 1.; m.y0 <- 0.
 
-  let det t =
-    t.xx *. t.yy -. t.xy *. t.yx
+  let translate m ~x ~y =
+    m.x0 <- m.x0 +. m.xx *. x +. m.xy *. y;
+    m.y0 <- m.y0 +. m.yx *. x +. m.yy *. y
 
-  let get_invert t =
-    let d = det t in
-    if d = 0. then failwith "invert"
+  let scale m ~x ~y =
+    m.xx <- m.xx *. x;
+    m.yx <- m.yx *. x;
+    m.xy <- m.xy *. y;
+    m.yy <- m.yy *. y
+
+  let rotate m ~angle =
+    let cosa = cos angle and sina = sin angle in
+    let xx = m.xx in
+    m.xx <- xx *. cosa +. m.xy *. sina;
+    m.xy <- m.xy *. cosa -. xx *. sina;
+    let yx = m.yx in
+    m.yx <- yx *. cosa +. m.yy *. sina;
+    m.yy <- m.yy *. cosa -. yx *. sina
+
+  let invert m =
+    (* Optimize for scaling|translation matrices just like cairo... *)
+    if m.xy = 0. && m.yx = 0. then (
+      m.x0 <- -. m.x0;
+      m.y0 <- -. m.y0;
+      if m.xx <> 1. then (
+        if m.xx = 0. then raise Not_invertible;
+        m.xx <- 1. /. m.xx;
+        m.x0 <- m.x0 *. m.xx;
+      );
+      if m.yy <> 1. then (
+        if m.yy = 0. then raise Not_invertible;
+        m.yy <- 1. /. m.yy;
+        m.y0 <- m.y0 *. m.yy;
+      );
+    )
     else
-      let xx =  t.yy /. d
-      and xy = (-. t.xy) /. d
-      and yx = (-. t.yx) /. d
-      and yy = t.xx /. d in
-      let xt = t.x0 *. xx +. t.y0 *. yx
-      and yt = t.x0 *. yx +. t.y0 *. yy in
-      xx, xy, xt, yx ,yy , yt
-
-  let invert t =
-    let xx, xy, xt, yx, yy, yt = get_invert t in
-    {xx = xx; xy = xy; x0 = xt; yx = yx; yy = yy; y0 = yt}
-
-  let inv_transform t x y =
-    let xx, xy, xt, yx, yy, yt = get_invert t in
-    xx *. x +. xy *. y +. xt,
-    yx *. x +. yy *. y +. yt
-
-  let inv_transform_dist t x y =
-    let xx, xy, _, yx, yy, _ = get_invert t in
-    xx *. x +. xy *. y,
-    yx *. x +. yy *. y
+      let det = m.xx *. m.yy -. m.yx *. m.xy in
+      if det = 0. || 1. /. det = 0. (* infinite det *) then
+        raise Not_invertible;
+      let yy = m.xx /. det in
+      m.xx <- m.yy /. det;
+      m.xy <- -. m.xy /. det;
+      m.yx <- -. m.yx /. det;
+      m.yy <- yy;
+      let y0 = -. m.yx *. m.x0 -. yy *. m.y0 in
+      m.x0 <- -. m.xx *. m.x0 -. m.xy *. m.y0;
+      m.y0 <- y0
 
 
-  let apply ?result ~next t =
-    let xx = next.xx *. t.xx +. next.xy *. t.yx
-    and xy = next.xx *. t.xy +. next.xy *. t.yy
-    and yx = next.yx *. t.xx +. next.yy *. t.yx
-    and yy = next.yx *. t.xy +. next.yy *. t.yy
-    and xt = next.xx *. t.x0 +. next.xy *. t.y0 +. next.x0
-    and yt = next.yx *. t.x0 +. next.yy *. t.y0 +. next.y0 in
-    let r = match result with
-        None -> t
-      | Some r -> r
-    in
-    r.xx <- xx; r.xy <- xy; r.x0 <- xt;
-    r.yx <- yx; r.yy <- yy; r.y0 <- yt
+  let det m = m.xx *. m.yy -. m.xy *. m.yx
+
+  let transform_distance m ~dx ~dy =
+    (m.xx *. dx +. m.xy *. dy,  m.yx *. dx +. m.yy *. dy)
+
+  let transform_point m ~x ~y =
+    (m.xx *. x +. m.xy *. y +. m.x0,  m.yx *. x +. m.yy *. y +. m.y0)
 
   let copy t = { t with xx = t.xx }
 
-  let reset_to_id t =
-    t.xx <- 1.; t.xy <- 0.; t.x0 <- 0.;
-    t.yx <- 0.; t.yy <- 1.; t.y0 <- 0.
+  let inv_transform_point m =
+    let m_inv = copy m in
+    invert m_inv;
+    transform_point m_inv
 
+  let inv_transform_distance m =
+    let m_inv = copy m in
+    invert m_inv;
+    transform_distance m_inv
+
+  let multiply a b =
+    { xx = b.xx *. a.xx +. b.xy *. a.yx;
+      xy = b.xx *. a.xy +. b.xy *. a.yy;
+      yx = b.yx *. a.xx +. b.yy *. a.yx;
+      yy = b.yx *. a.xy +. b.yy *. a.yy;
+      x0 = b.xx *. a.x0 +. b.xy *. a.y0 +. b.x0;
+      y0 = b.yx *. a.x0 +. b.yy *. a.y0 +. b.y0; }
 
   let has_shear t =
     t.yx <> 0. || t.xy <> 0.
