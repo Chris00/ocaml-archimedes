@@ -32,7 +32,7 @@ let tic t major ?color_labels x y x_axis ticstyle =
            x-.r,y)
       in
       if major then
-        (match color_labels with
+        ((match color_labels with
             Some c ->
               save t;
               set_color t c
@@ -41,8 +41,8 @@ let tic t major ?color_labels x y x_axis ticstyle =
            ~x ~y (if x_axis then B.CB else B.LC)
            (string_of_float (if x_axis then x else y));
          match color_labels with
-           Some c -> restore t;
-         | None -> ()
+           Some _ -> restore t;
+         | None -> ())
 
   let make_axes layer ?color_axes ?color_labels ?xmin ?xmax ?ymin ?ymax
       datax datay mode =
@@ -101,7 +101,7 @@ let tic t major ?color_labels x y x_axis ticstyle =
             in
             (*Tic to put, centered in (x, y), with label 'x' or 'y' as
               given by x_axis.*)
-            tic layer true x y x_axis ticmode;
+            tic layer true ?color_labels x y x_axis ticmode;
             if i < major then
               for j = 1 to minor - 1 do
                 let x,y =
@@ -112,18 +112,18 @@ let tic t major ?color_labels x y x_axis ticstyle =
               done
           done
       | Tics(minor,num_minors) ->
-          let rec make_tic x y x_axis ticmode n =
+          let rec make_tic x y n =
             if not ((x_axis && x > xmax) || (not x_axis && y > ymax)) then
               let xnew, ynew =
                 if x_axis then
                   x+.minor, y
                 else x, y+.minor
               in
-              (tic layer (n=num_minors) x y x_axis ticmode;
-               make_tic xnew ynew x_axis ticmode ((n mod num_minors)+1))
+              (tic layer (n=num_minors) ?color_labels x y x_axis ticmode;
+               make_tic xnew ynew ((n mod num_minors)+1))
 
-          in make_tic xmin ymin true ticx 0;
-          make_tic xmin ymin false ticy 0
+          in make_tic xmin ymin num_minors
+          (*First tic will be a major tic.*)
     in
     (*Make data for X axis*)
     make_data datax ticx true;
@@ -131,7 +131,7 @@ let tic t major ?color_labels x y x_axis ticstyle =
     make_data datay ticy false;
     stroke layer;
     (match color_axes with
-       Some c -> restore layer
+       Some _ -> restore layer
      | None -> ())
 
 (*Local variables:*)

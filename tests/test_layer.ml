@@ -6,7 +6,7 @@ let () =
   let f s =
     try
       let cr =
-        B.make ~dirs:[ "../src"] s 150. 150.
+        B.make ~dirs:[ "../src"; "./src"] s 150. 150.
       in
 
       (* B.set_color cr (Color.color ~a:0.7 0.9 0. 0.2);*)

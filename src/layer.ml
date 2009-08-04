@@ -359,7 +359,7 @@ let stroke_fun t preserve backend =
     print_string " ";
     print_float !inv_zoomy;
     flush stdout;*)
-  let debug = true in
+  let debug = false in
   let print s name matrix =
     if debug then
       let sf = string_of_float in
@@ -502,8 +502,8 @@ let flush_backend ?(autoscale=(Uniform Unlimited))
   let next = get_coord_transform ~autoscale t ~ofsx ~ofsy ~width ~height in
   Coord.apply ~next matrix;
   let sf x = " "^(string_of_float x) in
-  Printf.printf "Matrix%s%s%s%s%s%s%!" (sf matrix.B.xx) (sf matrix.B.xy)
-    (sf matrix.B.x0) (sf matrix.B.yx) (sf matrix.B.yy) (sf matrix.B.y0);
+  (*Printf.printf "Matrix%s%s%s%s%s%s%!" (sf matrix.B.xx) (sf matrix.B.xy)
+    (sf matrix.B.x0) (sf matrix.B.yx) (sf matrix.B.yy) (sf matrix.B.y0);*)
   B.set_matrix handle matrix;
   B.translate handle (-.t.xmin) (-.t.ymin);
   inv_zoomx := 1. /. next.B.xx;
@@ -511,11 +511,11 @@ let flush_backend ?(autoscale=(Uniform Unlimited))
   let rec make_orders s q =
     if not (Q.is_empty q) then
       (Q.pop q handle;
-       Printf.printf "%s%!" s;
+(*        Printf.printf "%s%!" s; *)
        make_orders s q)
   in
-  make_orders "-" (Q.copy t.bkdep_updates);
-  make_orders "*" (Q.copy t.orders);
+  make_orders "" (Q.copy t.bkdep_updates);
+  make_orders "" (Q.copy t.orders);
   B.restore handle
 
 let flush ?(autoscale=(Uniform Unlimited)) t ~ofsx ~ofsy ~width ~height handle =

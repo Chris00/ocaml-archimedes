@@ -41,7 +41,6 @@ struct
   let path_extents cr = (Obj.magic (path_extents cr) : Backend.rectangle)
 
   let set_matrix cr m =
-    Printf.printf "Cairo.set_matrix%!";
     set_matrix cr
     {Cairo.xx = m.Backend.xx; xy = m.Backend.xy;
      yx = m.Backend.yx; yy = m.Backend.yy;
@@ -146,5 +145,5 @@ let () =
 
 
 (* Local Variables: *)
-(* compile-command: "make -k archimedes_cairo.cmo" *)
+(* compile-command: "make -k archimedes_cairo.cmo archimedes_cairo.cmxs" *)
 (* End: *)
