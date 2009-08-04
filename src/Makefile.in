@@ -54,17 +54,6 @@ archimedes_cairo.cmxs: archimedes_cairo.ml
 	$(OCAMLFIND) ocamlopt -passopt -shared -o $@ $(OCAMLOPT_FLAGS) \
 	  -package cairo2 $<
 
-# # Plugins
-# archimedes_graphics.cmo: archimedes_graphics.ml archimedes.cma
-# 	$(OCAMLFIND) ocamlc -c -o $@ -package graphics $<
-# archimedes_graphics.cmxs: archimedes_graphics.ml archimedes.cmxa
-# 	$(OCAMLFIND) ocamlopt -c -o $@ -package graphics $<
-
-# archimedes_cairo.cmo: archimedes_cairo.ml archimedes.cma
-# 	$(OCAMLFIND) ocamlc -c -o $@ -package cairo2 $<
-# archimedes_cairo.cmxs: archimedes_cairo.ml archimedes.cmxa
-# 	$(OCAMLFIND) ocamlopt -c -o $@ -package cairo2 $<
-
 
 .PHONY: doc
 OCAMLDOC_FLAGS += $(if $(OCAMLINCLUDES), $(addprefix -I , $(OCAMLINCLUDES)))

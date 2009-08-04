@@ -1,2 +1,1 @@
-@OCAMLLIB@/bigarray.cma
 @CAIRO2_PATH@/cairo.cma

@@ -1,7 +1,7 @@
 open Archimedes
 module B = Backend
 module Q = Queue
-module Coord = B.Coordinate
+module Coord = B.Matrix
 
 module T = Transform_coord
 
@@ -179,7 +179,9 @@ let line t ?x ?y x1 y1 =
      Some x, Some y -> move_to t x y
    | _, _ -> ());
   update t x1 y1;
-  Q.add (fun t -> B.line_to t x1 y1) t.orders;
+  Q.add (fun t ->
+           print_string ("LT:"^(string_of_float x1)^" "^(string_of_float y1));
+           B.line_to t x1 y1) t.orders;
   t.current <- Some(x1,y1)
 
 let line_to t ~x ~y = line t x y
@@ -352,22 +354,36 @@ let stroke_fun t preserve backend =
     So we make the following operation:
     CTM := t.coord * (TM flush)^{-1} * (t.coord)^{-1} * CTM.
   *)
-  (*
-    let coord_kill_transform = Coord.invert t.styles.coord in
-    Coord.scale coord_kill_transform !inv_zoomx !inv_zoomy;
-    Coord.apply ~next_t:t.styles.coord coord_kill_transform;
-    Coord.apply ~next_t:coord_kill_transform (B.get_matrix backend);*)
-  print_string "stroke: ";
+(*
+  print_string "stroke with inv_zooms: ";
   print_float !inv_zoomx;
   print_string " ";
   print_float !inv_zoomy;
-  flush stdout;
-  (*B.scale backend !inv_zoomx !inv_zoomy;*)
+  flush stdout;*)
+(*  let sf = string_of_float in*)
   let coord_kill_transform = Coord.invert t.styles.coord in
+(*  Printf.printf " -> CKT: %s %s %s %s %s %s\n%!"
+    (sf coord_kill_transform.B.xx) (sf coord_kill_transform.B.xy)
+    (sf coord_kill_transform.B.x0) (sf coord_kill_transform.B.yx)
+    (sf coord_kill_transform.B.yy) (sf coord_kill_transform.B.y0);*)
   Coord.scale coord_kill_transform !inv_zoomx !inv_zoomy;
+(*  Printf.printf "scale -> CKT: %s %s %s %s %s %s\n%!"
+    (sf coord_kill_transform.B.xx) (sf coord_kill_transform.B.xy)
+    (sf coord_kill_transform.B.x0) (sf coord_kill_transform.B.yx)
+    (sf coord_kill_transform.B.yy) (sf coord_kill_transform.B.y0);*)
   Coord.apply ~next:t.styles.coord coord_kill_transform;
-  let matrix = B.get_matrix backend in
+ (* Printf.printf "apply coords -> CKT: %s %s %s %s %s %s\n%!"
+    (sf coord_kill_transform.B.xx) (sf coord_kill_transform.B.xy)
+    (sf coord_kill_transform.B.x0) (sf coord_kill_transform.B.yx)
+    (sf coord_kill_transform.B.yy) (sf coord_kill_transform.B.y0);*)
+ let matrix = B.get_matrix backend in
+(*  Printf.printf " -> Matrix: %s %s %s %s %s %s\n%!" (sf matrix.B.xx)
+    (sf matrix.B.xy) (sf matrix.B.x0) (sf matrix.B.yx)
+    (sf matrix.B.yy) (sf matrix.B.y0);*)
   Coord.apply ~next:coord_kill_transform matrix;
+(*  Printf.printf " -> Matrix: %s %s %s %s %s %s\n%!" (sf matrix.B.xx)
+    (sf matrix.B.xy) (sf matrix.B.x0) (sf matrix.B.yx)
+    (sf matrix.B.yy) (sf matrix.B.y0);*)
   B.set_matrix backend matrix;
   (if preserve then B.stroke_preserve else B.stroke) backend;
   B.restore backend
@@ -434,9 +450,8 @@ let adjust_scale sc limit =
 let get_coord_transform ?(autoscale=(Uniform Unlimited))
     t ~ofsx ~ofsy ~width ~height=
     let c = Coord.identity () in
-    Coord.translate c ofsx ofsy;
-    match autoscale with
-      Not_allowed -> c
+    (match autoscale with
+      Not_allowed -> ()
     | Uniform(limit) ->
         let (ex, scalx), (ey, scaly) =
           let scx = width /. (t.xmax -. t.xmin)
@@ -449,36 +464,43 @@ let get_coord_transform ?(autoscale=(Uniform Unlimited))
           - Then we create the scalings by multiplying by (-1) if necessary.
         *)
         let scal = min (min scalx scaly) 1.E15 in
-        Coord.scale c (ex *. scal) (ey *. scal);
-        c
+        Coord.scale c (ex *. scal) (ey *. scal)
     | Free(limitx,limity) ->
         let (ex, scalx), (ey, scaly) =
           let scx = width /. (t.xmax -. t.xmin)
           and scy = height /. (t.ymax -. t.ymin) in
           adjust_scale scx limitx, adjust_scale scy limity
         in
-        Coord.scale c (ex *. (min scalx 1.E15)) (ey *. (min scaly 1.E15)); c
+        Coord.scale c (ex *. (min scalx 1.E15)) (ey *. (min scaly 1.E15)));
+    Coord.translate c ofsx ofsy;
+    c
 
 (*FIXME: a flushed layer can be reusable; flush does not kill nor
   modify the previous orders.*)
 let flush_backend ?(autoscale=(Uniform Unlimited))
     t ~ofsx ~ofsy ~width ~height handle =
-  let q = Q.copy t.orders in
-  let rec make_orders () =
-    if not (Q.is_empty q) then
-      (Q.pop q handle;
-       make_orders ())
-  in
   B.save handle;
   let matrix = B.get_matrix handle in
   let next = get_coord_transform ~autoscale t ~ofsx ~ofsy ~width ~height in
   Coord.apply ~next matrix;
-  inv_zoomx := 1. /. next.B.xx;
-  inv_zoomy := 1. /. next.B.yy;
+  let sf x = " "^(string_of_float x) in
+  Printf.printf "Matrix%s%s%s%s%s%s%!" (sf matrix.B.xx) (sf matrix.B.xy)
+    (sf matrix.B.x0) (sf matrix.B.yx) (sf matrix.B.yy) (sf matrix.B.y0);
   B.set_matrix handle matrix;
   B.translate handle (-.t.xmin) (-.t.ymin);
-  make_orders ();
-  B.restore handle
+  inv_zoomx := 1. /. next.B.xx;
+  inv_zoomy := 1. /. next.B.yy;
+  let q = Q.copy t.orders in
+  let rec make_orders () =
+    if not (Q.is_empty q) then
+      let order = Q.pop q
+      in (order handle;
+          make_orders ())
+  in make_orders ();
+  B.restore handle;
+  Printf.printf "Box%!";
+  B.rectangle handle ofsx ofsy width height;
+  B.stroke handle
 
 let flush ?(autoscale=(Uniform Unlimited)) t ~ofsx ~ofsy ~width ~height handle =
   let matrix = T.get_matrix handle in

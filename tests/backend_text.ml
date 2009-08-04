@@ -14,7 +14,7 @@ let () =
     B.scale b 1. (-1.);
 
     B.select_font_face b B.Upright B.Normal "times";
-    B.show_text b ~x:50. ~y:20. ~rotate:half_pi B.CC "Joy"; 
+    B.show_text b ~x:50. ~y:20. ~rotate:half_pi B.CC "Joy";
 
     let pos = [(100., 60., B.LT); (140., 60., B.CT); (180., 60., B.RT);
                (100., 40., B.LC); (140., 40., B.CC); (180., 40., B.RC);
