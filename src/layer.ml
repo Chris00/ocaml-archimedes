@@ -45,7 +45,8 @@ type t =
       mutable downmargin: float;
       mutable leftmargin: float;
       mutable rightmargin: float;
-      orders: (B.t -> unit) Q.t}
+      orders: (B.t -> unit) Q.t;
+      bkdep_updates: (B.t -> unit) Q.t}
 
 type error =
     No_current_point
@@ -80,18 +81,19 @@ let make () =
       ymin = max_float; ymax = -. max_float;
       upmargin = 0.; downmargin = 0.;
       leftmargin = 0.; rightmargin = 0.;
-      orders = Q.create ()
+      orders = Q.create (); bkdep_updates = Q.create ()
     }
 
-let update t x y =
+let update t path x y =
   if x < t.xmin then t.xmin <- x;
   if x > t.xmax then t.xmax <- x;
   if y < t.ymin then t.ymin <- y;
   if y > t.ymax then t.ymax <- y;
-  if x < t.pxmin then t.pxmin <- x;
-  if x > t.pxmax then t.pxmax <- x;
-  if y < t.pymin then t.pymin <- y;
-  if y > t.pymax then t.pymax <- y
+  if path then(
+    if x < t.pxmin then t.pxmin <- x;
+    if x > t.pxmax then t.pxmax <- x;
+    if y < t.pymin then t.pymin <- y;
+    if y > t.pymax then t.pymax <- y)
 
 let reinit_path_ext t =
   t.pxmin <- max_float; t.pxmax <- -. max_float;
@@ -170,7 +172,7 @@ let get_line_join t = t.styles.lj
 let get_matrix t = t.styles.coord
 
 let move_to t ~x ~y =
-  update t x y;
+  update t true x y;
   t.current <- Some (x,y);
   Q.add (fun t -> B.move_to t x y) t.orders
 
@@ -178,7 +180,7 @@ let line t ?x ?y x1 y1 =
   (match x,y with
      Some x, Some y -> move_to t x y
    | _, _ -> ());
-  update t x1 y1;
+  update t true x1 y1;
   Q.add (fun t ->
            print_string ("LT:"^(string_of_float x1)^" "^(string_of_float y1));
            B.line_to t x1 y1) t.orders;
@@ -194,14 +196,14 @@ let get_point t =
 let rel_move_to t ~x ~y =
   let x',y' = get_point t in
   let x',y' = (x+.x'), (y+.y') in
-  update t x' y';
+  update t true x' y';
   t.current <- Some (x',y');
   Q.add (fun t -> B.rel_move_to t x y) t.orders
 
 let rel_line_to t ~x ~y =
   let x',y' = get_point t in
   let x',y' = (x+.x'), (y+.y') in
-  update t x' y';
+  update t true x' y';
   t.current <- Some(x',y');
   Q.add (fun t -> B.rel_line_to t x y) t.orders
 
@@ -216,11 +218,11 @@ let curve t ?x0 ?y0 ~x1 ~y1 ?x2 ?y2 x3 y3 =
   let x2, y2 =
     match x2,y2 with
      Some x, Some y ->
-       update t x y;
+       update t true x y;
        x, y
    | _, _ -> x1, y1
   in
-  update t x1 y1; update t x3 y3;
+  update t true x1 y1; update t true x3 y3;
   Q.add (fun t -> B.curve_to t ~x1 ~y1 ~x2 ~y2 ~x3 ~y3) t.orders;
   t.current <- Some(x3,y3)
 
@@ -229,12 +231,12 @@ let curve_to t ~x1 ~y1 ~x2 ~y2 ~x3 ~y3 = curve t ~x1 ~y1 ~x2 ~y2 x3 y3
 let rel_curve_to t ~x1 ~y1 ?x2 ?y2 ~x3 ~y3 =
   let x,y = get_point t in
   let x1, y1, x3, y3 = x +. x1, y +. y1, x +. x3, y +. y3 in
-  update t x1 y1;
-  update t x3 y3;
+  update t true x1 y1;
+  update t true x3 y3;
   let x2, y2 = match x2,y2 with
       Some x', Some y' ->
         let x'' = (x+.x') and y'' = (y+.y') in
-        update t x'' y'';
+        update t true x'' y'';
         x'', y''
    | _, _ -> x1, y1
   in
@@ -248,8 +250,8 @@ let ellipse_arc t ?(max_length=2.*. atan 1.) ?x ?y ~a ~b t1 t2 =
       Some x, Some y ->  x,y
     | _, _ -> get_point t
   in
-  update t (u+.a) (v+.b);
-  update t (u-.a) (v-.b);
+  update t true (u+.a) (v+.b);
+  update t true (u-.a) (v-.b);
   (*FIXME: to be more precise...*)
   let ct1 = cos t1
   and ct2 = cos t2
@@ -266,8 +268,8 @@ let ellipse t ?x ?y ~a ~b =
       Some x, Some y ->  x,y
     | _, _ -> get_point t
   in
-  update t (u+.a) (v+.b);
-  update t (u-.a) (v-.b);
+  update t true (u+.a) (v+.b);
+  update t true (u-.a) (v-.b);
   Q.add (fun t -> B.ellipse t ?x ?y ~a ~b) t.orders;
   t.current <- Some((u+.a),v)
 
@@ -278,8 +280,8 @@ let circle_arc t ?x ?y ~r t1 t2=
     | _, _ -> get_point t
    in
    (*FIXME: cf. ellipse_arc*)
-  update t (u+.r) (v+.r);
-  update t (u-.r) (v-.r);
+  update t true (u+.r) (v+.r);
+  update t true (u-.r) (v-.r);
   let ct1 = cos t1
   and ct2 = cos t2
   and st1 = sin t1
@@ -295,16 +297,16 @@ let circle t ?x ?y ~r =
       Some x, Some y ->  x,y
     | _, _ -> get_point t
   in
-  update t (u+.r) (v+.r);
-  update t (u-.r) (v-.r);
+  update t true (u+.r) (v+.r);
+  update t true (u-.r) (v-.r);
   t.current <- Some(u+.r,v);
   Q.add (fun t -> B.circle t ?x ?y ~r) t.orders
 *)
 
 let arc t ~x ~y ~r ~a1 ~a2=
   (*FIXME: cf. ellipse_arc*)
-  update t (x+.r) (y+.r);
-  update t (x-.r) (y-.r);
+  update t true (x+.r) (y+.r);
+  update t true (x-.r) (y-.r);
   let ct1 = cos a1
   and ct2 = cos a2
   and st1 = sin a1
@@ -316,8 +318,8 @@ let arc t ~x ~y ~r ~a1 ~a2=
 
 
 let rectangle t ~x ~y ~w ~h =
-  update t x y;
-  update t (x+.w) (y+.h);
+  update t true x y;
+  update t true (x+.w) (y+.h);
   Q.add (fun t -> B.rectangle t ~x ~y ~w ~h) t.orders
 
 
@@ -418,14 +420,36 @@ let stroke_layer_preserve t =
 
 
 let select_font_face t slant weight family =
+  let st = t.styles in
+  st.slant <- slant;
+  st.weight <- weight;
+  st.fname <- fname;
   Q.add (fun t -> B.select_font_face t slant weight family) t.orders
 
 let set_font_size t size =
+  st.size <- size;
   Q.add (fun t -> B.set_font_size t size) t.orders
 
 let show_text t ~rotate ~x ~y pos str =
-  Q.add (fun t -> B.show_text t ~rotate ~x ~y pos str) t.orders
-
+  let st = t.styles in
+  let text backend =
+    B.save backend;
+    B.select_font_face backend st.slant st.weight st.size;
+    B.set_font_size backend st.size;
+    let rect = B.text_extents backend str in
+    let x0, y0 = Coord.transform st.coord rect.B.x rect.B.y
+    and wx, wy = Coord.transform_dist st.coord rect.B.w 0.
+    and hx, hy = Coord.transform_dist st.coord 0. rect.B.h in
+    let pos x = max x 0. and neg x = min x 0. in
+    let x,y = x +. x0, y+. y0 in
+    let xmax,ymax = x +.(pos wx) +.(pos hx), y +.(pos wy) +.(pos hy)
+    and xmin,ymin = x +.(neg wx) +.(neg hx), y +.(neg wy) +.(neg hy) in
+    update t false xmin ymin;
+    update t false xmax ymax;
+    B.restore backend;
+  in
+  Q.add (fun t -> B.show_text t ~rotate ~x ~y pos str) t.orders;
+  Q.add text t.bkdep_updates
 
 let layer_extents t =
   {B.x = t.xmin; y = t.ymin; w = (t.xmax -. t.xmin); h = (t.ymax -. t.ymin)}
@@ -484,13 +508,14 @@ let flush_backend ?(autoscale=(Uniform Unlimited))
   B.translate handle (-.t.xmin) (-.t.ymin);
   inv_zoomx := 1. /. next.B.xx;
   inv_zoomy := 1. /. next.B.yy;
-  let q = Q.copy t.orders in
-  let rec make_orders () =
+  let q =  in
+  let rec make_orders q =
     if not (Q.is_empty q) then
-      let order = Q.pop q
-      in (order handle;
-          make_orders ())
-  in make_orders ();
+      (Q.pop q handle;
+       make_orders q)
+  in
+  make_orders (Q.copy t.bkdep_updates);
+  make_orders (Q.copy t.orders);
   B.restore handle
 
 let flush ?(autoscale=(Uniform Unlimited)) t ~ofsx ~ofsy ~width ~height handle =
@@ -520,7 +545,7 @@ let make_axes t ?color_axes ?color_labels datax datay mode =
     | Axes.Two_lines(x,y,tx,ty) ->
         (*Need to update -before- so that mins/maxs are correctly
           initialized for making the axes lines.*)
-        update t x y;
+        update t true x y;
         move_to t t.xmin y;
         line_to t t.xmax y;
         move_to t x t.ymin;
