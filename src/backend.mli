@@ -236,20 +236,26 @@ sig
 
   exception Not_invertible
 
-  val init_identity : unit -> t
+  val make_identity : unit -> t
     (** [init_identity()] returns the identity transformation. *)
 
-  val init_translate : x:float -> y:float -> t
+  val make_translate : x:float -> y:float -> t
     (** [init_translate tx ty] return a transformation that translates
         by [tx] and [ty] in the X and Y dimensions, respectively. *)
 
-  val init_scale : x:float -> y:float -> t
+  val make_scale : x:float -> y:float -> t
     (** [init_scale sx sy] return a transformation that scales by [sx]
         and [sy] in the X and Y dimensions, respectively. *)
 
-  val init_rotate : angle:float -> t
+  val make_rotate : angle:float -> t
     (** [init_rotate radians] returns a a transformation that rotates
         by [radians]. *)
+
+  val set_to_identity : t -> unit
+    (** Sets the current transformation to the identity transformation. *)
+
+  val copy: t -> t
+    (** [copy matrix] returns a copy of [matrix].*)
 
   val translate : t -> x:float -> y:float -> unit
     (** [translate m tx ty] applies a translation by [tx], [ty] to the
@@ -311,12 +317,6 @@ sig
 
   val inv_transform_distance : t -> dx:float -> dy:float -> float * float
     (** Makes the inverse transformation of a distance. *)
-
-  val copy: t -> t
-    (** [copy matrix] returns a copy of [matrix].*)
-
-  val set_to_id : t -> unit
-    (** Sets the current transformation to the identity transformation. *)
 
   val has_shear: t -> bool
     (** Tests whether the transformation has shears.  This is also the

@@ -440,19 +440,19 @@ struct
 
   exception Not_invertible
 
-  let init_identity () = { xx=1.; yx=0.; xy=0.; yy=1.; x0=0.; y0=0. }
+  let make_identity () = { xx=1.; yx=0.; xy=0.; yy=1.; x0=0.; y0=0. }
 
-  let init_translate ~x ~y =
+  let make_translate ~x ~y =
     { xx=1.; yx=0.; xy=0.; yy=1.;  x0=x;  y0=y }
 
-  let init_scale ~x ~y =
+  let make_scale ~x ~y =
     { xx=x; yx=0.; xy=0.; yy=y;  x0=0.;  y0=0. }
 
-  let init_rotate ~angle =
+  let make_rotate ~angle =
     { xx=cos(angle);    yx=sin(angle);
       xy= -. sin(angle); yy=cos(angle);  x0=0.;  y0=0. }
 
-  let set_to_id m =
+  let set_to_identity m =
     m.xx <- 1.; m.xy <- 0.; m.x0 <- 0.;
     m.yx <- 0.; m.yy <- 1.; m.y0 <- 0.
 
