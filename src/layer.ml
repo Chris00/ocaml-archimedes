@@ -29,6 +29,8 @@ type styles =
       mutable fslant:B.slant;
       mutable fweight:B.weight;}
 
+type bkdep =
+    TEXT of float * float * float * B.text_position * string
 
 type t =
     {
@@ -45,7 +47,7 @@ type t =
       mutable leftmargin: float;
       mutable rightmargin: float;
       orders: (B.t -> unit) Q.t;
-      bkdep_updates: (B.t -> unit) Q.t}
+      bkdep_updates: bkdep Q.t}
 
 type error =
     No_current_point
@@ -431,25 +433,43 @@ let set_font_size t size =
   Q.add (fun t -> B.set_font_size t size) t.orders
 
 let show_text t ~rotate ~x ~y pos str =
-  let st = t.styles in
-  let text backend =
+  (*let st = t.styles in
+  let text width height backend =
     B.save backend;
     B.select_font_face backend st.fslant st.fweight st.font;
     B.set_font_size backend st.fsize;
     let rect = B.text_extents backend str in
-    let x0, y0 = Coord.transform st.coord rect.B.x rect.B.y
-    and wx, wy = Coord.transform_dist st.coord rect.B.w 0.
-    and hx, hy = Coord.transform_dist st.coord 0. rect.B.h in
-    let pos x = max x 0. and neg x = min x 0. in
-    let x,y = x +. x0, y+. y0 in
-    let xmax,ymax = x +.(pos wx) +.(pos hx), y +.(pos wy) +.(pos hy)
-    and xmin,ymin = x +.(neg wx) +.(neg hx), y +.(neg wy) +.(neg hy) in
+    Printf.printf "Text extents of %s: %f, %f; w:%f; h:%f\n" str
+      rect.B.x rect.B.y rect.B.w rect.B.h;
+    (*Get ratios of width/height *)
+    let x0 = rect.B.x /. width
+    and y0 =  rect.B.y /. height in
+    let w = rect.B.w /. width
+    and h = rect.B.h /. height in
+    move_to t x y; (*to initialize, if necessary*)
+    (*Get distance and points in layer coordinates*)
+    let x' = (t.xmax -. t.xmin) *. x0
+    and y' = (t.ymax -. t.ymin) *. y0
+    and w' = (t.xmax -. t.xmin) *. w
+    and h' = (t.ymax -. t.ymin) *. h in
+    Printf.printf "In layer coords: %f, %f; w:%f; h:%f\n" x' y' w' h';
+    let xmax = match pos with
+      | Backend.CC | Backend.CT | Backend.CB -> x +. x' -. w' *. 0.5
+      | Backend.RC | Backend.RT | Backend.RB -> x +. x'
+      | Backend.LC | Backend.LT | Backend.LB -> x +. x' -. w'
+    and ymax = match pos with
+      | Backend.CC | Backend.RC | Backend.LC -> y +. y' -. h' *. 0.5
+      | Backend.CT | Backend.RT | Backend.LT -> y +. y'-. h
+      | Backend.CB | Backend.RB | Backend.LB -> y +. y'
+    in
+    let xmin = xmax -. w' and ymin = ymax -. h' in
+    Printf.printf "Bounds applied: %f, %f; %f, %f\n\n" xmin ymin xmax ymax;
     update t false xmin ymin;
     update t false xmax ymax;
     B.restore backend;
-  in
+  in*)
   Q.add (fun t -> B.show_text t ~rotate ~x ~y pos str) t.orders;
-  Q.add text t.bkdep_updates
+  Q.add (TEXT(rotate,x,y,pos,str)) t.bkdep_updates
 
 let layer_extents t =
   {B.x = t.xmin; y = t.ymin; w = (t.xmax -. t.xmin); h = (t.ymax -. t.ymin)}
@@ -465,15 +485,15 @@ let adjust_scale sc limit =
   | Limited(l_in, l_out) -> max l_in (min l_out scale))
 
 
-let get_coord_transform ?(autoscale=(Uniform Unlimited))
-    t ~ofsx ~ofsy ~width ~height=
+let get_ct ?(autoscale=(Uniform Unlimited))
+    t xmin xmax ymin ymax ~ofsx ~ofsy ~width ~height =
     let c = Coord.identity () in
     (match autoscale with
       Not_allowed -> ()
     | Uniform(limit) ->
         let (ex, scalx), (ey, scaly) =
-          let scx = width /. (t.xmax -. t.xmin)
-          and scy = height /. (t.ymax -. t.ymin) in
+          let scx = width /. (xmax -. xmin)
+          and scy = height /. (ymax -. ymin) in
           adjust_scale scx limit, adjust_scale scy limit
         in
         (*We got two scales satisfying the limits. To get the scales
@@ -485,37 +505,109 @@ let get_coord_transform ?(autoscale=(Uniform Unlimited))
         Coord.scale c (ex *. scal) (ey *. scal)
     | Free(limitx,limity) ->
         let (ex, scalx), (ey, scaly) =
-          let scx = width /. (t.xmax -. t.xmin)
-          and scy = height /. (t.ymax -. t.ymin) in
+          let scx = width /. (xmax -. xmin)
+          and scy = height /. (ymax -. ymin) in
           adjust_scale scx limitx, adjust_scale scy limity
         in
         Coord.scale c (ex *. (min scalx 1.E15)) (ey *. (min scaly 1.E15)));
     Coord.translate c ofsx ofsy;
     c
 
+let get_coord_transform ?(autoscale=(Uniform Unlimited)) t =
+  get_ct ~autoscale t t.xmin t.xmax t.ymin t.ymax
+
+let update_text t handle r x y pos str width height =
+  let st = t.styles in
+  B.save handle;
+  B.select_font_face handle st.fslant st.fweight st.font;
+  B.set_font_size handle st.fsize;
+  let rect = B.text_extents handle str in
+  Printf.printf "Text extents of %s: %f, %f; w:%f; h:%f\n" str
+    rect.B.x rect.B.y rect.B.w rect.B.h;
+  (*Get ratios of width/height *)
+  let x0 = rect.B.x /. width
+  and y0 =  rect.B.y /. height in
+  let w = rect.B.w /. width
+  and h = rect.B.h /. height in
+  move_to t x y; (*to initialize, if necessary*)
+  (*Get distance and points in layer coordinates*)
+  let x' = (t.xmax -. t.xmin) *. x0
+  and y' = (t.ymax -. t.ymin) *. y0
+  and w' = (t.xmax -. t.xmin) *. w
+  and h' = (t.ymax -. t.ymin) *. h in
+  Printf.printf "In layer coords: %f, %f; w:%f; h:%f\n" x' y' w' h';
+  let xmax = match pos with
+    | Backend.CC | Backend.CT | Backend.CB -> x +. x' +. w' *. 0.5
+    | Backend.RC | Backend.RT | Backend.RB -> x +. x' +. w'
+    | Backend.LC | Backend.LT | Backend.LB -> x +. x'
+  and ymax = match pos with
+    | Backend.CC | Backend.RC | Backend.LC -> y +. y' +. h' *. 0.5
+    | Backend.CT | Backend.RT | Backend.LT -> y +. y'+. h
+    | Backend.CB | Backend.RB | Backend.LB -> y +. y'
+  in
+  let xmin = xmax -. w' and ymin = ymax -. h' in
+  Printf.printf "Bounds applied: %f, %f; %f, %f\n\n" xmin ymin xmax ymax;
+  B.set_color handle (Color.make 1. 0. 0.);
+  rectangle t xmin ymin (xmax -. xmin) (ymax -. ymin);
+  stroke_fun t false handle;
+  B.restore handle;
+  xmin, xmax, ymin, ymax
+
+
+let make_updates handle t width height =
+  let q = Q.copy t.bkdep_updates in
+  let bounds (a,b,c,d) (w,x,y,z) =
+    min a w, max b x, min c y, max d z in
+  let rec update z =
+    if not (Q.is_empty q) then
+      match Q.pop q with
+        TEXT(r,x,y,pos,txt) ->
+          let p = update_text t handle r x y pos txt width height in
+          let w,x,y,z' = bounds z p in
+          Printf.printf "Update min/max: %f %f to %f %f" w y x z';
+          update (bounds z p)
+    else z
+  in update (t.xmin,t.xmax,t.ymin,t.ymax)
+
 (*FIXME: a flushed layer can be reusable; flush does not kill nor
   modify the previous orders.*)
 let flush_backend ?(autoscale=(Uniform Unlimited))
     t ~ofsx ~ofsy ~width ~height handle =
   B.save handle;
+  let xmin,xmax,ymin,ymax = make_updates handle t width height in
+  Printf.printf "Min/max: %f %f to %f %f" t.xmin t.ymin t.xmax t.ymax;
+  Printf.printf "Min/max: %f %f to %f %f" xmin ymin xmax ymax;
+
+  assert (t.xmin >= xmin);
+  assert (t.xmax <= xmax);
+  assert (t.ymin >= ymin);
+  assert (t.ymax <= ymax);
   let matrix = B.get_matrix handle in
-  let next = get_coord_transform ~autoscale t ~ofsx ~ofsy ~width ~height in
+  let next =
+    get_ct ~autoscale t xmin xmax ymin ymax ~ofsx ~ofsy ~width ~height in
   Coord.apply ~next matrix;
   let sf x = " "^(string_of_float x) in
   (*Printf.printf "Matrix%s%s%s%s%s%s%!" (sf matrix.B.xx) (sf matrix.B.xy)
     (sf matrix.B.x0) (sf matrix.B.yx) (sf matrix.B.yy) (sf matrix.B.y0);*)
   B.set_matrix handle matrix;
-  B.translate handle (-.t.xmin) (-.t.ymin);
+  B.translate handle (-.xmin) (-.ymin);
   inv_zoomx := 1. /. next.B.xx;
   inv_zoomy := 1. /. next.B.yy;
   let rec make_orders s q =
     if not (Q.is_empty q) then
       (Q.pop q handle;
-(*        Printf.printf "%s%!" s; *)
+       (*Printf.printf "%s%!" s; *)
        make_orders s q)
   in
-  make_orders "" (Q.copy t.bkdep_updates);
   make_orders "" (Q.copy t.orders);
+
+  B.set_color handle (Color.make ~a:0.5 0. 1. 1.);
+  B.rectangle handle t.xmin t.ymin (t.xmax -. t.xmin) (t.ymax -. t.ymin);
+  stroke_fun t false handle;
+
+  B.set_color handle (Color.make ~a:0.5 1. 0. 0.);
+  B.rectangle handle xmin ymin (xmax -. xmin) (ymax -. ymin);
+  stroke_fun t false handle;
   B.restore handle
 
 let flush ?(autoscale=(Uniform Unlimited)) t ~ofsx ~ofsy ~width ~height handle =
@@ -529,84 +621,6 @@ let flush ?(autoscale=(Uniform Unlimited)) t ~ofsx ~ofsy ~width ~height handle =
     initial handle applied to it.*)
   flush_backend ~autoscale t ~ofsx ~ofsy ~width ~height handle;
   B.restore handle
-
-
-(*
-let make_axes t ?color_axes ?color_labels datax datay mode =
-  (match color_axes with
-     Some c -> save t; set_color t c
-   | None -> ());
-  (*Axes*)
-  let ofsx, ofsy, ticx, ticy =
-    match mode with
-      Axes.Rectangle(tx,ty) ->
-        rectangle t ~x:t.xmin ~y:t.ymin (t.xmax -. t.xmin) (t.ymax -. t.ymin);
-        t.xmin, t.ymin, tx, ty
-    | Axes.Two_lines(x,y,tx,ty) ->
-        (*Need to update -before- so that mins/maxs are correctly
-          initialized for making the axes lines.*)
-        update t true x y;
-        move_to t t.xmin y;
-        line_to t t.xmax y;
-        move_to t x t.ymin;
-        line_to t x t.ymax;
-        x,y, tx, ty
-  in
-  (*Tics or like*)
-  (*We don't want the mins/maxs be modified during placing text,
-    stroking and so on -> storing the current values. Done now because of
-    previous axes.*)
-  let xmin = t.xmin and ymin = t.ymin in
-  let xmax = t.xmax and ymax = t.ymax in
-
-  let make_data data ticmode x_axis =
-    match data with
-      Axes.Graph(major,minor) ->
-        let step =
-          let diff = if x_axis then xmax -. xmin else ymax -. ymin in
-          diff /. (float major) in
-        let ministep = step /. (float minor) in
-        for i = 0 to major do (*major tics in X axis*)
-          let ofs = (float i) *. step in
-          let x, y =
-            if x_axis then xmin +. ofs, ofsy
-            else ofsx, ymin +. ofs
-          in
-          (*Tic to put, centered in (x, y), with label 'x' or 'y' as
-            given by x_axis.*)
-          Axes.tic true x y x_axis ticmode;
-          if i < major then
-            for j = 1 to minor - 1 do
-              let x,y =
-                if x_axis then x +. (float j) *. ministep, y
-                else x, y +. (float j) *. ministep
-              in
-              Axes.tic false x y x_axis ticmode
-            done
-        done
-    | Axes.Tics(minor,num_minors) ->
-        let rec make_tic x y x_axis ticmode n =
-          if not ((x_axis && x > xmax) || (not x_axis && y > ymax)) then
-            let xnew, ynew =
-              if x_axis then
-                x+.minor, y
-              else x, y+.minor
-            in
-            (Axes.tic (n=num_minors) x y x_axis ticmode;
-             make_tic xnew ynew ((n mod num_minors)+1))
-
-        in make_tic xmin ymin true ticx 0;
-        make_tic xmin ymin false ticy 0
-  in
-  (*Make data for X axis*)
-  make_data datax ticx true;
-  (*Make data for Y axis*)
-  make_data datay ticy false;
-  stroke t;
-  (match color_axes with
-     Some c -> restore t
-   | None -> ())
-*)
 
 (*Local Variables:*)
 (*compile-command: "ocamlc -c -for-pack Archimedes layer.ml && ocamlopt -c -for-pack Archimedes layer.ml"*)
