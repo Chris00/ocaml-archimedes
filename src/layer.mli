@@ -1,3 +1,13 @@
+(**A [Layer.t] retains all orders that would be made and computes the
+   extents of the drawing. Then, when flushing it, it applies all the
+   orders with a correct scaling (so that, for example, all the
+   drawing is visible on the device). See [flush] and [flush_backend]
+   for more information.
+
+   Note that text extents, which are backend-dependent, are treated
+   differently of the other (path) extents. *)
+
+
 type limitation =
     Unlimited
       (**All zooms are allowed*)
@@ -26,48 +36,22 @@ type scaling =
 type styles =
     (float * float array) * Backend.line_join * Backend.line_cap * float *
       Coordinate.t * string * int * Backend.slant * Backend.weight*)
-type t (*= {
-  ofsx : float;
-  ofsy : float;
-  width : float;
-  height : float;
-  mutable current : (float * float) option;
-  coord : Coordinate.t;
-  mutable dash : float * float array;
-  mutable lj : Backend.line_join;
-  mutable lc : Backend.line_cap;
-  mutable color : Color.t;
-  mutable lw : float;
-  stack : styles Stack.t;
-  mutable font : string;
-  mutable fsize : int;
-  mutable fslant : Backend.slant;
-  mutable fweight : Backend.weight;
-  mutable pxmin : float;
-  mutable pxmax : float;
-  mutable pymin : float;
-  mutable pymax : float;
-  mutable xmin : float;
-  mutable xmax : float;
-  mutable ymin : float;
-  mutable ymax : float;
-  mutable upmargin : float;
-  mutable downmargin : float;
-  mutable leftmargin : float;
-  mutable rightmargin : float;
-  autoscale : scaling;
-  orders : (Backend.t -> unit) Q.t;
-}*)
+type t
 (**The type for the layer*)
 
 type error =
-    No_current_point
-  | Restore_without_saving
+    No_current_point(**Cannot determine a current point*)
+  | Restore_without_saving(**No saved states*)
+  | No_current_path(**Cleared the previous path and/or not starting a new one.*)
+  | Unset_style of string(**The style which will be used is what the backend
+                            provides when flushing*)
 (**Possible errors when working with a layer.*)
 
 
 exception Error of error
   (**Raised when there is a nonvalid task to perform -- see above.*)
+
+val string_of_error: error -> string
 
 val make : unit -> t
   (**Creates a new layer*)
@@ -251,7 +235,10 @@ val show_text : t -> rotate:float -> x:float -> y:float ->
       supported on all devices.  This is an immediate operation: no
       [stroke] nor [fill] are required (nor will have any effect).  *)
 
-val layer_extents: t -> Backend.rectangle
+val layer_extents: ?autoscale:scaling -> ?handle:Backend.t ->
+  t -> Backend.rectangle
+  (**Returns the extents of the layer. If no [handle] is given, then
+     the extents does not take any text into account.*)
 
 val get_coord_transform : ?autoscale:scaling -> t -> ofsx:float -> ofsy:float ->
   width:float -> height:float -> Backend.matrix

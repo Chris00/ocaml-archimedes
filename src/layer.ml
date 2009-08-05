@@ -27,7 +27,30 @@ type styles =
       mutable font:string;
       mutable fsize:float;
       mutable fslant:B.slant;
-      mutable fweight:B.weight;}
+      mutable fweight:B.weight;
+      mutable settings:int;
+      (*This last variable retains which of the above styles have been
+        set.  Note that coord is not taken into account (set to
+        identity). For the other styles, [settings] flags in the
+        following way:
+
+        [dash] set/unset <=> [settings] odd/even;
+        [lj] set <=>  [settings] not divisible by 4;
+        [lc] <-> div. by 8
+        [color] <-> 16
+        [lw] <-> 32
+        [font], [fslant], [fweight] <-> 64
+        [fsize] <-> 128
+
+        See also the variables below.*)
+    }
+let setting_dash = 1
+let setting_line_join = 2
+let setting_line_cap = 4
+let setting_color = 8
+let setting_line_width = 16
+let setting_font_face = 32
+let setting_font_size = 64
 
 type bkdep =
     TEXT of float * float * float * B.text_position * string
@@ -63,8 +86,21 @@ type t =
 type error =
     No_current_point
   | Restore_without_saving
+  | No_current_path
+  | Unset_style of string
 
 exception Error of error
+
+let string_of_error e = match e with
+    No_current_point -> "No current point"
+  | Restore_without_saving ->
+      "This layer is going to be restored but there's no saved states."
+  | No_current_path -> "No current path"
+  | Unset_style(s) ->
+      Printf.sprintf
+        "The style %s has not been set in the layer (using backend settings)"
+        s
+
 
 (*These variables are used when flushing, to remember the
   scalings. This permits to make a reverse transformation, to pass the
@@ -84,6 +120,7 @@ let make () =
       color = Color.make 0. 0. 0.; lw = 1.;
       font="Sans serif"; fsize=10.;
       fslant = B.Upright; fweight = B.Normal;
+      settings = 0
     }
   and data =
     {
@@ -157,38 +194,82 @@ let set_pattern t s =
   t.pat <- s
 *)
 
+(*
+Reminder of the flags for settings:
+        [dash] set/unset <=> [settings] odd/even;
+        [lj] set <=>  [settings] not divisible by 4;
+        [lc] <-> div. by 8
+        [color] <-> 16
+        [lw] <-> 32
+        [font], [fslant], [fweight] <-> 64
+        [fsize] <-> 128
+  We make use of the [setting_*] variables to avoid errors.*)
+
 let set_color t c =
   Q.add (fun t -> B.set_color t c) t.data.orders;
-  t.styles.color <- c
+  t.styles.color <- c;
+  let set = t.styles.settings
+  and n = setting_color in
+  if set mod (2 * n) = 0 then t.styles.settings <- set + n
 
 let set_line_width t w =
   Q.add
     (fun t -> B.set_line_width t w)
     t.data.orders;
-  t.styles.lw <- w
+  t.styles.lw <- w;
+  let set = t.styles.settings
+  and n = setting_line_width in
+  if set mod (2 * n) = 0 then t.styles.settings <- set + n
+
 
 let set_line_cap t lc =
   Q.add (fun t -> B.set_line_cap t lc) t.data.orders;
-  t.styles.lc <- lc
+  t.styles.lc <- lc;
+  let set = t.styles.settings
+  and n = setting_line_cap in
+  if set mod (2 * n) = 0 then t.styles.settings <- set + n
+
 
 let set_dash t ofs array =
   Q.add (fun t -> B.set_dash t ofs array) t.data.orders;
-  t.styles.dash <- array, ofs
+  t.styles.dash <- array, ofs;
+  let set = t.styles.settings
+  and n = setting_dash in
+  if set mod (2 * n) = 0 then t.styles.settings <- set + n
+
 
 let set_line_join t s =
   Q.add (fun t -> B.set_line_join t s) t.data.orders;
-  t.styles.lj <- s
+  t.styles.lj <- s;
+  let set = t.styles.settings
+  and n = setting_line_join in
+  if set mod (2 * n) = 0 then t.styles.settings <- set + n
+
 
 let set_matrix t matrix =
   Q.add (fun t -> B.set_matrix t matrix) t.data.orders;
   t.styles.coord <- matrix
+(*NOTE: the font settings are below, with text managing.*)
+
 
 (*let get_pointstyle t = t.ps
 let get_pattern t = t.pat*)
-let get_line_width t = t.styles.lw
-let get_line_cap t = t.styles.lc
-let get_dash t = t.styles.dash
-let get_line_join t = t.styles.lj
+let get_line_width t =
+  if (t.styles.settings mod (2 * setting_line_width)) = 0 then
+    raise (Error (Unset_style "line_width"));
+  t.styles.lw
+let get_line_cap t =
+  if (t.styles.settings mod (2 * setting_line_cap)) = 0 then
+    raise (Error (Unset_style "line_cap"));
+   t.styles.lc
+let get_dash t =
+  if (t.styles.settings mod (2 * setting_dash)) = 0 then
+    raise (Error (Unset_style "line_dash"));
+   t.styles.dash
+let get_line_join t =
+  if (t.styles.settings mod (2 * setting_line_join)) = 0 then
+    raise (Error (Unset_style "line_join"));
+   t.styles.lj
 let get_matrix t = t.styles.coord
 
 let move_to t ~x ~y =
@@ -362,7 +443,7 @@ let clear_path t =
 
 let path_extents t =
   let t = t.data in
-  if t.pxmin > t.pxmax then failwith "path_extents: no current path"
+  if t.pxmin > t.pxmax then raise (Error No_current_path)
   else
     {B.x = t.pxmin; y = t.pymin; w = t.pxmax -. t.pxmin; h = t.pymax -. t.pymin}
 
@@ -456,10 +537,6 @@ let show_text t ~rotate ~x ~y pos str =
   update t false x y;
   Q.add (fun t -> B.show_text t ~rotate ~x ~y pos str) t.data.orders;
   Q.add (TEXT(rotate,x,y,pos,str)) t.data.bkdep_updates
-
-let layer_extents t =
-  let t = t.data in
-  {B.x = t.xmin; y = t.ymin; w = (t.xmax -. t.xmin); h = (t.ymax -. t.ymin)}
 
 let sign x = if x >= 0. then 1. else -1.
 
@@ -571,6 +648,18 @@ let make_updates handle t width height autoscale =
           update (bounds z p)
     else z
   in update (data.xmin,data.xmax,data.ymin,data.ymax)
+
+
+let layer_extents ?(autoscale= Uniform Unlimited) ?handle t =
+  let data = t.data in
+  match handle with
+    None ->
+      {B.x = data.xmin; y = data.ymin;
+       w = data.xmax -. data.xmin; h = data.ymax -. data.ymin}
+  | Some handle ->
+      let x,x',y,y' = make_updates handle t
+        (B.width handle) (B.height handle) autoscale in
+      {B.x = x; y = y; w = x' -. x; h = y' -. y}
 
 (*FIXME: a flushed layer can be reusable; flush does not kill nor
   modify the previous orders.*)
