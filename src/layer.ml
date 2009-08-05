@@ -55,6 +55,11 @@ let setting_font_size = 64
 type bkdep =
     TEXT of float * float * float * B.text_position * string
 
+type data =
+    BKDEP of bkdep
+  | ORDER of (B.t -> unit)
+  | SAVING_POINT
+
 type layer_data =
     {
       mutable current: (float * float) option;
@@ -66,8 +71,7 @@ type layer_data =
       mutable downmargin: float;
       mutable leftmargin: float;
       mutable rightmargin: float;
-      orders: (B.t -> unit) Q.t;
-      bkdep_updates: bkdep Q.t}
+    }
 type t =
     {
       mutable styles:styles;
@@ -80,26 +84,31 @@ type t =
       saved_data: layer_data Stack.t;
       (*Saved data. This will allow to save, perform some orders
         before flushing somewhere, then retrieve the initial state.*)
+      orders: data Q.t;
+      bkdep_updates: data Q.t;
     }
-
 
 type error =
     No_current_point
-  | Restore_without_saving
+  | Restore_without_saving of string
   | No_current_path
   | Unset_style of string
+  | Non_invertible_initial_matrix
 
 exception Error of error
 
 let string_of_error e = match e with
     No_current_point -> "No current point"
-  | Restore_without_saving ->
-      "This layer is going to be restored but there's no saved states."
+  | Restore_without_saving(s) ->
+      "You tried to restore the "^s
+      ^" for a layer which does not have saved states concerning "^s^"."
   | No_current_path -> "No current path"
   | Unset_style(s) ->
-      Printf.sprintf
-        "The style %s has not been set in the layer (using backend settings)"
-        s
+      "The style "^s
+      ^" has not been set in the layer (flushing uses backend settings)"
+  | Non_invertible_initial_matrix ->
+      "You invoked a function that needs to invert backend's "
+      ^"initial transformation matrix but it is non-invertible"
 
 
 (*These variables are used when flushing, to remember the
@@ -111,6 +120,7 @@ let string_of_error e = match e with
 
 let inv_zoomx = ref 1. (*Inverse of scaling factor on X axis*)
 let inv_zoomy = ref 1. (*Inverse of scaling factor on Y axis*)
+let initial_bk_matrix = ref (Coord.identity ())
 
 let make () =
   let styles =
@@ -131,12 +141,12 @@ let make () =
       ymin = max_float; ymax = -. max_float;
       upmargin = 0.; downmargin = 0.;
       leftmargin = 0.; rightmargin = 0.;
-      orders = Q.create (); bkdep_updates = Q.create ()
     }
   in
   {
     styles = styles;  history = Stack.create ();
     data = data;  saved_data = Stack.create ();
+    orders = Q.create (); bkdep_updates = Q.create ()
   }
 
 let update t path x y =
@@ -157,40 +167,61 @@ let reinit_path_ext t =
   data.pymin <- max_float; data.pymax <- -. max_float;
   data.current <- None
 
+let add_order f t =
+  Q.add (ORDER f) t.orders
+
+let add_update f t =
+  Q.add (BKDEP f) t.bkdep_updates
+
+let save_stacks t =
+  Q.add SAVING_POINT t.orders;
+  Q.add SAVING_POINT t.bkdep_updates
+
+let restore_stacks t =
+  let rec pop_until_saving_point q =
+    match Q.pop q with
+      ORDER(_)
+    | BKDEP(_) -> pop_until_saving_point q
+    | SAVING_POINT  -> ()
+  in
+  pop_until_saving_point t.orders;
+  pop_until_saving_point t.bkdep_updates
+
 let translate t ~x ~y =
-  Q.add (fun t -> B.translate t x y) t.data.orders;
+  add_order (fun t -> B.translate t x y) t;
   Coord.translate t.styles.coord x y
 
 let scale t ~x ~y =
-  Q.add (fun t -> B.scale t x y) t.data.orders;
+  add_order(fun t -> B.scale t x y) t;
   Coord.scale t.styles.coord x y
 
 let rotate t ~angle =
-  Q.add (fun t -> B.rotate t angle) t.data.orders;
+  add_order(fun t -> B.rotate t angle) t;
   Coord.rotate t.styles.coord angle
-
-
+(*
 let transform t =  Coord.transform t.styles.coord
 let transform_dist t = Coord.transform_dist t.styles.coord
 let invert t = Coord.invert t.styles.coord
 let inv_transform t =  Coord.inv_transform t.styles.coord
 let inv_transform_dist t = Coord.inv_transform_dist t.styles.coord
+
 let apply ~next t =
-  (*Q.add (fun t -> B.apply ~next t) t.data.orders;*)
+  (*add_order(fun t -> B.apply ~next t) t;*)
   Coord.apply ~next t.styles.coord
+*)
 
 let get_coord t = t.styles.coord
 let reset_to_id t =
-  (*Q.add (fun t -> B.reset_to_id t) t.data.orders;*)
+  add_order(fun t -> B.set_matrix t !initial_bk_matrix) t;
   Coord.reset_to_id t.styles.coord
 
 (*
 let set_pointstyle t s =
-  Q.add (fun t -> B.set_pointstyle t s) t.data.orders;
+  add_order(fun t -> B.set_pointstyle t s) t;
   t.ps <- s
 
 let set_pattern t s =
-  Q.add (fun t -> B.set_pattern t s) t.data.orders;
+  add_order(fun t -> B.set_pattern t s) t;
   t.pat <- s
 *)
 
@@ -206,16 +237,14 @@ Reminder of the flags for settings:
   We make use of the [setting_*] variables to avoid errors.*)
 
 let set_color t c =
-  Q.add (fun t -> B.set_color t c) t.data.orders;
+  add_order (fun t -> B.set_color t c) t;
   t.styles.color <- c;
   let set = t.styles.settings
   and n = setting_color in
   if set mod (2 * n) = 0 then t.styles.settings <- set + n
 
 let set_line_width t w =
-  Q.add
-    (fun t -> B.set_line_width t w)
-    t.data.orders;
+  add_order (fun t -> B.set_line_width t w) t;
   t.styles.lw <- w;
   let set = t.styles.settings
   and n = setting_line_width in
@@ -223,7 +252,7 @@ let set_line_width t w =
 
 
 let set_line_cap t lc =
-  Q.add (fun t -> B.set_line_cap t lc) t.data.orders;
+  add_order (fun t -> B.set_line_cap t lc) t;
   t.styles.lc <- lc;
   let set = t.styles.settings
   and n = setting_line_cap in
@@ -231,7 +260,7 @@ let set_line_cap t lc =
 
 
 let set_dash t ofs array =
-  Q.add (fun t -> B.set_dash t ofs array) t.data.orders;
+  add_order(fun t -> B.set_dash t ofs array) t;
   t.styles.dash <- array, ofs;
   let set = t.styles.settings
   and n = setting_dash in
@@ -239,7 +268,7 @@ let set_dash t ofs array =
 
 
 let set_line_join t s =
-  Q.add (fun t -> B.set_line_join t s) t.data.orders;
+  add_order (fun t -> B.set_line_join t s) t;
   t.styles.lj <- s;
   let set = t.styles.settings
   and n = setting_line_join in
@@ -247,8 +276,21 @@ let set_line_join t s =
 
 
 let set_matrix t matrix =
-  Q.add (fun t -> B.set_matrix t matrix) t.data.orders;
+  add_order (fun t ->
+               let m = Coord.copy matrix in
+               Coord.apply ~result:m ~next:m !initial_bk_matrix;
+               B.set_matrix t m) t;
   t.styles.coord <- matrix
+
+let set_backend_matrix t matrix =
+  add_order (fun t -> B.set_matrix t matrix) t;
+  try
+    let m = Coord.invert !initial_bk_matrix in
+    Coord.apply ~next:matrix m;
+    t.styles.coord <- m
+  with Failure "invert" ->
+    raise (Error Non_invertible_initial_matrix)
+
 (*NOTE: the font settings are below, with text managing.*)
 
 
@@ -275,14 +317,14 @@ let get_matrix t = t.styles.coord
 let move_to t ~x ~y =
   update t true x y;
   t.data.current <- Some (x,y);
-  Q.add (fun t -> B.move_to t x y) t.data.orders
+  add_order (fun t -> B.move_to t x y) t
 
 let line t ?x ?y x1 y1 =
   (match x,y with
      Some x, Some y -> move_to t x y
    | _, _ -> ());
   update t true x1 y1;
-  Q.add (fun t -> B.line_to t x1 y1) t.data.orders;
+  add_order (fun t -> B.line_to t x1 y1) t;
   t.data.current <- Some(x1,y1)
 
 let line_to t ~x ~y = line t x y
@@ -297,14 +339,14 @@ let rel_move_to t ~x ~y =
   let x',y' = (x+.x'), (y+.y') in
   update t true x' y';
   t.data.current <- Some (x',y');
-  Q.add (fun t -> B.rel_move_to t x y) t.data.orders
+  add_order (fun t -> B.rel_move_to t x y) t
 
 let rel_line_to t ~x ~y =
   let x',y' = get_point t in
   let x',y' = (x+.x'), (y+.y') in
   update t true x' y';
   t.data.current <- Some(x',y');
-  Q.add (fun t -> B.rel_line_to t x y) t.data.orders
+  add_order (fun t -> B.rel_line_to t x y) t
 
 
 
@@ -322,7 +364,7 @@ let curve t ?x0 ?y0 ~x1 ~y1 ?x2 ?y2 x3 y3 =
    | _, _ -> x1, y1
   in
   update t true x1 y1; update t true x3 y3;
-  Q.add (fun t -> B.curve_to t ~x1 ~y1 ~x2 ~y2 ~x3 ~y3) t.data.orders;
+  add_order (fun t -> B.curve_to t ~x1 ~y1 ~x2 ~y2 ~x3 ~y3) t;
   t.data.current <- Some(x3,y3)
 
 let curve_to t ~x1 ~y1 ~x2 ~y2 ~x3 ~y3 = curve t ~x1 ~y1 ~x2 ~y2 x3 y3
@@ -340,7 +382,7 @@ let rel_curve_to t ~x1 ~y1 ?x2 ?y2 ~x3 ~y3 =
    | _, _ -> x1, y1
   in
   t.data.current <- Some(x3, y3);
-  Q.add (fun t -> B.curve_to t ~x1 ~y1 ~x2 ~y2 ~x3 ~y3) t.data.orders
+  add_order (fun t -> B.curve_to t ~x1 ~y1 ~x2 ~y2 ~x3 ~y3) t
 
 (*
 let ellipse_arc t ?(max_length=2.*. atan 1.) ?x ?y ~a ~b t1 t2 =
@@ -359,7 +401,7 @@ let ellipse_arc t ?(max_length=2.*. atan 1.) ?x ?y ~a ~b t1 t2 =
   let x1,y1 = u +. a *. ct1, v +. b *. st1
   and x2,y2 = u +. a *. ct2, v +. b *. st2 in
   t.data.current <- Some(x2,y2);
-  Q.add (fun t -> B.ellipse_arc t ?x ?y ~a ~b t1 t2) t.data.orders
+  add_order (fun t -> B.ellipse_arc t ?x ?y ~a ~b t1 t2) t
 
 let ellipse t ?x ?y ~a ~b =
   let u,v =
@@ -369,7 +411,7 @@ let ellipse t ?x ?y ~a ~b =
   in
   update t true (u+.a) (v+.b);
   update t true (u-.a) (v-.b);
-  Q.add (fun t -> B.ellipse t ?x ?y ~a ~b) t.data.orders;
+  add_order (fun t -> B.ellipse t ?x ?y ~a ~b) t;
   t.data.current <- Some((u+.a),v)
 
 let circle_arc t ?x ?y ~r t1 t2=
@@ -388,7 +430,7 @@ let circle_arc t ?x ?y ~r t1 t2=
   let x1,y1 = u +. r *. ct1, v +. r *. st1
   and x2,y2 = u +. r *. ct2, v +. r *. st2 in
   t.data.current <- Some(x2,y2);
-  Q.add (fun t -> B.circle_arc t ?x ?y ~r t1 t2) t.data.orders
+  add_order (fun t -> B.circle_arc t ?x ?y ~r t1 t2) t
 
 let circle t ?x ?y ~r =
   let u,v =
@@ -399,7 +441,7 @@ let circle t ?x ?y ~r =
   update t true (u+.r) (v+.r);
   update t true (u-.r) (v-.r);
   t.data.current <- Some(u+.r,v);
-  Q.add (fun t -> B.circle t ?x ?y ~r) t.data.orders
+  add_order (fun t -> B.circle t ?x ?y ~r) t
 *)
 
 let arc t ~x ~y ~r ~a1 ~a2=
@@ -413,32 +455,32 @@ let arc t ~x ~y ~r ~a1 ~a2=
   let x1,y1 = x +. r *. ct1, y +. r *. st1
   and x2,y2 = x +. r *. ct2, y +. r *. st2 in
   t.data.current <- Some(x2,y2);
-  Q.add (fun t -> B.arc t x y r a1 a2) t.data.orders
+  add_order (fun t -> B.arc t x y r a1 a2) t
 
 
 let rectangle t ~x ~y ~w ~h =
   update t true x y;
   update t true (x+.w) (y+.h);
-  Q.add (fun t -> B.rectangle t ~x ~y ~w ~h) t.data.orders
+  add_order (fun t -> B.rectangle t ~x ~y ~w ~h) t
 
 
 let save t =
-  Q.add B.save t.data.orders;
+  add_order B.save t;
   Stack.push { t.styles with coord = t.styles.coord} t.history
 
 let restore t =
-  Q.add B.restore t.data.orders;
+  add_order B.restore t;
   try
     t.styles <- Stack.pop t.history
   with Stack.Empty ->
-    raise (Error Restore_without_saving)
+    raise (Error (Restore_without_saving "settings"))
 
 
 let close_path t =
-  Q.add B.close_path t.data.orders
+  add_order B.close_path t
 
 let clear_path t =
-  Q.add B.clear_path t.data.orders;
+  add_order B.clear_path t;
   reinit_path_ext t
 
 let path_extents t =
@@ -488,38 +530,38 @@ let stroke_fun t preserve backend =
   B.restore backend
 
 let stroke t =
-  Q.add (stroke_fun t false) t.data.orders;
+  add_order (stroke_fun t false) t;
   reinit_path_ext t
 
 let fill t =
-  Q.add B.fill t.data.orders;
+  add_order B.fill t;
   reinit_path_ext t
 
 (*
 let clip t =
-  Q.add B.clip t.data.orders;
+  add_order B.clip t;
   reinit_path_ext t
 *)
 
 let stroke_preserve t =
-  Q.add (stroke_fun t true) t.data.orders
+  add_order (stroke_fun t true) t
 
 let fill_preserve t =
-  Q.add B.fill_preserve t.data.orders
+  add_order B.fill_preserve t
 
 (*
 let clip_preserve t =
-  Q.add B.clip_preserve t.data.orders
+  add_order B.clip_preserve t
 *)
 
 let clip_rectangle t ~x ~y ~w ~h =
-  Q.add (fun t -> B.clip_rectangle t x y w h) t.data.orders
+  add_order (fun t -> B.clip_rectangle t x y w h) t
 
 let stroke_layer t =
-  Q.add B.stroke t.data.orders
+  add_order B.stroke t
 
 let stroke_layer_preserve t =
-  Q.add B.stroke_preserve t.data.orders
+  add_order B.stroke_preserve t
 
 
 let select_font_face t slant weight family =
@@ -527,16 +569,32 @@ let select_font_face t slant weight family =
   st.fslant <- slant;
   st.fweight <- weight;
   st.font <- family;
-  Q.add (fun t -> B.select_font_face t slant weight family) t.data.orders
+  add_order (fun t -> B.select_font_face t slant weight family) t
 
 let set_font_size t size =
   t.styles.fsize <- size;
-  Q.add (fun t -> B.set_font_size t size) t.data.orders
+  add_order (fun t -> B.set_font_size t size) t
 
 let show_text t ~rotate ~x ~y pos str =
   update t false x y;
-  Q.add (fun t -> B.show_text t ~rotate ~x ~y pos str) t.data.orders;
-  Q.add (TEXT(rotate,x,y,pos,str)) t.data.bkdep_updates
+  add_order (fun t -> B.show_text t ~rotate ~x ~y pos str) t;
+  add_update (TEXT(rotate,x,y,pos,str)) t
+
+
+
+
+
+let save_layer t =
+  Stack.push {t.data with xmin = t.data.xmin} t.saved_data;
+  save_stacks t
+
+let restore_layer t =
+  try
+    t.data <- Stack.pop t.saved_data;
+    restore_stacks t
+  with Stack.Empty ->
+    raise (Error (Restore_without_saving "layer"))
+
 
 let sign x = if x >= 0. then 1. else -1.
 
@@ -632,22 +690,28 @@ let update_text t handle r x y pos str width height autoscale =
 
 
 let make_updates handle t width height autoscale =
-  let data = t.data in
-  let q = Q.copy data.bkdep_updates in
+  let q = Q.copy t.bkdep_updates in
   let bounds (a,b,c,d) (w,x,y,z) =
     min a w, max b x, min c y, max d z in
   let rec update z =
     if not (Q.is_empty q) then
       match Q.pop q with
-        TEXT(r,x,y,pos,txt) ->
-          let p = update_text t handle r x y pos txt width height autoscale in
-          let w,x,y,z' = bounds z p in
-        (*  Printf.printf "Update min/max: %f %f to %f %f" w y x z';
-          Printf.printf "t.min/max: %f %f to %f %f\n"
-            t.data.xmin t.data.ymin t.data.xmax t.data.ymax;*)
-          update (bounds z p)
+        SAVING_POINT -> update z
+      | ORDER _ -> failwith "Found an order in bkdep_updates. This is a bug."
+      | BKDEP bkdep ->
+          match bkdep with
+            TEXT(r,x,y,pos,txt) ->
+              let p =
+                update_text t handle r x y pos txt width height autoscale in
+              let w,x,y,z' = bounds z p in
+              (*  Printf.printf "Update min/max: %f %f to %f %f" w y x z';
+                  Printf.printf "t.min/max: %f %f to %f %f\n"
+                  t.data.xmin t.data.ymin t.data.xmax t.data.ymax;*)
+              update (bounds z p)
     else z
-  in update (data.xmin,data.xmax,data.ymin,data.ymax)
+  in
+  let data = t.data in
+  update (data.xmin,data.xmax,data.ymin,data.ymax)
 
 
 let layer_extents ?(autoscale= Uniform Unlimited) ?handle t =
@@ -666,6 +730,7 @@ let layer_extents ?(autoscale= Uniform Unlimited) ?handle t =
 let flush_backend ?(autoscale=(Uniform Unlimited))
     t ~ofsx ~ofsy ~width ~height handle =
   B.save handle;
+  initial_bk_matrix := B.get_matrix handle;
   (*Printf.printf "Min/max1: %f %f to %f %f\n"
     t.data.xmin t.data.ymin t.data.xmax t.data.ymax;*)
   let xmin,xmax,ymin,ymax = make_updates handle t width height autoscale in
@@ -688,13 +753,15 @@ let flush_backend ?(autoscale=(Uniform Unlimited))
   B.translate handle (-.xmin) (-.ymin);
   inv_zoomx := 1. /. next.B.xx;
   inv_zoomy := 1. /. next.B.yy;
-  let rec make_orders s q =
+  let rec make_orders q =
     if not (Q.is_empty q) then
-      (Q.pop q handle;
-       (*Printf.printf "%s%!" s; *)
-       make_orders s q)
+      match Q.pop q with
+        SAVING_POINT -> make_orders q
+      | BKDEP _ -> failwith "Found a bkdep in the orders. This is a bug."
+      | ORDER f -> f handle;
+          make_orders q
   in
-  make_orders "" (Q.copy t.data.orders);
+  make_orders (Q.copy t.orders);
 
   B.set_color handle (Color.make ~a:0.5 0. 1. 1.);
   B.rectangle handle t.data.xmin t.data.ymin

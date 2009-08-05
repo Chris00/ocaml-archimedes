@@ -40,12 +40,16 @@ type t
 (**The type for the layer*)
 
 type error =
-    No_current_point(**Cannot determine a current point*)
-  | Restore_without_saving(**No saved states*)
-  | No_current_path(**Cleared the previous path and/or not starting a new one.*)
-  | Unset_style of string(**The style which will be used is what the backend
-                            provides when flushing*)
-(**Possible errors when working with a layer.*)
+    No_current_point (**Cannot determine a current point*)
+  | Restore_without_saving of string (**No saved states. The string can
+                                        be either "settings" or "data".*)
+  | No_current_path (**Cleared the previous path and/or not starting a new one.*)
+  | Unset_style of string (**The style which will be used is what the backend
+                             provides when flushing*)
+  | Non_invertible_initial_matrix (**Need to invert the
+                                     (non-invertible) backend's
+                                     initial transformation matrix*)
+      (**Possible errors when working with a layer.*)
 
 
 exception Error of error
@@ -56,6 +60,7 @@ val string_of_error: error -> string
 val make : unit -> t
   (**Creates a new layer*)
 
+(** {2 Coordinate transformations}*)
 val translate : t -> x:float -> y:float -> unit
   (**[translate layer x y] makes a translation of the [layer] in the
      direction ([x],[y]). All subsequent drawings will be expressed in
@@ -69,21 +74,17 @@ val scale : t -> x:float -> y:float -> unit
      that is, those which have been scaled by [x] and [y].*)
 
 val rotate: t -> angle:float -> unit
-  (*FIXME: useful?
-    val transform : t -> float -> float -> float * float
-  (**[transform layer x y] returns the point x,y transformed by the coordinate
-    changing on [layer].*)
 
-    val transform_dist : t -> float -> float -> float * float
-    val invert : t -> Backend.matrix
-    val inv_transform : t -> float -> float -> float * float
-    val inv_transform_dist : t -> float -> float -> float * float
-  *)
+(*FIXME: useful?  NB: the others (transform,...) are NOT, because we
+  can perform these tasks by getting the matrix, then apply what we want
+  thanks to Backend.Matrix module.
 
-val apply : next:Backend.matrix -> t -> unit
-  (**[apply next layer] composes the existing transformation in [layer]
-     with [next]. The coordinate system in [layer] is modified by applying
-     [next] to the existing transformation.*)
+  val apply : next:Backend.matrix -> t -> unit
+
+(**[apply next layer] composes the existing transformation in [layer]
+  with [next]. The coordinate system in [layer] is modified by
+  applying [next] to the existing transformation.*)
+*)
 
 val get_coord : t -> Backend.matrix
   (**Returns the coordinate system currently affecting the layer.*)
@@ -91,6 +92,7 @@ val get_coord : t -> Backend.matrix
 val reset_to_id : t -> unit
   (**Resets the layer's coordinate system to the identity.*)
 
+(**{2 Backend subsequent operations}*)
 val set_color : t -> Color.t -> unit
   (**Sets the layer's current color to the specified [Color.t].*)
 
@@ -122,10 +124,14 @@ val set_matrix : t -> Backend.matrix -> unit
   (** Set the current transformation matrix which is the matrix
       transforming user to layer coordinates. *)
 
+val set_backend_matrix : t -> Backend.matrix -> unit
+  (** Set the current transformation matrix; the parameter is the
+      matrix transforming user to *device* coordinates.  This function
+      can be the reason of an [Error Non_invertible_initial_matrix].*)
+
 val get_matrix : t -> Backend.matrix
   (** Return the current transformation matrix on the layer.  Modifying this
       matrix does not affect the matrix held in [t]. *)
-
 
 val move_to : t -> x:float -> y:float -> unit
   (**Moves the current point to ([x],[y]).*)
@@ -172,11 +178,11 @@ val rectangle : t -> x:float -> y:float -> w:float -> h:float -> unit
   (**Draws a rectangle.*)
 
 val save : t -> unit
-  (**Saves the layer's current state.*)
+  (**Saves the layer's current settings.*)
 
 val restore : t -> unit
-  (**Restores the layer's state to a previous saved state. If there's
-     no saved state, raises [Error(Restore_without_saving)]*)
+  (**Restores the layer's state to previous saved settings. If there are
+     no saved settings, raises [Error(Restore_without_saving "settings")]*)
 
 val close_path : t -> unit
   (**Closes the current path.*)
@@ -234,6 +240,21 @@ val show_text : t -> rotate:float -> x:float -> y:float ->
       system) the text must be rotated -- [rotate <> 0.] may not be
       supported on all devices.  This is an immediate operation: no
       [stroke] nor [fill] are required (nor will have any effect).  *)
+
+
+(**{2 Layer operations -- Flushing}*)
+val save_layer: t -> unit
+  (**Saves the current status of the layer. This puts a "break" into
+     the orders, so that a [restore_layer] removes all orders added after
+     this break.*)
+
+val restore_layer: t -> unit
+  (**Restores the layer in a previous saved status. Raises
+     [Error(Restore_without_saving "data")] if there's no saved point.*)
+
+(**The pair [save_layer]/[restore_layer] can be used, for example, to
+   make a common background (to be flushed to all backends), then specify
+   the drawings before flushing in a specific backend.*)
 
 val layer_extents: ?autoscale:scaling -> ?handle:Backend.t ->
   t -> Backend.rectangle
