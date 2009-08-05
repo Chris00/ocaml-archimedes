@@ -433,41 +433,7 @@ let set_font_size t size =
   Q.add (fun t -> B.set_font_size t size) t.orders
 
 let show_text t ~rotate ~x ~y pos str =
-  (*let st = t.styles in
-  let text width height backend =
-    B.save backend;
-    B.select_font_face backend st.fslant st.fweight st.font;
-    B.set_font_size backend st.fsize;
-    let rect = B.text_extents backend str in
-    Printf.printf "Text extents of %s: %f, %f; w:%f; h:%f\n" str
-      rect.B.x rect.B.y rect.B.w rect.B.h;
-    (*Get ratios of width/height *)
-    let x0 = rect.B.x /. width
-    and y0 =  rect.B.y /. height in
-    let w = rect.B.w /. width
-    and h = rect.B.h /. height in
-    move_to t x y; (*to initialize, if necessary*)
-    (*Get distance and points in layer coordinates*)
-    let x' = (t.xmax -. t.xmin) *. x0
-    and y' = (t.ymax -. t.ymin) *. y0
-    and w' = (t.xmax -. t.xmin) *. w
-    and h' = (t.ymax -. t.ymin) *. h in
-    Printf.printf "In layer coords: %f, %f; w:%f; h:%f\n" x' y' w' h';
-    let xmax = match pos with
-      | Backend.CC | Backend.CT | Backend.CB -> x +. x' -. w' *. 0.5
-      | Backend.RC | Backend.RT | Backend.RB -> x +. x'
-      | Backend.LC | Backend.LT | Backend.LB -> x +. x' -. w'
-    and ymax = match pos with
-      | Backend.CC | Backend.RC | Backend.LC -> y +. y' -. h' *. 0.5
-      | Backend.CT | Backend.RT | Backend.LT -> y +. y'-. h
-      | Backend.CB | Backend.RB | Backend.LB -> y +. y'
-    in
-    let xmin = xmax -. w' and ymin = ymax -. h' in
-    Printf.printf "Bounds applied: %f, %f; %f, %f\n\n" xmin ymin xmax ymax;
-    update t false xmin ymin;
-    update t false xmax ymax;
-    B.restore backend;
-  in*)
+  update t false x y;
   Q.add (fun t -> B.show_text t ~rotate ~x ~y pos str) t.orders;
   Q.add (TEXT(rotate,x,y,pos,str)) t.bkdep_updates
 
@@ -525,27 +491,27 @@ let update_text t handle r x y pos str width height =
   Printf.printf "Text extents of %s: %f, %f; w:%f; h:%f\n" str
     rect.B.x rect.B.y rect.B.w rect.B.h;
   (*Get ratios of width/height *)
-  let x0 = rect.B.x /. width
-  and y0 =  rect.B.y /. height in
+  (*let x0 = rect.B.x /. width
+  and y0 =  rect.B.y /. height in*)
   let w = rect.B.w /. width
   and h = rect.B.h /. height in
   move_to t x y; (*to initialize, if necessary*)
   (*Get distance and points in layer coordinates*)
-  let x' = (t.xmax -. t.xmin) *. x0
-  and y' = (t.ymax -. t.ymin) *. y0
-  and w' = (t.xmax -. t.xmin) *. w
+  (*let x' = (t.xmax -. t.xmin) *. x0
+  and y' = (t.ymax -. t.ymin) *. y0 in*)
+  let w' = (t.xmax -. t.xmin) *. w
   and h' = (t.ymax -. t.ymin) *. h in
-  Printf.printf "In layer coords: %f, %f; w:%f; h:%f\n" x' y' w' h';
-  let xmax = match pos with
-    | Backend.CC | Backend.CT | Backend.CB -> x +. x' +. w' *. 0.5
-    | Backend.RC | Backend.RT | Backend.RB -> x +. x' +. w'
-    | Backend.LC | Backend.LT | Backend.LB -> x +. x'
-  and ymax = match pos with
-    | Backend.CC | Backend.RC | Backend.LC -> y +. y' +. h' *. 0.5
-    | Backend.CT | Backend.RT | Backend.LT -> y +. y'+. h
-    | Backend.CB | Backend.RB | Backend.LB -> y +. y'
+  Printf.printf "In layer coords: w:%f; h:%f\n" w' h';
+  let xmin = match pos with
+    | Backend.CC | Backend.CT | Backend.CB -> x -. w' *. 0.5
+    | Backend.RC | Backend.RT | Backend.RB -> x
+    | Backend.LC | Backend.LT | Backend.LB -> x -. w'
+  and ymin = match pos with
+    | Backend.CC | Backend.RC | Backend.LC -> y -. h' *. 0.5
+    | Backend.CT | Backend.RT | Backend.LT -> y -. h'
+    | Backend.CB | Backend.RB | Backend.LB -> y
   in
-  let xmin = xmax -. w' and ymin = ymax -. h' in
+  let xmax = xmin +. w' and ymax = ymin +. h' in
   Printf.printf "Bounds applied: %f, %f; %f, %f\n\n" xmin ymin xmax ymax;
   B.set_color handle (Color.make 1. 0. 0.);
   rectangle t xmin ymin (xmax -. xmin) (ymax -. ymin);
@@ -574,9 +540,10 @@ let make_updates handle t width height =
 let flush_backend ?(autoscale=(Uniform Unlimited))
     t ~ofsx ~ofsy ~width ~height handle =
   B.save handle;
+  Printf.printf "Min/max1: %f %f to %f %f\n" t.xmin t.ymin t.xmax t.ymax;
   let xmin,xmax,ymin,ymax = make_updates handle t width height in
-  Printf.printf "Min/max: %f %f to %f %f" t.xmin t.ymin t.xmax t.ymax;
-  Printf.printf "Min/max: %f %f to %f %f" xmin ymin xmax ymax;
+  Printf.printf "Min/max2: %f %f to %f %f\n" t.xmin t.ymin t.xmax t.ymax;
+  Printf.printf "Min/max computed: %f %f to %f %f\n" xmin ymin xmax ymax;
 
   assert (t.xmin >= xmin);
   assert (t.xmax <= xmax);
