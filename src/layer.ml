@@ -608,10 +608,11 @@ let adjust_scale sc limit =
 
 
 let get_ct ?(autoscale=(Uniform Unlimited))
-    t xmin xmax ymin ymax ~ofsx ~ofsy ~width ~height =
-    let c = Coord.identity () in
-    (match autoscale with
-      Not_allowed -> ()
+    t ?(pos=B.LT) xmin xmax ymin ymax ~ofsx ~ofsy ~width ~height =
+  let c = Coord.identity () in
+  let scalx, scaly =
+    match autoscale with
+      Not_allowed -> 1.,1.
     | Uniform(limit) ->
         let (ex, scalx), (ey, scaly) =
           let scx = width /. (xmax -. xmin)
@@ -624,16 +625,47 @@ let get_ct ?(autoscale=(Uniform Unlimited))
           - Then we create the scalings by multiplying by (-1) if necessary.
         *)
         let scal = min (min scalx scaly) 1.E15 in
-        Coord.scale c (ex *. scal) (ey *. scal)
+        Coord.scale c (ex *. scal) (ey *. scal);
+        scal, scal
     | Free(limitx,limity) ->
         let (ex, scalx), (ey, scaly) =
           let scx = width /. (xmax -. xmin)
           and scy = height /. (ymax -. ymin) in
           adjust_scale scx limitx, adjust_scale scy limity
         in
-        Coord.scale c (ex *. (min scalx 1.E15)) (ey *. (min scaly 1.E15)));
-    Coord.translate c ofsx ofsy;
-    c
+        Coord.scale c (ex *. (min scalx 1.E15)) (ey *. (min scaly 1.E15));
+        (min scalx 1.E15), (min scaly 1.E15)
+  in
+  let width', height' = abs_float width, abs_float height in
+  Printf.printf
+    "Box: %f, %f; w:%f h:%f\nLayer ext: %f %f to %f %f\nScales: %f %f\n"
+    ofsx ofsy width height
+    xmin ymin xmax ymax
+    scalx scaly;
+  let x =
+    if scalx *. (xmax -. xmin) < width' then
+      (Printf.printf "X ok.";
+      match pos with
+      | B.LT | B.LC | B.LB -> ofsx
+      | B.CT | B.CC | B.CB ->
+          ofsx +. 0.5 *. (sign width) *. (width' -. scalx*.(xmax -. xmin))
+      | B.RT | B.RC | B.RB ->
+          ofsx +. (sign width) *. (width' -. scalx*.(xmax -. xmin)))
+    else ofsx (*Previous case not applicable because of rescalings*)
+  and y =
+    if scaly *. (ymax -. ymin) < height' then
+      (Printf.printf "Y ok.";
+      match pos with
+      | B.LT | B.CT | B.RT -> ofsy
+      | B.LC | B.CC | B.RC ->
+          ofsy +. 0.5 *. (sign height) *. (height' -. scaly*.(ymax -. ymin))
+      | B.LB | B.CB | B.RB ->
+          ofsy +.(sign height) *. (height' -. scaly*.(ymax -. ymin)))
+    else ofsy
+  in
+  Printf.printf "Translation: %f %f\n%!" x y;
+  Coord.translate c x y;
+  c
 
 let get_coord_transform ?(autoscale=(Uniform Unlimited)) t =
   get_ct ~autoscale t t.data.xmin t.data.xmax t.data.ymin t.data.ymax
@@ -728,7 +760,7 @@ let layer_extents ?(autoscale= Uniform Unlimited) ?handle t =
 (*FIXME: a flushed layer can be reusable; flush does not kill nor
   modify the previous orders.*)
 let flush_backend ?(autoscale=(Uniform Unlimited))
-    t ~ofsx ~ofsy ~width ~height handle =
+    t ~ofsx ~ofsy ~width ~height ?pos handle =
   B.save handle;
   initial_bk_matrix := B.get_matrix handle;
   (*Printf.printf "Min/max1: %f %f to %f %f\n"
@@ -744,7 +776,7 @@ let flush_backend ?(autoscale=(Uniform Unlimited))
   assert (t.data.ymax <= ymax);
   let matrix = B.get_matrix handle in
   let next =
-    get_ct ~autoscale t xmin xmax ymin ymax ~ofsx ~ofsy ~width ~height in
+    get_ct ~autoscale t ?pos xmin xmax ymin ymax ~ofsx ~ofsy ~width ~height in
   Coord.apply ~next matrix;
   let sf x = " "^(string_of_float x) in
   (*Printf.printf "Matrix%s%s%s%s%s%s%!" (sf matrix.B.xx) (sf matrix.B.xy)
@@ -773,7 +805,8 @@ let flush_backend ?(autoscale=(Uniform Unlimited))
   stroke_fun t false handle;
   B.restore handle
 
-let flush ?(autoscale=(Uniform Unlimited)) t ~ofsx ~ofsy ~width ~height handle =
+let flush ?(autoscale=(Uniform Unlimited)) t ~ofsx ~ofsy ~width ~height ?pos
+    handle =
   let matrix = T.get_matrix handle in
   let handle = T.get_handle handle in
   B.save handle;
@@ -782,7 +815,7 @@ let flush ?(autoscale=(Uniform Unlimited)) t ~ofsx ~ofsy ~width ~height handle =
   B.set_matrix handle init_transform;
   (*Backend handle has now the same transformation coordinates as the
     initial handle applied to it.*)
-  flush_backend ~autoscale t ~ofsx ~ofsy ~width ~height handle;
+  flush_backend ~autoscale t ~ofsx ~ofsy ~width ~height ?pos handle;
   B.restore handle
 
 (*Local Variables:*)

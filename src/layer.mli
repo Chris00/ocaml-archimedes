@@ -259,13 +259,14 @@ val restore_layer: t -> unit
 val layer_extents: ?autoscale:scaling -> ?handle:Backend.t ->
   t -> Backend.rectangle
   (**Returns the extents of the layer. If no [handle] is given, then
-     the extents does not take any text into account.*)
+     the extents does not take any text into account. The rectangle is
+     expressed in layer coordinates.*)
 
 val get_coord_transform : ?autoscale:scaling -> t -> ofsx:float -> ofsy:float ->
   width:float -> height:float -> Backend.matrix
 
 val flush_backend : ?autoscale:scaling -> t -> ofsx:float -> ofsy:float ->
-  width:float -> height:float -> Backend.t -> unit
+  width:float -> height:float  -> ?pos:Backend.text_position -> Backend.t -> unit
   (**[flush_backend layer ofsx ofsy width height backend] copies the resulting
      drawing in the [layer], to the [backend], in the rectangle
      specified by the quantities [ofsx],[ofsy] (some corner of the
@@ -279,15 +280,15 @@ val flush_backend : ?autoscale:scaling -> t -> ofsx:float -> ofsy:float ->
 
      Optional argument [autoscale] is by default fixed at [Uniform
      Unlimited], so there's by default no limitations on scaling, but
-     if scaling, then it is done uniformly along the two axes.*)
+     if scaling, then it is done uniformly along the two axes.
+
+     Optional argument [pos] specifies where the layer should take
+     place if, for some restrictions, it is smaller than the rectangle
+     specified.*)
 
 val flush : ?autoscale:scaling -> t -> ofsx:float -> ofsy:float ->
-  width:float -> height:float -> Transform_coord.t -> unit
-
-(*val make_axes :
-  t ->
-  ?color_axes:Color.t ->
-  ?color_labels:Color.t -> Axes.data -> Axes.data -> Axes.mode -> unit*)
+  width:float -> height:float -> ?pos:Backend.text_position ->
+  Transform_coord.t -> unit
 
 (*Local Variables:*)
 (*compile-command: "ocamlc -c layer.mli"*)

@@ -18,15 +18,15 @@ let () =
         (Axes.Two_lines(-3.,0.,Axes.Line 0.2, Axes.Line 0.2));
       Layer.flush_backend
         ~autoscale:(Layer.Not_allowed)
-        layer ~ofsx:0. ~ofsy:0. ~width:500. ~height:500. cr;
+        layer ~ofsx:0. ~ofsy:0. ~width:500. ~height:500. ~pos:B.CC cr;
       Layer.flush_backend
-        layer ~ofsx:0. ~ofsy:500. ~width:500. ~height:500. cr;
+        layer ~ofsx:0. ~ofsy:500. ~width:500. ~height:500. ~pos:B.CC cr;
       Layer.flush_backend
         ~autoscale:(Layer.Free(Layer.Unlimited, Layer.Unlimited))
         layer ~ofsx:500. ~ofsy:0. ~width:500. ~height:500. cr;
       Layer.flush_backend
         ~autoscale:(Layer.Free(Layer.Limited_out 50., Layer.Limited_out 20.))
-        layer ~ofsx:500. ~ofsy:500. ~width:500. ~height:500. cr;
+        layer ~ofsx:500. ~ofsy:500. ~width:500. ~height:500. ~pos:B.CC cr;
       B.close cr
     with
       B.Error e ->
