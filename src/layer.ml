@@ -482,7 +482,7 @@ let get_ct ?(autoscale=(Uniform Unlimited))
 let get_coord_transform ?(autoscale=(Uniform Unlimited)) t =
   get_ct ~autoscale t t.xmin t.xmax t.ymin t.ymax
 
-let update_text t handle r x y pos str width height =
+let update_text t handle r x y pos str width height autoscale =
   let st = t.styles in
   B.save handle;
   B.select_font_face handle st.fslant st.fweight st.font;
@@ -490,17 +490,28 @@ let update_text t handle r x y pos str width height =
   let rect = B.text_extents handle str in
   Printf.printf "Text extents of %s: %f, %f; w:%f; h:%f\n" str
     rect.B.x rect.B.y rect.B.w rect.B.h;
-  (*Get ratios of width/height *)
-  (*let x0 = rect.B.x /. width
-  and y0 =  rect.B.y /. height in*)
-  let w = rect.B.w /. width
-  and h = rect.B.h /. height in
-  move_to t x y; (*to initialize, if necessary*)
-  (*Get distance and points in layer coordinates*)
+  let scx = width /. (t.xmax -. t.xmin)
+  and scy = height /. (t.ymax -. t.ymin) in
+  let scalx,scaly =
+    (*We are interested in how distances are modified; we don't take
+      the sign into account.*)
+    match autoscale with
+      Not_allowed -> 1.,1.
+    | Uniform(limit) ->
+        let (_, scalx) = adjust_scale scx limit
+        and (_, scaly) = adjust_scale scy limit in
+        let scal = min (min scalx scaly) 1.E15 in
+        scal, scal
+    | Free(limitx, limity) ->
+        let (_, scalx) = adjust_scale scx limitx
+        and (_, scaly) = adjust_scale scy limity in
+        (min scalx 1.E15, min scaly 1.E15)
+  in
+        (*Get distance and points in layer coordinates*)
   (*let x' = (t.xmax -. t.xmin) *. x0
   and y' = (t.ymax -. t.ymin) *. y0 in*)
-  let w' = (t.xmax -. t.xmin) *. w
-  and h' = (t.ymax -. t.ymin) *. h in
+  let w' =  rect.B.w /. scalx
+  and h' =  rect.B.h /. scaly in
   Printf.printf "In layer coords: w:%f; h:%f\n" w' h';
   let xmin = match pos with
     | Backend.CC | Backend.CT | Backend.CB -> x -. w' *. 0.5
@@ -514,13 +525,15 @@ let update_text t handle r x y pos str width height =
   let xmax = xmin +. w' and ymax = ymin +. h' in
   Printf.printf "Bounds applied: %f, %f; %f, %f\n\n" xmin ymin xmax ymax;
   B.set_color handle (Color.make 1. 0. 0.);
-  rectangle t xmin ymin (xmax -. xmin) (ymax -. ymin);
+  (*FIXME: the following command updates t.[xy][min|max], which we don't want
+  in the end.*)
+ (* rectangle t xmin ymin (xmax -. xmin) (ymax -. ymin);*)
   stroke_fun t false handle;
   B.restore handle;
   xmin, xmax, ymin, ymax
 
 
-let make_updates handle t width height =
+let make_updates handle t width height autoscale =
   let q = Q.copy t.bkdep_updates in
   let bounds (a,b,c,d) (w,x,y,z) =
     min a w, max b x, min c y, max d z in
@@ -528,9 +541,11 @@ let make_updates handle t width height =
     if not (Q.is_empty q) then
       match Q.pop q with
         TEXT(r,x,y,pos,txt) ->
-          let p = update_text t handle r x y pos txt width height in
+          let p = update_text t handle r x y pos txt width height autoscale in
           let w,x,y,z' = bounds z p in
           Printf.printf "Update min/max: %f %f to %f %f" w y x z';
+          Printf.printf "t.min/max: %f %f to %f %f\n"
+            t.xmin t.ymin t.xmax t.ymax;
           update (bounds z p)
     else z
   in update (t.xmin,t.xmax,t.ymin,t.ymax)
@@ -541,7 +556,7 @@ let flush_backend ?(autoscale=(Uniform Unlimited))
     t ~ofsx ~ofsy ~width ~height handle =
   B.save handle;
   Printf.printf "Min/max1: %f %f to %f %f\n" t.xmin t.ymin t.xmax t.ymax;
-  let xmin,xmax,ymin,ymax = make_updates handle t width height in
+  let xmin,xmax,ymin,ymax = make_updates handle t width height autoscale in
   Printf.printf "Min/max2: %f %f to %f %f\n" t.xmin t.ymin t.xmax t.ymax;
   Printf.printf "Min/max computed: %f %f to %f %f\n" xmin ymin xmax ymax;
 
