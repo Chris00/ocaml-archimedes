@@ -608,7 +608,7 @@ let adjust_scale sc limit =
 
 
 let get_ct ?(autoscale=(Uniform Unlimited))
-    t ?(pos=B.LT) xmin xmax ymin ymax ~ofsx ~ofsy ~width ~height =
+    t ?(pos=B.CC) xmin xmax ymin ymax ~ofsx ~ofsy ~width ~height =
   let c = Coord.identity () in
   let scalx, scaly =
     match autoscale with
@@ -636,34 +636,39 @@ let get_ct ?(autoscale=(Uniform Unlimited))
         Coord.scale c (ex *. (min scalx 1.E15)) (ey *. (min scaly 1.E15));
         (min scalx 1.E15), (min scaly 1.E15)
   in
-  let width', height' = abs_float width, abs_float height in
-  Printf.printf
-    "Box: %f, %f; w:%f h:%f\nLayer ext: %f %f to %f %f\nScales: %f %f\n"
-    ofsx ofsy width height
-    xmin ymin xmax ymax
-    scalx scaly;
   let x =
-    if scalx *. (xmax -. xmin) < width' then
-      (Printf.printf "X ok.";
-      match pos with
-      | B.LT | B.LC | B.LB -> ofsx
-      | B.CT | B.CC | B.CB ->
-          ofsx +. 0.5 *. (sign width) *. (width' -. scalx*.(xmax -. xmin))
-      | B.RT | B.RC | B.RB ->
-          ofsx +. (sign width) *. (width' -. scalx*.(xmax -. xmin)))
-    else ofsx (*Previous case not applicable because of rescalings*)
+    let layer_width = scalx *. (xmax -. xmin) in
+    let sgn, diff =
+      if width >= 0. then 1., width -. layer_width
+      else -1., layer_width +. width
+    in
+    if sgn *. diff > 0. then
+      (*width >= 0. test is understandable.
+
+        width < 0.: diff = layer_width +. width is negative if and
+        only if layer_width is smaller than (-. width), which is the
+        real width of the box.*)
+       match pos with
+       | B.LT | B.LC | B.LB -> ofsx
+       | B.CT | B.CC | B.CB -> ofsx +. 0.5 *. diff
+       | B.RT | B.RC | B.RB -> ofsx +. diff
+       else ofsx
+         (*FIXME: I think previous case is not applicable because of
+           rescalings. This have to be confirmed.*)
   and y =
-    if scaly *. (ymax -. ymin) < height' then
-      (Printf.printf "Y ok.";
-      match pos with
-      | B.LT | B.CT | B.RT -> ofsy
-      | B.LC | B.CC | B.RC ->
-          ofsy +. 0.5 *. (sign height) *. (height' -. scaly*.(ymax -. ymin))
-      | B.LB | B.CB | B.RB ->
-          ofsy +.(sign height) *. (height' -. scaly*.(ymax -. ymin)))
+    let layer_height = scaly *. (ymax -. ymin) in
+    let sgn, diff =
+      if height >= 0. then 1., height -. layer_height
+      else -1., layer_height +. height
+    in
+    if sgn *. diff > 0. then
+      (*Same idea as for width -- see x*)
+       match pos with
+       | B.LT | B.LC | B.LB -> ofsy
+       | B.CT | B.CC | B.CB -> ofsy +. 0.5 *. diff
+       | B.RT | B.RC | B.RB -> ofsy +. diff
     else ofsy
   in
-  Printf.printf "Translation: %f %f\n%!" x y;
   Coord.translate c x y;
   c
 
