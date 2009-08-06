@@ -46,9 +46,9 @@ type error =
   | No_current_path (**Cleared the previous path and/or not starting a new one.*)
   | Unset_style of string (**The style which will be used is what the backend
                              provides when flushing*)
-  | Non_invertible_initial_matrix (**Need to invert the
+ (* | Non_invertible_initial_matrix (**Need to invert the
                                      (non-invertible) backend's
-                                     initial transformation matrix*)
+                                     initial transformation matrix*)*)
       (**Possible errors when working with a layer.*)
 
 
@@ -123,11 +123,6 @@ val get_line_join : t -> Backend.line_join
 val set_matrix : t -> Backend.matrix -> unit
   (** Set the current transformation matrix which is the matrix
       transforming user to layer coordinates. *)
-
-val set_backend_matrix : t -> Backend.matrix -> unit
-  (** Set the current transformation matrix; the parameter is the
-      matrix transforming user to *device* coordinates.  This function
-      can be the reason of an [Error Non_invertible_initial_matrix].*)
 
 val get_matrix : t -> Backend.matrix
   (** Return the current transformation matrix on the layer.  Modifying this
@@ -221,13 +216,13 @@ val stroke_layer: t -> unit
      layer} coordinates.*)
 
 val stroke_layer_preserve: t -> unit
-  (**Same as [stroke] except that line width is understood as {i
+  (**Same as [stroke_preserve] except that line width is understood as {i
      layer} coordinates.*)
 
 val select_font_face : t -> Backend.slant -> Backend.weight -> string -> unit
   (** [select_font_face t slant weight family] selects a family
       and style of font from a simplified description as a family
-      name, slant and weight.  Family names are bakend dependent.  *)
+      name, slant and weight.  Family names are backend dependent.  *)
 val set_font_size : t -> float -> unit
   (** Set the scaling of the font. *)
 val show_text : t -> rotate:float -> x:float -> y:float ->
@@ -243,11 +238,19 @@ val show_text : t -> rotate:float -> x:float -> y:float ->
 
 (**{2 Point styles}*)
 
-val point : t -> Pointstyle.t -> float -> float -> unit
-  (**Draws the point at the position specified by the floats, according
-     to the point style.*)
+val set_point_style: t -> Pointstyle.t -> unit
+  (**Sets the point style currently employed in the layer.*)
 
-val points: t -> Pointstyle.t -> (float * float) list -> unit
+val get_point_style: t -> Pointstyle.t
+  (**Returns the current point style employed in the layer. Raises
+     [Error(Unset_style "point_style")] if no previous call to
+     [set_point_style] has been made.*)
+
+val point : t -> float -> float -> unit
+  (**Draws the point at the position specified by the floats, according
+     to the point style set (by default, it is [Pointstyle.Default.NONE]).*)
+
+val points: t -> (float * float) list -> unit
   (**Draws all the points in the list according to the point style.*)
 
 

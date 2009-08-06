@@ -2,7 +2,10 @@ module B = Backend
 module Coord = Backend.Matrix
 
 type t =
-    {h:B.t; mutable c:Backend.matrix; s:Backend.matrix Stack.t}
+    {h:B.t; (*Handle on which we operate*)
+     mutable c:Backend.matrix; (*Current coordinate transformation to perform*)
+     s:Backend.matrix Stack.t (*Saved coordinate transformations*)
+    }
 
 let make ?dirs name ?coord width height =
   {h = B.make ?dirs name width height;

@@ -16,7 +16,7 @@ type scaling =
   | Free of limitation * limitation
 
 type styles =
-    {(* mutable ps: B.pointstyle;*)
+    {
       mutable coord:B.matrix;
       mutable dash: float array * float;
       mutable lj: B.line_join;
@@ -28,6 +28,7 @@ type styles =
       mutable fsize:float;
       mutable fslant:B.slant;
       mutable fweight:B.weight;
+      mutable point: Pointstyle.t;
       mutable settings:int;
       (*This last variable retains which of the above styles have been
         set.  Note that coord is not taken into account (set to
@@ -41,6 +42,10 @@ type styles =
         [lw] <-> 32
         [font], [fslant], [fweight] <-> 64
         [fsize] <-> 128
+        [point] <-> 256
+
+        Note also that [coord] has identity by default, so it is not
+        flagged.
 
         See also the variables below.*)
     }
@@ -51,6 +56,7 @@ let setting_color = 8
 let setting_line_width = 16
 let setting_font_face = 32
 let setting_font_size = 64
+let setting_point = 128
 
 type bkdep =
     TEXT of float * float * float * B.text_position * string
@@ -93,7 +99,7 @@ type error =
   | Restore_without_saving of string
   | No_current_path
   | Unset_style of string
-  | Non_invertible_initial_matrix
+  (*| Non_invertible_initial_matrix*)
 
 exception Error of error
 
@@ -106,9 +112,9 @@ let string_of_error e = match e with
   | Unset_style(s) ->
       "The style "^s
       ^" has not been set in the layer (flushing uses backend settings)"
-  | Non_invertible_initial_matrix ->
+ (* | Non_invertible_initial_matrix ->
       "You invoked a function that needs to invert backend's "
-      ^"initial transformation matrix but it is non-invertible"
+      ^"initial transformation matrix but it is non-invertible"*)
 
 
 (*These variables are used when flushing, to remember the
@@ -130,6 +136,7 @@ let make () =
       color = Color.make 0. 0. 0.; lw = 1.;
       font="Sans serif"; fsize=10.;
       fslant = B.Upright; fweight = B.Normal;
+      point = Pointstyle.make "default";
       settings = 0
     }
   and data =
@@ -216,24 +223,16 @@ let reset_to_id t =
   Coord.reset_to_id t.styles.coord
 
 (*
-let set_pointstyle t s =
-  add_order(fun t -> B.set_pointstyle t s) t;
-  t.ps <- s
-
-let set_pattern t s =
-  add_order(fun t -> B.set_pattern t s) t;
-  t.pat <- s
-*)
-
-(*
 Reminder of the flags for settings:
-        [dash] set/unset <=> [settings] odd/even;
-        [lj] set <=>  [settings] not divisible by 4;
-        [lc] <-> div. by 8
-        [color] <-> 16
-        [lw] <-> 32
-        [font], [fslant], [fweight] <-> 64
-        [fsize] <-> 128
+  [dash] set/unset <=> [settings] odd/even;
+  [lj] set <=>  [settings] not divisible by 4;
+  [lc] <-> div. by 8
+  [color] <-> 16
+  [lw] <-> 32
+  [font], [fslant], [fweight] <-> 64
+  [fsize] <-> 128
+  [point] <-> 256
+
   We make use of the [setting_*] variables to avoid errors.*)
 
 let set_color t c =
@@ -274,6 +273,11 @@ let set_line_join t s =
   and n = setting_line_join in
   if set mod (2 * n) = 0 then t.styles.settings <- set + n
 
+let set_point_style t s =
+  t.styles.point <- s;
+  let set = t.styles.settings
+  and n = setting_point in
+  if set mod (2 * n) = 0 then t.styles.settings <- set + n
 
 let set_matrix t matrix =
   add_order (fun t ->
@@ -282,36 +286,33 @@ let set_matrix t matrix =
                B.set_matrix t m) t;
   t.styles.coord <- matrix
 
-let set_backend_matrix t matrix =
-  add_order (fun t -> B.set_matrix t matrix) t;
-  try
-    let m = Coord.invert !initial_bk_matrix in
-    Coord.apply ~next:matrix m;
-    t.styles.coord <- m
-  with Failure "invert" ->
-    raise (Error Non_invertible_initial_matrix)
-
 (*NOTE: the font settings are below, with text managing.*)
 
-
-(*let get_pointstyle t = t.ps
-let get_pattern t = t.pat*)
 let get_line_width t =
   if (t.styles.settings mod (2 * setting_line_width)) = 0 then
     raise (Error (Unset_style "line_width"));
   t.styles.lw
+
 let get_line_cap t =
   if (t.styles.settings mod (2 * setting_line_cap)) = 0 then
     raise (Error (Unset_style "line_cap"));
    t.styles.lc
+
 let get_dash t =
   if (t.styles.settings mod (2 * setting_dash)) = 0 then
     raise (Error (Unset_style "line_dash"));
    t.styles.dash
+
 let get_line_join t =
   if (t.styles.settings mod (2 * setting_line_join)) = 0 then
     raise (Error (Unset_style "line_join"));
    t.styles.lj
+
+let get_point_style t =
+  if (t.styles.settings mod (2 * setting_point)) = 0 then
+    raise (Error (Unset_style "point_style"));
+   t.styles.point
+
 let get_matrix t = t.styles.coord
 
 let move_to t ~x ~y =
@@ -581,9 +582,9 @@ let show_text t ~rotate ~x ~y pos str =
   add_update (TEXT(rotate,x,y,pos,str)) t
 
 
-let point t ps x y = add_order (Pointstyle.point ps x y) t
+let point t x y = add_order (Pointstyle.point t.styles.point x y) t
 
-let points t ps list = add_order (Pointstyle.points ps list) t
+let points t list = add_order (Pointstyle.points t.styles.point list) t
 
 
 let save_layer t =
