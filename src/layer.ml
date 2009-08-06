@@ -612,7 +612,9 @@ let get_ct ?(autoscale=(Uniform Unlimited))
   let c = Coord.identity () in
   let scalx, scaly =
     match autoscale with
-      Not_allowed -> 1.,1.
+      Not_allowed ->
+        Coord.scale c (sign width) (sign height);
+        1.,1.
     | Uniform(limit) ->
         let (ex, scalx), (ey, scaly) =
           let scx = width /. (xmax -. xmin)

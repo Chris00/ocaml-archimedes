@@ -48,10 +48,11 @@ let () =
       Layer.fill layer1;
       Layer.set_color layer1 (Color.make 0. 0. 0.);
       Layer.set_line_width layer1 0.5;
-      A.make_axes layer1 ~color_labels:(Color.make 1. 0. 0.)
-        (Axes.Graph(6,1)) (Axes.Graph(4,1))
-        (Axes.Two_lines(0.,0.,Axes.Line 0.2, Axes.Line 0.2));
-
+      let def_axes = A.make_default
+        ~mode:(A.Default.Two_lines(0.,0.))
+        (A.Default.Graph(6,1)) (A.Default.Graph(4,1))
+      in
+      A.print_axes def_axes ~color_labels:(Color.make 1. 0. 0.) layer1;
       B.set_color cr (Color.make ~a:0.7 0. 0.2 0.7);
       print "before flush";
       Layer.flush_backend ~autoscale:(Layer.Uniform (Layer.Limited(1.,50.)))
