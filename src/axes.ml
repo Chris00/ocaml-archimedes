@@ -14,14 +14,14 @@ sig
     (*How to make the axes in a Layer.*)
 end
 
-type t =
-    {print_axes: ?xmin:float -> ?xmax:float -> ?ymin:float -> ?ymax:float ->
-     ?color_axes:Color.t -> ?color_labels:Color.t -> L.t -> unit}
+type t = ?xmin:float -> ?xmax:float -> ?ymin:float -> ?ymax:float ->
+     ?color_axes:Color.t -> ?color_labels:Color.t -> L.t -> unit
       (*Type which will be registered*)
 
 (*This is the module we provide by default.*)
 module Default =
 struct
+  open String_utils
   open Layer
   let name = "default"
 
@@ -54,31 +54,6 @@ struct
         Line(r) -> Printf.sprintf "line %f" r
     in
     [smode; get_sdata datax; get_stic ticx; get_sdata datay; get_stic ticy]
-
-  let is_space c = c = ' ' || c = '\t' || c = '\n' || c = '\r'
-
-  (* Return the index of the first space in s.[i0 .. i1-1] or [i1] if
-     none was found.  s.[i0 .. i1-1] is assumed to be a valid substring
-     of s.  *)
-  let rec index_of_space s i0 i1 =
-    if i0 >= i1 then i1
-    else if is_space s.[i0] then i0
-    else index_of_space s (i0 + 1) i1
-
-  let rec index_of_non_space s i0 i1 =
-    if i0 >= i1 then i1
-    else if is_space s.[i0] then index_of_non_space s (i0 + 1) i1
-    else i0
-
-  (*See also Backend.split_on_spaces*)
-  let rec split_on_spaces s i0 i1 =
-    let i0 = index_of_non_space s i0 i1 in (* skip spaces *)
-    if i0 >= i1 then []
-    else (
-      let i01 = index_of_space s i0 i1 in
-      String.sub s i0 (i01 - i0) :: split_on_spaces s (i01 + 1) i1
-    )
-
 
   (*Possible errors when decoding*)
   (*FIXME: Enumerative type for errors? What about a declared
@@ -287,7 +262,7 @@ struct
   if not(M.mem A.name !registry) then
     let axes_maker options =
       let t = A.make options in
-      {print_axes = A.print_axes t}
+      A.print_axes t
     in
     registry := M.add A.name axes_maker !registry;
 end
@@ -311,7 +286,8 @@ let make_default ?(mode= Default.Rectangle) ?(ticx=(Default.Line 0.2)) datax
   let list = Default.make_options_list mode datax ticx datay ticy
   in make "default" list
 
-let print_axes t = t.print_axes
+let print_axes t = t
+
 (*Local variables:*)
 (*compile-command: "ocamlopt -c -for-pack Archimedes axes.ml && ocamlc -c -for-pack Archimedes axes.ml"*)
 (*End:*)

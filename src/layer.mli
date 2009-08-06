@@ -241,6 +241,16 @@ val show_text : t -> rotate:float -> x:float -> y:float ->
       supported on all devices.  This is an immediate operation: no
       [stroke] nor [fill] are required (nor will have any effect).  *)
 
+(**{2 Point styles}*)
+
+val point : t -> Pointstyle.t -> float -> float -> unit
+  (**Draws the point at the position specified by the floats, according
+     to the point style.*)
+
+val points: t -> Pointstyle.t -> (float * float) list -> unit
+  (**Draws all the points in the list according to the point style.*)
+
+
 
 (**{2 Layer operations -- Flushing}*)
 val save_layer: t -> unit

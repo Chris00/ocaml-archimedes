@@ -581,7 +581,9 @@ let show_text t ~rotate ~x ~y pos str =
   add_update (TEXT(rotate,x,y,pos,str)) t
 
 
+let point t ps x y = add_order (Pointstyle.point ps x y) t
 
+let points t ps list = add_order (Pointstyle.points ps list) t
 
 
 let save_layer t =

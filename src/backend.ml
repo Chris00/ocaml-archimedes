@@ -323,37 +323,10 @@ exception Error of error
 
 let registered () = M.fold (fun name _ l -> name :: l) !registry []
 
-let is_space c = c = ' ' || c = '\t' || c = '\n' || c = '\r'
-
-(* Return the index of the first space in s.[i0 .. i1-1] or [i1] if
-   none was found.  s.[i0 .. i1-1] is assumed to be a valid substring
-   of s.  *)
-let rec index_of_space s i0 i1 =
-  if i0 >= i1 then i1
-  else if is_space s.[i0] then i0
-  else index_of_space s (i0 + 1) i1
-
-let rec index_of_non_space s i0 i1 =
-  if i0 >= i1 then i1
-  else if is_space s.[i0] then index_of_non_space s (i0 + 1) i1
-  else i0
-
-(* Return a list of substrings of s.[i0 .. i1-1] which are separated
-   by one or several spaces. *)
-let rec split_on_spaces s i0 i1 =
-  let i0 = index_of_non_space s i0 i1 in (* skip spaces *)
-  if i0 >= i1 then []
-  else (
-    let i01 = index_of_space s i0 i1 in
-    String.sub s i0 (i01 - i0) :: split_on_spaces s (i01 + 1) i1
-  )
+open String_utils
 
 (* Split the backend from its option list *)
-let backend_options b =
-  let len = String.length b in
-  let i = index_of_space b 0 len in
-  if i = len then (String.lowercase b, []) (* no options *)
-  else (String.lowercase(String.sub b 0 i), split_on_spaces b (i+1) len)
+let backend_options = first_and_list
 
 (* Return a fully qualified path to the [fname] or raise [Not_found]. *)
 let rec find_file dirs fname =
@@ -411,16 +384,6 @@ let make ?(dirs=[]) b width height =
       with Not_found -> raise(Error(Not_registering backend))
   in
   make options width height
-
-
-
-(* [s.[i]] and [p.[i]] are identical for all [i] s.t. [i0 <= i < i1]. *)
-let rec identical s p i0 i1 =
-  i0 >= i1 || (s.[i0] = p.[i0] && identical s p (i0 + 1) i1)
-
-let start_with s p =
-  let len_p = String.length p in
-  String.length s >= len_p && identical s p 0 len_p
 
 let available ~dirs =
   let ext = if Dynlink.is_native then ".cmxs" else ".cmo" in
