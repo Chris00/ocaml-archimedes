@@ -24,17 +24,8 @@ struct
 
   type style = t
 
-  let string_list_of_t t =
-    (*let make_string t params =
-      let rec convert_params str list =
-        match list with
-          [] -> str
-        | x::l -> convert_params (str^" "^(string_of_float x)) l
-      in
-      convert_params t params
-    in*)
-    match t with
-      NONE -> []
+  let unmake = function
+    | NONE -> []
     | X(len) -> ["X"; string_of_float len]
     | HORIZ(len) -> ["-"; string_of_float len]
     | VERT(len) ->["|"; string_of_float len]
@@ -46,7 +37,7 @@ struct
   let make opt =
     let error reason = invalid_arg ("Pointstyle.Default.make -- "^reason) in
     let args t n m = Printf.sprintf "%s has only %i args (found %i)" t n m
-    and unparseable s = Printf.sprintf "Unparseable arg: %s" s
+    and unparseable s = Printf.sprintf "Unparseable arg to float: %s" s
     in
     if opt = [] then NONE
     else let t::opts = opt in

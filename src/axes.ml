@@ -50,9 +50,12 @@ struct
         Graph(n,m) -> Printf.sprintf "graph %i %i" n m
       | Tics(x,n) -> Printf.sprintf "tics %f %i" x n
     in
+    let get_tic tic =
+      List.fold_left (fun res elt -> res^" "^elt) "" (P.unmake tic)
+    in
     [smode;
-     get_sdata datax; P.string_of_t ticx; P.string_of_t minticx;
-     get_sdata datay; P.string_of_t ticy; P.string_of_t minticy ]
+     get_sdata datax; get_tic ticx; get_tic minticx;
+     get_sdata datay; get_tic ticy; get_tic minticy ]
 
   (*Possible errors when decoding*)
   (*FIXME: Enumerative type for errors? What about a declared
@@ -102,7 +105,7 @@ struct
       | _ -> error (not_understood opt "data")
 
   let get_tic which tic =
-    try P.make tic
+    try P.make (String_utils.split_on_spaces tic 0 (String.length tic))
     with (*Pointstyle.PSError(s) ->
       error (Printf.sprintf
                "%s argument: '%s' cannot be found as point style (tic: %s)"
