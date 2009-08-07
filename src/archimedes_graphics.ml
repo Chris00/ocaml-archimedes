@@ -146,9 +146,10 @@ struct
 
   let set_color t c =
     let st = get_state t in
-    let r = truncate(Color.red c *. 255.)
-    and g = truncate(Color.green c *. 255.)
-    and b = truncate(Color.blue c *. 255.) in
+    let r,g,b = Color.rgb c in
+    let r = truncate(r *. 255.)
+    and g = truncate(g *. 255.)
+    and b = truncate(b *. 255.) in
     let color = Graphics.rgb r g b in
     st.color <- color;
     Graphics.set_color color
