@@ -1,3 +1,5 @@
+(**Drawing on a backend without explicitly modify its coordinate transformation.*)
+
 type t
 val make : ?dirs:string list -> string -> ?coord:Backend.matrix ->
   float -> float -> t
@@ -8,6 +10,12 @@ val get_handle : t -> Backend.t
 val translate : t -> x:float -> y:float -> unit
 val scale : t -> x:float -> y:float -> unit
 val rotate: t -> angle:float -> unit
+val set_matrix : t -> Backend.matrix -> unit
+val get_matrix : t -> Coord.t
+val set_point_style : t -> Pointstyle.t -> unit
+val get_point_style : t -> Pointstyle.t
+
+(**{2 Backend primitives}*)
 val width : t -> float
 val height : t -> float
   (*FIXME: needed, or done after querying the underlying backend?*)
@@ -34,7 +42,7 @@ val curve_to :
 val rectangle : t -> x:float -> y:float -> w:float -> h:float -> unit
   (**Note that this [rectangle] does not always use [Backend.rectangle],
      because of possible shears in the coordinate transformation.*)
-val arc: t -> x:float -> y:float -> r:float -> a1:float -> a2:float -> unit
+
 val close_path : t -> unit
 val clear_path : t -> unit
 val path_extents : t -> Backend.rectangle
@@ -50,17 +58,18 @@ val restore : t -> unit
 val select_font_face : t -> Backend.slant -> Backend.weight -> string -> unit
   (** [select_font_face t slant weight family] selects a family and
       style of font from a simplified description as a family name,
-      slant and weight.  Family names are bakend dependent.  *)
+      slant and weight.  Family names are backend dependent.  *)
 val set_font_size : t -> float -> unit
   (** Set the scaling of the font. *)
 val show_text : t -> rotate:float -> x:float -> y:float ->
   Backend.text_position -> string -> unit
-  (*val text_extents : t -> size:float -> string -> Backend.text_extents*)
+val text_extents : t -> size:float -> string -> Backend.rectangle
 
-(*
-val make_axes: t -> ?color_axes:Color.t -> ?color_labels:Color.t
-  -> float -> float -> float -> float
-  -> Axes.data -> Axes.data -> Axes.mode -> unit*)
+val point: t -> float -> float -> unit
+
+val points:t -> (float * float) list -> unit
+
+
 
 
 (*Local Variables:*)

@@ -5,7 +5,10 @@ module type Style =
     type t
       (**Point styles*)
     val make : string -> t
-      (**Makes a point style, using the string as options.*)
+      (**Makes a point style, using the string as options. For
+         example, in the [Default] module, an empty string gives
+         [Default.NONE], vhereas the string "| 2." will raise to a
+         [Default.VERT 2.] *)
     val point : t -> float -> float -> Backend.t -> unit
       (**Given a point style and a backend, makes the point style at
          the point specified by the floats; it is expressed in backend
@@ -15,16 +18,30 @@ module type Style =
 module Default :
 sig
   type style =
-    | NONE (**Don't make any style*)
+      (**All distance and length are expressed in {i device} coordinates. *)
+    | NONE (**Don't make any style. String option to get it:""*)
     | X of float (**X centered at the point, the float argument is the
-                    width of the square containing this X, expressed
-                    in device coordinates.*)
+                    width of the square containing this X. String
+                    option to get it:"X float".*)
     | HORIZ of float (**Horizontal line centered at the point, the
-                        argument is the length of this line, expressed
-                        in device coordinates.*)
+                        argument is the length of this line. String
+                        option to get it: "- float".*)
     | VERT of float (**Vertical line centered at the point, the
-                        argument is the length of this line, expressed
-                        in device coordinates.*)
+                       argument is the length of this line. String
+                       option to get it: "| float".*)
+    | TIC_UP of float (**Vertical line whose bottom is the point.  The
+                         float argument is the length of this line. String option: "TU
+                         float".*)
+    | TIC_DOWN of float(**Vertical line whose top is the point.  The
+                          float argument is the length of this line. String option: "TD
+                          float".*)
+    | TIC_LEFT of float(**Horizontal line whose right end is the point.  The
+                          float argument is the length of this line. String option: "TU
+                          float".*)
+    | TIC_RIGHT of float(**Horizontal line whose left end is the point.  The
+                          float argument is the length of this line. String option: "TU
+                          float".*)
+
 
   include Style with type t = style
 end
@@ -34,7 +51,7 @@ type t
 exception PSError of string
 val make : string -> t
   (**Makes a point style according to the string specified. This
-  string must be of the following form:
+     string must be of the following form:
 
      [name^" "^options]
 

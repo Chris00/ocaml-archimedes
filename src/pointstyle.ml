@@ -17,6 +17,10 @@ struct
     | X of float
     | HORIZ of float
     | VERT of float
+    | TIC_UP of float (*Useful for axes tics*)
+    | TIC_DOWN of float
+    | TIC_LEFT of float
+    | TIC_RIGHT of float
 
   type t = style
 
@@ -31,8 +35,38 @@ struct
         "X" ->
           if List.length opts <> 1 then error ();
           (try
-            X(float_of_string (List.hd opts))
-          with Failure "float_of_string" -> error ())
+             X(float_of_string (List.hd opts))
+           with Failure "float_of_string" -> error ())
+      | "-" ->
+          if List.length opts <> 1 then error ();
+          (try
+             HORIZ(float_of_string (List.hd opts))
+           with Failure "float_of_string" -> error ())
+      | "|"  ->
+          if List.length opts <> 1 then error ();
+          (try
+             VERT(float_of_string (List.hd opts))
+           with Failure "float_of_string" -> error ())
+      | "TU" ->
+          if List.length opts <> 1 then error ();
+          (try
+             TIC_UP(float_of_string (List.hd opts))
+           with Failure "float_of_string" -> error ())
+      | "TD" ->
+          if List.length opts <> 1 then error ();
+          (try
+             TIC_DOWN(float_of_string (List.hd opts))
+           with Failure "float_of_string" -> error ())
+      | "TL" ->
+          if List.length opts <> 1 then error ();
+          (try
+             TIC_LEFT(float_of_string (List.hd opts))
+           with Failure "float_of_string" -> error ())
+      | "TR" ->
+          if List.length opts <> 1 then error ();
+          (try
+             TIC_RIGHT(float_of_string (List.hd opts))
+           with Failure "float_of_string" -> error ())
       | _ -> error()
 
   let point t x y handle =
@@ -42,16 +76,35 @@ struct
     (match t with
       NONE -> ()
     | X(len) ->
-        B.rel_move_to handle (-.len) (-.len);
-        B.rel_line_to handle (2.*.len) (2.*.len);
-        B.rel_move_to handle (-.2. *. len) 0.;
-        B.rel_line_to handle (2.*.len) (-2.*.len)
+        let x = len /. 2. in
+        B.rel_move_to handle (-.x) (-.x);
+        B.rel_line_to handle len len;
+        B.rel_move_to handle (-.len) 0.;
+        B.rel_line_to handle len (-.len)
+    | HORIZ(len) ->
+        B.rel_move_to handle (-.len /. 2.) 0.;
+        B.rel_line_to handle len 0.
+    | VERT(len) ->
+        B.rel_move_to handle 0. (-.len /. 2.);
+        B.rel_line_to handle 0. len
+    | TU(len) ->
+        B.rel_move_to handle 0. (-.len);
+        B.rel_line_to handle 0. len
+    | TD(len) ->
+        B.rel_move_to handle 0. len;
+        B.rel_line_to handle 0. (-.len)
+    | TL(len) ->
+        B.rel_move_to handle (-.len) 0.;
+        B.rel_line_to handle len 0.
+    | TR(len) ->
+        B.rel_move_to handle len;
+        B.rel_line_to handle (-.len) 0.
+
     );
     B.restore handle
 end
 
 type t = float -> float -> B.t -> unit
-
 
 
 (*Registering point styles.*)
