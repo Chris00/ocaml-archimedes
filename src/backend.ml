@@ -325,8 +325,11 @@ let registered () = M.fold (fun name _ l -> name :: l) !registry []
 
 open String_utils
 
-(* Split the backend from its option list *)
-let backend_options = first_and_list
+(* Split the backend from its option list. Backend name is put in
+   lowercase letters.*)
+let backend_options b =
+  let s,l = first_and_list b in
+  String.lowercase s, l
 
 (* Return a fully qualified path to the [fname] or raise [Not_found]. *)
 let rec find_file dirs fname =

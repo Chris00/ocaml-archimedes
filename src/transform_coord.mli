@@ -2,8 +2,8 @@
 
 type t
 val make : ?dirs:string list -> string -> ?coord:Backend.matrix ->
-  float -> float -> t
-val use : Backend.t -> Backend.matrix -> t
+  ?point:Pointstyle.t -> float -> float -> t
+val use : Backend.t -> ?point:Pointstyle.t -> Backend.matrix -> t
 val use_unit_square: Backend.t -> float -> float -> float -> float -> t
   (*FIXME:needed?*)
 val get_handle : t -> Backend.t
@@ -11,7 +11,7 @@ val translate : t -> x:float -> y:float -> unit
 val scale : t -> x:float -> y:float -> unit
 val rotate: t -> angle:float -> unit
 val set_matrix : t -> Backend.matrix -> unit
-val get_matrix : t -> Coord.t
+val get_matrix : t -> Backend.matrix
 val set_point_style : t -> Pointstyle.t -> unit
 val get_point_style : t -> Pointstyle.t
 
@@ -63,7 +63,7 @@ val set_font_size : t -> float -> unit
   (** Set the scaling of the font. *)
 val show_text : t -> rotate:float -> x:float -> y:float ->
   Backend.text_position -> string -> unit
-val text_extents : t -> size:float -> string -> Backend.rectangle
+val text_extents : t -> string -> Backend.rectangle
 
 val point: t -> float -> float -> unit
 

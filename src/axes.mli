@@ -31,8 +31,7 @@ sig
       Graph of int * int
     | Tics of float * int
 
-  type ticstyle = (*FIXME: pointstyle??*)
-      Line of float
+  type ticstyle = Pointstyle.Default.t
 
   type mode =
       Rectangle
@@ -57,8 +56,8 @@ val make : string -> string list -> t
 
 val make_default :
   ?mode:Default.mode ->
-  ?ticx:Default.ticstyle ->
-  Default.data -> ?ticy:Default.ticstyle -> Default.data -> t
+  ?ticx:Default.ticstyle -> ?minticx:Default.ticstyle -> Default.data ->
+  ?ticy:Default.ticstyle -> ?minticy:Default.ticstyle -> Default.data -> t
   (**To make a [t] whose background is a [Default.t], you can use this shortcut.*)
 
 val print_axes :

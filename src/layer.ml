@@ -136,7 +136,7 @@ let make () =
       color = Color.make 0. 0. 0.; lw = 1.;
       font="Sans serif"; fsize=10.;
       fslant = B.Upright; fweight = B.Normal;
-      point = Pointstyle.make "default";
+      point = Pointstyle.make_default Pointstyle.Default.NONE;
       settings = 0
     }
   and data =

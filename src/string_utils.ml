@@ -35,5 +35,5 @@ let start_with s p =
 let first_and_list b =
   let len = String.length b in
   let i = index_of_space b 0 len in
-  if i = len then (String.lowercase b, []) (* no options *)
-  else (String.lowercase(String.sub b 0 i), split_on_spaces b (i+1) len)
+  if i = len then (b, []) (* no options *)
+  else (String.sub b 0 i, split_on_spaces b (i+1) len)

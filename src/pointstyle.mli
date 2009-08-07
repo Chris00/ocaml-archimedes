@@ -4,11 +4,8 @@ module type Style =
       (**Name for the point style, which will be used in registering.*)
     type t
       (**Point styles*)
-    val make : string -> t
-      (**Makes a point style, using the string as options. For
-         example, in the [Default] module, an empty string gives
-         [Default.NONE], vhereas the string "| 2." will raise to a
-         [Default.VERT 2.] *)
+    val make : string list -> t
+      (**Makes a point style, using the string list as options.*)
     val point : t -> float -> float -> Backend.t -> unit
       (**Given a point style and a backend, makes the point style at
          the point specified by the floats; it is expressed in backend
@@ -17,8 +14,10 @@ module type Style =
 
 module Default :
 sig
-  type style =
-      (**All distance and length are expressed in {i device} coordinates. *)
+  val name : string (**Default's name is "default".*)
+
+  type t =
+      (**All distances and lengths are expressed in {i device} coordinates. *)
     | NONE (**Don't make any style. String option to get it:""*)
     | X of float (**X centered at the point, the float argument is the
                     width of the square containing this X. String
@@ -36,14 +35,19 @@ sig
                           float argument is the length of this line. String option: "TD
                           float".*)
     | TIC_LEFT of float(**Horizontal line whose right end is the point.  The
-                          float argument is the length of this line. String option: "TU
+                          float argument is the length of this line. String option: "TL
                           float".*)
     | TIC_RIGHT of float(**Horizontal line whose left end is the point.  The
-                          float argument is the length of this line. String option: "TU
-                          float".*)
+                           float argument is the length of this line. String option: "TR
+                           float".*)
 
+  val make : string list -> t
+    (**Makes a point style, using the string list as options. For
+       example, an empty list gives [Default.NONE], vhereas the list
+       ["|";"2."] will raise to a [Default.VERT 2.] *)
 
-  include Style with type t = style
+  val unmake: t -> string list
+    (**Returns the string list of options of a [t]. *)
 end
 
 type t
@@ -60,6 +64,9 @@ val make : string -> t
 
      For instance, [make "default X 3."] will make the default point
      style [X(3.)] *)
+
+val make_default: Default.t -> t
+  (**Converts a default point style into a general point style.*)
 
 val point : t -> float -> float -> Backend.t -> unit
   (**Given a point style and a backend, makes the point style at the
