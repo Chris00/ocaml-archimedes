@@ -286,7 +286,7 @@ struct
     st.current_path <- RECTANGLE(x, y, w, h) :: st.current_path;
     (* Update the current point and extents *)
     st.path_extents <-
-      update_rectangle st.path_extents x' y' (x' +. w') (y' +. h')
+      update_rectangle st.path_extents x' y' (x' +. w') (y' +. h');
     st.curr_pt <- true;
     st.x <- x;
     st.y <- y
@@ -296,7 +296,7 @@ struct
 
   let rec beginning_of_subpath = function
     | [] -> failwith "No subpath"
-    | (MOVE_TO(x,y) | CLOSE_PATH(x,y)) :: _ -> x,y
+    | (MOVE_TO(x,y) | CLOSE_PATH(x,y) | RECTANGLE(x,y,_,_)) :: _ -> x,y
     | _ :: tl -> beginning_of_subpath tl
 
   let close_path t =
