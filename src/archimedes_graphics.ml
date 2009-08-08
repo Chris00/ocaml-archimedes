@@ -98,6 +98,7 @@ let update_curve r x0 y0 x1 y1 x2 y2 x3 y3 =
   let h = max ymax (r.Backend.y +. r.Backend.h) -. ymin in
   { Backend.x = xmin;  y = ymin; w = w; h = h }
 
+
 module B =
 struct
   let name = "graphics"
@@ -197,6 +198,7 @@ struct
 
   let set_color t c =
     let st = get_state t in
+    let r,g,b = Color.rgb c in
     let r = round(Color.red c *. 255.)
     and g = round(Color.green c *. 255.)
     and b = round(Color.blue c *. 255.) in
@@ -351,6 +353,10 @@ struct
   let set_font_size t size =
     (* FIXME: must be saved in the state ? *)
     Graphics.set_text_size (round size)
+
+  (*FIXME: Rough approximation!*)
+  let text_extents t txt =
+    {Backend.x = 0.; y = 0.; w = float (String.length txt) *. 10.; h = 10.}
 
   let show_text t ~rotate ~x ~y pos txt =
     let st = get_state t in

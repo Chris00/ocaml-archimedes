@@ -15,13 +15,27 @@ let make ?(a=1.) r g b =
     let msg = msg_intro^(data r)^(data g)^(data b)^(data ~s:")" a) in
     invalid_arg msg
 
-let red t = t.r
+let r t = t.r
 
-let green t = t.g
+let g t = t.g
 
-let blue t = t.b
+let b t = t.b
 
-let alpha t = t.a
+let a t = t.a
+
+let rgb t = t.r, t.g, t.b
+
+let rgba t = t.r, t.g, t.b, t.a
+
+let black = {r = 0.; g = 0.; b = 0.; a = 1.}
+let red = {r = 1.; g = 0.; b = 0.; a = 1.}
+let green = {r = 0.; g = 1.; b = 0.; a = 1.}
+let blue = {r = 0.; g = 0.; b = 1.; a = 1.}
+let yellow = {r = 1.; g = 1.; b = 0.; a = 1.}
+let purple = {r = 1.; g = 0.; b = 1.; a = 1.}
+let cyan = {r = 0.; g = 1.; b = 1.; a = 1.}
+let white = {r = 1.; g = 1.; b = 1.; a = 1.}
+
 
 type operator =
     OVER

@@ -142,6 +142,11 @@ sig
       name, slant and weight.  Family names are bakend dependent.  *)
   val set_font_size : t -> float -> unit
     (** Set the scaling of the font. *)
+  val text_extents : t -> string -> rectangle
+    (** Returns a rectangle whose width and height specify
+        respectively the length and the height of the text. The x and
+        y values give the lower bottom point of the rectangle as if
+        the text was placed at the origin.*)
   val show_text : t -> rotate:float -> x:float -> y:float ->
     text_position -> string -> unit
     (** [show_text t angle x y pos txt] displays [txt] at the point

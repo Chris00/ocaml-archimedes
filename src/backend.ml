@@ -121,6 +121,7 @@ sig
 
   val select_font_face : t -> slant -> weight -> string -> unit
   val set_font_size : t -> float -> unit
+  val text_extents : t -> string -> rectangle
   val show_text : t -> rotate:float -> x:float -> y:float ->
     text_position -> string -> unit
 
@@ -179,6 +180,7 @@ type t = {
 
   select_font_face: slant -> weight -> string -> unit;
   set_font_size: float -> unit;
+  text_extents: string -> rectangle;
   show_text: rotate:float -> x:float -> y:float ->
                                 text_position -> string -> unit
   (* put_image: 'a -> x:float -> y:float -> ?scale:float -> string -> unit; *)
@@ -245,6 +247,7 @@ struct
 
         select_font_face = B.select_font_face handle;
         set_font_size = B.set_font_size handle;
+        text_extents = B.text_extents handle;
         show_text = B.show_text handle;
       }
     in
@@ -293,6 +296,7 @@ let set_matrix t m = t.set_matrix m
 let get_matrix t = t.get_matrix()
 let select_font_face t = t.select_font_face
 let set_font_size t = t.set_font_size
+let text_extents t = t.text_extents
 let show_text t = t.show_text
 
 type error =
@@ -319,37 +323,13 @@ exception Error of error
 
 let registered () = M.fold (fun name _ l -> name :: l) !registry []
 
-let is_space c = c = ' ' || c = '\t' || c = '\n' || c = '\r'
+open String_utils
 
-(* Return the index of the first space in s.[i0 .. i1-1] or [i1] if
-   none was found.  s.[i0 .. i1-1] is assumed to be a valid substring
-   of s.  *)
-let rec index_of_space s i0 i1 =
-  if i0 >= i1 then i1
-  else if is_space s.[i0] then i0
-  else index_of_space s (i0 + 1) i1
-
-let rec index_of_non_space s i0 i1 =
-  if i0 >= i1 then i1
-  else if is_space s.[i0] then index_of_non_space s (i0 + 1) i1
-  else i0
-
-(* Return a list of substrings of s.[i0 .. i1-1] which are separated
-   by one or several spaces. *)
-let rec split_on_spaces s i0 i1 =
-  let i0 = index_of_non_space s i0 i1 in (* skip spaces *)
-  if i0 >= i1 then []
-  else (
-    let i01 = index_of_space s i0 i1 in
-    String.sub s i0 (i01 - i0) :: split_on_spaces s (i01 + 1) i1
-  )
-
-(* Split the backend from its option list *)
+(* Split the backend from its option list. Backend name is put in
+   lowercase letters.*)
 let backend_options b =
-  let len = String.length b in
-  let i = index_of_space b 0 len in
-  if i = len then (String.lowercase b, []) (* no options *)
-  else (String.lowercase(String.sub b 0 i), split_on_spaces b (i+1) len)
+  let s,l = first_and_list b in
+  String.lowercase s, l
 
 (* Return a fully qualified path to the [fname] or raise [Not_found]. *)
 let rec find_file dirs fname =
@@ -407,16 +387,6 @@ let make ?(dirs=[]) b width height =
       with Not_found -> raise(Error(Not_registering backend))
   in
   make options width height
-
-
-
-(* [s.[i]] and [p.[i]] are identical for all [i] s.t. [i0 <= i < i1]. *)
-let rec identical s p i0 i1 =
-  i0 >= i1 || (s.[i0] = p.[i0] && identical s p (i0 + 1) i1)
-
-let start_with s p =
-  let len_p = String.length p in
-  String.length s >= len_p && identical s p 0 len_p
 
 let available ~dirs =
   let ext = if Dynlink.is_native then ".cmxs" else ".cmo" in

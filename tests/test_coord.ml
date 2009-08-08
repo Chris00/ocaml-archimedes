@@ -5,7 +5,7 @@ module T = Transform_coord
 let () =
   let f s =
     try
-      let coord = B.Coordinate.create 100. 0. 50. 0. 100. 0. in
+      let coord = {B.xx= 100.; xy=0.; x0=50.; yx= 0.; yy= 100.; y0= 0.} in
       let t = T.make ~dirs:[ "./src";"../src"]
         s ~coord 150. 150. in
       T.set_color t (Color.make ~a:0.7 0. 0.2 0.7);
@@ -15,7 +15,7 @@ let () =
       T.line_to t 1. 1.;
       T.close_path t;
       T.stroke t;
-      T.set_matrix t (B.Coordinate.create 25. 0. 50. 0. (-25.) 120.);
+      T.set_matrix t {B.xx= 25.; xy=0.; x0=50.; yx= 0.; yy= (-25.); y0= 120.};
       T.set_color t (Color.make ~a:0.7 0.9 0. 0.2);
       T.move_to t 1. 1.;
       T.line_to t 2. 2.;

@@ -40,20 +40,38 @@ struct
 
   let path_extents cr = (Obj.magic (path_extents cr) : Backend.rectangle)
 
-  let set_matrix cr m = set_matrix cr (Obj.magic m : Cairo.matrix)
-  let get_matrix cr = (Obj.magic (get_matrix cr) : Backend.matrix)
+  let set_matrix cr m =
+    set_matrix cr
+    {Cairo.xx = m.Backend.xx; xy = m.Backend.xy;
+     yx = m.Backend.yx; yy = m.Backend.yy;
+     x0 = m.Backend.x0; y0 = m.Backend.y0;}
+
+        (*(Obj.magic m : Cairo.matrix)*)
+  let get_matrix cr =
+    let m = get_matrix cr in
+    {Backend.xx = m.Cairo.xx; xy = m.Cairo.xy;
+     yx = m.Cairo.yx; yy = m.Cairo.yy;
+     x0 = m.Cairo.x0; y0 = m.Cairo.y0;}
+    (*(Obj.magic (get_matrix cr) : Backend.matrix)*)
 
 
   let set_dash cr ofs arr = set_dash cr ~ofs arr
 
   let set_color cr c =
-    Cairo.set_source_rgba cr
-      (Color.red c) (Color.green c) (Color.blue c) (Color.alpha c)
+    let r,g,b,a = Color.rgba c in
+    Cairo.set_source_rgba cr r g b a
 
   let clip_rectangle cr ~x ~y ~w ~h =
     Cairo.Path.clear cr;
     Cairo.rectangle cr ~x ~y ~w ~h;
     Cairo.clip cr
+(*
+  (* FIXME: must be reworked *)
+  let text cr ~size ~x ~y txt =
+    Cairo.move_to cr ~x ~y;
+    Cairo.set_font_size cr size;
+    Cairo.show_text cr txt
+*)
 
   (* FIXME: better error message for options *)
   let make ~options width height =
@@ -114,6 +132,11 @@ struct
     Cairo.stroke cr; (* without this, the current position is the end
                         of the text which is not desired. *)
     Cairo.restore cr
+
+  let text_extents cr text =
+    let te = Cairo.text_extents cr text in
+    { Backend.x = te.x_bearing; y = te.y_bearing;
+      w = te.width; h = te.height }
 end
 
 let () =
@@ -122,5 +145,5 @@ let () =
 
 
 (* Local Variables: *)
-(* compile-command: "make -k archimedes_cairo.cmo" *)
+(* compile-command: "make -k archimedes_cairo.cmo archimedes_cairo.cmxs" *)
 (* End: *)

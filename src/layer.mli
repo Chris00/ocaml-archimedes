@@ -1,4 +1,12 @@
-open Archimedes
+(**A [Layer.t] retains all orders that would be made and computes the
+   extents of the drawing. Then, when flushing it, it applies all the
+   orders with a correct scaling (so that, for example, all the
+   drawing is visible on the device). See [flush] and [flush_backend]
+   for more information.
+
+   Note that text extents, which are backend-dependent, are treated
+   differently of the other (path) extents. *)
+
 
 type limitation =
     Unlimited
@@ -28,52 +36,31 @@ type scaling =
 type styles =
     (float * float array) * Backend.line_join * Backend.line_cap * float *
       Coordinate.t * string * int * Backend.slant * Backend.weight*)
-type t (*= {
-  ofsx : float;
-  ofsy : float;
-  width : float;
-  height : float;
-  mutable current : (float * float) option;
-  coord : Coordinate.t;
-  mutable dash : float * float array;
-  mutable lj : Backend.line_join;
-  mutable lc : Backend.line_cap;
-  mutable color : Color.t;
-  mutable lw : float;
-  stack : styles Stack.t;
-  mutable font : string;
-  mutable fsize : int;
-  mutable fslant : Backend.slant;
-  mutable fweight : Backend.weight;
-  mutable pxmin : float;
-  mutable pxmax : float;
-  mutable pymin : float;
-  mutable pymax : float;
-  mutable xmin : float;
-  mutable xmax : float;
-  mutable ymin : float;
-  mutable ymax : float;
-  mutable upmargin : float;
-  mutable downmargin : float;
-  mutable leftmargin : float;
-  mutable rightmargin : float;
-  autoscale : scaling;
-  orders : (Backend.t -> unit) Q.t;
-}*)
+type t
 (**The type for the layer*)
 
 type error =
-    No_current_point
-  | Restore_without_saving
-(**Possible errors when working with a layer.*)
+    No_current_point (**Cannot determine a current point*)
+  | Restore_without_saving of string (**No saved states. The string can
+                                        be either "settings" or "data".*)
+  | No_current_path (**Cleared the previous path and/or not starting a new one.*)
+  | Unset_style of string (**The style which will be used is what the backend
+                             provides when flushing*)
+ (* | Non_invertible_initial_matrix (**Need to invert the
+                                     (non-invertible) backend's
+                                     initial transformation matrix*)*)
+      (**Possible errors when working with a layer.*)
 
 
 exception Error of error
   (**Raised when there is a nonvalid task to perform -- see above.*)
 
+val string_of_error: error -> string
+
 val make : unit -> t
   (**Creates a new layer*)
 
+(** {2 Coordinate transformations}*)
 val translate : t -> x:float -> y:float -> unit
   (**[translate layer x y] makes a translation of the [layer] in the
      direction ([x],[y]). All subsequent drawings will be expressed in
@@ -87,21 +74,17 @@ val scale : t -> x:float -> y:float -> unit
      that is, those which have been scaled by [x] and [y].*)
 
 val rotate: t -> angle:float -> unit
-  (*FIXME: useful?
-    val transform : t -> float -> float -> float * float
-  (**[transform layer x y] returns the point x,y transformed by the coordinate
-    changing on [layer].*)
 
-    val transform_dist : t -> float -> float -> float * float
-    val invert : t -> Backend.matrix
-    val inv_transform : t -> float -> float -> float * float
-    val inv_transform_dist : t -> float -> float -> float * float
-  *)
+(*FIXME: useful?  NB: the others (transform,...) are NOT, because we
+  can perform these tasks by getting the matrix, then apply what we want
+  thanks to Backend.Matrix module.
 
-val apply : next:Backend.matrix -> t -> unit
-  (**[apply next layer] composes the existing transformation in [layer]
-     with [next]. The coordinate system in [layer] is modified by applying
-     [next] to the existing transformation.*)
+  val apply : next:Backend.matrix -> t -> unit
+
+(**[apply next layer] composes the existing transformation in [layer]
+  with [next]. The coordinate system in [layer] is modified by
+  applying [next] to the existing transformation.*)
+*)
 
 val get_coord : t -> Backend.matrix
   (**Returns the coordinate system currently affecting the layer.*)
@@ -109,7 +92,8 @@ val get_coord : t -> Backend.matrix
 val reset_to_id : t -> unit
   (**Resets the layer's coordinate system to the identity.*)
 
-val set_color : t -> Archimedes.Color.t -> unit
+(**{2 Backend subsequent operations}*)
+val set_color : t -> Color.t -> unit
   (**Sets the layer's current color to the specified [Color.t].*)
 
 val set_line_width : t -> float -> unit
@@ -143,7 +127,6 @@ val set_matrix : t -> Backend.matrix -> unit
 val get_matrix : t -> Backend.matrix
   (** Return the current transformation matrix on the layer.  Modifying this
       matrix does not affect the matrix held in [t]. *)
-
 
 val move_to : t -> x:float -> y:float -> unit
   (**Moves the current point to ([x],[y]).*)
@@ -190,11 +173,11 @@ val rectangle : t -> x:float -> y:float -> w:float -> h:float -> unit
   (**Draws a rectangle.*)
 
 val save : t -> unit
-  (**Saves the layer's current state.*)
+  (**Saves the layer's current settings.*)
 
 val restore : t -> unit
-  (**Restores the layer's state to a previous saved state. If there's
-     no saved state, raises [Error(Restore_without_saving)]*)
+  (**Restores the layer's state to previous saved settings. If there are
+     no saved settings, raises [Error(Restore_without_saving "settings")]*)
 
 val close_path : t -> unit
   (**Closes the current path.*)
@@ -233,13 +216,13 @@ val stroke_layer: t -> unit
      layer} coordinates.*)
 
 val stroke_layer_preserve: t -> unit
-  (**Same as [stroke] except that line width is understood as {i
+  (**Same as [stroke_preserve] except that line width is understood as {i
      layer} coordinates.*)
 
 val select_font_face : t -> Backend.slant -> Backend.weight -> string -> unit
   (** [select_font_face t slant weight family] selects a family
       and style of font from a simplified description as a family
-      name, slant and weight.  Family names are bakend dependent.  *)
+      name, slant and weight.  Family names are backend dependent.  *)
 val set_font_size : t -> float -> unit
   (** Set the scaling of the font. *)
 val show_text : t -> rotate:float -> x:float -> y:float ->
@@ -253,11 +236,51 @@ val show_text : t -> rotate:float -> x:float -> y:float ->
       supported on all devices.  This is an immediate operation: no
       [stroke] nor [fill] are required (nor will have any effect).  *)
 
-val layer_extents: t -> Backend.rectangle
+(**{2 Point styles}*)
 
-val flush : ?autoscale:scaling -> t -> ofsx:float -> ofsy:float ->
-  width:float -> height:float -> Backend.t -> unit
-  (**[flush layer ofsx ofsy width height backend] copies the resulting
+val set_point_style: t -> Pointstyle.t -> unit
+  (**Sets the point style currently employed in the layer.*)
+
+val get_point_style: t -> Pointstyle.t
+  (**Returns the current point style employed in the layer. Raises
+     [Error(Unset_style "point_style")] if no previous call to
+     [set_point_style] has been made.*)
+
+val point : t -> float -> float -> unit
+  (**Draws the point at the position specified by the floats, according
+     to the point style set (by default, it is [Pointstyle.Default.NONE]).*)
+
+val points: t -> (float * float) list -> unit
+  (**Draws all the points in the list according to the point style.*)
+
+
+
+(**{2 Layer operations -- Flushing}*)
+val save_layer: t -> unit
+  (**Saves the current status of the layer. This puts a "break" into
+     the orders, so that a [restore_layer] removes all orders added after
+     this break.*)
+
+val restore_layer: t -> unit
+  (**Restores the layer in a previous saved status. Raises
+     [Error(Restore_without_saving "data")] if there's no saved point.*)
+
+(**The pair [save_layer]/[restore_layer] can be used, for example, to
+   make a common background (to be flushed to all backends), then specify
+   the drawings before flushing in a specific backend.*)
+
+val layer_extents: ?autoscale:scaling -> ?handle:Backend.t ->
+  t -> Backend.rectangle
+  (**Returns the extents of the layer. If no [handle] is given, then
+     the extents does not take any text into account. The rectangle is
+     expressed in layer coordinates.*)
+
+val get_coord_transform : ?autoscale:scaling -> t -> ofsx:float -> ofsy:float ->
+  width:float -> height:float -> Backend.matrix
+
+val flush_backend : ?autoscale:scaling -> t -> ofsx:float -> ofsy:float ->
+  width:float -> height:float  -> ?pos:Backend.text_position -> Backend.t -> unit
+  (**[flush_backend layer ofsx ofsy width height backend] copies the resulting
      drawing in the [layer], to the [backend], in the rectangle
      specified by the quantities [ofsx],[ofsy] (some corner of the
      rectangle), [width] and [height]. If [width] and [height] are
@@ -270,12 +293,15 @@ val flush : ?autoscale:scaling -> t -> ofsx:float -> ofsy:float ->
 
      Optional argument [autoscale] is by default fixed at [Uniform
      Unlimited], so there's by default no limitations on scaling, but
-     if scaling, then it is done uniformly along the two axes.*)
+     if scaling, then it is done uniformly along the two axes.
 
-(*val make_axes :
-  t ->
-  ?color_axes:Color.t ->
-  ?color_labels:Color.t -> Axes.data -> Axes.data -> Axes.mode -> unit*)
+     Optional argument [pos] specifies where the layer should take
+     place if, for some restrictions, it is smaller than the rectangle
+     specified.*)
+
+val flush : ?autoscale:scaling -> t -> ofsx:float -> ofsy:float ->
+  width:float -> height:float -> ?pos:Backend.text_position ->
+  Transform_coord.t -> unit
 
 (*Local Variables:*)
 (*compile-command: "ocamlc -c layer.mli"*)
