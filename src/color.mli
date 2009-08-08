@@ -20,10 +20,10 @@ val b : t -> float
 val a : t -> float
 (**Returns the transparency (alpha) component of a color.*)
 
-val rgb : t -> float * float * float
+val get_rgb : t -> float * float * float
 (**Equivalent to ([r t],[g t],[b t]).*)
 
-val rgba : t -> float * float * float * float
+val get_rgba : t -> float * float * float * float
 (**Equivalent to ([r t],[g t],[b t], [a t]).*)
 
 val black : t
@@ -76,7 +76,3 @@ type operator =
 val add : ?op:operator -> t -> t -> t
   (**Adds the first color to the second color, according to the operator
      [op] (default : [OVER]).*)
-
-(*Local variables:*)
-(*compile-command: "ocamlc -c color.mli"*)
-(*End:*)
