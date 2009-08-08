@@ -446,7 +446,8 @@ struct
     m.yy <- m.yy *. cosa -. yx *. sina
 
   let invert m =
-    (* Optimize for scaling|translation matrices just like cairo... *)
+    (* Optimize for scaling|translation matrices which are the ones
+       most used. *)
     if m.xy = 0. && m.yx = 0. then (
       m.x0 <- -. m.x0;
       m.y0 <- -. m.y0;
@@ -495,13 +496,21 @@ struct
     invert m_inv;
     transform_distance m_inv
 
-  let multiply a b =
+  let mul b a =
     { xx = b.xx *. a.xx +. b.xy *. a.yx;
       xy = b.xx *. a.xy +. b.xy *. a.yy;
       yx = b.yx *. a.xx +. b.yy *. a.yx;
       yy = b.yx *. a.xy +. b.yy *. a.yy;
       x0 = b.xx *. a.x0 +. b.xy *. a.y0 +. b.x0;
       y0 = b.yx *. a.x0 +. b.yy *. a.y0 +. b.y0; }
+
+  let mul_in c b a =
+      c.xx <- b.xx *. a.xx +. b.xy *. a.yx;
+      c.xy <- b.xx *. a.xy +. b.xy *. a.yy;
+      c.yx <- b.yx *. a.xx +. b.yy *. a.yx;
+      c.yy <- b.yx *. a.xy +. b.yy *. a.yy;
+      c.x0 <- b.xx *. a.x0 +. b.xy *. a.y0 +. b.x0;
+      c.y0 <- b.yx *. a.x0 +. b.yy *. a.y0 +. b.y0
 
   let has_shear t =
     t.yx <> 0. || t.xy <> 0.

@@ -297,12 +297,18 @@ sig
         is the (signed) area that gets the unit square after
         transformation.  *)
 
-  val multiply : t -> t -> t
-    (** [multiply a b] multiplies the affine transformations in [a]
+  val mul : t -> t -> t
+    (** [multiply b a] multiplies the affine transformations in [a]
         and [b] together and return the result.  The effect of the
         resulting transformation is to {i first} apply the
         transformation in [a] to the coordinates and then apply the
-        transformation in [b] to the coordinates.  *)
+        transformation in [b] to the coordinates.
+
+        BEWARE that the order of the arguments is different from
+        e.g. {!Cairo.Matrix.multiply}. *)
+
+  val mul_in : t -> t -> t -> unit
+    (** [mul_in c b a] computes [mul b a] and put the result in [c]. *)
 
   val transform_point : t -> x:float -> y:float -> float * float
     (** [transform_point m x y] transforms the point ([x], [y]) by [m]. *)
