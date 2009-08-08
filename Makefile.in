@@ -4,7 +4,8 @@ include Makefile.conf
 .PHONY: default all opt byte native install uninstall htdoc doc examples tests
 OCAML_ALL = byte $(filter-out byte, @OCAMLBEST@)
 default: $(OCAML_ALL)
-all: byte
+all: byte native tests
+#examples doc install
 opt: native
 htdoc: doc
 byte native install uninstall doc:

@@ -8,7 +8,7 @@ let make ?(a=1.) r g b =
       && in_interval ~max:a b then
         {r = r; g = g; b = b; a = a}
     else
-      {r = r/.a; g = g/.a; b = b/.a; a = a}
+      {r = r*.a; g = g*.a; b = b*.a; a = a}
   else
     let msg_intro = "color: some data is not in the range. (Values r,g,b,a :" in
     let data ?(s=", ") x = (string_of_float x)^s in

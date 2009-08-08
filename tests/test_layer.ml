@@ -8,8 +8,6 @@ let () =
       let cr =
         B.make ~dirs:[ "../src"; "./src"] s 150. 150.
       in
-
-      (* B.set_color cr (Color.color ~a:0.7 0.9 0. 0.2);*)
       let print s =
         Printf.printf "%s - Matrix: \n%!" s;
         let matrix = B.get_matrix cr in
@@ -26,10 +24,7 @@ let () =
          print "Scale 1/50";
          B.translate cr (-0.5) (-.0.6);
          print "Tr -.5 -.6";*)
-      Printf.printf "Layer...%!";
-
       let layer = Layer.make () in
-      Printf.printf "Layer...%!";
       Layer.line_to layer 0. 0.;
       Layer.line_to layer 1. 0.;
       Layer.line_to layer 0. 1.;
@@ -37,11 +32,10 @@ let () =
       (*Layer.line_to layer 0. 0.;*)
       Layer.close_path layer;
       (*Layer.set_line_width layer 0.05;*)
+      Layer.set_color layer (Color.make ~a:0.7 0. 0.2 0.7);
       Layer.stroke_layer_preserve layer;
       Layer.set_color layer (Color.make 1. 1. 0.);
       Layer.stroke_preserve layer;
-      Printf.printf "Layer...%!";
-
       let layer1 = Layer.make () in
       Layer.move_to layer1 1. 1.;
       Layer.line_to layer1 2. 2.;
@@ -53,19 +47,16 @@ let () =
       Layer.fill layer1;
       Layer.set_color layer1 (Color.make 0. 0. 0.);
       Layer.set_line_width layer1 0.5;
-      Printf.printf "Axes...%!";
       let def_axes = A.make_default
         ~mode:(A.Default.Two_lines(0.,0.))
         (A.Default.Graph(6,1)) (A.Default.Graph(4,1))
       in
-      print_string "Instanciated.";
       flush stdout;
       A.print_axes def_axes ~color_labels:(Color.make 1. 0. 0.) layer1;
-      B.set_color cr (Color.make ~a:0.7 0. 0.2 0.7);
-     (* print "before flush";*)
+     print "before flush";
       Layer.flush_backend ~autoscale:(Layer.Uniform (Layer.Limited(1.,50.)))
         layer ~ofsx:25. ~ofsy:0. ~width:100. ~height:100. cr;
-(*      print "after flush";*)
+      print "after flush";
       B.set_color cr (Color.make ~a:0.7 0.9 0.2 0.6);
       B.fill cr;
       B.arc cr 50. 50. 50. 0. 4.;

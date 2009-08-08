@@ -59,7 +59,7 @@ struct
 
   let set_color cr c =
     let r,g,b,a = Color.rgba c in
-    Cairo.set_source_rgba cr r g b a
+    Cairo.set_source_rgba cr ~r ~g ~b ~a
 
   let clip_rectangle cr ~x ~y ~w ~h =
     Cairo.Path.clear cr;
