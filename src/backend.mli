@@ -235,6 +235,11 @@ module Register(B: Capabilities) : sig end
       perform the registration.  *)
 
 
+(************************************************************************)
+(** {2 Affine transformations} *)
+
+(** Module implementing affine transformations and various operations
+    on them. *)
 module Matrix :
 sig
   type t = matrix
