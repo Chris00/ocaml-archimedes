@@ -24,6 +24,7 @@ let split_on_spaces s i0 i1 =
     let token = String.sub s i0 (i01 - i0) in
     split s (i01 + 1) i1 (token::res)
   )
+  in split s i0 i1 []
 
 
 (* [s.[i]] and [p.[i]] are identical for all [i] s.t. [i0 <= i < i1]. *)
