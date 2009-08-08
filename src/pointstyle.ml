@@ -82,7 +82,7 @@ struct
   let point t x y handle =
     B.move_to handle x y;
     B.save handle;
-    B.set_matrix handle (B.Matrix.identity ());
+    B.set_matrix handle (B.Matrix.make_identity ());
     (match t with
       NONE -> ()
     | X(len) ->
