@@ -510,7 +510,7 @@ struct
     let c_xy = b.xx *. a.xy +. b.xy *. a.yy in
     let c_yx = b.yx *. a.xx +. b.yy *. a.yx in
     let c_yy = b.yx *. a.xy +. b.yy *. a.yy in
-    let c_c0 = b.xx *. a.x0 +. b.xy *. a.y0 +. b.x0 in
+    let c_x0 = b.xx *. a.x0 +. b.xy *. a.y0 +. b.x0 in
     c.y0 <- b.yx *. a.x0 +. b.yy *. a.y0 +. b.y0;
     c.xx <- c_xx;
     c.xy <- c_xy;
