@@ -263,7 +263,19 @@ struct
     let x1', y1' = Matrix.transform_point st.ctm x1 y1 in
     let x2', y2' = Matrix.transform_point st.ctm x2 y2 in
     let x3', y3' = Matrix.transform_point st.ctm x3 y3 in
-    st.current_path <- CURVE_TO(x1',y1', x2',y2', x3',y3') :: st.current_path
+    let x0', y0' =
+      if not st.curr_pt then (
+        st.current_path <- MOVE_TO(x1', y1') :: st.current_path;
+        x1', y1'
+      )
+      else  Matrix.transform_point st.ctm st.x st.y in
+    st.current_path <- CURVE_TO(x1',y1', x2',y2', x3',y3') :: st.current_path;
+    (* Update the current point and extents *)
+    st.path_extents <-
+      update_curve st.path_extents x0' y0' x1' y1' x2' y2' x3' y3';
+    st.curr_pt <- true;
+    st.x <- x3;
+    st.y <- y3
 
 
   let rectangle t ~x ~y ~w ~h =
