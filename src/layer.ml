@@ -126,12 +126,12 @@ let string_of_error e = match e with
 
 let inv_zoomx = ref 1. (*Inverse of scaling factor on X axis*)
 let inv_zoomy = ref 1. (*Inverse of scaling factor on Y axis*)
-let initial_bk_matrix = ref (Coord.identity ())
+let initial_bk_matrix = ref (Coord.make_identity ())
 
 let make () =
   let styles =
     {
-      coord = Coord.identity ();
+      coord = Coord.make_identity ();
       dash = [||], 0.; lj = B.JOIN_BEVEL; lc = B.BUTT;
       color = Color.make 0. 0. 0.; lw = 1.;
       font="Sans serif"; fsize=10.;
@@ -220,7 +220,7 @@ let apply ~next t =
 let get_coord t = t.styles.coord
 let reset_to_id t =
   add_order(fun t -> B.set_matrix t !initial_bk_matrix) t;
-  Coord.reset_to_id t.styles.coord
+  Coord.set_to_identity t.styles.coord
 
 (*
 Reminder of the flags for settings:
@@ -282,7 +282,7 @@ let set_point_style t s =
 let set_matrix t matrix =
   add_order (fun t ->
                let m = Coord.copy matrix in
-               Coord.apply ~result:m ~next:m !initial_bk_matrix;
+               Coord.mul_in m m !initial_bk_matrix;
                B.set_matrix t m) t;
   t.styles.coord <- matrix
 
@@ -516,15 +516,16 @@ let stroke_fun t preserve backend =
       (ignore matrix.B.xx; ignore matrix.B.xy; ignore matrix.B.x0;
        ignore matrix.B.yx; ignore matrix.B.yy; ignore matrix.B.y0)*)
   in
-  let coord_kill_transform = Coord.invert t.styles.coord in
+  let coord_kill_transform = Coord.copy t.styles.coord in
+  Coord.invert coord_kill_transform;
   print "" "CKT" coord_kill_transform;
   Coord.scale coord_kill_transform !inv_zoomx !inv_zoomy;
   print "scale" "CKT" coord_kill_transform;
-  Coord.apply ~next:t.styles.coord coord_kill_transform;
+  Coord.mul_in coord_kill_transform  t.styles.coord coord_kill_transform;
   print "apply coords" "CKT" coord_kill_transform;
   let matrix = B.get_matrix backend in
   print "" "Matrix" coord_kill_transform;
-  Coord.apply ~next:coord_kill_transform matrix;
+  Coord.mul_in matrix  coord_kill_transform matrix;
   print "Apply CKT" "Matrix" coord_kill_transform;
   B.set_matrix backend matrix;
   (if preserve then B.stroke_preserve else B.stroke) backend;
@@ -612,7 +613,7 @@ let adjust_scale sc limit =
 
 let get_ct ?(autoscale=(Uniform Unlimited))
     t ?(pos=B.CC) xmin xmax ymin ymax ~ofsx ~ofsy ~width ~height =
-  let c = Coord.identity () in
+  let c = Coord.make_identity () in
   let scalx, scaly =
     match autoscale with
       Not_allowed ->
@@ -787,7 +788,7 @@ let flush_backend ?(autoscale=(Uniform Unlimited))
   let matrix = B.get_matrix handle in
   let next =
     get_ct ~autoscale t ?pos xmin xmax ymin ymax ~ofsx ~ofsy ~width ~height in
-  Coord.apply ~next matrix;
+  Coord.mul_in matrix  next matrix;
   let sf x = " "^(string_of_float x) in
   (*Printf.printf "Matrix%s%s%s%s%s%s%!" (sf matrix.B.xx) (sf matrix.B.xy)
     (sf matrix.B.x0) (sf matrix.B.yx) (sf matrix.B.yy) (sf matrix.B.y0);*)
@@ -821,7 +822,7 @@ let flush ?(autoscale=(Uniform Unlimited)) t ~ofsx ~ofsy ~width ~height ?pos
   let handle = T.get_handle handle in
   B.save handle;
   let init_transform = B.get_matrix handle in
-  Coord.apply ~next:matrix init_transform;
+  Coord.mul_in init_transform  matrix init_transform;
   B.set_matrix handle init_transform;
   (*Backend handle has now the same transformation coordinates as the
     initial handle applied to it.*)
