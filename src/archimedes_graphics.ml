@@ -283,11 +283,13 @@ struct
     let st = get_state t in
     let x', y' = Matrix.transform_point st.ctm x y
     and w', h' = Matrix.transform_distance st.ctm w h in
-
     st.current_path <- RECTANGLE(x, y, w, h) :: st.current_path;
-
+    (* Update the current point and extents *)
     st.path_extents <-
       update_rectangle st.path_extents x' y' (x' +. w') (y' +. h')
+    st.curr_pt <- true;
+    st.x <- x;
+    st.y <- y
 
   let arc t ~x ~y ~r ~a1 ~a2 =
     ()
