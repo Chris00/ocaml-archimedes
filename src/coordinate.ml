@@ -142,7 +142,7 @@ let copy coord =
 
 (* Create a new coordinate system that consists into first applying
    the transformation [tm] before the one of [coord]. *)
-let make_with_matrix coord tm =
+let make_from_transform coord tm =
   let coord' = { depends_on = coord;
                  tm = tm;
                  ctm = Matrix.mul coord.ctm coord.tm;
@@ -153,13 +153,13 @@ let make_with_matrix coord tm =
   coord'
 
 let make_translate coord ~x ~y =
-  make_with_matrix coord (Matrix.make_translate ~x ~y)
+  make_from_transform coord (Matrix.make_translate ~x ~y)
 
 let make_scale coord ~x ~y =
-  make_with_matrix coord (Matrix.make_scale ~x ~y)
+  make_from_transform coord (Matrix.make_scale ~x ~y)
 
 let make_rotate coord ~angle =
-  make_with_matrix coord (Matrix.make_rotate ~angle)
+  make_from_transform coord (Matrix.make_rotate ~angle)
 
 
 (* Changing this coordinate system

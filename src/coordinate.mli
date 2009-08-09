@@ -61,6 +61,13 @@ val make_rotate : t -> angle:float -> t
       (assuming the axis of the system [coord] are orthonormal).  If
       [coord] if modified, the new system will be updated as well.  *)
 
+val make_from_transform : t -> Backend.Matrix.t -> t
+  (** [make_from_transform coord tm] defines a new coordinate system
+      that consists first in applying [tm] and then the tranformation
+      in [coord].  In other words, [tm] is the affine transformation
+      from the desired coordinate system to [coord].  If [coord] if
+      modified, the new system will be updated as well. *)
+
 val copy : t -> t
   (** Returns a completely independent copy of the current coordinate
       system. *)
