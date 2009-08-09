@@ -357,7 +357,7 @@ struct
 
   let text_extents t txt =
     let w, h = Graphics.text_size txt in
-    { Backend.x = 0.; y = 0.; w = w; h = h }
+    { Backend.x = 0.; y = 0.; w = float w; h = float h }
 
   let show_text t ~rotate ~x ~y pos txt =
     let st = get_state t in
