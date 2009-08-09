@@ -20,6 +20,60 @@ module Matrix = Backend.Matrix
 
 type ctm = Matrix.t
 
+(** Simple sets build on weak arrays. *)
+module W : sig
+  type 'a t
+  val make : unit -> 'a t
+  val add : 'a t -> 'a -> unit
+  val iter : 'a t -> ('a -> unit) -> unit
+    (** [iter w f] iterates [f] on all "full" entries of [w]. *)
+end =
+struct
+  type 'a t = {
+    mutable ptr: 'a Weak.t;
+    mutable used: int;  (* number of used entries *)
+  }
+
+  let make () = { prt = Weak.create 10;  used = 0 }
+
+  let iter w f =
+    let prt = w.ptr in
+    for i = 0 to w.used - 1 do
+      match Weak.get ptr i with
+      | None -> ()
+      | Some a -> f a
+    done
+
+  (* Move all full entries at the beginning. *)
+  let compact w =
+    let prt = w.ptr in
+    let j = ref 0 in
+    for i = 0 to used - 1 do
+      match Weak.get prt i with
+      | None -> ()
+      | (Some _) as a -> Weak.set prt !j a;  incr j
+    done;
+    w.used <- !j
+
+  let make_space w =
+    (* If there is still some space, we do nothing *)
+    if w.used >= Weak.length prt then (
+      compact w;
+      (* FIXME: should care about shrinking the array if used << length. *)
+      if w.used >= Weak.length prt then (
+        (* Still no space after compaction, increase the size. *)
+        let ptr2 = Weak.create (Weak.length w.ptr) in
+        Weak.blit w.ptr 0 ptr2 0 (Weak.length prt);
+        w.ptr <- ptr2;
+      )
+    )
+
+  let add w x =
+    make_space w;
+    Weak.set w.ptr w.used (Some x);
+    w.used <- w.used + 1
+end
+
 (* Coordinate systems will stack on top of each other :
 
    tm1 -> tm2 -> ... tmN
@@ -31,11 +85,15 @@ type ctm = Matrix.t
    course, if [tmi] is modified, [ctm] must be updated.  Thus
    coordinate systems form a tree through their dependencies.  When a
    coordinate system is updated, all [ctm] of the children must be
-   recomputed. *)
+   recomputed.
+
+   The [children] are kept in a weak hashtable so that link does not
+   prevent them from being garbage collected.
+*)
 type t = {
-  depends_on : t; (* The other coordinate system this one depends upon.
-                     All coordinate systems, except the device one,
-                     depends on another one. *)
+  depends_on : t; (* The other coordinate system this one depends
+                     upon.  All coordinate systems, except the device
+                     one, depends on another one. *)
   tm : Matrix.t; (* transformation matrix that transform these
                     coordinates into the coordinates it depends upon.  *)
   ctm : Matrix.t;
@@ -47,7 +105,7 @@ type t = {
   (* Whether the [ctm] is up to date.  If not it needs to be
      recomputed.  INVARIANT: when a coordinate system is not up to
      date, all its children must not be either. *)
-  mutable children : t list;
+  mutable children : t W.t;
   (* List of coordinate systems that depend on this one. *)
 }
 
