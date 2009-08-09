@@ -17,7 +17,7 @@ type error = No_saved_states
 
 exception Error of error
 
-let make ?dirs name ?(coord=(Coord.identity ()))
+let make ?dirs name ?(coord=(Coord.make_identity ()))
     ?(point=(Pointstyle.make "default")) width height =
   {handle = B.make ?dirs name width height;
    styles = {coord = coord; point = point};
@@ -65,33 +65,33 @@ let get_line_join t = B.get_line_join t.handle
   doing the order*)
 
 let move_to t ~x ~y =
-  let x', y' = Coord.transform t.styles.coord x y in
+  let x', y' = Coord.transform_point t.styles.coord x y in
   B.move_to t.handle x' y'
 
 let line_to t ~x ~y =
-  let x', y' = Coord.transform t.styles.coord x y in
+  let x', y' = Coord.transform_point t.styles.coord x y in
   B.line_to t.handle x' y'
 
 let rel_move_to t ~x ~y =
-  let x', y' = Coord.transform_dist t.styles.coord x y in
+  let x', y' = Coord.transform_distance t.styles.coord x y in
   B.rel_move_to t.handle x' y'
 
 let rel_line_to t ~x ~y =
-  let x', y' = Coord.transform_dist t.styles.coord x y in
+  let x', y' = Coord.transform_distance t.styles.coord x y in
   B.rel_line_to t.handle x' y'
 
 let curve_to t ~x1 ~y1 ~x2 ~y2 ~x3 ~y3 =
-  let x1, y1 = Coord.transform t.styles.coord x1 y1
-  and x2, y2 = Coord.transform t.styles.coord x2 y2
-  and x3, y3 = Coord.transform t.styles.coord x3 y3 in
+  let x1, y1 = Coord.transform_point t.styles.coord x1 y1
+  and x2, y2 = Coord.transform_point t.styles.coord x2 y2
+  and x3, y3 = Coord.transform_point t.styles.coord x3 y3 in
   B.curve_to t.handle ~x1 ~y1 ~x2 ~y2 ~x3 ~y3
 
 (*FIXME: these two primitives do not translate well in Backend.t
   coordinates -- due to scaling*)
 let rectangle t ~x ~y ~w ~h =
-  let x, y = Coord.transform t.styles.coord x y
-  and w, w' = Coord.transform_dist t.styles.coord w 0.
-  and h', h = Coord.transform_dist t.styles.coord 0. h in
+  let x, y = Coord.transform_point t.styles.coord x y
+  and w, w' = Coord.transform_distance t.styles.coord w 0.
+  and h', h = Coord.transform_distance t.styles.coord 0. h in
   if Coord.has_shear t.styles.coord then
     (B.move_to t.handle x y;
      B.rel_line_to t.handle w w';
@@ -128,7 +128,7 @@ let restore t =
 let select_font_face t = B.select_font_face t.handle
 let set_font_size t = B.set_font_size t.handle
 let show_text t ~rotate ~x ~y =
-  let x,y = Coord.transform t.styles.coord x y in
+  let x,y = Coord.transform_point t.styles.coord x y in
   (*FIXME: need to know how t.styles.coord rotates, to get a better rotation of text*)
   B.show_text t.handle ~rotate ~x ~y
 

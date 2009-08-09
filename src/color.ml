@@ -23,9 +23,9 @@ let b t = t.b
 
 let a t = t.a
 
-let rgb t = t.r, t.g, t.b
+let get_rgb t = t.r, t.g, t.b
 
-let rgba t = t.r, t.g, t.b, t.a
+let get_rgba t = t.r, t.g, t.b, t.a
 
 let black = {r = 0.; g = 0.; b = 0.; a = 1.}
 let red = {r = 1.; g = 0.; b = 0.; a = 1.}

@@ -234,56 +234,107 @@ module Register(B: Capabilities) : sig end
       We recommend the use of [let module U = Register(B) in ()] to
       perform the registration.  *)
 
+
+(************************************************************************)
+(** {2 Affine transformations} *)
+
+(** Module implementing affine transformations and various operations
+    on them. *)
 module Matrix :
 sig
   type t = matrix
 
-  val identity : unit -> t
-    (**Identity transformation.*)
+  exception Not_invertible
 
-  val translate : t -> float -> float -> unit
-    (**Modify t so that after the initial transformation, a translation
-       of the specified vector is performed.*)
+  val make_identity : unit -> t
+    (** [init_identity()] returns the identity transformation. *)
 
-  val scale : t -> float -> float -> unit
-    (**Modify t so that a rescaling is done.*)
+  val make_translate : x:float -> y:float -> t
+    (** [init_translate tx ty] return a transformation that translates
+        by [tx] and [ty] in the X and Y dimensions, respectively. *)
 
-  val rotate : t -> float -> unit
-    (**Rotation of angle*)
+  val make_scale : x:float -> y:float -> t
+    (** [init_scale sx sy] return a transformation that scales by [sx]
+        and [sy] in the X and Y dimensions, respectively. *)
 
-  val transform : t -> float -> float -> float * float
-    (**[transform t x y] transforms the point (x,y) under the transformation [t]*)
+  val make_rotate : angle:float -> t
+    (** [init_rotate radians] returns a a transformation that rotates
+        by [radians]. *)
 
-  val transform_dist : t -> float -> float -> float * float
-    (**[transform t x y] transforms the distance (vector) (x,y) under the
-       transformation [t]. (This implies that no translation is done.*)
-
-  val det : t -> float
-    (**Returns the determinant of the rotation transformation. It is
-       precisely, up to sign, the area that gets the unit square after
-       transformation.*)
-
-  val invert : t -> t
-    (**Gets the inverse transformation of the parameter.*)
-
-  val inv_transform : t -> float -> float -> float * float
-    (**Makes the inverse transformation of a point.*)
-
-  val inv_transform_dist : t -> float -> float -> float * float
-    (**Makes the inverse transformation of a distance (vector).*)
-
-  val apply : ?result:t -> next:t -> t -> unit
-    (**Applies the transformations contained in [next_t] to the results
-       given by [t]. The resulting transformation is stored in [result] or,
-       if not given, in [t].*)
+  val set_to_identity : t -> unit
+    (** Sets the current transformation to the identity transformation. *)
 
   val copy: t -> t
-    (**Returns a fresh copy of its argument.*)
+    (** [copy matrix] returns a copy of [matrix].*)
 
-  val reset_to_id : t -> unit
-    (**Resets the current transformation to the identity transformation.*)
+  val translate : t -> x:float -> y:float -> unit
+    (** [translate m tx ty] applies a translation by [tx], [ty] to the
+        transformation in [m].  The effect of the new transformation
+        is to {i first} translate the coordinates by [tx] and [ty],
+        then apply the original transformation to the coordinates. *)
+
+  val scale : t -> x:float -> y:float -> unit
+    (** [scale m sx sy] applies scaling by [sx], [sy] to the
+        transformation in [m].  The effect of the new transformation
+        is to {i first} scale the coordinates by [sx] and [sy], then
+        apply the original transformation to the coordinates. *)
+
+  val rotate : t -> angle:float -> unit
+    (** [rotate m radians] applies rotation by [radians] to the
+        transformation in [m].  The effect of the new transformation
+        is to {i first} rotate the coordinates by [radians], then
+        apply the original transformation to the coordinates. *)
+
+  val invert : t -> unit
+    (** [invert m] changes [matrix] to be the inverse of it's original
+        value.  Not all transformation matrices have inverses; if the
+        matrix collapses points together (it is degenerate), then it
+        has no inverse and this function will raise
+        {!Backend.Matrix.Not_invertible}. *)
+
+  val det : t -> float
+    (** [det m] returns the determinant of the linear part of [m].  It
+        is the (signed) area that gets the unit square after
+        transformation.  *)
+
+  val mul : t -> t -> t
+    (** [multiply b a] multiplies the affine transformations in [a]
+        and [b] together and return the result.  The effect of the
+        resulting transformation is to {i first} apply the
+        transformation in [a] to the coordinates and then apply the
+        transformation in [b] to the coordinates.
+
+        BEWARE that the order of the arguments is different from
+        e.g. {!Cairo.Matrix.multiply}. *)
+
+  val mul_in : t -> t -> t -> unit
+    (** [mul_in c b a] computes [mul b a] and put the result in [c]. *)
+
+  val transform_point : t -> x:float -> y:float -> float * float
+    (** [transform_point m x y] transforms the point ([x], [y]) by [m]. *)
+
+  val transform_distance : t -> dx:float -> dy:float -> float * float
+    (** [transform_distance m dx dy] transforms the distance vector
+        ([dx],[dy]) by [m].  This is similar to
+        {!Cairo.Matrix.transform_point} except that the translation
+        components of the transformation are ignored.  The calculation
+        of the returned vector is as follows:
+        {[
+        dx2 = dx1 * a + dy1 * c;
+        dy2 = dx1 * b + dy1 * d;
+        ]}
+        Affine transformations are position invariant, so the same
+        vector always transforms to the same vector.  If (x1,y1)
+        transforms to (x2,y2) then (x1+dx1,y1+dy1) will transform to
+        (x1+dx2,y1+dy2) for all values of x1 and x2.  *)
+
+  val inv_transform_point : t -> x:float -> y:float -> float * float
+    (** Makes the inverse transformation of a point. *)
+
+  val inv_transform_distance : t -> dx:float -> dy:float -> float * float
+    (** Makes the inverse transformation of a distance. *)
 
   val has_shear: t -> bool
-    (**Tests whether the transformation has shears. This is also the
-       case if the transformation does a rotation*)
+    (** Tests whether the transformation has shears.  This is also the
+       case if the transformation does a rotation.  *)
 end

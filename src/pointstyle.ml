@@ -39,13 +39,14 @@ struct
     let args t n m = Printf.sprintf "%s has only %i args (found %i)" t n m
     and unparseable s = Printf.sprintf "Unparseable arg to float: %s" s
     in
-    if opt = [] then NONE
-    else let t::opts = opt in
-    match t with
-      "X" ->
-        if List.length opts <> 1 then error (args t 1 (List.length opts));
-        (try
-           X(float_of_string (List.hd opts))
+    match opt with
+    | [] -> NONE
+    | t::opts ->
+        match t with
+        | "X" ->
+            if List.length opts <> 1 then error (args t 1 (List.length opts));
+            (try
+               X(float_of_string (List.hd opts))
          with Failure "float_of_string" -> error (unparseable (List.hd opts)))
     | "-" ->
         if List.length opts <> 1 then error (args t 1 (List.length opts));
@@ -82,7 +83,7 @@ struct
   let point t x y handle =
     B.move_to handle x y;
     B.save handle;
-    B.set_matrix handle (B.Matrix.identity ());
+    B.set_matrix handle (B.Matrix.make_identity ());
     (match t with
       NONE -> ()
     | X(len) ->
