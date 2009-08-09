@@ -20,60 +20,6 @@ module Matrix = Backend.Matrix
 
 type ctm = Matrix.t
 
-(** Simple sets build on weak arrays. *)
-module W : sig
-  type 'a t
-  val make : unit -> 'a t
-  val add : 'a t -> 'a -> unit
-  val iter : 'a t -> ('a -> unit) -> unit
-    (** [iter w f] iterates [f] on all "full" entries of [w]. *)
-end =
-struct
-  type 'a t = {
-    mutable ptr: 'a Weak.t;
-    mutable used: int;  (* number of used entries *)
-  }
-
-  let make () = { prt = Weak.create 10;  used = 0 }
-
-  let iter w f =
-    let prt = w.ptr in
-    for i = 0 to w.used - 1 do
-      match Weak.get ptr i with
-      | None -> ()
-      | Some a -> f a
-    done
-
-  (* Move all full entries at the beginning. *)
-  let compact w =
-    let prt = w.ptr in
-    let j = ref 0 in
-    for i = 0 to used - 1 do
-      match Weak.get prt i with
-      | None -> ()
-      | (Some _) as a -> Weak.set prt !j a;  incr j
-    done;
-    w.used <- !j
-
-  let make_space w =
-    (* If there is still some space, we do nothing *)
-    if w.used >= Weak.length prt then (
-      compact w;
-      (* FIXME: should care about shrinking the array if used << length. *)
-      if w.used >= Weak.length prt then (
-        (* Still no space after compaction, increase the size. *)
-        let ptr2 = Weak.create (Weak.length w.ptr) in
-        Weak.blit w.ptr 0 ptr2 0 (Weak.length prt);
-        w.ptr <- ptr2;
-      )
-    )
-
-  let add w x =
-    make_space w;
-    Weak.set w.ptr w.used (Some x);
-    w.used <- w.used + 1
-end
-
 (* Coordinate systems will stack on top of each other :
 
    tm1 -> tm2 -> ... tmN
@@ -88,26 +34,54 @@ end
    recomputed.
 
    The [children] are kept in a weak hashtable so that link does not
-   prevent them from being garbage collected.
+   prevent them from being garbage collected.  Since the weak hash
+   tables are instantiated through a functor, one must use the
+   recursive module "trick".
 *)
-type t = {
-  depends_on : t; (* The other coordinate system this one depends
-                     upon.  All coordinate systems, except the device
-                     one, depends on another one. *)
-  tm : Matrix.t; (* transformation matrix that transform these
-                    coordinates into the coordinates it depends upon.  *)
-  ctm : Matrix.t;
-  (* Transformation to device coordinates.  This is the composition of
-     [tm] with the [ctm] of the coordinate system this one depends on.
-     This is an optimization that needs to be updated if the
-     underlying coordinate system is modified.  *)
-  mutable up_to_date : bool;
-  (* Whether the [ctm] is up to date.  If not it needs to be
-     recomputed.  INVARIANT: when a coordinate system is not up to
-     date, all its children must not be either. *)
-  mutable children : t W.t;
-  (* List of coordinate systems that depend on this one. *)
-}
+module rec W : (Weak.S with type data = Coord.t) = Weak.Make(Coord)
+and Coord : sig
+  type t =  { depends_on : t;
+              tm : Matrix.t;
+              ctm : Matrix.t;
+              mutable up_to_date : bool;
+              mutable children : W.t;
+              id : int; }
+  val equal : t -> t -> bool
+  val hash : t -> int
+  val new_id : unit -> int
+end =
+struct
+  type t = {
+    depends_on : t; (* The other coordinate system this one depends
+                       upon.  All coordinate systems, except the device
+                       one, depends on another one. *)
+    tm : Matrix.t; (* transformation matrix that transform these
+                      coordinates into the coordinates it depends upon.  *)
+    ctm : Matrix.t;
+    (* Transformation to device coordinates.  This is the composition of
+       [tm] with the [ctm] of the coordinate system this one depends on.
+       This is an optimization that needs to be updated if the
+       underlying coordinate system is modified.  *)
+    mutable up_to_date : bool;
+    (* Whether the [ctm] is up to date.  If not it needs to be
+       recomputed.  INVARIANT: when a coordinate system is not up to
+       date, all its children must not be either. *)
+    mutable children : W.t;
+    (* List of coordinate systems that depend on this one. *)
+    id : int;
+    (* id of the object (for hash) *)
+  }
+
+  let equal c1 c2 = c1 == c2
+  let hash c = c.id
+
+  (* global id for distinguishing coordinate systems *)
+  let next_id = ref 0
+  let new_id () = incr next_id; !next_id
+end
+
+include Coord
+
 
 (* If necessary, resynchronize [coord.ctm] and possibly others along
    the way (to the tree root). *)
@@ -150,7 +124,8 @@ let make_identity() =
       tm = Matrix.make_identity();
       ctm = Matrix.make_identity();
       up_to_date = true; (* always must be *)
-      children = [];
+      children = W.create 5;
+      id = new_id();
     } in
   dev
 
@@ -160,8 +135,9 @@ let copy coord =
          influences its copy. *)
       tm = Matrix.copy coord.tm;
       ctm = Matrix.copy coord.ctm;
-      children = []; (* this is a new coordinate system, no other one
-                        depends on it. *)
+      children = W.create 5; (* this is a new coordinate system, no other one
+                                depends on it. *)
+      id = new_id();
   }
 
 (* Create a new coordinate system that consists into first applying
@@ -171,8 +147,9 @@ let make_with_matrix coord tm =
                  tm = tm;
                  ctm = Matrix.mul coord.ctm coord.tm;
                  up_to_date = coord.up_to_date; (* iff [coord] is up to date *)
-                 children = []  } in
-  coord.children <- coord' :: coord.children;
+                 children = W.create 5;
+                 id = new_id() } in
+  W.add coord.children coord';
   coord'
 
 let make_translate coord ~x ~y =
@@ -195,14 +172,14 @@ let rec put_children_not_up_to_date coord =
      date. *)
   if coord.up_to_date then begin
     Matrix.mul_in coord.ctm  coord.depends_on.ctm coord.tm;
-    List.iter (fun c ->
-                 (* If [c] is already not up to date, so are all its
-                    children.  There is no need to recurse down. *)
-                 if c.up_to_date then (
-                   c.up_to_date <- false;
-                   put_children_not_up_to_date c; (* => invariant *)
-                 )
-              ) coord.children
+    W.iter (fun c ->
+              (* If [c] is already not up to date, so are all its
+                 children.  There is no need to recurse down. *)
+              if c.up_to_date then (
+                c.up_to_date <- false;
+                put_children_not_up_to_date c; (* => invariant *)
+              )
+           ) coord.children
   end
 
 let translate coord ~x ~y =
