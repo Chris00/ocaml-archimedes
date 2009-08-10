@@ -6,10 +6,12 @@ OCAMLINCLUDES = $(ROOT)/src
 LIBS_CMA = dynlink.cma bigarray.cma archimedes.cma
 LIBS_CMXA = dynlink.cmxa bigarray.cmxa archimedes.cmxa
 
+TESTS = backend_text.ml text.ml test_coord.ml test_layer.ml test_function.ml
+
 .PHONY: byte opt native
 opt: native
-byte: backend_text.exe
-native: backend_text.com
+byte: $(TESTS:.ml=.exe)
+native: $(TESTS:.ml=.com)
 
 include $(ROOT)/Makefile.ocaml
 
