@@ -23,7 +23,7 @@ endif
 
 .PHONY: default all opt byte native
 default: @OCAMLBEST@
-all: byte
+all: byte native
 opt: native
 byte: archimedes.cma $(PLUGINS:.ml=.cmo)
 native: archimedes.cmxa $(PLUGINS:.ml=.cmxs)

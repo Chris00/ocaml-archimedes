@@ -18,17 +18,20 @@ let () =
         (A.Default.Graph(6,1)) (A.Default.Graph(6,3))
       in
       A.print_axes def_axes ~color_labels:(Color.make 0. 0. 0.) layer;
+      let width = 500. and height = 500. in
+      let ofsx = 0. and ofsy = 0. in
+      let x2 = 500. and y2 = 500. in
       Layer.flush_backend
         ~autoscale:(Layer.Not_allowed)
-        layer ~ofsx:0. ~ofsy:500. ~width:500. ~height:(-500.) cr;
+        layer ~ofsx ~ofsy ~width ~height cr;
       Layer.flush_backend
-        layer ~ofsx:0. ~ofsy:1000. ~width:500. ~height:(-500.) cr;
+        layer ~ofsx:x2 ~ofsy ~width ~height cr;
       Layer.flush_backend
         ~autoscale:(Layer.Free(Layer.Unlimited, Layer.Unlimited))
-        layer ~ofsx:500. ~ofsy:500. ~width:500. ~height:(-500.) cr;
+        layer ~ofsx ~ofsy:y2 ~width ~height cr;
       Layer.flush_backend
         ~autoscale:(Layer.Free(Layer.Limited_out 50., Layer.Limited_out 20.))
-        layer ~ofsx:500. ~ofsy:1000. ~width:500. ~height:(-500.) cr;
+        layer ~ofsx:x2 ~ofsy:y2 ~width ~height cr;
       B.close cr
     with
       B.Error e ->

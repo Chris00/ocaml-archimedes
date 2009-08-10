@@ -37,3 +37,16 @@ let first_and_list b =
   let i = index_of_space b 0 len in
   if i = len then (b, []) (* no options *)
   else (String.sub b 0 i, split_on_spaces b (i+1) len)
+
+let index_string matcher string =
+  let nm = String.length matcher
+  and ns = String.length string in
+  if nm > ns then ns + 1
+  else
+    let rec find_first from =
+    try
+      let i = String.index_from string from matcher.[0] in
+      if start_with (String.sub string i (ns - i)) matcher then i
+      else find_first (i+1)
+    with Not_found -> ns + 1
+    in find_first 0

@@ -8,7 +8,8 @@ LIBS_CMXA = dynlink.cmxa bigarray.cmxa archimedes.cmxa
 
 TESTS = backend_text.ml text.ml test_coord.ml test_layer.ml test_function.ml
 
-.PHONY: byte opt native
+.PHONY: all byte opt native
+all: byte native
 opt: native
 byte: $(TESTS:.ml=.exe)
 native: $(TESTS:.ml=.com)

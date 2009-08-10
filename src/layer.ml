@@ -61,11 +61,6 @@ let setting_point = 128
 type bkdep =
     TEXT of float * float * float * B.text_position * string
 
-type data =
-    BKDEP of bkdep
-  | ORDER of (B.t -> unit)
-  | SAVING_POINT
-
 type layer_data =
     {
       mutable current: (float * float) option;
@@ -73,10 +68,6 @@ type layer_data =
       mutable pymin:float; mutable pymax:float;
       mutable xmin: float; mutable xmax: float;
       mutable ymin: float; mutable ymax: float;
-      mutable upmargin: float;
-      mutable downmargin: float;
-      mutable leftmargin: float;
-      mutable rightmargin: float;
     }
 type t =
     {
@@ -90,8 +81,10 @@ type t =
       saved_data: layer_data Stack.t;
       (*Saved data. This will allow to save, perform some orders
         before flushing somewhere, then retrieve the initial state.*)
-      orders: data Q.t;
-      bkdep_updates: data Q.t;
+      mutable orders: (B.t -> unit) Q.t;
+      saved_orders: (B.t -> unit) Q.t Stack.t;
+      mutable bkdep_updates: bkdep Q.t;
+      saved_updates: bkdep Q.t Stack.t
     }
 
 type error =
@@ -146,14 +139,13 @@ let make () =
       pymin = max_float; pymax = -. max_float;
       xmin = max_float; xmax = -. max_float;
       ymin = max_float; ymax = -. max_float;
-      upmargin = 0.; downmargin = 0.;
-      leftmargin = 0.; rightmargin = 0.;
     }
   in
   {
     styles = styles;  history = Stack.create ();
     data = data;  saved_data = Stack.create ();
-    orders = Q.create (); bkdep_updates = Q.create ()
+    orders = Q.create (); saved_orders = Stack.create ();
+    bkdep_updates = Q.create (); saved_updates = Stack.create ();
   }
 
 let update t path x y =
@@ -175,24 +167,23 @@ let reinit_path_ext t =
   data.current <- None
 
 let add_order f t =
-  Q.add (ORDER f) t.orders
+  Q.add f t.orders
 
 let add_update f t =
-  Q.add (BKDEP f) t.bkdep_updates
+  Q.add f t.bkdep_updates
 
-let save_stacks t =
-  Q.add SAVING_POINT t.orders;
-  Q.add SAVING_POINT t.bkdep_updates
+let save_queues t =
+  Stack.push t.orders t.saved_orders;
+  Stack.push t.bkdep_updates t.saved_updates;
+  t.orders <- Q.create ();
+  t.bkdep_updates <- Q.create ()
 
-let restore_stacks t =
-  let rec pop_until_saving_point q =
-    match Q.pop q with
-      ORDER(_)
-    | BKDEP(_) -> pop_until_saving_point q
-    | SAVING_POINT  -> ()
-  in
-  pop_until_saving_point t.orders;
-  pop_until_saving_point t.bkdep_updates
+let restore_queues t =
+  try
+    t.orders <- Stack.pop t.saved_orders;
+    t.bkdep_updates <- Stack.pop t.saved_updates
+  with Stack.Empty ->
+    failwith "Internal problem when restoring the stacks."
 
 let translate t ~x ~y =
   add_order (fun t -> B.translate t x y) t;
@@ -236,7 +227,10 @@ Reminder of the flags for settings:
   We make use of the [setting_*] variables to avoid errors.*)
 
 let set_color t c =
-  add_order (fun t -> B.set_color t c) t;
+  add_order (fun t ->
+               let r,g,b,a = Color.get_rgba c in
+               Printf.printf "Color set: %f %f %f/%f\n" r g b a;
+               B.set_color t c) t;
   t.styles.color <- c;
   let set = t.styles.settings
   and n = setting_color in
@@ -462,6 +456,7 @@ let arc t ~x ~y ~r ~a1 ~a2=
 let rectangle t ~x ~y ~w ~h =
   update t true x y;
   update t true (x+.w) (y+.h);
+  Printf.printf "Rectangle %f %f, %f %f\n" x y w h;
   add_order (fun t -> B.rectangle t ~x ~y ~w ~h) t
 
 
@@ -590,12 +585,12 @@ let points t list = add_order (Pointstyle.points t.styles.point list) t
 
 let save_layer t =
   Stack.push {t.data with xmin = t.data.xmin} t.saved_data;
-  save_stacks t
+  save_queues t
 
 let restore_layer t =
   try
     t.data <- Stack.pop t.saved_data;
-    restore_stacks t
+    restore_queues t
   with Stack.Empty ->
     raise (Error (Restore_without_saving "layer"))
 
@@ -723,11 +718,13 @@ let update_text t handle r x y pos str width height autoscale =
   in
   let xmax = xmin +. w' and ymax = ymin +. h' in
   Printf.printf "Bounds applied: %f, %f; %f, %f\n\n" xmin ymin xmax ymax;
-  B.set_color handle (Color.make 1. 0. 0.);
-  (*FIXME: the following command updates t.[xy][min|max], which we don't want
+  (*FIXME: the rectangle command updates t.[xy][min|max], which we don't want
   in the end.*)
- (* rectangle t xmin ymin (xmax -. xmin) (ymax -. ymin);*)
-  stroke_fun t false handle;
+  B.set_color handle Color.yellow;
+  (*B.rectangle handle x y rect.B.w rect.B.h;*)
+  (*stroke_fun t false handle;*)
+  B.stroke handle;
+
   B.restore handle;
   xmin, xmax, ymin, ymax
 
@@ -736,25 +733,23 @@ let make_updates handle t width height autoscale =
   let q = Q.copy t.bkdep_updates in
   let bounds (a,b,c,d) (w,x,y,z) =
     min a w, max b x, min c y, max d z in
-  let rec update z =
-    if not (Q.is_empty q) then
-      match Q.pop q with
-        SAVING_POINT -> update z
-      | ORDER _ -> failwith "Found an order in bkdep_updates. This is a bug."
-      | BKDEP bkdep ->
-          match bkdep with
-            TEXT(r,x,y,pos,txt) ->
-              let p =
-                update_text t handle r x y pos txt width height autoscale in
-              let w,x,y,z' = bounds z p in
-              (*  Printf.printf "Update min/max: %f %f to %f %f" w y x z';
-                  Printf.printf "t.min/max: %f %f to %f %f\n"
-                  t.data.xmin t.data.ymin t.data.xmax t.data.ymax;*)
-              update (bounds z p)
-    else z
+  let rec update z list=
+    if not (Q.is_empty t.bkdep_updates) then
+      let up = Q.pop t.bkdep_updates in
+      (Q.add up q;
+       match up with
+         TEXT(r,x,y,pos,txt) ->
+           let p =
+             update_text t handle r x y pos txt width height autoscale in
+           (*let w,x,y,z' = bounds z p in
+             Printf.printf "Update min/max: %f %f to %f %f" w y x z';
+               Printf.printf "t.min/max: %f %f to %f %f\n"
+               t.data.xmin t.data.ymin t.data.xmax t.data.ymax;*)
+           update (bounds z p) (p::list))
+    else (Q.transfer q t.bkdep_updates; z, list)
   in
   let data = t.data in
-  update (data.xmin,data.xmax,data.ymin,data.ymax)
+  update (data.xmin,data.xmax,data.ymin,data.ymax) []
 
 
 let layer_extents ?(autoscale= Uniform Unlimited) ?handle t =
@@ -764,19 +759,35 @@ let layer_extents ?(autoscale= Uniform Unlimited) ?handle t =
       {B.x = data.xmin; y = data.ymin;
        w = data.xmax -. data.xmin; h = data.ymax -. data.ymin}
   | Some handle ->
-      let x,x',y,y' = make_updates handle t
+      let (x,x',y,y'), boxes = make_updates handle t
         (B.width handle) (B.height handle) autoscale in
       {B.x = x; y = y; w = x' -. x; h = y' -. y}
+
+
+
+
+let debug_flush = true
+
+let print () = if debug_flush then Printf.printf "*%!"
 
 (*FIXME: a flushed layer can be reusable; flush does not kill nor
   modify the previous orders.*)
 let flush_backend ?(autoscale=(Uniform Unlimited))
     t ~ofsx ~ofsy ~width ~height ?pos handle =
+  print ();
   B.save handle;
+  (*save_layer t;*)
   initial_bk_matrix := B.get_matrix handle;
+  set_color t (Color.make ~a:0.5 0. 1. 1.);
+  print ();
+  rectangle t t.data.xmin t.data.ymin
+    (t.data.xmax -. t.data.xmin) (t.data.ymax -. t.data.ymin);
+  stroke_fun t false handle;
+  print ();
   (*Printf.printf "Min/max1: %f %f to %f %f\n"
     t.data.xmin t.data.ymin t.data.xmax t.data.ymax;*)
-  let xmin,xmax,ymin,ymax = make_updates handle t width height autoscale in
+  let (xmin,xmax,ymin,ymax), boxes =
+    make_updates handle t width height autoscale in
   (*Printf.printf "Min/max2: %f %f to %f %f\n"
     t.data.xmin t.data.ymin t.data.xmax t.data.ymax;
   Printf.printf "Min/max computed: %f %f to %f %f\n" xmin ymin xmax ymax;*)
@@ -785,35 +796,42 @@ let flush_backend ?(autoscale=(Uniform Unlimited))
   assert (t.data.xmax <= xmax);
   assert (t.data.ymin >= ymin);
   assert (t.data.ymax <= ymax);
+  print ();
   let matrix = B.get_matrix handle in
   let next =
     get_ct ~autoscale t ?pos xmin xmax ymin ymax ~ofsx ~ofsy ~width ~height in
   Coord.mul_in matrix  next matrix;
-  let sf x = " "^(string_of_float x) in
-  (*Printf.printf "Matrix%s%s%s%s%s%s%!" (sf matrix.B.xx) (sf matrix.B.xy)
+  (* let sf x = " "^(string_of_float x) in
+  Printf.printf "Matrix%s%s%s%s%s%s%!" (sf matrix.B.xx) (sf matrix.B.xy)
     (sf matrix.B.x0) (sf matrix.B.yx) (sf matrix.B.yy) (sf matrix.B.y0);*)
   B.set_matrix handle matrix;
   B.translate handle (-.xmin) (-.ymin);
   inv_zoomx := 1. /. next.B.xx;
   inv_zoomy := 1. /. next.B.yy;
+  B.set_color handle Color.green;
+  print ();
+  let rec make_boxes list =
+    match list with
+      [] -> B.fill handle
+    |(x,x',y,y')::l -> B.rectangle handle x y (x'-.x) (y'-.y);
+        make_boxes l
+  in make_boxes boxes;
+  print ();
   let rec make_orders q =
-    if not (Q.is_empty q) then
-      match Q.pop q with
-        SAVING_POINT -> make_orders q
-      | BKDEP _ -> failwith "Found a bkdep in the orders. This is a bug."
-      | ORDER f -> f handle;
-          make_orders q
+    if not (Q.is_empty t.orders) then
+      let f = Q.pop t.orders in
+      Q.add f q;
+      Printf.printf "-%!";
+      f handle;
+      make_orders q
+    else Q.transfer q t.orders
   in
-  make_orders (Q.copy t.orders);
-
-  B.set_color handle (Color.make ~a:0.5 0. 1. 1.);
-  B.rectangle handle t.data.xmin t.data.ymin
-    (t.data.xmax -. t.data.xmin) (t.data.ymax -. t.data.ymin);
-  stroke_fun t false handle;
-
+  make_orders (Q.create ());
+  print ();
   B.set_color handle (Color.make ~a:0.5 1. 0. 0.);
   B.rectangle handle xmin ymin (xmax -. xmin) (ymax -. ymin);
   stroke_fun t false handle;
+  (*restore_layer t;*)
   B.restore handle
 
 let flush ?(autoscale=(Uniform Unlimited)) t ~ofsx ~ofsy ~width ~height ?pos
