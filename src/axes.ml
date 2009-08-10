@@ -73,17 +73,16 @@ struct
       "rectangle"  -> Rectangle
     | _ ->
         let mode_opts = split_on_spaces mode 0 (String.length mode) in
-        if List.length mode_opts <> 3 then
-          error(nonvalid "first" mode)
-        else
-          let opt::x::y::[] = mode_opts in
-          match opt with
-            "two_lines" ->
-              (try
-                 Two_lines(float_of_string x, float_of_string y)
-               with Failure "float_of_string" ->
-                 error (unparseable (x^" and/or "^y) "float" "mode"))
-          | _ -> error (not_understood opt "mode")
+        match mode_opts with
+        | [opt; x; y] ->
+            (match opt with
+             | "two_lines" ->
+                 (try
+                    Two_lines(float_of_string x, float_of_string y)
+                  with Failure "float_of_string" ->
+                    error (unparseable (x^" and/or "^y) "float" "mode"))
+             | _ -> error (not_understood opt "mode"))
+        | _ -> error(nonvalid "first" mode)
 
   let get_data which data =
     let data_opts = split_on_spaces data 0 (String.length data) in
