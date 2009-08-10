@@ -31,25 +31,57 @@ type ctm = Matrix.t
    course, if [tmi] is modified, [ctm] must be updated.  Thus
    coordinate systems form a tree through their dependencies.  When a
    coordinate system is updated, all [ctm] of the children must be
-   recomputed. *)
-type t = {
-  depends_on : t; (* The other coordinate system this one depends upon.
-                     All coordinate systems, except the device one,
-                     depends on another one. *)
-  tm : Matrix.t; (* transformation matrix that transform these
-                    coordinates into the coordinates it depends upon.  *)
-  ctm : Matrix.t;
-  (* Transformation to device coordinates.  This is the composition of
-     [tm] with the [ctm] of the coordinate system this one depends on.
-     This is an optimization that needs to be updated if the
-     underlying coordinate system is modified.  *)
-  mutable up_to_date : bool;
-  (* Whether the [ctm] is up to date.  If not it needs to be
-     recomputed.  INVARIANT: when a coordinate system is not up to
-     date, all its children must not be either. *)
-  mutable children : t list;
-  (* List of coordinate systems that depend on this one. *)
-}
+   recomputed.
+
+   The [children] are kept in a weak hashtable so that link does not
+   prevent them from being garbage collected.  Since the weak hash
+   tables are instantiated through a functor, one must use the
+   recursive module "trick".
+*)
+module rec W : (Weak.S with type data = Coord.t) = Weak.Make(Coord)
+and Coord : sig
+  type t =  { depends_on : t;
+              tm : Matrix.t;
+              ctm : Matrix.t;
+              mutable up_to_date : bool;
+              mutable children : W.t;
+              id : int; }
+  val equal : t -> t -> bool
+  val hash : t -> int
+  val new_id : unit -> int
+end =
+struct
+  type t = {
+    depends_on : t; (* The other coordinate system this one depends
+                       upon.  All coordinate systems, except the device
+                       one, depends on another one. *)
+    tm : Matrix.t; (* transformation matrix that transform these
+                      coordinates into the coordinates it depends upon.  *)
+    ctm : Matrix.t;
+    (* Transformation to device coordinates.  This is the composition of
+       [tm] with the [ctm] of the coordinate system this one depends on.
+       This is an optimization that needs to be updated if the
+       underlying coordinate system is modified.  *)
+    mutable up_to_date : bool;
+    (* Whether the [ctm] is up to date.  If not it needs to be
+       recomputed.  INVARIANT: when a coordinate system is not up to
+       date, all its children must not be either. *)
+    mutable children : W.t;
+    (* List of coordinate systems that depend on this one. *)
+    id : int;
+    (* id of the object (for hash) *)
+  }
+
+  let equal c1 c2 = c1 == c2
+  let hash c = c.id
+
+  (* global id for distinguishing coordinate systems *)
+  let next_id = ref 0
+  let new_id () = incr next_id; !next_id
+end
+
+include Coord
+
 
 (* If necessary, resynchronize [coord.ctm] and possibly others along
    the way (to the tree root). *)
@@ -92,7 +124,8 @@ let make_identity() =
       tm = Matrix.make_identity();
       ctm = Matrix.make_identity();
       up_to_date = true; (* always must be *)
-      children = [];
+      children = W.create 5;
+      id = new_id();
     } in
   dev
 
@@ -102,29 +135,31 @@ let copy coord =
          influences its copy. *)
       tm = Matrix.copy coord.tm;
       ctm = Matrix.copy coord.ctm;
-      children = []; (* this is a new coordinate system, no other one
-                        depends on it. *)
+      children = W.create 5; (* this is a new coordinate system, no other one
+                                depends on it. *)
+      id = new_id();
   }
 
 (* Create a new coordinate system that consists into first applying
    the transformation [tm] before the one of [coord]. *)
-let make_with_matrix coord tm =
+let make_from_transform coord tm =
   let coord' = { depends_on = coord;
                  tm = tm;
                  ctm = Matrix.mul coord.ctm coord.tm;
                  up_to_date = coord.up_to_date; (* iff [coord] is up to date *)
-                 children = []  } in
-  coord.children <- coord' :: coord.children;
+                 children = W.create 5;
+                 id = new_id() } in
+  W.add coord.children coord';
   coord'
 
 let make_translate coord ~x ~y =
-  make_with_matrix coord (Matrix.make_translate ~x ~y)
+  make_from_transform coord (Matrix.make_translate ~x ~y)
 
 let make_scale coord ~x ~y =
-  make_with_matrix coord (Matrix.make_scale ~x ~y)
+  make_from_transform coord (Matrix.make_scale ~x ~y)
 
 let make_rotate coord ~angle =
-  make_with_matrix coord (Matrix.make_rotate ~angle)
+  make_from_transform coord (Matrix.make_rotate ~angle)
 
 
 (* Changing this coordinate system
@@ -137,14 +172,14 @@ let rec put_children_not_up_to_date coord =
      date. *)
   if coord.up_to_date then begin
     Matrix.mul_in coord.ctm  coord.depends_on.ctm coord.tm;
-    List.iter (fun c ->
-                 (* If [c] is already not up to date, so are all its
-                    children.  There is no need to recurse down. *)
-                 if c.up_to_date then (
-                   c.up_to_date <- false;
-                   put_children_not_up_to_date c; (* => invariant *)
-                 )
-              ) coord.children
+    W.iter (fun c ->
+              (* If [c] is already not up to date, so are all its
+                 children.  There is no need to recurse down. *)
+              if c.up_to_date then (
+                c.up_to_date <- false;
+                put_children_not_up_to_date c; (* => invariant *)
+              )
+           ) coord.children
   end
 
 let translate coord ~x ~y =
