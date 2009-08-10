@@ -47,38 +47,38 @@ struct
             if List.length opts <> 1 then error (args t 1 (List.length opts));
             (try
                X(float_of_string (List.hd opts))
-         with Failure "float_of_string" -> error (unparseable (List.hd opts)))
-    | "-" ->
-        if List.length opts <> 1 then error (args t 1 (List.length opts));
-        (try
-           HORIZ(float_of_string (List.hd opts))
-         with Failure "float_of_string" -> error (unparseable (List.hd opts)))
-    | "|"  ->
-        if List.length opts <> 1 then error (args t 1 (List.length opts));
-        (try
-           VERT(float_of_string (List.hd opts))
-         with Failure "float_of_string" -> error (unparseable (List.hd opts)))
-    | "TU" ->
-        if List.length opts <> 1 then error (args t 1 (List.length opts));
-        (try
-           TIC_UP(float_of_string (List.hd opts))
-         with Failure "float_of_string" -> error (unparseable (List.hd opts)))
-    | "TD" ->
-        if List.length opts <> 1 then error (args t 1 (List.length opts));
-        (try
-           TIC_DOWN(float_of_string (List.hd opts))
-         with Failure "float_of_string" -> error (unparseable (List.hd opts)))
-    | "TL" ->
-        if List.length opts <> 1 then error (args t 1 (List.length opts));
-        (try
-           TIC_LEFT(float_of_string (List.hd opts))
-         with Failure "float_of_string" -> error (unparseable (List.hd opts)))
-    | "TR" ->
-        if List.length opts <> 1 then error (args t 1 (List.length opts));
-        (try
-           TIC_RIGHT(float_of_string (List.hd opts))
-         with Failure "float_of_string" -> error (unparseable (List.hd opts)))
-    | _ -> error (t^" is not recognized as a default point style")
+             with Failure "float_of_string" -> error (unparseable (List.hd opts)))
+        | "-" ->
+            if List.length opts <> 1 then error (args t 1 (List.length opts));
+            (try
+               HORIZ(float_of_string (List.hd opts))
+             with Failure "float_of_string" -> error (unparseable (List.hd opts)))
+        | "|"  ->
+            if List.length opts <> 1 then error (args t 1 (List.length opts));
+            (try
+               VERT(float_of_string (List.hd opts))
+             with Failure "float_of_string" -> error (unparseable (List.hd opts)))
+        | "TU" ->
+            if List.length opts <> 1 then error (args t 1 (List.length opts));
+            (try
+               TIC_UP(float_of_string (List.hd opts))
+             with Failure "float_of_string" -> error (unparseable (List.hd opts)))
+        | "TD" ->
+            if List.length opts <> 1 then error (args t 1 (List.length opts));
+            (try
+               TIC_DOWN(float_of_string (List.hd opts))
+             with Failure "float_of_string" -> error (unparseable (List.hd opts)))
+        | "TL" ->
+            if List.length opts <> 1 then error (args t 1 (List.length opts));
+            (try
+               TIC_LEFT(float_of_string (List.hd opts))
+             with Failure "float_of_string" -> error (unparseable (List.hd opts)))
+        | "TR" ->
+            if List.length opts <> 1 then error (args t 1 (List.length opts));
+            (try
+               TIC_RIGHT(float_of_string (List.hd opts))
+             with Failure "float_of_string" -> error (unparseable (List.hd opts)))
+        | _ -> error (t^" is not recognized as a default point style")
 
   let point t x y handle =
     B.move_to handle x y;
