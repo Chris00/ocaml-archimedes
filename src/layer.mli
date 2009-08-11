@@ -238,21 +238,9 @@ val show_text : t -> rotate:float -> x:float -> y:float ->
 
 (**{2 Point styles}*)
 
-val set_point_style: t -> Pointstyle.t -> unit
-  (**Sets the point style currently employed in the layer.*)
-
-val get_point_style: t -> Pointstyle.t
-  (**Returns the current point style employed in the layer. Raises
-     [Error(Unset_style "point_style")] if no previous call to
-     [set_point_style] has been made.*)
-
-val point : t -> float -> float -> unit
+val point : t -> string -> unit
   (**Draws the point at the position specified by the floats, according
-     to the point style set (by default, it is [Pointstyle.Default.NONE]).*)
-
-val points: t -> (float * float) list -> unit
-  (**Draws all the points in the list according to the point style.*)
-
+     to the point style set.*)
 
 
 (**{2 Layer operations -- Flushing}*)
@@ -301,7 +289,7 @@ val flush_backend : ?autoscale:scaling -> t -> ofsx:float -> ofsy:float ->
 
 val flush : ?autoscale:scaling -> t -> ofsx:float -> ofsy:float ->
   width:float -> height:float -> ?pos:Backend.text_position ->
-  Transform_coord.t -> unit
+  Coord_handler.t -> unit
 
 (*Local Variables:*)
 (*compile-command: "ocamlc -c layer.mli"*)

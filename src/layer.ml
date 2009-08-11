@@ -2,7 +2,7 @@ module B = Backend
 module Q = Queue
 module Coord = B.Matrix
 
-module T = Transform_coord
+module T = Coord_handler
 
 type limitation =
     Unlimited
@@ -28,7 +28,6 @@ type styles =
       mutable fsize:float;
       mutable fslant:B.slant;
       mutable fweight:B.weight;
-      mutable point: Pointstyle.t;
       mutable settings:int;
       (*This last variable retains which of the above styles have been
         set.  Note that coord is not taken into account (set to
@@ -129,7 +128,6 @@ let make () =
       color = Color.make 0. 0. 0.; lw = 1.;
       font="Sans serif"; fsize=10.;
       fslant = B.Upright; fweight = B.Normal;
-      point = Pointstyle.make_default Pointstyle.Default.NONE;
       settings = 0
     }
   and data =
@@ -264,12 +262,6 @@ let set_line_join t s =
   and n = setting_line_join in
   if set mod (2 * n) = 0 then t.styles.settings <- set + n
 
-let set_point_style t s =
-  t.styles.point <- s;
-  let set = t.styles.settings
-  and n = setting_point in
-  if set mod (2 * n) = 0 then t.styles.settings <- set + n
-
 let set_matrix t matrix =
   add_order (fun t ->
                let m = Coord.copy matrix in
@@ -298,11 +290,6 @@ let get_line_join t =
   if (t.styles.settings mod (2 * setting_line_join)) = 0 then
     raise (Error (Unset_style "line_join"));
    t.styles.lj
-
-let get_point_style t =
-  if (t.styles.settings mod (2 * setting_point)) = 0 then
-    raise (Error (Unset_style "point_style"));
-   t.styles.point
 
 let get_matrix t = t.styles.coord
 
@@ -575,10 +562,7 @@ let show_text t ~rotate ~x ~y pos str =
   add_update (TEXT(rotate,x,y,pos,str)) t
 
 
-let point t x y = add_order (Pointstyle.point t.styles.point x y) t
-
-let points t list = add_order (Pointstyle.points t.styles.point list) t
-
+let point t name = add_order (Pointstyle.render name) t
 
 let save_layer t =
   Stack.push {t.data with xmin = t.data.xmin} t.saved_data;
@@ -797,16 +781,9 @@ let flush_backend ?(autoscale=(Uniform Unlimited))
   let matrix = B.get_matrix handle in
   let next =
     get_ct ~autoscale t ?pos xmin xmax ymin ymax ~ofsx ~ofsy ~width ~height in
-<<<<<<< TREE
-
-  Coord.mul_in matrix  next matrix;
-  let sf x = " "^(string_of_float x) in
-  (*Printf.printf "Matrix%s%s%s%s%s%s%!" (sf matrix.B.xx) (sf matrix.B.xy)
-=======
-  Coord.mul_in matrix  next matrix;
+  Coord.mul_in matrix  next matrix; 
   (* let sf x = " "^(string_of_float x) in
   Printf.printf "Matrix%s%s%s%s%s%s%!" (sf matrix.B.xx) (sf matrix.B.xy)
->>>>>>> MERGE-SOURCE
     (sf matrix.B.x0) (sf matrix.B.yx) (sf matrix.B.yy) (sf matrix.B.y0);*)
   B.set_matrix handle matrix;
   B.translate handle (-.xmin) (-.ymin);
@@ -840,16 +817,10 @@ let flush_backend ?(autoscale=(Uniform Unlimited))
 
 let flush ?(autoscale=(Uniform Unlimited)) t ~ofsx ~ofsy ~width ~height ?pos
     handle =
-  let matrix = T.get_matrix handle in
   let handle = T.get_handle handle in
-  B.save handle;
-  let init_transform = B.get_matrix handle in
-  Coord.mul_in init_transform  matrix init_transform;
-  B.set_matrix handle init_transform;
-  (*Backend handle has now the same transformation coordinates as the
-    initial handle applied to it.*)
+  (*Backend handle has the same transformation coordinates as the
+    Coord_handler handle.*)
   flush_backend ~autoscale t ~ofsx ~ofsy ~width ~height ?pos handle;
-  B.restore handle
 
 (*Local Variables:*)
 (*compile-command: "ocamlc -c -for-pack Archimedes layer.ml && ocamlopt -c -for-pack Archimedes layer.ml"*)

@@ -230,8 +230,6 @@ let add ~name f =
   (*FIXME: what to do if name already used?*)
   registry := M.add name f !registry
 
-let render name backend =
-  try
-    let f = M.find name !registry in
-    f backend
+let render name =
+  try M.find name !registry
   with Not_found -> raise (Error name)

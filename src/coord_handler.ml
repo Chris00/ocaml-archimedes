@@ -1,0 +1,291 @@
+module B = Backend
+module Coord = Coordinate
+
+(*
+type styles =
+    {
+      mutable ctm: Coordinate.ctm; (*Current coordinate transformation to perform*)
+      mutable point: Pointstyle.t;(*Current point style*)
+    }
+*)
+
+
+type name =
+  | Device
+  | Normalized
+  | Marks
+  | N of string
+
+
+module Keys =
+struct
+  type t = name
+
+  let compare = Pervasives.compare
+end
+
+module M = Map.Make(Keys)
+
+let init_map list =
+  let rec create_coords coords = function
+      [] -> coords
+    | (x,y)::l -> create_coords (M.add x y coords) l
+  in
+  create_coords M.empty list
+
+type t =
+    {handle:B.t; (*Handle on which we operate*)
+     (*mutable styles: styles; (*Current styles to apply*)*)
+     mutable coord: name;
+     (*Name of the current transformation*)
+     mutable coords: Coord.t M.t;
+     (*Transformations available. Will be always non-empty (contains
+       initial transformations with keys Default, Normalized and
+       Marks) except when closed. So testing whether the handle is
+       closed will be equivalent to testing this registry is empty.*)
+     initial: Coord.ctm;
+     (* history:styles Stack.t; (*Saved states*)*)
+    }
+
+type error =
+    Not_Found of string (*Raised when no coordinate transformation has
+                          the supplied name*)
+  | Closed
+  | Trying_modify_built_in
+
+exception Error of error
+
+let check t = if M.is_empty t.coords then raise (Error Closed)
+
+let make_coords width height =
+  let dev = Coord.make_identity () in
+  let normalized = Coord.make_scale dev width height in
+  let marks = Coord.make_scale normalized 0.01 (0.01 *. width /. height) in
+    (*marks is so defined to not have stretch on pointstyles by default.*)
+  dev, normalized, marks
+
+let make ?dirs name width height =
+  let dev, normalized, marks = make_coords width height in
+  let coords = init_map
+    [Device, dev; Normalized, normalized; Marks, marks] in
+  let handle = B.make ?dirs name width height in
+  let ctm = Coord.use handle normalized in
+  {handle = handle;
+   coord = Normalized;
+   coords = coords;
+   initial = ctm;}
+
+let use handle =
+  let width, height = B.width handle, B.height handle in
+  let dev, normalized, marks = make_coords width height in
+  let ctm = Coord.use handle dev in
+  let coords = init_map
+    [Device, dev; Normalized, normalized; Marks, marks]
+  in
+  {handle = handle;
+   coord = Device;
+   coords = coords;
+   initial = ctm;}
+
+let use_unit_square handle ~name x1 y1 x2 y2 =
+  let width, height = B.width handle, B.height handle in
+  let dev, normalized, marks = make_coords width height in
+  let tm = Coord.make_from_transform dev (B.get_matrix handle) in
+  let unit_square = Coord.make_translate tm x1 y1 in
+  Coord.scale unit_square (x2 -. x1) (y2 -. y1);
+  let ctm = Coord.use handle unit_square in
+  let coords = init_map
+    [Device, dev; Normalized, normalized; Marks, marks; (N name), unit_square]
+  in
+  {handle = handle;
+   coord = N name;
+   coords = coords;
+   initial = ctm;}
+
+let use_normalized handle =
+  let width, height = B.width handle, B.height handle in
+  let dev, normalized, marks = make_coords width height in
+  let ctm = Coord.use handle normalized in
+  let coords = init_map
+    [Device, dev; Normalized, normalized; Marks, marks]
+  in
+  {handle = handle;
+   coord = Normalized;
+   coords = coords;
+   initial = ctm;}
+
+let get_handle t =
+  check t;
+  Coordinate.restore t.handle t.initial;
+  (*as this breaks the assumption that the handle makes the correct
+    transformation*)
+  t.coords <- M.empty;
+  (*we cannot reuse a Coord_handler which gave his handle.*)
+  t.handle
+
+let close t =
+  B.close t.handle; t.coords <- M.empty
+
+let get_coord t name =
+  match name with
+    None ->
+      (match t.coord with
+        Device | Normalized | Marks -> raise (Error Trying_modify_built_in)
+      | N _ -> M.find t.coord t.coords)
+      (*FIXME: cannot be built-in coord.*)
+  | Some s ->
+      try M.find (N s) t.coords
+      with Not_found ->
+        raise (Error (Not_Found s))
+
+
+let get_coord_built_in t name =
+  let s = 
+    match name with
+      None -> t.coord
+        (*FIXME: cannot be built-in coord.*)
+    | Some s -> s
+  in
+  try M.find s t.coords
+  with Not_found ->
+    let error = Not_Found
+      (match s with
+       | N(s) -> s
+       | _ -> failwith "Built-in coordinate not found"
+      )
+    in
+    raise (Error error)
+
+let add_coord t name coord =
+  t.coords <- M.add (N name) coord t.coords
+
+let translate t ?name ~x ~y =
+  check t;
+  let coord = get_coord t name in
+  Coord.translate coord x y;
+  if name = None then B.translate t.handle x y
+
+let scale t ?name ~x ~y =
+  check t;
+  let coord = get_coord t name in
+  Coord.scale coord x y
+  if name = None then B.scale t.handle x y
+
+let rotate t ?name ~angle =
+  check t;
+  let coord = get_coord t name in
+  Coord.rotate coord angle
+  if name = None then B.rotate t.handle angle
+
+let scale_marks t ~x ~y =
+  check t;
+  let coord = M.find Marks t.coords in
+  Coord.scale coord x y
+
+let rotate_marks t ?name ~angle =
+  check t;
+  let coord = M.find Marks t.coords in
+  Coord.rotate coord angle
+
+let add_translate t name ?from ~x ~y =
+  check t;
+  let coord = get_coord_built_in t from in
+  let new_coord = Coord.make_translate coord x y in
+  add_coord t name new_coord
+
+let add_scale t name ?from ~x ~y =
+  check t;
+  let coord = get_coord_built_in t from in
+  let new_coord = Coord.make_scale coord x y in
+  add_coord t name new_coord
+
+let add_rotate t name ?from ~angle =
+  check t;
+  let coord = get_coord_built_in t from in
+  let new_coord = Coord.make_rotate coord angle in
+  add_coord t name new_coord
+
+let add_transform t name ?from matrix =
+  check t;
+  let coord = get_coord_built_in t from in
+  let new_coord = Coord.make_from_transform coord matrix in
+  add_coord t name new_coord
+
+let set_coordinate t name =
+  check t;
+  let coord = get_coord t (Some name) in
+  ignore (Coord.use t.handle coord)
+
+(*
+let get_coordinate t = check t; Coord.copy t.coord*)
+
+
+
+(*Backend primitives*)
+
+(*(*FIXME: needed? If so, in which coords?*)
+let width t = B.width t.handle
+let height t = B.height t.handle*)
+let set_color t = B.set_color t.handle
+let set_line_width t = B.set_line_width t.handle
+let set_line_cap t = B.set_line_cap t.handle
+let set_dash t = B.set_dash t.handle
+let set_line_join t = B.set_line_join t.handle
+let get_line_width t = B.get_line_width t.handle
+let get_line_cap t = B.get_line_cap t.handle
+let get_dash t = B.get_dash t.handle
+let get_line_join t = B.get_line_join t.handle
+
+let move_to t = B.move_to t.handle
+
+let line_to t = B.line_to t.handle
+
+let rel_move_to t = B.rel_move_to t.handle
+
+let rel_line_to t = B.rel_line_to t.handle
+
+let curve_to t = B.curve_to t.handle
+
+let rectangle t ~x ~y ~w ~h = B.rectangle t.handle x y w h
+
+let arc t = B.arc t.handle
+
+let close_path t = B.close_path t.handle
+let clear_path t = B.clear_path t.handle
+let path_extents t = B.path_extents t.handle
+let stroke t = B.stroke t.handle
+let stroke_preserve t = B.stroke_preserve t.handle
+let fill t = B.fill t.handle
+let fill_preserve t = B.fill_preserve t.handle
+(*let clip t = B.clip t.handle
+let clip_preserve t = B.clip_preserve t.handle*)
+let clip_rectangle t = B.clip_rectangle t.handle
+
+
+(*FIXME: what about saving defined coordinates and killing the new
+  ones when restoring?*)
+let save t =
+  B.save t.handle
+    (*  Stack.push {t.styles with coord = t.styles.coord} t.history*)
+
+let restore t =
+(*  try
+    t.styles <- Stack.pop t.history;*)
+    B.restore t.handle
+  (*with Stack.Empty ->
+    raise (Error No_saved_states)*)
+
+let select_font_face t = B.select_font_face t.handle
+let set_font_size t = B.set_font_size t.handle
+let show_text t = B.show_text t.handle
+
+let text_extents t = B.text_extents t.handle
+
+let render t name =
+  let ctm = Coord.use t.handle (M.find Marks t.coords) in
+  Pointstyle.render name t.handle;
+  Coord.restore t.handle ctm
+
+(*Local Variables:*)
+(*compile-command: "ocamlopt -c -for-pack Archimedes transform_coord.ml && ocamlc -c -for-pack Archimedes transform_coord.ml"*)
+(*End:*)
