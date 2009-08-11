@@ -37,6 +37,12 @@ val restore : Backend.t -> ctm -> unit
       for the backend [b]. *)
 
 
+(** {2 Transforming coordinates} *)
+
+val to_device : t -> x:float -> y:float -> float * float
+
+val to_device_distance : t -> dx:float -> dy:float -> float * float
+
 (** {2 Creating new coordinate systems} *)
 
 val make_identity : unit -> t
