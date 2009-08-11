@@ -227,10 +227,7 @@ Reminder of the flags for settings:
   We make use of the [setting_*] variables to avoid errors.*)
 
 let set_color t c =
-  add_order (fun t ->
-               let r,g,b,a = Color.rgba c in
-               Printf.printf "Color set: %f %f %f/%f\n" r g b a;
-               B.set_color t c) t;
+  add_order (fun t -> B.set_color t c) t;
   t.styles.color <- c;
   let set = t.styles.settings
   and n = setting_color in
@@ -800,10 +797,16 @@ let flush_backend ?(autoscale=(Uniform Unlimited))
   let matrix = B.get_matrix handle in
   let next =
     get_ct ~autoscale t ?pos xmin xmax ymin ymax ~ofsx ~ofsy ~width ~height in
+<<<<<<< TREE
 
   Coord.mul_in matrix  next matrix;
   let sf x = " "^(string_of_float x) in
   (*Printf.printf "Matrix%s%s%s%s%s%s%!" (sf matrix.B.xx) (sf matrix.B.xy)
+=======
+  Coord.mul_in matrix  next matrix;
+  (* let sf x = " "^(string_of_float x) in
+  Printf.printf "Matrix%s%s%s%s%s%s%!" (sf matrix.B.xx) (sf matrix.B.xy)
+>>>>>>> MERGE-SOURCE
     (sf matrix.B.x0) (sf matrix.B.yx) (sf matrix.B.yy) (sf matrix.B.y0);*)
   B.set_matrix handle matrix;
   B.translate handle (-.xmin) (-.ymin);

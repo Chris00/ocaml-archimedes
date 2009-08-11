@@ -5,7 +5,6 @@ include Makefile.conf
 OCAML_ALL = byte $(filter-out byte, @OCAMLBEST@)
 default: $(OCAML_ALL)
 all: byte native tests
-#examples doc install
 opt: native
 htdoc: doc
 byte native install uninstall doc:

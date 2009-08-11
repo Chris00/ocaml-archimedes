@@ -15,16 +15,13 @@ let rec index_of_non_space s i0 i1 =
 
 (* Return a list of substrings of s.[i0 .. i1-1] which are separated
    by one or several spaces. *)
-let split_on_spaces s i0 i1 =
-  let rec split s i0 i1 res =
+let rec split_on_spaces s i0 i1 =
   let i0 = index_of_non_space s i0 i1 in (* skip spaces *)
-  if i0 >= i1 then res
+  if i0 >= i1 then []
   else (
     let i01 = index_of_space s i0 i1 in
-    let token = String.sub s i0 (i01 - i0) in
-    split s (i01 + 1) i1 (token::res)
+    String.sub s i0 (i01 - i0) :: split_on_spaces s (i01 + 1) i1
   )
-  in split s i0 i1 []
 
 
 (* [s.[i]] and [p.[i]] are identical for all [i] s.t. [i0 <= i < i1]. *)
