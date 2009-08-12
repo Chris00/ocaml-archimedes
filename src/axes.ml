@@ -8,8 +8,7 @@ type tic = [`P of Pointstyle.name]
     (*Style of tics.*)
 type loc_tics =
     [ `Linear
-    | `Logarithmic
-    (*| `Funct of (int -> int -> float)*) ]
+    | `Logarithmic]
       (*Positionment of tics.*)
 type mode_tics =
     Automatic
@@ -27,6 +26,9 @@ type ('a,'b,'c) axis =
 
 type ('a,'b,'c,'d) t =
     {axes:'a; x:('b,'c,'d) axis; y:('b,'c,'d) axis}
+
+
+exception Not_available
 
 let make_axis major minor loc mode data =
   {major = major; minor = minor; loc = loc; mode = mode; data = data}
@@ -52,14 +54,19 @@ let print_axes axes ~xmin ~xmax ~ymin ~ymax ch =
       C.move_to ch x ymin;
       C.line_to ch x ymax;
       x,y
+  | _ -> raise Not_available
 
-let get_funct loc  = match loc with
+let get_funct loc  = 
+  match loc with
   | `Linear ->
       (fun n m ->
-        let step = 1. /. (float (n*m)) in
-        fun i -> (float i) *. step, i mod m = 0)
-  | `Logarithmic -> (fun n m i ->
-      log (1. +. 9. *. (float i) /. (float (n * m))), i mod m = 0)
+         let step = 1. /. (float (n*m)) in
+         fun i -> (float i) *. step, i mod m = 0)
+  | `Logarithmic ->
+      (fun n m i ->
+         log (1. +. 9. *. (float i) /. (float (n * m))),
+         i mod m = 0)
+  | _  -> raise Not_available
 
 exception Inner_error
 
@@ -68,13 +75,17 @@ let get_labels data =
     `Numbers -> raise Inner_error
   | `Other list ->
       let u = ref list in
-      fun () -> match !u with
+      (fun () -> match !u with
         [] -> failwith "No labels"
-      | s::l -> u := l; s
+       | s::l -> u := l; s)
+  | _ -> raise Not_available
+
 
 let print_tic ch tic =
   match tic with `P name ->
     C.render ch name
+  | _ -> raise Not_available
+
 
 let print_tics_normalized axis vmin vmax x_axis
     print_tic get_funct get_labels ch =
@@ -95,7 +106,8 @@ let print_tics_normalized axis vmin vmax x_axis
             Printf.sprintf "%f"
               (match axis.loc with
                | `Linear -> x
-               | `Logarithmic -> 10.**x)
+               | `Logarithmic -> 10.**x
+               | _ -> failwith"Undefined mode")
       in
       let rec maketic i =
         if i <= n then
@@ -109,8 +121,6 @@ let print_tics_normalized axis vmin vmax x_axis
             maketic (i+1)
           else maketic (i+1)
       in maketic 0
-
-
 
 let print_tics axis ~vmin ~vmax ~vinv x_axis print_tic get_funct get_labels ch =
   C.save ch;
@@ -130,9 +140,16 @@ let print_tics axis ~vmin ~vmax ~vinv x_axis print_tic get_funct get_labels ch =
   (*Restoring to previous coordinates.*)
   C.restore ch
 
-let print t ~xmin ~xmax ~ymin ~ymax ?(print_tic = print_tic)
-    ?(get_funct = get_funct) ?(get_labels = get_labels) ch =
+let pa = print_axes and pt = print_tic and gf = get_funct and gl = get_labels
+
+let print t ~xmin ~xmax ~ymin ~ymax ?print_axes ?print_tic
+    ?(get_funct=get_funct) ?get_labels ch =
+  let print_axes = match print_axes with None -> pa | Some u -> u in
   let x,y = print_axes t.axes ~xmin ~xmax ~ymin ~ymax ch in
+  let print_tic = match print_tic with None -> pt | Some u -> u
+ (* and get_funct = match get_funct with None -> gf | Some u -> u*)
+  and get_labels = match get_labels with None -> gl | Some u -> u
+  in
   print_tics t.x ~vmin:xmin ~vmax:xmax ~vinv:y true
     print_tic get_funct get_labels ch;
   print_tics t.y ~vmin:ymin ~vmax:ymax ~vinv:x false
