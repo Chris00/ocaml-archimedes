@@ -44,7 +44,7 @@ type t =
        Marks) except when closed. So testing whether the handle is
        closed will be equivalent to testing this registry is empty.*)
      initial: Coord.ctm;
-     (* history:styles Stack.t; (*Saved states*)*)
+     history:name Stack.t; (*Saved states*)
     }
 
 type error =
@@ -52,6 +52,7 @@ type error =
                           the supplied name*)
   | Closed
   | Trying_modify_built_in
+  | No_saved_states
 
 exception Error of error
 
@@ -73,7 +74,8 @@ let make ?dirs name width height =
   {handle = handle;
    coord = Normalized;
    coords = coords;
-   initial = ctm;}
+   initial = ctm;
+   history = Stack.create ();}
 
 let use handle =
   let width, height = B.width handle, B.height handle in
@@ -85,7 +87,8 @@ let use handle =
   {handle = handle;
    coord = Device;
    coords = coords;
-   initial = ctm;}
+   initial = ctm;
+   history = Stack.create ();}
 
 let use_unit_square handle ~name x1 y1 x2 y2 =
   let width, height = B.width handle, B.height handle in
@@ -100,7 +103,8 @@ let use_unit_square handle ~name x1 y1 x2 y2 =
   {handle = handle;
    coord = N name;
    coords = coords;
-   initial = ctm;}
+   initial = ctm;
+   history = Stack.create ();}
 
 let use_normalized handle =
   let width, height = B.width handle, B.height handle in
@@ -112,7 +116,8 @@ let use_normalized handle =
   {handle = handle;
    coord = Normalized;
    coords = coords;
-   initial = ctm;}
+   initial = ctm;
+   history = Stack.create ();}
 
 let get_handle t =
   check t;
@@ -168,13 +173,13 @@ let translate t ?name ~x ~y =
 let scale t ?name ~x ~y =
   check t;
   let coord = get_coord t name in
-  Coord.scale coord x y
+  Coord.scale coord x y;
   if name = None then B.scale t.handle x y
 
 let rotate t ?name ~angle =
   check t;
   let coord = get_coord t name in
-  Coord.rotate coord angle
+  Coord.rotate coord angle;
   if name = None then B.rotate t.handle angle
 
 let scale_marks t ~x ~y =
@@ -265,15 +270,15 @@ let clip_rectangle t = B.clip_rectangle t.handle
 (*FIXME: what about saving defined coordinates and killing the new
   ones when restoring?*)
 let save t =
-  B.save t.handle
-    (*  Stack.push {t.styles with coord = t.styles.coord} t.history*)
+  B.save t.handle;
+  Stack.push t.coord t.history
 
 let restore t =
-(*  try
-    t.styles <- Stack.pop t.history;*)
+  try
+    t.coord <- Stack.pop t.history;
     B.restore t.handle
-  (*with Stack.Empty ->
-    raise (Error No_saved_states)*)
+  with Stack.Empty ->
+    raise (Error No_saved_states)
 
 let select_font_face t = B.select_font_face t.handle
 let set_font_size t = B.set_font_size t.handle

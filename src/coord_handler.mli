@@ -30,6 +30,7 @@ type error =
                            the supplied name*)
   | Closed(**Raised if the handle has been already closed.*)
   | Trying_modify_built_in
+  | No_saved_states
 
       (**The type for errors.*)
 
@@ -128,7 +129,7 @@ val set_coordinate : t -> string -> unit
      transformation registered under [name].*)
 
 (*val get_coordinate : t -> Coordinate.t
-  (**Returns (a copy of) the current transformation coordinate.*)*)
+(**Returns (a copy of) the current transformation coordinate.*)*)
 
 (**{2 Backend primitives}*)
 val set_color : t -> Color.t -> unit
@@ -170,8 +171,12 @@ val select_font_face : t -> Backend.slant -> Backend.weight -> string -> unit
 val set_font_size : t -> float -> unit
   (** Set the size of the font. *)
 
+val show_text : t -> rotate:float -> x:float -> y:float ->
+  Backend.text_position -> string -> unit
+
+
 val text_extents : t -> string -> Backend.rectangle
-val render : t -> string -> unit
+val render : t -> Pointstyle.name -> unit
 
 (*Local Variables:*)
 (*compile-command: "ocamlc -c transform_coord.mli"*)

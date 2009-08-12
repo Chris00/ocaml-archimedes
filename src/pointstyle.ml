@@ -5,6 +5,8 @@ let pi = 4.*. atan 1.
 (*Registering point styles.*)
 module M = Map.Make(String)
 
+type name = string
+
 let registry =
   let rec create registry = function
       [] -> registry
