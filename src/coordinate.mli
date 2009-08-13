@@ -90,3 +90,26 @@ val rotate : t -> angle:float -> unit
       its axis X and Y by [a] radians (assuming the axis of the system
       [coord] are orthonormal). *)
 
+val transform : t -> Backend.Matrix.t -> unit
+  (** [transform coord tm] modifies the coordinate system [coord]
+      changing the transformation matrix to its parent (the one it was
+      created from) to [tm]. *)
+
+
+(** {2 Monitoring coordinate systems for updates} *)
+
+type monitor
+  (** Handle to monitor the updates to a coordinate system. *)
+
+val monitor : t -> monitor
+  (** [monitor coord] creates a new monitor for changes to [coord]
+      (initially not set). *)
+
+val reset : monitor -> unit
+  (** [reset m] reset the monitor.  See {!Coordinate.changed}. *)
+
+val changed : monitor -> bool
+  (** [changed m] tell whether the coordinate system [m] is attached
+      to was updated (possibly because of one of the coordinate sytems
+      it (transitively) depends on was mofidied) since the last
+      [reset]. *)
