@@ -37,6 +37,8 @@ type error =
 exception Error of error
   (**Exception raised when an error has occured.*)
 
+val string_of_error: error -> string
+
 val make : ?dirs:string list -> string ->
   float -> float -> t
   (**[make backend w h] creates a handle whose underlying backend is
@@ -64,7 +66,8 @@ val use_normalized : Backend.t -> t
      [0,1] x [0,1].*)
 
 val get_handle : t -> Backend.t
-  (**Returns the backend of a [t], after resetting the initial transformation on it, if any.*)
+  (**Returns the backend of a [t], after resetting the initial
+     transformation on it, if any.*)
 
 val close : t -> unit
   (**Closes the given [t], killing all references to the stored
@@ -78,9 +81,10 @@ val translate : t -> ?name:string -> x:float -> y:float -> unit
      {!Coordinate.translate} for more information.*)
 
 val scale : t -> ?name:string -> x:float -> y:float -> unit
-  (**Applies a dilatation to the coordinate transformation whose name is [name] (or
-     the current one if not given) by multiplying the X axis by [x] and the Y axis by [y]. See
-     {!Coordinate.scale} for more information.*)
+  (**Applies a dilatation to the coordinate transformation whose name
+     is [name] (or the current one if not given) by multiplying the X
+     axis by [x] and the Y axis by [y]. See {!Coordinate.scale} for
+     more information.*)
 
 val rotate : t -> ?name:string -> angle:float -> unit
   (**Applies a rotation of angle [angle] to the coordinate
@@ -128,8 +132,13 @@ val set_coordinate : t -> string -> unit
      [name]. Raises [Error (Not_Found name)] if there's no coordinate
      transformation registered under [name].*)
 
-(*val get_coordinate : t -> Coordinate.t
-(**Returns (a copy of) the current transformation coordinate.*)*)
+val print_coordinate : t -> string
+  (**Returns the name of the current transformation coordinate the
+     handle obey.*)
+
+val print_matrix : t -> unit
+  (*val get_coordinate : t -> Coordinate.t
+  (**Returns (a copy of) the current transformation coordinate.*)*)
 
 (**{2 Backend primitives}*)
 val set_color : t -> Color.t -> unit
@@ -158,6 +167,8 @@ val clear_path : t -> unit
 val path_extents : t -> Backend.rectangle
 val stroke : t -> unit
 val stroke_preserve : t -> unit
+val stroke_init : t -> unit
+val stroke_init_preserve : t -> unit
 val fill : t -> unit
 val fill_preserve : t -> unit
 val clip_rectangle : t -> x:float -> y:float -> w:float -> h:float -> unit

@@ -241,12 +241,15 @@ struct
   let line_to t ~x ~y =
     let st = get_state t in
     let x', y' = Matrix.transform_point st.ctm x y in
-    st.current_path <- LINE_TO(x',y') :: st.current_path;
-    (* Update extents and current point *)
+    (*Note: if there's no current point then line_to behaves as move_to.*)
     if st.curr_pt then (
+      st.current_path <- LINE_TO(x',y') :: st.current_path;
+      (* Update extents and current point *)
       let x0', y0' = Matrix.transform_point st.ctm st.x st.y in
       st.path_extents <- update_rectangle st.path_extents x0' y0' x' y';
-    );
+    )
+    else
+      st.current_path <- MOVE_TO(x',y') :: st.current_path;
     st.curr_pt <- true;
     st.x <- x;
     st.y <- y
@@ -294,9 +297,12 @@ struct
   let arc t ~x ~y ~r ~a1 ~a2 =
     ()
 
-  let rec beginning_of_subpath = function
+  let rec beginning_of_subpath list =
+    match list with
     | [] -> failwith "No subpath"
-    | (MOVE_TO(x,y) | CLOSE_PATH(x,y) | RECTANGLE(x,y,_,_)) :: _ -> x,y
+    | MOVE_TO(x,y):: _ -> x,y
+    | CLOSE_PATH(x,y):: _ -> x,y
+    | RECTANGLE(x,y,_,_):: _ -> x,y
     | _ :: tl -> beginning_of_subpath tl
 
   let close_path t =
@@ -368,7 +374,7 @@ struct
     let x', y' = Matrix.transform_point st.ctm x y in
     if abs_float angle <= 1e-6 then
       let w, h = Graphics.text_size txt in
-      
+
       Graphics.moveto (round x') (round y');
       Graphics.draw_string txt
     else (

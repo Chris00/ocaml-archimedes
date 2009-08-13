@@ -107,7 +107,7 @@ let print_tics_normalized axis vmin vmax x_axis
               (match axis.loc with
                | `Linear -> x
                | `Logarithmic -> 10.**x
-               | _ -> failwith"Undefined mode")
+               | _ -> x)
       in
       let rec maketic i =
         if i <= n then

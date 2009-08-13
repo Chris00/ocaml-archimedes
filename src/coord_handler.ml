@@ -56,6 +56,12 @@ type error =
 
 exception Error of error
 
+let string_of_error = function
+  | Not_Found s -> Printf.sprintf "Coordinate %s is not found" s
+  | Closed -> "Closed"
+  | Trying_modify_built_in -> "Try to modified built-in coordinates"
+  | No_saved_states -> "No saved states"
+
 let check t = if M.is_empty t.coords then raise (Error Closed)
 
 let make_coords width height =
@@ -121,15 +127,23 @@ let use_normalized handle =
 
 let get_handle t =
   check t;
-  Coordinate.restore t.handle t.initial;
+  (*Coordinate.restore t.handle t.initial;
   (*as this breaks the assumption that the handle makes the correct
     transformation*)
   t.coords <- M.empty;
-  (*we cannot reuse a Coord_handler which gave his handle.*)
+  (*we cannot reuse a Coord_handler which gave his handle.*)*)
   t.handle
 
 let close t =
   B.close t.handle; t.coords <- M.empty
+
+
+
+
+
+
+(********************************************************************)
+
 
 let get_coord t name =
   match name with
@@ -145,7 +159,7 @@ let get_coord t name =
 
 
 let get_coord_built_in t name =
-  let s = 
+  let s =
     match name with
       None -> t.coord
         (*FIXME: cannot be built-in coord.*)
@@ -219,14 +233,22 @@ let add_transform t name ?from matrix =
 let set_coordinate t name =
   check t;
   let coord = get_coord t (Some name) in
-  ignore (Coord.use t.handle coord)
+  ignore (Coord.use t.handle coord);
+  t.coord <- N name
 
-(*
-let get_coordinate t = check t; Coord.copy t.coord*)
+let print_coordinate t = check t;
+  match t.coord with
+  | Device -> "~DEVICE"
+  | Normalized -> "~NORMALIZED"
+  | Marks -> "~MARKS"
+  | N s -> "_"^s
 
+let print_matrix t =
+  let m = B.get_matrix t.handle in
+  Printf.printf "%f %f %f %f %f %f" m.B.xx m.B.xy m.B.yx m.B.yy m.B.x0 m.B.y0
 
-
-(*Backend primitives*)
+(*Backend primitives
+*********************************************************************)
 
 (*(*FIXME: needed? If so, in which coords?*)
 let width t = B.width t.handle
@@ -260,6 +282,16 @@ let clear_path t = B.clear_path t.handle
 let path_extents t = B.path_extents t.handle
 let stroke t = B.stroke t.handle
 let stroke_preserve t = B.stroke_preserve t.handle
+let stroke_init t =
+  let ctm = Coord.use t.handle (M.find Device t.coords) in
+  B.stroke t.handle;
+  Coord.restore t.handle ctm
+
+let stroke_init_preserve t =
+  let ctm = Coord.use t.handle (M.find Device t.coords) in
+  B.stroke_preserve t.handle;
+  Coord.restore t.handle ctm
+
 let fill t = B.fill t.handle
 let fill_preserve t = B.fill_preserve t.handle
 (*let clip t = B.clip t.handle
@@ -292,5 +324,5 @@ let render t name =
   Coord.restore t.handle ctm
 
 (*Local Variables:*)
-(*compile-command: "ocamlopt -c -for-pack Archimedes transform_coord.ml && ocamlc -c -for-pack Archimedes transform_coord.ml"*)
+(*compile-command: "ocamlopt -c -for-pack Archimedes coord_handler.ml && ocamlc -c -for-pack Archimedes coord_handler.ml"*)
 (*End:*)
