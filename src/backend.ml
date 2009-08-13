@@ -484,6 +484,14 @@ struct
   let transform_point m ~x ~y =
     (m.xx *. x +. m.xy *. y +. m.x0,  m.yx *. x +. m.yy *. y +. m.y0)
 
+  let blit m1 m2 =
+    m2.xx <- m1.xx;
+    m2.yx <- m1.yx;
+    m2.xy <- m1.xy;
+    m2.yy <- m1.yy;
+    m2.x0 <- m1.x0;
+    m2.y0 <- m1.y0
+
   let copy t = { t with xx = t.xx }
 
   let inv_transform_point m =

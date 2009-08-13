@@ -28,8 +28,8 @@ struct
   type t = int ref
       (* The  low bit (2**0) is used as a boolean, the other bits as id. *)
 
-  let equal m1 m2 = m1 == m2
-  let hash m = m lsr 1
+  let equal m1 m2 = m1 == m2 (* physical equality *)
+  let hash m = !m lsr 1
 
   let id = ref 0
   let make () = incr id; ref(!id lsl 1)
@@ -39,7 +39,7 @@ struct
   let is_set m = !m land 1 <> 0
 end
 
-module MW = Weak.Make(Monitor)
+module WM = Weak.Make(Monitor)
 
 (* Coordinate systems will stack on top of each other :
 
@@ -218,7 +218,7 @@ let rotate coord ~angle =
   put_children_not_up_to_date coord
 
 let transform coord tm =
-  coord.tm <- tm;
+  Matrix.blit coord.tm tm;
   put_children_not_up_to_date coord
 
 

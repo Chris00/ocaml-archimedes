@@ -265,7 +265,10 @@ sig
     (** Sets the current transformation to the identity transformation. *)
 
   val copy: t -> t
-    (** [copy matrix] returns a copy of [matrix].*)
+    (** [copy matrix] returns a copy of [matrix]. *)
+
+  val blit : t -> t -> unit
+    (** [blit m1 m2] copies the content of [m1] into [m2]. *)
 
   val translate : t -> x:float -> y:float -> unit
     (** [translate m tx ty] applies a translation by [tx], [ty] to the
