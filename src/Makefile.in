@@ -55,6 +55,11 @@ archimedes_cairo.cmxs: archimedes_cairo.ml
 	$(OCAMLFIND) ocamlopt -passopt -shared -o $@ $(OCAMLOPT_FLAGS) \
 	  -package cairo2 $<
 
+archimedes_tikz.cmo: archimedes_tikz.ml
+	$(OCAMLFIND) ocamlc -c -o $@ $(OCAMLC_FLAGS) $<
+archimedes_tikz.cmxs: archimedes_tikz.ml
+	$(OCAMLFIND) ocamlopt -passopt -shared -o $@ $(OCAMLOPT_FLAGS) $<
+
 
 .PHONY: doc
 OCAMLDOC_FLAGS += $(if $(OCAMLINCLUDES), $(addprefix -I , $(OCAMLINCLUDES)))
