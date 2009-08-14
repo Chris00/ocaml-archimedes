@@ -7,7 +7,7 @@ let () =
       let h = B.make ~dirs:[ "./src";"../src"] s 150. 150. in
       Printf.printf "handle init%!";
       let t = T.use h in
-      let h' = T.get_handle t in
+      (*let h' = T.get_handle t in*)
       (*It seems that a reference to the backend is necessary --
         otherwise, crash on Win$...*)
       Printf.printf "CH init%!";
@@ -47,7 +47,8 @@ let () =
       T.line_to t 2. 0.;
       T.close_path t;
       T.fill t;
-      B.close h'
+     (* B.close h'*)
+      T.close t;
     with
       T.Error e ->
         Printf.eprintf "%s" (T.string_of_error e);

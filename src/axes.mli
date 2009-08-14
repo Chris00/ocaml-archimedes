@@ -44,18 +44,18 @@ val print_tic : Coord_handler.t -> [> `P of Pointstyle.name ] -> unit
 
 val get_funct :
   [> `Linear | `Logarithmic] ->
-  int -> int -> int -> float * bool
+  int -> int -> int -> float
   (**[get_funct loc] returns a function whose purpose is to tell where
-     a tic is needed and if it is a major one. More precisely, the
-     arguments of this function are, in order, [majors minors num], where
-     [majors] is the number of major tics (including the first and the
-     last one), [minors] the number of minor tics between two major tics,
-     and [num] the number of the tic considered. The function then
-     returns a number between [0.] and [1.] which gives the relative
-     position of the tic, and if it is a major one.*)
+     a tic is needed. More precisely, the arguments of this function
+     are, in order, [majors minors num], where [majors] is the number
+     of major tics (including the first and the last one), [minors]
+     the number of minor tics between two major tics, and [num] the
+     number of the tic considered. The function then returns a number
+     between [0.] and [1.] which gives the relative position of the
+     tic.*)
 
 val get_labels :
-  [> `Numbers | `Other of string list ] -> unit -> string
+  [> `Numbers | `Other of string list ] -> int -> string
   (**Returns an iterator to make labels on an axis.*)
 
 val print :
@@ -68,8 +68,8 @@ val print :
                  xmin:float -> xmax:float -> ymin:float -> ymax:float ->
                 Coord_handler.t -> float * float) ->
   ?print_tic:(Coord_handler.t -> 'b -> unit) ->
-  ?get_funct:('c -> int -> int -> int -> float * bool) ->
-  ?get_labels:('d -> unit -> string) ->
+  ?get_funct:('c -> int -> int -> int -> float) ->
+  ?get_labels:('d -> int -> string) ->
   Coord_handler.t -> unit
 
 (**Print axes following the parameters stored in t and according to

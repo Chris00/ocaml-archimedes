@@ -56,16 +56,15 @@ let print_axes axes ~xmin ~xmax ~ymin ~ymax ch =
       x,y
   | _ -> raise Not_available
 
-let get_funct loc  = 
+let get_funct loc  =
   match loc with
   | `Linear ->
       (fun n m ->
          let step = 1. /. (float (n*m)) in
-         fun i -> (float i) *. step, i mod m = 0)
+         fun i -> (float i) *. step)
   | `Logarithmic ->
       (fun n m i ->
-         log (1. +. 9. *. (float i) /. (float (n * m))),
-         i mod m = 0)
+         log (1. +. 9. *. (float i) /. (float (n * m))))
   | _  -> raise Not_available
 
 exception Inner_error
@@ -74,10 +73,11 @@ let get_labels data =
   match data with
     `Numbers -> raise Inner_error
   | `Other list ->
-      let u = ref list in
-      (fun () -> match !u with
-        [] -> failwith "No labels"
-       | s::l -> u := l; s)
+      let array = Array.of_list list in
+      fun i ->
+        (try array.(i)
+        with Invalid_argument ioob ->
+          failwith ("Iterator from get_labels `Other --"^ioob))
   | _ -> raise Not_available
 
 
@@ -87,23 +87,31 @@ let print_tic ch tic =
   | _ -> raise Not_available
 
 
-let print_tics_normalized axis vmin vmax x_axis
-    print_tic get_funct get_labels ch =
-  let loc_tic = get_funct axis.loc in
+
+let print_tics axis ~vmin ~vmax ~vinv x_axis print_tic get_funct get_labels ch =
+  (*C.save ch;*)
+  C.add_scale ch "~" 1. 1.;
+  C.set_coordinate ch "~";
+  if x_axis then (*vmin = xmin,...*)
+    C.add_translate ch "~axis" vmin vinv
+  else (*vmin = ymin,... but we will rotate*)
+    (C.add_translate ch "~axis" vinv vmin;
+     C.rotate ch ~name:"~axis" ~angle:(2.*. atan 1.));
+  (*FIXME: the rotation makes Y as new X but -X as new Y.*)
+
+  (*Axis to be made is now on X axis, between abscissas 0. and (vmax
+    -. vmin). *)
+  C.set_coordinate ch "~axis";
   match axis.mode with
     Automatic -> failwith "NYI"
   | Fixed(major, minor) ->
       let n = (major - 1) * minor + 1 in
-      let f = loc_tic major minor in
-      let next_label =
-        try
-          get_labels axis.data
+      let label =
+        try get_labels axis.data
         with Inner_error ->
-          let i = ref 0 in
-          fun () ->
-            let x = vmin +. (vmax -. vmin) *. (float !i) /. (float n) in
-            incr i;
-            Printf.sprintf "%f"
+          fun i ->
+            let x = vmin +. (vmax -. vmin) *. (float i) /. (float major) in
+            Printf.sprintf "%F"
               (match axis.loc with
                | `Linear -> x
                | `Logarithmic -> 10.**x
@@ -111,45 +119,28 @@ let print_tics_normalized axis vmin vmax x_axis
       in
       let rec maketic i =
         if i <= n then
-          let v, is_major = f i in
+          (let r = get_funct axis.loc major minor i in
+          let v = vmin +. r *. (vmax -. vmin) in
           C.move_to ch v 0.;
-          print_tic ch (if is_major then axis.major else axis.minor);
-          if is_major then
-            let rotate = if x_axis then 0. else (-2.) *. atan 1. in
-            C.show_text ch rotate v 0.
-              (if x_axis then Backend.CB else Backend.LC) (next_label ());
-            maketic (i+1)
-          else maketic (i+1)
-      in maketic 0
+          if i mod minor = 0 then
+            (print_tic ch axis.major;
+             let rotate = if x_axis then 0. else (-2.) *. atan 1. in
+             Printf.printf "Text on point %f %f : \"%s\"\n%!" v 0.
+               (label (i/minor));
+             C.show_text ch rotate v 0.
+               (if x_axis then Backend.CB else Backend.LC) (label (i/minor)))
+          else print_tic ch axis.minor;
+          maketic (i+1))
+      in maketic 0;
+      (*Restoring to previous coordinates.*)
+      C.set_coordinate ch "~"
 
-let print_tics axis ~vmin ~vmax ~vinv x_axis print_tic get_funct get_labels ch =
-  C.save ch;
-  if x_axis then (*vmin = xmin,...*)
-    C.add_translate ch "~axis" vmin vinv
-  else (*vmin = ymin,... but we will rotate*)
-    (C.add_translate ch "~axis" vinv vmin;
-     C.rotate ch ~name:"~axis" ~angle:(2.*. atan 1.));
-      (*FIXME: the rotation makes Y as new X but -X as new Y.*)
 
-  (*Axis to be made is now on X axis, between abscissas 0. and (vmax
-    -. vmin). We now scale it to put it between 0. and 1.*)
-  C.set_coordinate ch "~axis";
-  let diff = vmax -. vmin in
-  C.scale ch diff diff;
-  print_tics_normalized axis vmin vmax x_axis print_tic get_funct get_labels ch;
-  (*Restoring to previous coordinates.*)
-  C.restore ch
-
-let pa = print_axes and pt = print_tic and gf = get_funct and gl = get_labels
-
-let print t ~xmin ~xmax ~ymin ~ymax ?print_axes ?print_tic
-    ?(get_funct=get_funct) ?get_labels ch =
-  let print_axes = match print_axes with None -> pa | Some u -> u in
+let print t ~xmin ~xmax ~ymin ~ymax ?(print_axes = print_axes)
+    ?(print_tic = print_tic) ?(get_funct = get_funct)
+    ?(get_labels = get_labels) ch =
+  let xxx = ch and yyy = C.get_handle ch in
   let x,y = print_axes t.axes ~xmin ~xmax ~ymin ~ymax ch in
-  let print_tic = match print_tic with None -> pt | Some u -> u
- (* and get_funct = match get_funct with None -> gf | Some u -> u*)
-  and get_labels = match get_labels with None -> gl | Some u -> u
-  in
   print_tics t.x ~vmin:xmin ~vmax:xmax ~vinv:y true
     print_tic get_funct get_labels ch;
   print_tics t.y ~vmin:ymin ~vmax:ymax ~vinv:x false
@@ -157,5 +148,5 @@ let print t ~xmin ~xmax ~ymin ~ymax ?print_axes ?print_tic
 
 
 (*Local variables:*)
-(*compile-command: "ocamlopt -c -for-pack Archimedes axes.ml && ocamlc -c -for-pack Archimedes axes.ml"*)
+(*compile-command: "ocamlopt -c -dtypes axes.ml && ocamlc -c -dtypes axes.ml"*)
 (*End:*)
