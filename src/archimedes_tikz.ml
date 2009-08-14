@@ -481,15 +481,15 @@ struct
     let angle = atan2 dy dx in
     let x', y' = B.Matrix.transform_point st.ctm x y in
     let pos = match pos with
-      | B.LT -> "north east"
+      | B.LT -> "south east"
       | B.LC -> "east"
-      | B.LB -> "south east"
-      | B.CT -> "north"
+      | B.LB -> "north east"
+      | B.CT -> "south"
       | B.CC -> "center"
-      | B.CB -> "south"
-      | B.RT -> "north west"
+      | B.CB -> "north"
+      | B.RT -> "south west"
       | B.RC -> "west"
-      | B.RB -> "south west"
+      | B.RB -> "north west"
     in
     write t (Printf.sprintf "\\node [%s, %s, %s, anchor=%s,rotate=%f] at %s {%s};"
                "inner sep=0pt" st.color st.opacity

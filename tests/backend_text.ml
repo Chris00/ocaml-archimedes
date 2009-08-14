@@ -10,9 +10,10 @@ let () =
     let dirs = [ "./src"; "../src" ] in
     let b = B.make s 200. 100. ~dirs in
 
-    (* Chenge the coordinate system.  This will not affect the text. *)
-    B.translate b 0. 100.;
-    B.scale b 1. (-1.);
+    (* Change the cairo coordinate system.  This will not affect the text. *)
+    if String.sub s 0 5 = "cairo" then
+      (B.translate b 0. 100.;
+       B.scale b 1. (-1.));
 
     B.select_font_face b B.Upright B.Normal "times";
     B.show_text b ~x:50. ~y:20. ~rotate:half_pi B.CC "Joy";
