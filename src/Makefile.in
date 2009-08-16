@@ -21,6 +21,8 @@ ifneq "@OCAML_PKG_graphics@" "no"
   PLUGINS += archimedes_graphics.ml
 endif
 
+PLUGINS += archimedes_tikz.ml
+
 .PHONY: default all opt byte native
 default: @OCAMLBEST@
 all: byte native

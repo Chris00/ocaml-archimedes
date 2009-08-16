@@ -5,7 +5,7 @@ let plot_param t f ?(nsamples = 100) a b =
   (*Can be negative; in this way, plotting is done 'in the reverse order'*)
   let x,y = f a in
   move_to t x y;
-  for i = 0 to nsamples do
+  for i = 1 to nsamples do
     let p = a +. (float i) *. step in
     let x,y = f p in
     line_to t x y

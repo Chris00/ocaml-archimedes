@@ -96,7 +96,7 @@ val scale_marks : t -> x:float -> y:float -> unit
      affecting the marks by multiplying the X axis by [x] and the Y
      axis by [y]. See {!Coordinate.scale} for more information.*)
 
-val rotate_marks : t -> ?name:string -> angle:float -> unit
+val rotate_marks : t -> angle:float -> unit
   (**Applies a rotation of angle [angle] to the coordinate
      transformation currently affecting the marks.*)
 

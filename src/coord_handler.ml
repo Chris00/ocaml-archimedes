@@ -36,7 +36,7 @@ let init_map list =
 type t =
     {handle:B.t; (*Handle on which we operate*)
      (*mutable styles: styles; (*Current styles to apply*)*)
-     mutable coord: name;
+     mutable coordname: name;
      (*Name of the current transformation*)
      mutable coords: Coord.t M.t;
      (*Transformations available. Will be always non-empty (contains
@@ -44,7 +44,10 @@ type t =
        Marks) except when closed. So testing whether the handle is
        closed will be equivalent to testing this registry is empty.*)
      initial: Coord.ctm;
-     history:name Stack.t; (*Saved states*)
+     (*Used to store the initial transformation matrix of a backend.*)
+     history:name Stack.t;
+     (*Saved transformations; used to restore the handle to a previous
+       transformation if needed.*)
     }
 
 type error =
@@ -67,7 +70,7 @@ let check t = if M.is_empty t.coords then raise (Error Closed)
 let make_coords width height =
   let dev = Coord.make_identity () in
   let normalized = Coord.make_scale dev width height in
-  let marks = Coord.make_scale normalized 0.01 (0.01 *. width /. height) in
+  let marks = Coord.make_scale dev (100. /. width) (100. /. width) in
     (*marks is so defined to not have stretch on pointstyles by default.*)
   dev, normalized, marks
 
@@ -78,7 +81,7 @@ let make ?dirs name width height =
   let handle = B.make ?dirs name width height in
   let ctm = Coord.use handle normalized in
   {handle = handle;
-   coord = Normalized;
+   coordname = Normalized;
    coords = coords;
    initial = ctm;
    history = Stack.create ();}
@@ -91,7 +94,7 @@ let use handle =
     [Device, dev; Normalized, normalized; Marks, marks]
   in
   {handle = handle;
-   coord = Device;
+   coordname= Device;
    coords = coords;
    initial = ctm;
    history = Stack.create ();}
@@ -107,7 +110,7 @@ let use_unit_square handle ~name x1 y1 x2 y2 =
     [Device, dev; Normalized, normalized; Marks, marks; (N name), unit_square]
   in
   {handle = handle;
-   coord = N name;
+   coordname= N name;
    coords = coords;
    initial = ctm;
    history = Stack.create ();}
@@ -120,7 +123,7 @@ let use_normalized handle =
     [Device, dev; Normalized, normalized; Marks, marks]
   in
   {handle = handle;
-   coord = Normalized;
+   coordname= Normalized;
    coords = coords;
    initial = ctm;
    history = Stack.create ();}
@@ -148,9 +151,9 @@ let close t =
 let get_coord t name =
   match name with
     None ->
-      (match t.coord with
+      (match t.coordname with
         Device | Normalized | Marks -> raise (Error Trying_modify_built_in)
-      | N _ -> M.find t.coord t.coords)
+      | N _ -> M.find t.coordname t.coords)
       (*FIXME: cannot be built-in coord.*)
   | Some s ->
       try M.find (N s) t.coords
@@ -161,7 +164,7 @@ let get_coord t name =
 let get_coord_built_in t name =
   let s =
     match name with
-      None -> t.coord
+      None -> t.coordname
         (*FIXME: cannot be built-in coord.*)
     | Some s -> s
   in
@@ -176,32 +179,43 @@ let get_coord_built_in t name =
     raise (Error error)
 
 let add_coord t name coord =
-  t.coords <- M.add (N name) coord t.coords
+  (*FIXME: what to do if name already given?*)
+ (* try
+    ignore (M.find (N name) t.coords);
+    raise (Error (Already_exists name))
+  with Not_found ->*)
+    t.coords <- M.add (N name) coord t.coords
 
 let translate t ?name ~x ~y =
   check t;
   let coord = get_coord t name in
   Coord.translate coord x y;
-  if name = None then B.translate t.handle x y
+  match name with
+    None -> B.translate t.handle x y
+  | Some s -> if t.coordname = N s then B.translate t.handle x y
 
 let scale t ?name ~x ~y =
   check t;
   let coord = get_coord t name in
   Coord.scale coord x y;
-  if name = None then B.scale t.handle x y
+  match name with
+    None -> B.scale t.handle x y
+  | Some s -> if t.coordname = N s then B.scale t.handle x y
 
 let rotate t ?name ~angle =
   check t;
   let coord = get_coord t name in
   Coord.rotate coord angle;
-  if name = None then B.rotate t.handle angle
+  match name with
+    None -> B.rotate t.handle angle
+  | Some s -> if t.coordname = N s then B.rotate t.handle angle
 
 let scale_marks t ~x ~y =
   check t;
   let coord = M.find Marks t.coords in
   Coord.scale coord x y
 
-let rotate_marks t ?name ~angle =
+let rotate_marks t ~angle =
   check t;
   let coord = M.find Marks t.coords in
   Coord.rotate coord angle
@@ -233,11 +247,25 @@ let add_transform t name ?from matrix =
 let set_coordinate t name =
   check t;
   let coord = get_coord t (Some name) in
-  ignore (Coord.use t.handle coord);
-  t.coord <- N name
+ (* let m = B.get_matrix t.handle in
+  Printf.printf "Setting coord: %f %f %f %f %f %f\n"
+    m.B.xx m.B.xy m.B.yx m.B.yy m.B.x0 m.B.y0;*)
+  let ms = Coord.use t.handle coord in
+ (* let mn = B.get_matrix t.handle in
+  Printf.printf "into coord %s; new coord: %f %f %f %f %f %f\n"
+    name mn.B.xx mn.B.xy mn.B.yx mn.B.yy mn.B.x0 mn.B.y0;
+  Coord.restore t.handle ms;
+  let ms = B.get_matrix t.handle in
+  Printf.printf "Reset; new coord: %f %f %f %f %f %f\n"
+    ms.B.xx ms.B.xy ms.B.yx ms.B.yy ms.B.x0 ms.B.y0;
+  B.set_matrix t.handle mn;
+  let mn = B.get_matrix t.handle in
+  Printf.printf "Finally; new coord: %f %f %f %f %f %f\n"
+    mn.B.xx mn.B.xy mn.B.yx mn.B.yy mn.B.x0 mn.B.y0;*)
+  t.coordname <- N name
 
 let print_coordinate t = check t;
-  match t.coord with
+  match t.coordname with
   | Device -> "~DEVICE"
   | Normalized -> "~NORMALIZED"
   | Marks -> "~MARKS"
@@ -303,11 +331,11 @@ let clip_rectangle t = B.clip_rectangle t.handle
   ones when restoring?*)
 let save t =
   B.save t.handle;
-  Stack.push t.coord t.history
+  Stack.push t.coordname t.history
 
 let restore t =
   try
-    t.coord <- Stack.pop t.history;
+    t.coordname <- Stack.pop t.history;
     B.restore t.handle
   with Stack.Empty ->
     raise (Error No_saved_states)
@@ -320,6 +348,7 @@ let text_extents t = B.text_extents t.handle
 
 let render t name =
   let ctm = Coord.use t.handle (M.find Marks t.coords) in
+  print_matrix t;
   Pointstyle.render name t.handle;
   Coord.restore t.handle ctm
 

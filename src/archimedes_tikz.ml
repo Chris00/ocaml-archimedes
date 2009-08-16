@@ -391,15 +391,21 @@ struct
     let st = get_state t in
     let x', y' = B.Matrix.transform_point st.ctm x y
     and w', h' = B.Matrix.transform_distance st.ctm w h in
-    t.curr_path <-t.curr_path^" "^(point_string x y)^" rectangle "^
+    t.curr_path <-t.curr_path^" "^(point_string x' y')^" rectangle "^
       (point_string (x'+.w') (y'+.h'));
     (* Update the current point and extents *)
     st.path_extents <-
       update_rectangle st.path_extents x' y' (x' +. w') (y' +. h');
     st.curr_pt <- true
 
+
+  (*FIXME: to be reworked, to take the coordinate transformation into
+    account.*)
   let arc t ~x ~y ~r ~a1 ~a2 =
-    move_to t x y;
+    let st = get_state t in
+    let x', y' = B.Matrix.transform_point st.ctm x y
+    in
+    move_to t x' y';
     let rec arc a1 a2 = (*FIXME: angles expressed in degrees here*)
       if abs_float (a2 -. a1) >= 360. +. 1.E-16 then
         (t.curr_path <- t.curr_path^" circle("^(string_of_float r)^")";

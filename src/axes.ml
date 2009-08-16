@@ -89,19 +89,6 @@ let print_tic ch tic =
 
 
 let print_tics axis ~vmin ~vmax ~vinv x_axis print_tic get_funct get_labels ch =
-  (*C.save ch;*)
-  C.add_scale ch "~" 1. 1.;
-  C.set_coordinate ch "~";
-  if x_axis then (*vmin = xmin,...*)
-    C.add_translate ch "~axis" vmin vinv
-  else (*vmin = ymin,... but we will rotate*)
-    (C.add_translate ch "~axis" vinv vmin;
-     C.rotate ch ~name:"~axis" ~angle:(2.*. atan 1.));
-  (*FIXME: the rotation makes Y as new X but -X as new Y.*)
-
-  (*Axis to be made is now on X axis, between abscissas 0. and (vmax
-    -. vmin). *)
-  C.set_coordinate ch "~axis";
   match axis.mode with
     Automatic -> failwith "NYI"
   | Fixed(major, minor) ->
@@ -120,31 +107,38 @@ let print_tics axis ~vmin ~vmax ~vinv x_axis print_tic get_funct get_labels ch =
       let rec maketic i =
         if i <= n then
           (let r = get_funct axis.loc major minor i in
-          let v = vmin +. r *. (vmax -. vmin) in
-          C.move_to ch v 0.;
-          if i mod minor = 0 then
-            (print_tic ch axis.major;
-             let rotate = if x_axis then 0. else (-2.) *. atan 1. in
-             Printf.printf "Text on point %f %f : \"%s\"\n%!" v 0.
-               (label (i/minor));
-             C.show_text ch rotate v 0.
-               (if x_axis then Backend.CB else Backend.LC) (label (i/minor)))
-          else print_tic ch axis.minor;
-          maketic (i+1))
-      in maketic 0;
+           let v = vmin +. r *. (vmax -. vmin) in
+           let x', y',  pos' =
+             if x_axis then
+               v, 0., Backend.CB
+             else 0., v, Backend.LC
+           in
+           C.move_to ch x' y';
+           print_string (C.print_coordinate ch);
+           C.print_matrix ch;
+           if i mod minor = 0 then
+             (print_tic ch axis.major;
+              Printf.printf "Text on point %f %f : \"%s\"\n%!" x' y'
+                (label (i/minor));
+              C.show_text ch 0. x' y' pos' (label (i/minor)))
+           else print_tic ch axis.minor;
+           maketic (i+1))
+      in maketic 0
       (*Restoring to previous coordinates.*)
-      C.set_coordinate ch "~"
+      (*C.set_coordinate ch "~"*)
 
 
 let print t ~xmin ~xmax ~ymin ~ymax ?(print_axes = print_axes)
     ?(print_tic = print_tic) ?(get_funct = get_funct)
     ?(get_labels = get_labels) ch =
-  let xxx = ch and yyy = C.get_handle ch in
+  (*let xxx = ch and yyy = C.get_handle ch in*)
   let x,y = print_axes t.axes ~xmin ~xmax ~ymin ~ymax ch in
+  C.stroke_init ch;
   print_tics t.x ~vmin:xmin ~vmax:xmax ~vinv:y true
     print_tic get_funct get_labels ch;
   print_tics t.y ~vmin:ymin ~vmax:ymax ~vinv:x false
-    print_tic get_funct get_labels ch
+    print_tic get_funct get_labels ch;
+
 
 
 (*Local variables:*)

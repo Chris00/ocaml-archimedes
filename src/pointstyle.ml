@@ -203,24 +203,20 @@ let registry =
             done;
             B.fill handle);
     "tic_up", (fun handle ->
-                 (*FIXME : 1 unit or 0.5 unit?*)
-                 B.rel_move_to handle 0. (-1.);
-                 B.rel_line_to handle 0. 1.;
+                 B.rel_move_to handle 0. (-0.5);
+                 B.rel_line_to handle 0. 0.5;
                  B.stroke handle);
     "tic_down", (fun handle ->
-                   (*FIXME : 1 unit or 0.5 unit?*)
-                   B.rel_move_to handle 0. 1.;
-                   B.rel_line_to handle 0. (-1.);
+                   B.rel_move_to handle 0. 0.5;
+                   B.rel_line_to handle 0. (-0.5);
                    B.stroke handle);
     "tic_left", (fun handle ->
-                   (*FIXME : 1 unit or 0.5 unit?*)
-                   B.rel_move_to handle (-1.) 0.;
-                   B.rel_line_to handle 1. 0.;
+                   B.rel_move_to handle (-0.5) 0.;
+                   B.rel_line_to handle 0.5 0.;
                    B.stroke handle);
     "tic_right", (fun handle ->
-                    (*FIXME : 1 unit or 0.5 unit?*)
-                    B.rel_move_to handle 1. 0.;
-                    B.rel_line_to handle (-1.) 0.;
+                    B.rel_move_to handle 0.5 0.;
+                    B.rel_line_to handle (-0.5) 0.;
                     B.stroke handle)
   ]
   in
