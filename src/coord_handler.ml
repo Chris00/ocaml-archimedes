@@ -347,10 +347,14 @@ let show_text t = B.show_text t.handle
 let text_extents t = B.text_extents t.handle
 
 let render t name =
-  let ctm = Coord.use t.handle (M.find Marks t.coords) in
-  print_matrix t;
-  Pointstyle.render name t.handle;
-  Coord.restore t.handle ctm
+  let marks = M.find Marks t.coords in
+  let ctm = Coord.use t.handle marks in
+  let rect = Pointstyle.render name t.handle in
+  Coord.restore t.handle ctm;
+  (*Now express [rect] in device coords*)
+  let x', y' = Coord.to_device marks rect.B.x rect.B.y in
+  let w', h' = Coord.to_device_distance marks rect.B.w rect.B.h in
+  {B.x = x'; y = y'; w = w'; h = h'}
 
 (*Local Variables:*)
 (*compile-command: "ocamlopt -c -for-pack Archimedes coord_handler.ml && ocamlc -c -for-pack Archimedes coord_handler.ml"*)

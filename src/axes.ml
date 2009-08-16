@@ -110,16 +110,19 @@ let print_tics axis ~vmin ~vmax ~vinv x_axis print_tic get_funct get_labels ch =
            let v = vmin +. r *. (vmax -. vmin) in
            let x', y',  pos' =
              if x_axis then
-               v, 0., Backend.CB
-             else 0., v, Backend.LC
+               v, vinv, Backend.CB
+             else vinv, v, Backend.LC
            in
            C.move_to ch x' y';
            if i mod minor = 0 then
-             (print_tic ch axis.major;
+             (let rect = print_tic ch axis.major in
               Printf.printf "Text on point %f %f : \"%s\"\n%!" x' y'
                 (label (i/minor));
-              C.show_text ch 0. x' y' pos' (label (i/minor)))
-           else print_tic ch axis.minor;
+              let x'', y'' = match pos' with
+                | _ -> x', y'
+              in
+              C.show_text ch 0. x'' y'' pos' (label (i/minor)))
+           else ignore (print_tic ch axis.minor);
            maketic (i+1))
       in maketic 0
       (*Restoring to previous coordinates.*)

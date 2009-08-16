@@ -562,7 +562,7 @@ let show_text t ~rotate ~x ~y pos str =
   add_update (TEXT(rotate,x,y,pos,str)) t
 
 
-let point t name = add_order (Pointstyle.render name) t
+let point t name = add_order (fun b -> ignore (Pointstyle.render name b)) t
 
 let save_layer t =
   Stack.push {t.data with xmin = t.data.xmin} t.saved_data;

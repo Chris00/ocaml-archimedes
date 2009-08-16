@@ -39,8 +39,9 @@ val print_axes :
   (**Function used to print axes. It returns the point where the axes meet.*)
 
 
-val print_tic : Coord_handler.t -> [> `P of Pointstyle.name ] -> unit
-  (**This function is used to tell how to print a tic.*)
+val print_tic : Coord_handler.t -> [> `P of Pointstyle.name ] -> Backend.rectangle
+  (**This function is used to tell how to print a tic. It returns the
+     smallest rectangle containing the tic (cf. [Pointstyle.extents]).*)
 
 val get_funct :
   [> `Linear | `Logarithmic] ->
@@ -67,7 +68,7 @@ val print :
   ?print_axes:('a ->
                  xmin:float -> xmax:float -> ymin:float -> ymax:float ->
                 Coord_handler.t -> float * float) ->
-  ?print_tic:(Coord_handler.t -> 'b -> unit) ->
+  ?print_tic:(Coord_handler.t -> 'b -> Backend.rectangle) ->
   ?get_funct:('c -> int -> int -> int -> float) ->
   ?get_labels:('d -> int -> string) ->
   Coord_handler.t -> unit
