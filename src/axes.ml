@@ -92,7 +92,7 @@ let print_tics axis ~vmin ~vmax ~vinv x_axis print_tic get_funct get_labels ch =
   match axis.mode with
     Automatic -> failwith "NYI"
   | Fixed(major, minor) ->
-      let n = (major - 1) * minor + 1 in
+      let n = major * minor in
       let label =
         try get_labels axis.data
         with Inner_error ->
@@ -114,8 +114,6 @@ let print_tics axis ~vmin ~vmax ~vinv x_axis print_tic get_funct get_labels ch =
              else 0., v, Backend.LC
            in
            C.move_to ch x' y';
-           print_string (C.print_coordinate ch);
-           C.print_matrix ch;
            if i mod minor = 0 then
              (print_tic ch axis.major;
               Printf.printf "Text on point %f %f : \"%s\"\n%!" x' y'
@@ -125,7 +123,6 @@ let print_tics axis ~vmin ~vmax ~vinv x_axis print_tic get_funct get_labels ch =
            maketic (i+1))
       in maketic 0
       (*Restoring to previous coordinates.*)
-      (*C.set_coordinate ch "~"*)
 
 
 let print t ~xmin ~xmax ~ymin ~ymax ?(print_axes = print_axes)

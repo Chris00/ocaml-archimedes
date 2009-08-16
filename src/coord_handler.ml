@@ -70,7 +70,7 @@ let check t = if M.is_empty t.coords then raise (Error Closed)
 let make_coords width height =
   let dev = Coord.make_identity () in
   let normalized = Coord.make_scale dev width height in
-  let marks = Coord.make_scale dev (100. /. width) (100. /. width) in
+  let marks = Coord.make_scale dev (width /. 100.) (width /. 100.) in
     (*marks is so defined to not have stretch on pointstyles by default.*)
   dev, normalized, marks
 
