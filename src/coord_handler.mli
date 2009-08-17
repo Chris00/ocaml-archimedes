@@ -162,6 +162,8 @@ val rectangle : t -> x:float -> y:float -> w:float -> h:float -> unit
   (**Note that this [rectangle] does not always use [Backend.rectangle],
      because of possible shears in the coordinate transformation.*)
 
+val arc: t -> x:float -> y:float -> r:float -> a1:float -> a2:float -> unit
+
 val close_path : t -> unit
 val clear_path : t -> unit
 val path_extents : t -> Backend.rectangle

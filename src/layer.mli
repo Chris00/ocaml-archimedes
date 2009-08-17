@@ -1,11 +1,10 @@
 (**A [Layer.t] retains all orders that would be made and computes the
    extents of the drawing. Then, when flushing it, it applies all the
    orders with a correct scaling (so that, for example, all the
-   drawing is visible on the device). See [flush] and [flush_backend]
-   for more information.
+   drawing is visible on the device). See [flush] for more information.
 
    Note that text extents, which are backend-dependent, are treated
-   differently of the other (path) extents. *)
+   differently than the other (path) extents. *)
 
 
 type limitation =
@@ -85,13 +84,13 @@ val rotate: t -> angle:float -> unit
   with [next]. The coordinate system in [layer] is modified by
   applying [next] to the existing transformation.*)
 *)
-
+(*
 val get_coord : t -> Backend.matrix
   (**Returns the coordinate system currently affecting the layer.*)
 
 val reset_to_id : t -> unit
   (**Resets the layer's coordinate system to the identity.*)
-
+*)
 (**{2 Backend subsequent operations}*)
 val set_color : t -> Color.t -> unit
   (**Sets the layer's current color to the specified [Color.t].*)
@@ -119,20 +118,20 @@ val get_dash : t -> float array * float
 
 val get_line_join : t -> Backend.line_join
   (**Returns the current line join mode.*)
-
+(*
 val set_matrix : t -> Backend.matrix -> unit
   (** Set the current transformation matrix which is the matrix
       transforming user to layer coordinates. *)
 
 val get_matrix : t -> Backend.matrix
   (** Return the current transformation matrix on the layer.  Modifying this
-      matrix does not affect the matrix held in [t]. *)
+      matrix does not affect the matrix held in [t]. *)*)
 
 val move_to : t -> x:float -> y:float -> unit
   (**Moves the current point to ([x],[y]).*)
 
-val line : t -> ?x:float -> ?y:float -> float -> float -> unit
-  (**Makes a line between ([x],[y]) (or, if not given, the current
+val line : t -> ?x0:float -> ?y0:float -> float -> float -> unit
+  (**Makes a line between ([x0],[y0]) (or, if not given, the current
      point) and the point specified.*)
 
 val line_to : t -> x:float -> y:float -> unit
@@ -257,7 +256,7 @@ val restore_layer: t -> unit
    make a common background (to be flushed to all backends), then specify
    the drawings before flushing in a specific backend.*)
 
-val layer_extents: ?autoscale:scaling -> ?handle:Backend.t ->
+val layer_extents: ?autoscale:scaling -> ?handle:Coord_handler.t ->
   t -> Backend.rectangle
   (**Returns the extents of the layer. If no [handle] is given, then
      the extents does not take any text into account. The rectangle is
@@ -266,30 +265,30 @@ val layer_extents: ?autoscale:scaling -> ?handle:Backend.t ->
 val get_coord_transform : ?autoscale:scaling -> t -> ofsx:float -> ofsy:float ->
   width:float -> height:float -> Backend.matrix
 
-val flush_backend : ?autoscale:scaling -> t -> ofsx:float -> ofsy:float ->
-  width:float -> height:float  -> ?pos:Backend.text_position -> Backend.t -> unit
-  (**[flush_backend layer ofsx ofsy width height backend] copies the resulting
-     drawing in the [layer], to the [backend], in the rectangle
-     specified by the quantities [ofsx],[ofsy] (some corner of the
-     rectangle), [width] and [height]. If [width] and [height] are
-     positive, then the point ([ofsx],[ofsy]) is the upper left corner
-     of the rectangle (i.e., the one which has the smallest abscissa
-     and ordinate). Note that [width] and/or [height] can be negative;
-     in such cases, a symmetry along one (or both) median(s) of the
-     rectangle will be applied when reproducing the drawing stored in
-     [layer] on the [backend]'s drawing surface.
-
-     Optional argument [autoscale] is by default fixed at [Uniform
-     Unlimited], so there's by default no limitations on scaling, but
-     if scaling, then it is done uniformly along the two axes.
-
-     Optional argument [pos] specifies where the layer should take
-     place if, for some restrictions, it is smaller than the rectangle
-     specified.*)
 
 val flush : ?autoscale:scaling -> t -> ofsx:float -> ofsy:float ->
   width:float -> height:float -> ?pos:Backend.text_position ->
   Coord_handler.t -> unit
+
+(**[flush layer ofsx ofsy width height handle] copies the resulting
+   drawing in the [layer], to the [handle], in the rectangle
+   specified by the quantities [ofsx],[ofsy] (some corner of the
+   rectangle), [width] and [height] (all these quantities are
+   expressed in [handle]'s coordinates). If [width] and [height] are
+   positive, then the point ([ofsx],[ofsy]) is the upper left corner
+   of the rectangle (i.e., the one which has the smallest abscissa
+   and ordinate). Note that [width] and/or [height] can be negative;
+   in such cases, a symmetry along one (or both) median(s) of the
+   rectangle will be applied when reproducing the drawing stored in
+   [layer] on the [backend]'s drawing surface.
+
+   Optional argument [autoscale] is by default fixed at [Uniform
+   Unlimited], so there's by default no limitations on scaling, but
+   if scaling, then it is done uniformly along the two axes.
+
+   Optional argument [pos] specifies where the layer should take
+   place if, for some restrictions, it is smaller than the rectangle
+   specified.*)
 
 (*Local Variables:*)
 (*compile-command: "ocamlc -c layer.mli"*)

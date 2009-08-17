@@ -1,8 +1,8 @@
 module B = Backend
 module Q = Queue
-module Coord = B.Matrix
+module Coord = Coordinate
 
-module T = Coord_handler
+module C = Coord_handler
 
 type limitation =
     Unlimited
@@ -17,7 +17,7 @@ type scaling =
 
 type styles =
     {
-      mutable coord:B.matrix;
+      mutable coord:Coord.t;
       mutable dash: float array * float;
       mutable lj: B.line_join;
       mutable lc: B.line_cap;
@@ -80,8 +80,8 @@ type t =
       saved_data: layer_data Stack.t;
       (*Saved data. This will allow to save, perform some orders
         before flushing somewhere, then retrieve the initial state.*)
-      mutable orders: (B.t -> unit) Q.t;
-      saved_orders: (B.t -> unit) Q.t Stack.t;
+      mutable orders: (C.t -> unit) Q.t;
+      saved_orders: (C.t -> unit) Q.t Stack.t;
       mutable bkdep_updates: bkdep Q.t;
       saved_updates: bkdep Q.t Stack.t
     }
@@ -181,35 +181,26 @@ let restore_queues t =
     t.orders <- Stack.pop t.saved_orders;
     t.bkdep_updates <- Stack.pop t.saved_updates
   with Stack.Empty ->
-    failwith "Internal problem when restoring the stacks."
+    failwith "Internal problem when restoring the orders/bkdep queues."
 
 let translate t ~x ~y =
-  add_order (fun t -> B.translate t x y) t;
+  add_order (fun t -> C.translate t x y) t;
   Coord.translate t.styles.coord x y
 
 let scale t ~x ~y =
-  add_order(fun t -> B.scale t x y) t;
+  add_order(fun t -> C.scale t x y) t;
   Coord.scale t.styles.coord x y
 
 let rotate t ~angle =
-  add_order(fun t -> B.rotate t angle) t;
+  add_order(fun t -> C.rotate t angle) t;
   Coord.rotate t.styles.coord angle
+
+(*FIXME: useful?*)
 (*
-let transform t =  Coord.transform t.styles.coord
-let transform_dist t = Coord.transform_dist t.styles.coord
-let invert t = Coord.invert t.styles.coord
-let inv_transform t =  Coord.inv_transform t.styles.coord
-let inv_transform_dist t = Coord.inv_transform_dist t.styles.coord
-
-let apply ~next t =
-  (*add_order(fun t -> B.apply ~next t) t;*)
-  Coord.apply ~next t.styles.coord
-*)
-
 let get_coord t = t.styles.coord
 let reset_to_id t =
   add_order(fun t -> B.set_matrix t !initial_bk_matrix) t;
-  Coord.set_to_identity t.styles.coord
+  Coord.set_to_identity t.styles.coord*)
 
 (*
 Reminder of the flags for settings:
@@ -225,14 +216,14 @@ Reminder of the flags for settings:
   We make use of the [setting_*] variables to avoid errors.*)
 
 let set_color t c =
-  add_order (fun t -> B.set_color t c) t;
+  add_order (fun t -> C.set_color t c) t;
   t.styles.color <- c;
   let set = t.styles.settings
   and n = setting_color in
   if set mod (2 * n) = 0 then t.styles.settings <- set + n
 
 let set_line_width t w =
-  add_order (fun t -> B.set_line_width t w) t;
+  add_order (fun t -> C.set_line_width t w) t;
   t.styles.lw <- w;
   let set = t.styles.settings
   and n = setting_line_width in
@@ -240,7 +231,7 @@ let set_line_width t w =
 
 
 let set_line_cap t lc =
-  add_order (fun t -> B.set_line_cap t lc) t;
+  add_order (fun t -> C.set_line_cap t lc) t;
   t.styles.lc <- lc;
   let set = t.styles.settings
   and n = setting_line_cap in
@@ -248,7 +239,7 @@ let set_line_cap t lc =
 
 
 let set_dash t ofs array =
-  add_order(fun t -> B.set_dash t ofs array) t;
+  add_order(fun t -> C.set_dash t ofs array) t;
   t.styles.dash <- array, ofs;
   let set = t.styles.settings
   and n = setting_dash in
@@ -256,19 +247,21 @@ let set_dash t ofs array =
 
 
 let set_line_join t s =
-  add_order (fun t -> B.set_line_join t s) t;
+  add_order (fun t -> C.set_line_join t s) t;
   t.styles.lj <- s;
   let set = t.styles.settings
   and n = setting_line_join in
   if set mod (2 * n) = 0 then t.styles.settings <- set + n
 
+
+(* FIXME: Coord_handler => name of coordinates
 let set_matrix t matrix =
   add_order (fun t ->
                let m = Coord.copy matrix in
                Coord.mul_in m m !initial_bk_matrix;
                B.set_matrix t m) t;
   t.styles.coord <- matrix
-
+*)
 (*NOTE: the font settings are below, with text managing.*)
 
 let get_line_width t =
@@ -290,20 +283,24 @@ let get_line_join t =
   if (t.styles.settings mod (2 * setting_line_join)) = 0 then
     raise (Error (Unset_style "line_join"));
    t.styles.lj
-
+(*
 let get_matrix t = t.styles.coord
+*)
 
 let move_to t ~x ~y =
-  update t true x y;
+  (*FIXME: a "move_to" updates the extents of the layer, but not the
+    current path extents.*)
+  update t false x y;
   t.data.current <- Some (x,y);
-  add_order (fun t -> B.move_to t x y) t
+  add_order (fun t -> C.move_to t x y) t
 
-let line t ?x ?y x1 y1 =
-  (match x,y with
+let line t ?x0 ?y0 x1 y1 =
+  (match x0,y0 with
      Some x, Some y -> move_to t x y
    | _, _ -> ());
   update t true x1 y1;
-  add_order (fun t -> B.line_to t x1 y1) t;
+  (*FIXME: also need to update the current point for the path...*)
+  add_order (fun t -> C.line_to t x1 y1) t;
   t.data.current <- Some(x1,y1)
 
 let line_to t ~x ~y = line t x y
@@ -316,16 +313,18 @@ let get_point t =
 let rel_move_to t ~x ~y =
   let x',y' = get_point t in
   let x',y' = (x+.x'), (y+.y') in
-  update t true x' y';
+  update t false x' y';
+  (*cf. move_to*)
   t.data.current <- Some (x',y');
-  add_order (fun t -> B.rel_move_to t x y) t
+  add_order (fun t -> C.rel_move_to t x y) t
 
 let rel_line_to t ~x ~y =
   let x',y' = get_point t in
   let x',y' = (x+.x'), (y+.y') in
   update t true x' y';
+  (*FIXME: cf. line_to*)
   t.data.current <- Some(x',y');
-  add_order (fun t -> B.rel_line_to t x y) t
+  add_order (fun t -> C.rel_line_to t x y) t
 
 
 
@@ -337,13 +336,13 @@ let curve t ?x0 ?y0 ~x1 ~y1 ?x2 ?y2 x3 y3 =
    | _, _ -> ());
   let x2, y2 =
     match x2,y2 with
-     Some x, Some y ->
-       update t true x y;
-       x, y
-   | _, _ -> x1, y1
+      Some x, Some y ->
+        update t true x y;
+        x, y
+    | _, _ -> x1, y1
   in
   update t true x1 y1; update t true x3 y3;
-  add_order (fun t -> B.curve_to t ~x1 ~y1 ~x2 ~y2 ~x3 ~y3) t;
+  add_order (fun t -> C.curve_to t ~x1 ~y1 ~x2 ~y2 ~x3 ~y3) t;
   t.data.current <- Some(x3,y3)
 
 let curve_to t ~x1 ~y1 ~x2 ~y2 ~x3 ~y3 = curve t ~x1 ~y1 ~x2 ~y2 x3 y3
@@ -358,21 +357,21 @@ let rel_curve_to t ~x1 ~y1 ?x2 ?y2 ~x3 ~y3 =
         let x'' = (x+.x') and y'' = (y+.y') in
         update t true x'' y'';
         x'', y''
-   | _, _ -> x1, y1
+    | _, _ -> x1, y1
   in
   t.data.current <- Some(x3, y3);
-  add_order (fun t -> B.curve_to t ~x1 ~y1 ~x2 ~y2 ~x3 ~y3) t
+  add_order (fun t -> C.curve_to t ~x1 ~y1 ~x2 ~y2 ~x3 ~y3) t
 
 (*
-let ellipse_arc t ?(max_length=2.*. atan 1.) ?x ?y ~a ~b t1 t2 =
+  let ellipse_arc t ?(max_length=2.*. atan 1.) ?x ?y ~a ~b t1 t2 =
   let u,v =
-    match x,y with
-      Some x, Some y ->  x,y
-    | _, _ -> get_point t
+  match x,y with
+  Some x, Some y ->  x,y
+  | _, _ -> get_point t
   in
   update t true (u+.a) (v+.b);
   update t true (u-.a) (v-.b);
-  (*FIXME: to be more precise...*)
+(*FIXME: to be more precise...*)
   let ct1 = cos t1
   and ct2 = cos t2
   and st1 = sin t1
@@ -434,22 +433,21 @@ let arc t ~x ~y ~r ~a1 ~a2=
   let x1,y1 = x +. r *. ct1, y +. r *. st1
   and x2,y2 = x +. r *. ct2, y +. r *. st2 in
   t.data.current <- Some(x2,y2);
-  add_order (fun t -> B.arc t x y r a1 a2) t
+  add_order (fun t -> C.arc t x y r a1 a2) t
 
 
 let rectangle t ~x ~y ~w ~h =
   update t true x y;
   update t true (x+.w) (y+.h);
-  Printf.printf "Rectangle %f %f, %f %f\n" x y w h;
-  add_order (fun t -> B.rectangle t ~x ~y ~w ~h) t
+  add_order (fun t -> C.rectangle t ~x ~y ~w ~h) t
 
 
 let save t =
-  add_order B.save t;
-  Stack.push { t.styles with coord = t.styles.coord} t.history
+  add_order C.save t;
+  Stack.push { t.styles with coord = Coord.copy t.styles.coord} t.history
 
 let restore t =
-  add_order B.restore t;
+  add_order C.restore t;
   try
     t.styles <- Stack.pop t.history
   with Stack.Empty ->
@@ -457,10 +455,10 @@ let restore t =
 
 
 let close_path t =
-  add_order B.close_path t
+  add_order C.close_path t
 
 let clear_path t =
-  add_order B.clear_path t;
+  add_order C.clear_path t;
   reinit_path_ext t
 
 let path_extents t =
@@ -470,10 +468,13 @@ let path_extents t =
     {B.x = t.pxmin; y = t.pymin; w = t.pxmax -. t.pxmin; h = t.pymax -. t.pymin}
 
 
-let stroke_fun t preserve backend =
-  B.save backend;
-  (*CTM in backend = t.coord * (TM flush) * (CTM before flush).
-    To recover correct line width, we want as backend's CTM:
+let stroke_fun t preserve handle =
+  C.save handle;
+  (*
+    FIXME: How to translate this with a Coord_handler?
+
+    CTM in handle = t.coord * (TM flush) * (CTM before flush).
+    To recover correct line width, we want as handle's CTM:
     t.coord * (CTM before flush).
     So we make the following operation:
     CTM := t.coord * (TM flush)^{-1} * (t.coord)^{-1} * CTM.
@@ -495,27 +496,30 @@ let stroke_fun t preserve backend =
       (ignore matrix.B.xx; ignore matrix.B.xy; ignore matrix.B.x0;
        ignore matrix.B.yx; ignore matrix.B.yy; ignore matrix.B.y0)*)
   in
-  let coord_kill_transform = Coord.copy t.styles.coord in
-  Coord.invert coord_kill_transform;
+  (*let coord_kill_transform = Coord.copy t.styles.coord in
+  (*Coord.invert coord_kill_transform;
   print "" "CKT" coord_kill_transform;
   Coord.scale coord_kill_transform !inv_zoomx !inv_zoomy;
   print "scale" "CKT" coord_kill_transform;
   Coord.mul_in coord_kill_transform  t.styles.coord coord_kill_transform;
   print "apply coords" "CKT" coord_kill_transform;
-  let matrix = B.get_matrix backend in
+  let matrix = B.get_matrix handle in
   print "" "Matrix" coord_kill_transform;
   Coord.mul_in matrix  coord_kill_transform matrix;
   print "Apply CKT" "Matrix" coord_kill_transform;
-  B.set_matrix backend matrix;
-  (if preserve then B.stroke_preserve else B.stroke) backend;
-  B.restore backend
+  B.set_matrix handle matrix;*)
+  Coord.make_from_transform handle "~transform_no_layer" 
+    ~from:"~layer_id" coord_kill_transform;
+  Coord.set_coordinate handle "~transform_no_layer";*)
+  (if preserve then C.stroke_init_preserve else C.stroke_init) handle;
+  C.restore handle
 
 let stroke t =
   add_order (stroke_fun t false) t;
   reinit_path_ext t
 
 let fill t =
-  add_order B.fill t;
+  add_order C.fill t;
   reinit_path_ext t
 
 (*
@@ -528,7 +532,7 @@ let stroke_preserve t =
   add_order (stroke_fun t true) t
 
 let fill_preserve t =
-  add_order B.fill_preserve t
+  add_order C.fill_preserve t
 
 (*
 let clip_preserve t =
@@ -536,13 +540,13 @@ let clip_preserve t =
 *)
 
 let clip_rectangle t ~x ~y ~w ~h =
-  add_order (fun t -> B.clip_rectangle t x y w h) t
+  add_order (fun t -> C.clip_rectangle t x y w h) t
 
 let stroke_layer t =
-  add_order B.stroke t
+  add_order C.stroke t
 
 let stroke_layer_preserve t =
-  add_order B.stroke_preserve t
+  add_order C.stroke_preserve t
 
 
 let select_font_face t slant weight family =
@@ -550,19 +554,19 @@ let select_font_face t slant weight family =
   st.fslant <- slant;
   st.fweight <- weight;
   st.font <- family;
-  add_order (fun t -> B.select_font_face t slant weight family) t
+  add_order (fun t -> C.select_font_face t slant weight family) t
 
 let set_font_size t size =
   t.styles.fsize <- size;
-  add_order (fun t -> B.set_font_size t size) t
+  add_order (fun t -> C.set_font_size t size) t
 
 let show_text t ~rotate ~x ~y pos str =
   update t false x y;
-  add_order (fun t -> B.show_text t ~rotate ~x ~y pos str) t;
+  add_order (fun t -> C.show_text t ~rotate ~x ~y pos str) t;
   add_update (TEXT(rotate,x,y,pos,str)) t
 
 
-let point t name = add_order (fun b -> ignore (Pointstyle.render name b)) t
+let point t name = add_order (fun b -> ignore (C.render b name)) t
 
 let save_layer t =
   Stack.push {t.data with xmin = t.data.xmin} t.saved_data;
@@ -589,11 +593,11 @@ let adjust_scale sc limit =
 
 let get_ct ?(autoscale=(Uniform Unlimited))
     t ?(pos=B.CC) xmin xmax ymin ymax ~ofsx ~ofsy ~width ~height =
-  let c = Coord.make_identity () in
+  let c = B.Matrix.make_identity () in
   let scalx, scaly =
     match autoscale with
       Not_allowed ->
-        Coord.scale c (sign width) (sign height);
+        B.Matrix.scale c (sign width) (sign height);
         1.,1.
     | Uniform(limit) ->
         let (ex, scalx), (ey, scaly) =
@@ -607,7 +611,7 @@ let get_ct ?(autoscale=(Uniform Unlimited))
           - Then we create the scalings by multiplying by (-1) if necessary.
         *)
         let scal = min (min scalx scaly) 1.E15 in
-        Coord.scale c (ex *. scal) (ey *. scal);
+        B.Matrix.scale c (ex *. scal) (ey *. scal);
         scal, scal
     | Free(limitx,limity) ->
         let (ex, scalx), (ey, scaly) =
@@ -615,7 +619,7 @@ let get_ct ?(autoscale=(Uniform Unlimited))
           and scy = height /. (ymax -. ymin) in
           adjust_scale scx limitx, adjust_scale scy limity
         in
-        Coord.scale c (ex *. (min scalx 1.E15)) (ey *. (min scaly 1.E15));
+        B.Matrix.scale c (ex *. (min scalx 1.E15)) (ey *. (min scaly 1.E15));
         (min scalx 1.E15), (min scaly 1.E15)
   in
   let x =
@@ -636,7 +640,7 @@ let get_ct ?(autoscale=(Uniform Unlimited))
        | B.RT | B.RC | B.RB -> ofsx +. diff
        else ofsx
          (*FIXME: I think previous case is not applicable because of
-           rescalings. This have to be confirmed.*)
+           rescalings. This has to be confirmed.*)
   and y =
     let layer_height = scaly *. (ymax -. ymin) in
     let sgn, diff =
@@ -651,7 +655,7 @@ let get_ct ?(autoscale=(Uniform Unlimited))
        | B.RT | B.RC | B.RB -> ofsy +. diff
     else ofsy
   in
-  Coord.translate c x y;
+  B.Matrix.translate c x y;
   c
 
 let get_coord_transform ?(autoscale=(Uniform Unlimited)) t =
@@ -659,10 +663,10 @@ let get_coord_transform ?(autoscale=(Uniform Unlimited)) t =
 
 let update_text t handle r x y pos str width height autoscale =
   let st = t.styles in
-  B.save handle;
-  B.select_font_face handle st.fslant st.fweight st.font;
-  B.set_font_size handle st.fsize;
-  let rect = B.text_extents handle str in
+  C.save handle;
+  C.select_font_face handle st.fslant st.fweight st.font;
+  C.set_font_size handle st.fsize;
+  let rect = C.text_extents handle str in
   Printf.printf "Text extents of %s: %f, %f; w:%f; h:%f\n" str
     rect.B.x rect.B.y rect.B.w rect.B.h;
   let scx = width /. (t.data.xmax -. t.data.xmin)
@@ -701,12 +705,12 @@ let update_text t handle r x y pos str width height autoscale =
   Printf.printf "Bounds applied: %f, %f; %f, %f\n\n" xmin ymin xmax ymax;
   (*FIXME: the rectangle command updates t.[xy][min|max], which we don't want
   in the end.*)
-  B.set_color handle Color.yellow;
+  C.set_color handle Color.yellow;
   (*B.rectangle handle x y rect.B.w rect.B.h;*)
   (*stroke_fun t false handle;*)
-  B.stroke handle;
+  C.stroke handle;
 
-  B.restore handle;
+  C.restore handle;
   xmin, xmax, ymin, ymax
 
 
@@ -740,8 +744,9 @@ let layer_extents ?(autoscale= Uniform Unlimited) ?handle t =
       {B.x = data.xmin; y = data.ymin;
        w = data.xmax -. data.xmin; h = data.ymax -. data.ymin}
   | Some handle ->
+      (*FIXME: make_updates with Coord_handler...*)
       let (x,x',y,y'), boxes = make_updates handle t
-        (B.width handle) (B.height handle) autoscale in
+        (*(B.width handle) (B.height handle)*) 100. 100. autoscale in
       {B.x = x; y = y; w = x' -. x; h = y' -. y}
 
 
@@ -753,12 +758,12 @@ let print () = if debug_flush then Printf.printf "*%!"
 
 (*FIXME: a flushed layer can be reusable; flush does not kill nor
   modify the previous orders.*)
-let flush_backend ?(autoscale=(Uniform Unlimited))
+let flush ?(autoscale=(Uniform Unlimited))
     t ~ofsx ~ofsy ~width ~height ?pos handle =
   print ();
-  B.save handle;
+  C.save handle;
   (*save_layer t;*)
-  initial_bk_matrix := B.get_matrix handle;
+  (*initial_bk_matrix := B.get_matrix handle;*)
   set_color t (Color.make ~a:0.5 0. 1. 1.);
   print ();
   rectangle t t.data.xmin t.data.ymin
@@ -778,23 +783,27 @@ let flush_backend ?(autoscale=(Uniform Unlimited))
   assert (t.data.ymin >= ymin);
   assert (t.data.ymax <= ymax);
   print ();
-  let matrix = B.get_matrix handle in
+
+(*  let matrix = B.get_matrix handle in*)
   let next =
     get_ct ~autoscale t ?pos xmin xmax ymin ymax ~ofsx ~ofsy ~width ~height in
-  Coord.mul_in matrix  next matrix; 
+  (*Coord.mul_in matrix  next matrix; *)
   (* let sf x = " "^(string_of_float x) in
   Printf.printf "Matrix%s%s%s%s%s%s%!" (sf matrix.B.xx) (sf matrix.B.xy)
     (sf matrix.B.x0) (sf matrix.B.yx) (sf matrix.B.yy) (sf matrix.B.y0);*)
-  B.set_matrix handle matrix;
-  B.translate handle (-.xmin) (-.ymin);
+  (*B.set_matrix handle matrix;*)
+  C.add_translate handle "~layer_id" 0. 0.;
+  C.add_transform handle "~layer_transform" ~from:(C.N "~layer_id") next;
+  C.translate handle ~name:"~layer_transform" ~x:(-.xmin) ~y:(-.ymin);
+  C.set_coordinate handle "~layer_transform";
   inv_zoomx := 1. /. next.B.xx;
   inv_zoomy := 1. /. next.B.yy;
-  B.set_color handle Color.green;
+  C.set_color handle Color.green;
   print ();
   let rec make_boxes list =
     match list with
-      [] -> B.fill handle
-    |(x,x',y,y')::l -> B.rectangle handle x y (x'-.x) (y'-.y);
+      [] -> C.fill handle
+    |(x,x',y,y')::l -> C.rectangle handle x y (x'-.x) (y'-.y);
         make_boxes l
   in make_boxes boxes;
   print ();
@@ -809,18 +818,11 @@ let flush_backend ?(autoscale=(Uniform Unlimited))
   in
   make_orders (Q.create ());
   print ();
-  B.set_color handle (Color.make ~a:0.5 1. 0. 0.);
-  B.rectangle handle xmin ymin (xmax -. xmin) (ymax -. ymin);
+  C.set_color handle (Color.make ~a:0.5 1. 0. 0.);
+  C.rectangle handle xmin ymin (xmax -. xmin) (ymax -. ymin);
   stroke_fun t false handle;
   (*restore_layer t;*)
-  B.restore handle
-
-let flush ?(autoscale=(Uniform Unlimited)) t ~ofsx ~ofsy ~width ~height ?pos
-    handle =
-  let handle = T.get_handle handle in
-  (*Backend handle has the same transformation coordinates as the
-    Coord_handler handle.*)
-  flush_backend ~autoscale t ~ofsx ~ofsy ~width ~height ?pos handle;
+  C.restore handle
 
 (*Local Variables:*)
 (*compile-command: "ocamlc -c -for-pack Archimedes layer.ml && ocamlopt -c -for-pack Archimedes layer.ml"*)
