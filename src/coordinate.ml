@@ -21,9 +21,30 @@ module Matrix = Backend.Matrix
 
 type ctm = Matrix.t
 
+(* Monitors are used to keep track of wether a given coordinate system
+   has been updated.  This can be used to redraw elements depending to
+   the coordinate system. *)
+module Monitor =
+struct
+  type t = int ref
+      (* The  low bit (2**0) is used as a boolean, the other bits as id. *)
+
+  let equal m1 m2 = m1 == m2 (* physical equality *)
+  let hash m = !m lsr 1
+
+  let id = ref 0
+  let make () = incr id; ref(!id lsl 1)
+  let set m = m := !m lor 1
+  let reset_mask = lnot 1
+  let reset m = m := !m land reset_mask
+  let is_set m = !m land 1 <> 0
+end
+
+module WM = Weak.Make(Monitor)
+
 (* Coordinate systems will stack on top of each other :
 
-   tm1 -> tm2 -> ... tmN
+   tm1 -> tm2 -> ... -> tmN
 
    which correspond the tranforming a point [x] in the device
    coordinates [tmN * ... * tm2 * tm1 * x].  We could recompute the
@@ -46,6 +67,7 @@ and Coord : sig
               ctm : Matrix.t;
               mutable up_to_date : bool;
               mutable children : W.t;
+              mutable monitors : WM.t;
               id : int; }
   val equal : t -> t -> bool
   val hash : t -> int
@@ -69,6 +91,8 @@ struct
        date, all its children must not be either. *)
     mutable children : W.t;
     (* List of coordinate systems that depend on this one. *)
+    mutable monitors : WM.t;
+    (* Handles used to monitor updates to this coordinate system. *)
     id : int;
     (* id of the object (for hash) *)
   }
@@ -139,6 +163,7 @@ let make_identity() =
       ctm = Matrix.make_identity();
       up_to_date = true; (* always must be *)
       children = W.create 5;
+      monitors = WM.create 0;
       id = new_id();
     } in
   dev
@@ -151,6 +176,7 @@ let copy coord =
       ctm = Matrix.copy coord.ctm;
       children = W.create 5; (* this is a new coordinate system, no other one
                                 depends on it. *)
+      monitors = WM.create 2;
       id = new_id();
   }
 
@@ -170,6 +196,7 @@ let make_from_transform coord tm =
                  ctm = Matrix.mul tm coord.ctm;
                  up_to_date = coord.up_to_date; (* iff [coord] is up to date *)
                  children = W.create 5;
+                 monitors = WM.create 2;
                  id = new_id() } in
   W.add coord.children coord';
   coord'
@@ -193,15 +220,11 @@ let rec put_children_not_up_to_date coord =
      is no need to update the CTM until its parents are brought up to
      date. *)
   if coord.up_to_date then begin
-    Matrix.mul_in coord.ctm  coord.depends_on.ctm coord.tm;
-    W.iter (fun c ->
-              (* If [c] is already not up to date, so are all its
-                 children.  There is no need to recurse down. *)
-              if c.up_to_date then (
-                c.up_to_date <- false;
-                put_children_not_up_to_date c; (* => invariant *)
-              )
-           ) coord.children
+    (* If [coord] was already not up to date (and so were all its
+       children), there is nothing to do. *)
+    coord.up_to_date <- false;
+    W.iter put_children_not_up_to_date coord.children; (* => invariant *)
+    WM.iter Monitor.set coord.monitors;
   end
 
 let translate coord ~x ~y =
@@ -215,3 +238,21 @@ let scale coord ~x ~y =
 let rotate coord ~angle =
   Matrix.rotate coord.tm ~angle;
   put_children_not_up_to_date coord
+
+let transform coord tm =
+  Matrix.blit coord.tm tm;
+  put_children_not_up_to_date coord
+
+
+(* Monitoring
+ ***********************************************************************)
+
+type monitor = Monitor.t
+
+let monitor coord =
+  let m = Monitor.make() in
+  WM.add coord.monitors m;
+  m
+
+let reset = Monitor.reset
+let changed = Monitor.is_set
