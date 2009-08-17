@@ -18,15 +18,19 @@ let plot_param t f ?(nsamples = 100) a b =
            let rel_max =
              let ax0 = abs_float x0
              and ay0 = abs_float y0 in
-             max_length *. (ax0 *. ax0 +. ay0 *. ay0)
+             max_length *. (ax0 *. ax0 +. ay0 *. ay0 +. step *. step)
            in
-           if diffx *. diffx +. diffy *. diffy < rel_max then
-             (line_to t x y;
-              plot_other (i+1) tmin x y bounds)
-           else (*increase precision by dividing step by 2.*)
+           if diffx *. diffx +. diffy *. diffy > rel_max then
+             (*increase precision by dividing step by 2.*)
              let ntmin = tmin +. (float (i-1)) *. step in
+            (* print_string "DIV -> ";
+             print_float (step /. 2.);*)
              plot_other 1 ntmin x0 y0 ((i, tmin, step/.2., 2)::bounds)
-         )
+           else
+             (line_to t x y;
+             (* print_int i;*)
+              plot_other (i+1) tmin x y bounds)
+          )
         else
           (*Plot with current step size finished; return to previous step size.*)
           plot_other (prev_stop + 1) prev_tmin x0 y0 list
