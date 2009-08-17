@@ -125,6 +125,7 @@ struct
     mutable y:float;
     (*Coordinates of the current point (if any)*)
     mutable fsize:float;
+    mutable slant_weight_family:string;
     mutable path_extents: Backend.rectangle;
     (* The extent of the current path, in device coordinates. *)
     mutable ctm : matrix; (* current transformation matrix from the
@@ -211,6 +212,7 @@ struct
           miter_limit = "miter limit=10";
           curr_pt = false; x=0.;y=0.; (*No current point*)
           fsize=10.;
+          slant_weight_family = "%s";
           path_extents = { Backend.x=0.; y=0.; w=0.; h=0. };
           (* Identity transformation matrix *)
           ctm = B.Matrix.make_identity();
@@ -466,14 +468,52 @@ struct
   let set_matrix t m = (get_state t).ctm <- m
 
   let get_matrix t = B.Matrix.copy (get_state t).ctm
-
+  
   let select_font_face t slant weight family =
-    ()
+    check t;
+    let begin_slant, end_slant =
+      match slant with
+        B.Upright -> "",""
+      | B.Italic -> "\textit{","}"
+      | B.Oblique -> "\textsl{","}"(*Slanted*)
+    in
+    let begin_weight, end_weight =
+      match weight with
+        Normal -> "",""
+      | Bold -> "\textbf{","}"
+    in
+    let begin_family, end_family =
+      match family with
+        _ -> "",""
+    in
+    let s = begin_slant^begin_weight^begin_family^"%s"^
+      end_family^end_weight^end_slant
+    in
+    t.state.slant_weight_family <- s;
+    let series =
+      match weight with
+        Normal -> "n"
+      | Bold -> "b"
+    and shape =
+      match slant with
+        B.Upright -> "m"
+      | B.Italic -> "it"
+      | B.Oblique -> "sl" (*Slanted*)
+    in
+    write t (Printf.sprintf "\\usefont{T1}{%s}{%s}{%s}"
+               family series slant)
 
   let set_font_size t size =
     let st = get_state t in
-    st.fsize <- size
+    let prev_size = st.fsize in
+    st.fsize <- size;
+    let ratio = prev_size /. size in
+    write t (Printf.sprintf
+               "\\fontsize{%.2f}{%.2f\\f@baselineskip}\selectfont"
+               size ratio)
 
+
+(*FIXME: raw way to find the extents; must be reworked.*)
   let text_extents t txt =
     let h = (get_state t).fsize in
     let w = (float (String.length txt)) *. h in
@@ -497,7 +537,9 @@ struct
       | B.RC -> "west"
       | B.RB -> "north west"
     in
-    write t (Printf.sprintf "\\node [%s, %s, %s, anchor=%s,rotate=%f] at %s {%s};"
+    (*let txt = Printf.sprintf (format_of_string st.slant_weight_family) txt in*)
+    write t (Printf.sprintf
+               "\\node [%s, %s, %s, anchor=%s,rotate=%f] at %s {%s};"
                "inner sep=0pt" st.color st.opacity
                pos (180. *. angle /. pi) (point_string x' y') txt)
 end
