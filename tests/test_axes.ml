@@ -27,9 +27,9 @@ let () =
       in
       let c color = Color.add (Color.make ~a:0. 0. 0. 0.) color in
       let xaxis = A.make_axis (`P "|") (`P "tic_up") `Linear
-        (A.Fixed(6,1)) `Numbers
+        (A.Automatic) `Numbers
       and yaxis = A.make_axis (`P "-") (`P "tic_left") `Linear
-        (A.Fixed(6,3)) `Numbers in
+        (A.Semi_automatic 2.2) `Numbers in
       let axes = A.make (`Two_lines(0.,0.)) xaxis yaxis in
       make_fun 200. 200. 20. 20. "t0" (c Color.blue);
       let h' = C.get_handle cr in

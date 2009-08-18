@@ -1,5 +1,4 @@
 (**Styles definitions to make axes*)
-
 module C = Coord_handler
 
 type axes = [`Rectangle of bool * bool | `Two_lines of float * float]
@@ -12,6 +11,7 @@ type loc_tics =
       (*Positionment of tics.*)
 type mode_tics =
     Automatic
+  | Semi_automatic of float
   | Fixed of int * int
       (*Number of tics.*)
 
@@ -88,10 +88,8 @@ let print_tic ch tic =
 
 
 
-let print_tics axis ~vmin ~vmax ~vinv x_axis print_tic get_funct get_labels ch =
-  match axis.mode with
-    Automatic -> failwith "NYI"
-  | Fixed(major, minor) ->
+let inner_print_tics axis major minor ~vmin ~vmax ~vinv x_axis
+    print_tic get_funct get_labels ch =
       let n = major * minor in
       let label =
         try get_labels axis.data
@@ -128,11 +126,50 @@ let print_tics axis ~vmin ~vmax ~vinv x_axis print_tic get_funct get_labels ch =
       (*Restoring to previous coordinates.*)
 
 
+
+let print_tics axis ~vmin ~vmax ~vinv x_axis print_tic get_funct get_labels ch =
+  let find_major spacing estim =
+    let distx, disty =
+      if x_axis then vmax -. vmin, 0.
+      else 0., vmax -. vmin
+    in
+    let len1, len2 =
+      C.to_device_distance ch distx disty
+    in
+    let length = if x_axis then len1 else len2 in
+    let rmin, rmax =
+      C.text_extents ch (string_of_float vmin),
+      C.text_extents ch (string_of_float vmax)
+    in
+    let hmin, hmax = if x_axis then
+      rmin.Backend.w, rmax.Backend.w
+    else rmax.Backend.h, rmax.Backend.h
+    in
+    (*FIXME: All the stuff is in device coordinates.*)
+    let estim_len = estim hmin hmax in
+    let num = length -. estim_len in
+    let frac1 = num *. 2. /. (hmax +. hmin) in
+    let frac2 = (frac1 -. 1.) /. spacing in
+    (truncate frac2) + 2
+  in
+  match axis.mode with
+    Automatic ->
+      inner_print_tics axis (find_major 2. max) 1 ~vmin ~vmax ~vinv x_axis
+        print_tic get_funct get_labels ch
+  | Semi_automatic(spacing) ->
+      inner_print_tics axis (find_major spacing max) 1 ~vmin ~vmax ~vinv
+        x_axis
+        print_tic get_funct get_labels ch
+  | Fixed(major, minor) ->
+      inner_print_tics axis major minor ~vmin ~vmax ~vinv x_axis
+        print_tic get_funct get_labels ch
+
 let print t ~xmin ~xmax ~ymin ~ymax ?(print_axes = print_axes)
     ?(print_tic = print_tic) ?(get_funct = get_funct)
     ?(get_labels = get_labels) ch =
   (*let xxx = ch and yyy = C.get_handle ch in*)
   let x,y = print_axes t.axes ~xmin ~xmax ~ymin ~ymax ch in
+  let coord = Coordinate.make_identity () in
   C.stroke_init ch;
   print_tics t.x ~vmin:xmin ~vmax:xmax ~vinv:y true
     print_tic get_funct get_labels ch;

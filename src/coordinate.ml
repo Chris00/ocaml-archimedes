@@ -153,6 +153,14 @@ let to_device_distance coord ~dx ~dy =
   update coord;
   Matrix.transform_distance coord.ctm ~dx ~dy
 
+let to_coord coord ~x ~y =
+  update coord;
+  Matrix.inv_transform_point coord.ctm ~x ~y
+
+let to_coord_distance coord ~dx ~dy =
+  update coord;
+  Matrix.inv_transform_distance coord.ctm ~dx ~dy
+
 (* Creating new coordinate systems
  ***********************************************************************)
 

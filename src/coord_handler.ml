@@ -247,22 +247,16 @@ let add_transform t name ?from matrix =
 let set_coordinate t name =
   check t;
   let coord = get_coord t (Some name) in
- (* let m = B.get_matrix t.handle in
-  Printf.printf "Setting coord: %f %f %f %f %f %f\n"
-    m.B.xx m.B.xy m.B.yx m.B.yy m.B.x0 m.B.y0;*)
-  let ms = Coord.use t.handle coord in
- (* let mn = B.get_matrix t.handle in
-  Printf.printf "into coord %s; new coord: %f %f %f %f %f %f\n"
-    name mn.B.xx mn.B.xy mn.B.yx mn.B.yy mn.B.x0 mn.B.y0;
-  Coord.restore t.handle ms;
-  let ms = B.get_matrix t.handle in
-  Printf.printf "Reset; new coord: %f %f %f %f %f %f\n"
-    ms.B.xx ms.B.xy ms.B.yx ms.B.yy ms.B.x0 ms.B.y0;
-  B.set_matrix t.handle mn;
-  let mn = B.get_matrix t.handle in
-  Printf.printf "Finally; new coord: %f %f %f %f %f %f\n"
-    mn.B.xx mn.B.xy mn.B.yx mn.B.yy mn.B.x0 mn.B.y0;*)
+  let _ = Coord.use t.handle coord in
   t.coordname <- N name
+
+let to_device t = Coord.to_device (get_coord_built_in t None)
+
+let to_device_distance t = Coord.to_device_distance (get_coord_built_in t None)
+
+let to_coord t = Coord.to_coord (get_coord_built_in t None)
+
+let to_coord_distance t = Coord.to_coord_distance (get_coord_built_in t None)
 
 let print_coordinate t = check t;
   match t.coordname with

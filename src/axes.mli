@@ -4,7 +4,10 @@ type tic = [`P of Pointstyle.name]
 (**Type indicating a tic mode.*)
 type loc_tics = [ `Linear | `Logarithmic]
 (**Type which defines localization of tics.*)
-type mode_tics = Automatic | Fixed of int * int
+type mode_tics =
+    Automatic
+  | Semi_automatic of float
+  | Fixed of int * int
 (**Type determining how the tics will be made (number of major, minor tics).*)
 type data = [ `Numbers | `Other of string list ]
 (**Data to be printed on major tics.*)

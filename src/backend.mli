@@ -247,18 +247,18 @@ sig
   exception Not_invertible
 
   val make_identity : unit -> t
-    (** [init_identity()] returns the identity transformation. *)
+    (** [make_identity()] returns the identity transformation. *)
 
   val make_translate : x:float -> y:float -> t
-    (** [init_translate tx ty] return a transformation that translates
+    (** [make_translate tx ty] returns a transformation that translates
         by [tx] and [ty] in the X and Y dimensions, respectively. *)
 
   val make_scale : x:float -> y:float -> t
-    (** [init_scale sx sy] return a transformation that scales by [sx]
+    (** [make_scale sx sy] returns a transformation that scales by [sx]
         and [sy] in the X and Y dimensions, respectively. *)
 
   val make_rotate : angle:float -> t
-    (** [init_rotate radians] returns a a transformation that rotates
+    (** [make_rotate radians] returns a transformation that rotates
         by [radians]. *)
 
   val set_to_identity : t -> unit

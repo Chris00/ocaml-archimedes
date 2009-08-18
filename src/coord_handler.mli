@@ -38,7 +38,7 @@ exception Error of error
   (**Exception raised when an error has occured.*)
 
 val string_of_error: error -> string
-
+(**{2 Handles creators and destructors}*)
 val make : ?dirs:string list -> string ->
   float -> float -> t
   (**[make backend w h] creates a handle whose underlying backend is
@@ -66,8 +66,12 @@ val use_normalized : Backend.t -> t
      [0,1] x [0,1].*)
 
 val get_handle : t -> Backend.t
-  (**Returns the backend of a [t], after resetting the initial
-     transformation on it, if any.*)
+  (**Returns the backend of a [t]. *)
+  (*(not active for the moment), after resetting the initial
+     transformation on it, if any. Be aware that this "kills" the
+     [Coord_handler] handle, because of the transformations; so this
+     handle cannot be used afterwards (otherwise, it will raise an
+    [Error Closed]).*)
 
 val close : t -> unit
   (**Closes the given [t], killing all references to the stored
@@ -75,6 +79,8 @@ val close : t -> unit
      closed [t] cannot be used further; if it is, it will raise an
      [Error Closed].*)
 
+
+(**{2 Managing with coordinates}*)
 val translate : t -> ?name:string -> x:float -> y:float -> unit
   (**Translates the coordinate transformation whose name is [name] (or
      the current one if not given) by the vector ([x],[y]). See
@@ -128,17 +134,27 @@ val add_transform : t -> string -> ?from:name -> Backend.Matrix.t -> unit
      this transformation, then applying the transformation stored in [matrix].*)
 
 val set_coordinate : t -> string -> unit
-  (**Sets the coordinate system in [t] to the system registered under
-     [name]. Raises [Error (Not_Found name)] if there's no coordinate
-     transformation registered under [name].*)
+  (**[set_coordinate t name] sets the coordinate system in [t] to the
+     system registered under [name]. Raises [Error (Not_Found name)]
+     if there's no coordinate transformation registered under
+     [name].*)
+
+
+val to_device : t -> x:float -> y:float -> float * float
+
+val to_device_distance : t -> dx:float -> dy:float -> float * float
+
+val to_coord : t -> x:float -> y:float -> float * float
+
+val to_coord_distance : t -> dx:float -> dy:float -> float * float
+
 
 val print_coordinate : t -> string
   (**Returns the name of the current transformation coordinate the
-     handle obey.*)
+     handle obey. If it is a built-in one, it returns the name, in
+     uppercase, preceded by '~'.*)
 
 val print_matrix : t -> unit
-  (*val get_coordinate : t -> Coordinate.t
-  (**Returns (a copy of) the current transformation coordinate.*)*)
 
 (**{2 Backend primitives}*)
 val set_color : t -> Color.t -> unit
