@@ -343,7 +343,14 @@ let text_extents t = B.text_extents t.handle
 let render t name =
   let marks = M.find Marks t.coords in
   let ctm = Coord.use t.handle marks in
-  let rect = Pointstyle.render name t.handle in
+  Pointstyle.render name t.handle;
+  Coord.restore t.handle ctm
+
+
+let render_extents t name =
+  let marks = M.find Marks t.coords in
+  let ctm = Coord.use t.handle marks in
+  let rect = Pointstyle.render_extents name t.handle in
   Coord.restore t.handle ctm;
   (*Now express [rect] in device coords*)
   let x', y' = Coord.to_device marks rect.B.x rect.B.y in

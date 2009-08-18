@@ -1,15 +1,29 @@
 type axes = [ `Rectangle of bool * bool | `Two_lines of float * float ]
 (**Type for printing axes.*)
+
 type tic = [`P of Pointstyle.name]
 (**Type indicating a tic mode.*)
-type loc_tics = [ `Linear | `Logarithmic]
+
+type loc_tics =
+    [ `Linear
+    | `Logarithmic
+    | `Manual of int -> float]
+
 (**Type which defines localization of tics.*)
+
 type mode_tics =
-    Automatic
-  | Semi_automatic of float
-  | Fixed of int * int
+    Automatic(**Find the number of major tics so that labels are
+                espaced by the max width/height of the
+                extrema.*)
+  | Semi_automatic of float(**Find the number of major tics so that
+                              labels are spaced by the given ratio*)
+  | Fixed of int * int (**Number of major tics and minor tics are given.*)
 (**Type determining how the tics will be made (number of major, minor tics).*)
-type data = [ `Numbers | `Other of string list ]
+
+type data =
+    [ `Numbers
+    | `Other of string list
+    | `Iter of int -> string ]
 (**Data to be printed on major tics.*)
 
 
@@ -20,13 +34,16 @@ type ('a, 'b, 'c, 'd) t
 
 exception Not_available
   (**Raised if some function is employed but does not define
-     operations for some used variant*)
+     operations for some used variant. More precisely, if you define a
+     new variant, but use a 'default' function on it, then this
+     exception is raised.*)
 
 val make_axis :
   ([> `P of Pointstyle.name] as 'a) -> 'a ->
-  ([> `Linear | `Logarithmic ] as 'b) ->
+  ([> `Linear | `Logarithmic | `Manual of int -> float] as 'b) ->
   mode_tics ->
-  ([> `Numbers | `Other of string list ] as 'c) -> ('a, 'b, 'c) axis
+  ([> `Numbers | `Other of string list | `Iter of int -> string] as 'c) ->
+  ('a, 'b, 'c) axis
   (**Makes an axis, given a way to make tics, their positionment, their
      number and the text to apply near them.*)
 
@@ -42,12 +59,13 @@ val print_axes :
   (**Function used to print axes. It returns the point where the axes meet.*)
 
 
-val print_tic : Coord_handler.t -> [> `P of Pointstyle.name ] -> Backend.rectangle
+val print_tic : Coord_handler.t ->
+  [> `P of Pointstyle.name ] -> Backend.rectangle
   (**This function is used to tell how to print a tic. It returns the
      smallest rectangle containing the tic (cf. [Pointstyle.extents]).*)
 
 val get_funct :
-  [> `Linear | `Logarithmic] ->
+  [> `Linear | `Logarithmic | `Manual of int -> float] ->
   int -> int -> int -> float
   (**[get_funct loc] returns a function whose purpose is to tell where
      a tic is needed. More precisely, the arguments of this function
@@ -59,14 +77,14 @@ val get_funct :
      tic.*)
 
 val get_labels :
-  [> `Numbers | `Other of string list ] -> int -> string
+  [> `Numbers | `Other of string list | `Iter of int -> string] -> int -> string
   (**Returns an iterator to make labels on an axis.*)
 
 val print :
   ([> `Rectangle of bool * bool | `Two_lines of float * float ] as 'a,
    [> `P of Pointstyle.name] as 'b,
-   [> `Linear | `Logarithmic] as 'c,
-   [> `Numbers | `Other of string list ] as 'd) t ->
+   [> `Linear | `Logarithmic | `Manual of int -> float] as 'c,
+   [> `Numbers | `Other of string list | `Iter of int -> string] as 'd) t ->
   xmin:float -> xmax:float -> ymin:float -> ymax:float ->
   ?print_axes:('a ->
                  xmin:float -> xmax:float -> ymin:float -> ymax:float ->

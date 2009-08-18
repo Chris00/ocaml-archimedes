@@ -21,3 +21,15 @@ Makefile.ocaml
 # Tests and examples
 *.pdf
 *.png
+axes.aux
+backend_test.aux
+backend_text.aux
+functions.aux
+tests.aux
+axes.tex
+backend_text.tex
+functions.tex
+tests.tex
+config.log
+tests.log
+tests.dvi

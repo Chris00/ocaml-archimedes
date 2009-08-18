@@ -205,7 +205,8 @@ val show_text : t -> rotate:float -> x:float -> y:float ->
 
 
 val text_extents : t -> string -> Backend.rectangle
-val render : t -> Pointstyle.name ->  Backend.rectangle
+val render : t -> Pointstyle.name ->  unit
+val render_extents : t -> Pointstyle.name ->  Backend.rectangle
 
 (*Local Variables:*)
 (*compile-command: "ocamlc -c transform_coord.mli"*)

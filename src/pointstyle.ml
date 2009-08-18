@@ -291,6 +291,18 @@ let add ~name f g =
 
 let render name =
   try
+    let f, _ = M.find name !registry in
+    f
+  with Not_found -> raise (Error name)
+
+let extents name =
+  try
+    let _, rect = M.find name !registry in
+    rect
+  with Not_found -> raise (Error name)
+
+let render_extents name =
+  try
     let f, rect = M.find name !registry in
     fun b -> (f b; rect)
   with Not_found -> raise (Error name)
