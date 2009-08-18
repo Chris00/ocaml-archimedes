@@ -470,17 +470,17 @@ struct
   let get_matrix t = B.Matrix.copy (get_state t).ctm
   
   let select_font_face t slant weight family =
-    check t;
+    check_valid_handle t;
     let begin_slant, end_slant =
       match slant with
         B.Upright -> "",""
       | B.Italic -> "\textit{","}"
-      | B.Oblique -> "\textsl{","}"(*Slanted*)
+      (*| B.Oblique -> "\textsl{","}"(*Slanted*)*)
     in
     let begin_weight, end_weight =
       match weight with
-        Normal -> "",""
-      | Bold -> "\textbf{","}"
+        B.Normal -> "",""
+      | B.Bold -> "\textbf{","}"
     in
     let begin_family, end_family =
       match family with
@@ -492,16 +492,16 @@ struct
     t.state.slant_weight_family <- s;
     let series =
       match weight with
-        Normal -> "n"
-      | Bold -> "b"
+        B.Normal -> "n"
+      | B.Bold -> "b"
     and shape =
       match slant with
         B.Upright -> "m"
       | B.Italic -> "it"
-      | B.Oblique -> "sl" (*Slanted*)
+     (* | B.Oblique -> "sl" (*Slanted*)*)
     in
     write t (Printf.sprintf "\\usefont{T1}{%s}{%s}{%s}"
-               family series slant)
+               family series shape)
 
   let set_font_size t size =
     let st = get_state t in
@@ -509,7 +509,7 @@ struct
     st.fsize <- size;
     let ratio = prev_size /. size in
     write t (Printf.sprintf
-               "\\fontsize{%.2f}{%.2f\\f@baselineskip}\selectfont"
+               "\\fontsize{%.2f}{%.2f\\f@baselineskip}\\selectfont"
                size ratio)
 
 
