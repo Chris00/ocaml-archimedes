@@ -1,51 +1,23 @@
 (**Styles definitions to make axes*)
 module C = Coord_handler
-
-type axes = [`Rectangle of bool * bool | `Two_lines of float * float]
-    (*Style of axes.*)
-type tic = [`P of Pointstyle.name]
-    (*Style of tics.*)
-type loc_tics =
-    [ `Linear
-    | `Logarithmic
-    | `Manual of int -> float]
-      (*Positionment of tics.*)
-type mode_tics =
-    Automatic
-  | Semi_automatic of float
-  | Fixed of int * int
-      (*Number of tics.*)
-
-type data =
-    [ `Numbers
-    | `Other of string list
-    | `Iter of int -> string ]
-      (*What data to be printed 'near' a major tic.*)
-
-
-type ('a,'b,'c) axis =
-    {major:'a; minor:'a; loc:'b; mode:mode_tics; data:'c}
-
-type ('a,'b,'c,'d) t =
-    {axes:'a; x:('b,'c,'d) axis; y:('b,'c,'d) axis}
+module B = Backend
 
 
 exception Not_available
 
-let make_axis major minor loc mode data =
-  {major = major; minor = minor; loc = loc; mode = mode; data = data}
-
-let make axes x y =
-  {axes = axes; x = x; y = y;}
+type axes =
+    [`Rectangle of bool * bool
+    | `Two_lines of float * float
+    | `None of bool * bool]
+    (*Style of axes.*)
 
 let print_axes axes ~xmin ~xmax ~ymin ~ymax ch =
   match axes with
-    `Rectangle(bx, by) ->
+    `None (_,_) -> ()
+  | `Rectangle(_, _) ->
       let x, y = min xmin xmax, min ymin ymax in
       let w, h = abs_float (xmax -. xmin), abs_float (ymax -. ymin) in
-      C.rectangle ch x y w h;
-      (if bx then xmin else xmax),
-      (if by then ymin else ymax)
+      C.rectangle ch x y w h
   | `Two_lines(x,y) ->
       (*Need to update -before- so that mins/maxs are correctly
         initialized for making the axes lines.*)
@@ -54,149 +26,98 @@ let print_axes axes ~xmin ~xmax ~ymin ~ymax ch =
       C.move_to ch xmin y;
       C.line_to ch xmax y;
       C.move_to ch x ymin;
-      C.line_to ch x ymax;
-      x,y
+      C.line_to ch x ymax
   | _ -> raise Not_available
 
-let get_funct loc  =
-  match loc with
-  | `Linear ->
-      (fun n m ->
-         let step = 1. /. (float (n*m)) in
-         fun i -> (float i) *. step)
-  | `Logarithmic ->
-      (fun n m i ->
-         log (1. +. 9. *. (float i) /. (float (n * m))))
-  | `Manual f -> fun _ _ -> f
-  | _  -> raise Not_available
-
-exception Inner_error
-
-exception No_more_labels
-
-let get_labels data =
-  match data with
-    `Numbers -> raise Inner_error
-  | `Other list ->
-      let array = Array.of_list list in
-      (fun i ->
-         (try array.(i)
-          with Invalid_argument ioob ->
-            raise No_more_labels))
-  | `Iter f -> f
+let axes_meeting axes ~xmin ~xmax ~ymin ~ymax =
+  match axes with
+  | `None(bx, by)
+  | `Rectangle(bx, by) ->
+      (if bx then xmin else xmax),
+      (if by then ymin else ymax)
+  | `Two_lines(x,y) -> x,y
   | _ -> raise Not_available
 
-let inner_get_labels get_labels axis vmin vmax major n =
-  try get_labels axis.data
-  with Inner_error ->
-    fun i ->
-      if i > n then raise No_more_labels
-      else
-        let x = vmin +. (vmax -. vmin) *. (float i) /. (float major) in
-        Printf.sprintf "%F"
-          (match axis.loc with
-           | `Linear -> x
-           | `Logarithmic -> 10.**x
-           | _ -> x)
+type tic = [`P of Pointstyle.name]
+    (*Style of tics.*)
 
 let print_tic ch tic =
   match tic with `P name ->
-    C.render_extents ch name
+    C.render ch name
+  | _ -> raise Not_available
+
+let tic_extents tic =
+  (*Fixed dimension: 1/100 of normalized coordinates.*)
+  match tic with `P name ->
+    let rect = Pointstyle.extents name in
+    {B.x = rect.B.x /. 100.; y = rect.B.y/. 100.;
+     w = rect.B.w/. 100.; h = rect.B.h/. 100.}
   | _ -> raise Not_available
 
 
-let inner_print_tics axis major minor ~vmin ~vmax ~vinv x_axis
-    print_tic get_funct get_labels ch =
-  let n = major * minor in
-  let label =
-    inner_get_labels get_labels axis vmin vmax major n
-  in
-  let rec maketic i =
-    if i <= n then
-      (let r = get_funct axis.loc major minor i in
-       let v = vmin +. r *. (vmax -. vmin) in
-       let x', y',  pos' =
-         if x_axis then
-           v, vinv, Backend.CB
-         else vinv, v, Backend.LC
-       in
-       C.move_to ch x' y';
-       if i mod minor = 0 then
-         (let rect = print_tic ch axis.major in
-          Printf.printf "Text on point %f %f : \"%s\"\n%!" x' y'
-            (label (i/minor));
-          let x'', y'' = match pos' with
-            | _ -> x', y'
-          in
-          C.show_text ch 0. x'' y'' pos' (label (i/minor)))
-       else ignore (print_tic ch axis.minor);
-       maketic (i+1))
-  in maketic 0
-      (*Restoring to previous coordinates.*)
+type label = {action:C.t -> unit; box:Backend.rectangle; rotation:float}
 
-let print_tics axis ~vmin ~vmax ~vinv x_axis print_tic get_funct get_labels ch =
-  let find_major spacing =
-    let distx, disty =
-      if x_axis then vmax -. vmin, 0.
-      else 0., vmax -. vmin
-    in
-    let len1, len2 = C.to_device_distance ch distx disty in
-    let length = if x_axis then len1 else len2 in
-    let label =
-      try get_labels axis.data
-      with Inner_error ->
-        (*Numbers, which are variable upon the number of tics... so we
-          take only the two extrema into account.*)
-        (fun i ->
-           if i = 0 then string_of_float vmin
-           else if i = 1 then string_of_float vmax
-           else raise No_more_labels)
-    in
-    let rlist =
-      let rec get_extents i list =
-        try
-          let rect = C.text_extents ch (label i) in
-          get_extents (i+1) (rect::list)
-        with No_more_labels -> list
+let tic_extents tic_rect label =
+  match label with
+    None -> tic_rect
+  | Some label ->
+      let box, angle = label.box, label.rotation in
+      let matrix = Backend.Matrix.make_rotate angle in
+      let wx, wy = Backend.Matrix.transform_distance matrix box.Backend.w 0.
+      and hx, hy = Backend.Matrix.transform_distance matrix 0. box.Backend.h in
+      let xmin, xmax =
+        let x0 = tic_rect.Backend.x
+        and x1 = box.Backend.x +. (min 0. wx) +. (min 0. hx) in
+        let x2 = x0 +.tic_rect.Backend.w
+        and x3 = x1 +. (abs_float wx) +. (abs_float hx) in
+        min x0 x1, max x2 x3
+      and ymin, ymax =
+        let y0 = tic_rect.Backend.y
+        and y1 = box.Backend.y +. (min 0. wy) +. (min 0. hy) in
+        let y2 = y0 +.tic_rect.Backend.h
+        and y3 = y1 +. (abs_float wy) +. (abs_float hy) in
+        min y0 y1, max y2 y3
       in
-      get_extents 0 []
-    in
-    (*FIXME: All the stuff is in device coordinates.*)
-    let estim_len =
-      let f = if x_axis then
-        (fun x rect -> max x rect.Backend.w)
-      else (fun y rect -> max y rect.Backend.h)
-      in
-      List.fold_left f 0. rlist
-    in
-    let num = length -. estim_len in
-    let frac1 = num /. estim_len in
-    let frac2 = (frac1 -. 1.) /. spacing in
-    (truncate frac2) + 2
-  in
-  match axis.mode with
-    Automatic ->
-      inner_print_tics axis (find_major 2.) 1 ~vmin ~vmax ~vinv x_axis
-        print_tic get_funct get_labels ch
-  | Semi_automatic(spacing) ->
-      inner_print_tics axis (find_major spacing) 1 ~vmin ~vmax ~vinv
-        x_axis
-        print_tic get_funct get_labels ch
-  | Fixed(major, minor) ->
-      inner_print_tics axis major minor ~vmin ~vmax ~vinv x_axis
-        print_tic get_funct get_labels ch
+      {Backend.x = xmin; y = ymin; w = xmax -. xmin; h = ymax -. ymin}
 
-let print t ~xmin ~xmax ~ymin ~ymax ?(print_axes = print_axes)
-    ?(print_tic = print_tic) ?(get_funct = get_funct)
-    ?(get_labels = get_labels) ch =
+
+type 'a axis1 = {major:'a; minor:'a; positions:(float*float*label option) list}
+
+type 'a axis =  float -> float -> float -> 'a axis1
+
+type ('a,'b) t =
+    {axes:'a; x:'b axis; y:'b axis}
+
+
+let make_axis major minor pos x x' y=
+  {major = major; minor = minor; positions = (pos x x' y)}
+
+let make axes x y =
+  {axes = axes; x = x; y = y}
+
+let print_tics axis print_tic ch =
+  let rec print = function
+      [] -> ()
+    | (x,y,label)::l ->
+        C.move_to ch x y;
+        match label with
+          None -> print_tic ch axis.minor
+        | Some label ->
+            print_tic ch axis.major;
+            label.action ch;
+            print l
+  in print axis.positions
+
+let print t ~xmin ~xmax ~ymin ~ymax
+    ?(print_axes = print_axes) ?(axes_meeting = axes_meeting)
+    ?(print_tic = print_tic) ch =
   (*let xxx = ch and yyy = C.get_handle ch in*)
-  let x,y = print_axes t.axes ~xmin ~xmax ~ymin ~ymax ch in
+  let x,y = axes_meeting t.axes ~xmin ~xmax ~ymin ~ymax in
+  print_axes t.axes ~xmin ~xmax ~ymin ~ymax ch;
   let coord = Coordinate.make_identity () in
   C.stroke_init ch;
-  print_tics t.x ~vmin:xmin ~vmax:xmax ~vinv:y true
-    print_tic get_funct get_labels ch;
-  print_tics t.y ~vmin:ymin ~vmax:ymax ~vinv:x false
-    print_tic get_funct get_labels ch;
+  print_tics (t.x xmin xmax y) print_tic ch;
+  print_tics (t.y ymin ymax x) print_tic ch;
 
 
 
