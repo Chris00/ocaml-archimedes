@@ -357,6 +357,19 @@ let render_extents t name =
   let w', h' = Coord.to_device_distance marks rect.B.w rect.B.h in
   {B.x = x'; y = y'; w = w'; h = h'}
 
+let mark_extents t name =
+  let rect = Pointstyle.extents name in
+  let ctm = Coord.use t.handle (M.find t.coords Marks) in
+  let marks = B.get_matrix t.handle in
+  let x',y' = B.Matrix.transform marks rect.B.x rect.B.y in
+  let wx, wy = B.Matrix.transform_distance rect.B.w 0.
+  and hx, hy = B.Matrix.transform_distance 0. rect.B.h in
+  let neg x = min x 0. and absf = abs_float in
+  let xmin = x' +. (neg wx) +. (neg hx)
+  and ymin = y' +. (neg wy) +. (neg hy) in
+  let wnew = (absf wx) +. (absf hx) and hnew = (absf hy) +. (absf wy) in
+  {B.x = xmin; y = ymin; w = wnew; h = hnew}
+
 (*Local Variables:*)
 (*compile-command: "ocamlopt -c -for-pack Archimedes coord_handler.ml && ocamlc -c -for-pack Archimedes coord_handler.ml"*)
 (*End:*)

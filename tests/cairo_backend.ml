@@ -7,8 +7,10 @@ let make1 ~dirs s w h =
   let cr = Backend.make ~dirs s w h in
   {cr = cr}
 
+let set_matrix1 t = Backend.set_matrix t.cr
+
 let close1 t =
-  Unix.sleep 3;
+  Unix.sleep 1;
   Backend.close t.cr
 
 type t2 = {cr:t1}
@@ -16,23 +18,30 @@ type t2 = {cr:t1}
 let make2 ~dirs s w h =
   let cr = make1 ~dirs s w h in
   {cr = cr}
+
+let set_matrix2 t = set_matrix1 t.cr
+
 let close2 t = close1 t.cr
 
 let () =
+  let m = {Backend.xx=1.;xy=2.;yx=3.;yy=4.;x0=5.;y0=6.} in
   let f s =
     try
       printf "Direct backend:%!";
       let cr = Backend.make ~dirs:[ "../src"; "./src"] s 100. 100. in
+      Backend.set_matrix cr m;
       printf "closing...%!";
       Backend.close cr;
       printf "OK.\n%!";
       printf "Type 1:%!";
       let t1 = make1 ~dirs:[ "../src"; "./src"] s 100. 100. in
+      set_matrix1 t1 m;
       printf "closing...%!";
       close1 t1;
       printf "OK.\n%!";
       printf "Type 2:%!";
       let t2 = make2 ~dirs:[ "../src"; "./src"] s 100. 100. in
+      set_matrix2 t2 m;
       printf "closing...%!";
       close2 t2;
       printf "OK.\n%!";
