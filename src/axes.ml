@@ -69,14 +69,17 @@ let tic_extents tic =
   | _ -> raise Not_available
 
 
-type label = {action:B.t -> unit; box:Backend.rectangle; rotation:float}
 
-let tic_label_extents tic_rect label =
+type label1 = {action:B.t -> unit; box:B.t -> Backend.rectangle}
+
+type label = {label:float -> float -> label1; rotation:float}
+
+let tic_label_extents tic_rect label x y b =
   match label with
     None -> tic_rect
   | Some label ->
-      let box, angle = label.box, label.rotation in
-      let matrix = Backend.Matrix.make_rotate angle in
+      let box = (label.label x y).box b in
+      let matrix = Backend.Matrix.make_rotate label.rotation in
       let wx, wy = Backend.Matrix.transform_distance matrix box.Backend.w 0.
       and hx, hy = Backend.Matrix.transform_distance matrix 0. box.Backend.h in
       let x1 = box.Backend.x +. (min 0. wx) +. (min 0. hx) in
@@ -89,13 +92,72 @@ let tic_label_extents tic_rect label =
 type position =
      float -> float -> float -> float -> (float*float*label option) list
 
-type data = [`Text_labels of string list]
+type data =
+    [ `Label of label
+    | `Text_label of string
+    | `Abscissa
+    | `Ordinate
+    | `Expabscissa
+    | `Expordinate ]
+
+
+let make_box_from_text txt pos x y b =
+  let rect = B.text_extents b txt in
+  let rx, ry, w, h =
+    rect.B.x +. x, rect.B.y +. y, rect.B.w, rect.B.h
+  in
+  let x = match pos with
+    | Backend.CC | Backend.CT | Backend.CB -> rx -. 0.5 *. w
+    | Backend.RC | Backend.RT | Backend.RB -> rx
+    | Backend.LC | Backend.LT | Backend.LB -> rx -. w
+  and y = match pos with
+    | Backend.CC | Backend.RC | Backend.LC -> ry -. 0.5 *. h
+    | Backend.CT | Backend.RT | Backend.LT -> ry -. h
+    | Backend.CB | Backend.RB | Backend.LB -> ry
+  in
+  {B.x = x; y = y; w = w; h = h}
+
+let get_label data =
+  match data with
+  | `Label l -> l
+  | `Text_label(txt, rotate, pos) ->
+      let f x y =
+        {action = (fun b -> B.show_text b x y rotate pos txt);
+         box = make_box_from_text txt pos x y}
+      in {label = f; rotation = rotate}
+  | `Abscissa ->
+      let f x y =
+        let txt = Printf.sprintf "%g" x in
+        {action = (fun b -> B.show_text b x y 0. B.CB txt);
+         box =make_box_from_text txt B.CB x y}
+      in {label = f; rotation = 0.}
+  | `Ordinate ->
+      let f x y =
+        let txt = Printf.sprintf "%g" y in
+        {action = (fun b -> B.show_text b x y 0. B.LC txt);
+         box =make_box_from_text txt B.LC x y}
+      in {label = f; rotation = 0.}
+  | `Expabscissa ->
+      let f x y =
+        let txt = Printf.sprintf "%g" (10.**x) in
+        {action = (fun b -> B.show_text b x y 0. B.CB txt);
+         box =make_box_from_text txt B.CB x y}
+      in {label = f; rotation = 0.}
+  | `Expordinate ->
+      let f x y =
+        let txt = Printf.sprintf "%g" (10.**y) in
+        {action = (fun b -> B.show_text b x y 0. B.LC txt);
+         box =make_box_from_text txt B.LC x y}
+      in {label = f; rotation = 0.}
+  | _ -> raise Not_available
+
+
 type loc_tics =
     [ `Fixed_pos of (float * label option) list
     | `Fixed_numbers of int list * label list
     | `Regular of int * label array]
 
-let get_labels loc =
+let get_position loc =
   match loc with
     `Fixed_pos list ->
       (fun x x' y y' ->
@@ -139,9 +201,9 @@ let get_labels loc =
       let majors = Array.length array in
       let nall = minors * (majors - 1) + majors in
       let intlist =
-        let rec make_int i list =
+        let rec make_list i list =
           if i >= nall then list
-          else make_int (i-1) (i::list)
+          else make_list (i-1) (i::list)
         in
         make_list 0 []
       in
@@ -167,8 +229,8 @@ type ('a,'b) t = (*'a for axes type, 'b for tic types*)
     {axes:'a; x:'b axis; y:'b axis}
 
 
-let make_axis major minor ?(get_labels = get_labels) loc=
-  let positions = get_labels loc in
+let make_axis major minor ?(get_position = get_position) loc=
+  let positions = get_position loc in
   {major = major; minor = minor; positions = positions}
 
 let make axes x y =
@@ -183,18 +245,18 @@ let print_tics axis vmin vmax wmin wmax print_tic backend =
           None -> print_tic backend axis.minor
         | Some label ->
             print_tic backend axis.major;
-            label.action backend;
+            (label.label x y).action backend;
             print l
   in print (axis.positions vmin vmax wmin wmax)
 
-let axis_margins axis xmin xmax ymin ymax tic_extents =
+let axis_margins axis xmin xmax ymin ymax tic_extents backend =
   let list = axis.positions xmin xmax ymin ymax in
   let rec make_rect list rect =
     match list with
       [] -> rect
     | (x,y,label)::l ->
         let tic = match label with None -> axis.minor | Some _ -> axis.major in
-        let extents = tic_label_extents (tic_extents tic) label in
+        let extents = tic_label_extents (tic_extents tic) label x y backend in
         let x1,y1 = extents.B.x, extents.B.y in
         let x2,y2 = x1 +. extents.B.w, y1 +. extents.B.h in
         let newrect = rectangle_extents rect
@@ -206,12 +268,12 @@ let axis_margins axis xmin xmax ymin ymax tic_extents =
 
 let get_margins t
     ?(axes_meeting = axes_meeting) ?(tic_extents = tic_extents)
-    xmin xmax ymin ymax =
+    xmin xmax ymin ymax backend=
   let x,y = axes_meeting t.axes ~xmin ~xmax ~ymin ~ymax in
   let xmin,ymin = min x xmin, min y ymin
   and xmax,ymax = max x xmax, max y ymax in
-  axis_margins t.x xmin xmax ymin ymax tic_extents,
-  axis_margins t.y xmin xmax ymin ymax tic_extents
+  axis_margins t.x xmin xmax ymin ymax tic_extents backend,
+  axis_margins t.y xmin xmax ymin ymax tic_extents backend
 
 
 let print t ~lines ~xmin ~xmax ~ymin ~ymax

@@ -15,13 +15,27 @@ type tic = [ `P of Pointstyle.name ]
 val print_tic : Backend.t -> [> tic] -> unit
 val tic_extents : [> tic] -> Backend.rectangle
 
-type label = {
-  action : Backend.t -> unit;
-  box : Backend.rectangle;
-  rotation : float;
+type label1 =
+{action:B.t -> unit;
+ (**Action to perform as a label.*)
+ box:B.t -> Backend.rectangle;
+ (**Place needed to do it; it is the smallest rectangle containing the action.*)
 }
-val tic_label_extents : Backend.rectangle -> label option -> Backend.rectangle
 
+type label = {label:float -> float -> label1; rotation:float}
+
+val tic_label_extents : Backend.rectangle -> label option ->
+  float -> float -> Backend.t -> Backend.rectangle
+
+type data =
+    [ `Label of label
+    | `Text_label of string
+    | `Abscissa
+    | `Ordinate
+    | `Expabscissa
+    | `Expordinate ]
+
+val get_label: [> data] -> label
 
 type position =
      float -> float -> float -> float -> (float*float*label option) list
@@ -51,7 +65,7 @@ type loc_tics =
 
 (**Convenient ways to specify where we want tics.*)
 
-val get_labels : [>loc_tics] -> position
+val get_position : [>loc_tics] -> position
 (**From the 'convenience' to the manipulated data.*)
 
 type 'a axis
@@ -61,7 +75,7 @@ type ('a, 'b) t
 
 val make_axis :
   ([> tic] as 'a) -> 'a ->
-  ?get_labels:(([>loc_tics] as 'b) -> position) -> 'b -> 'a axis
+  ?get_position:(([>loc_tics] as 'b) -> position) -> 'b -> 'a axis
 
 (**[make_axis major minor loc] makes an axis whose major tics will be
 [major], minor tics [minor], positioned using [loc] and the optional
@@ -81,8 +95,9 @@ val get_margins :
                  xmin:float ->
                  xmax:float -> ymin:float -> ymax:float -> float * float) ->
   ?tic_extents:('b -> Backend.rectangle) ->
-  float -> float -> float -> float -> Backend.rectangle * Backend.rectangle
-  (**Returns the margins needed to print the axes. returns a pair of
+  float -> float -> float -> float ->
+  Backend.t -> Backend.rectangle * Backend.rectangle
+  (**Returns the margins needed to print the axes. Returns a pair of
      [Backend.rectangle], the first one represents the extents for the X
      axis, and the second one the extents for the Y axis.*)
 val print :
