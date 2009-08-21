@@ -92,7 +92,8 @@ type position =
 type data = [`Text_labels of string list]
 type loc_tics =
     [ `Fixed_pos of (float * label option) list
-    | `Fixed_numbers of int list * label list]
+    | `Fixed_numbers of int list * label list
+    | `Regular of int * label array]
 
 let get_labels loc =
   match loc with
@@ -131,9 +132,32 @@ let get_labels loc =
          List.rev_map
            (fun (i,label) ->
               let t = float i in
-              t *. xstep, t*. ystep,label)
+              x +. t *. xstep, y +. t *. ystep, label)
            list_tics
       )
+  | `Regular(minors,array) ->
+      let majors = Array.length array in
+      let nall = minors * (majors - 1) + majors in
+      let intlist =
+        let rec make_int i list =
+          if i >= nall then list
+          else make_int (i-1) (i::list)
+        in
+        make_list 0 []
+      in
+      (fun x x' y y' ->
+         let xstep = (x' -. x) /. (float nall)
+         and ystep = (y' -. y) /. (float nall) in
+         List.rev_map
+           (fun i ->
+              let t = float i in
+              let label =
+                let j,k = i/(minors + 1), i mod minors + 1 in
+                if k = 0 then Some array.(j)
+                else None
+              in
+              x +. t *. xstep, y +. t*. ystep, label)
+           intlist)
   | _ -> raise Not_available
 
 type 'a axis = (*'a for tic type*)

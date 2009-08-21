@@ -33,7 +33,22 @@ type position =
 
 type loc_tics =
     [ `Fixed_pos of (float * label option) list
-    | `Fixed_numbers of int list * label list]
+        (**List of pairs [(x, label)] with [x] a number between 0 and
+           1, specifying the relative position of the tic and [label] the
+           optional label to make at this place (it is [None] if and only
+           if the tic we want is a minor tic).*)
+    | `Fixed_numbers of int list * label list
+        (**A list which specifies the number of minor tics between two
+           consecutive major tics; another list which gives which label
+           to apply on major tics. The second list has to be of length
+           strictly greater (of 1) than the first one (if it is not, no
+           labels will be applied on last major tics).*)
+    | `Regular of int * label array]
+      (**Fixed number of minor tics between two consecutive major
+         tics, and labels associated to these major tics. The number
+         of major tics will be precisely the length of the labels
+         array.*)
+
 (**Convenient ways to specify where we want tics.*)
 
 val get_labels : [>loc_tics] -> position
