@@ -1,50 +1,91 @@
-open Coord_handler
+open Backend
 
-let plot_param t f ?(nsamples = 100) a b =
+let samplefxy f ?(min_step=1E-9) ?(nsamples = 100) a b =
   let step = (b -. a) /. (float nsamples) in
   (*Can be negative; in this way, plotting is done 'in the reverse order'*)
   let x,y = f a in
-  move_to t x y;
   let bounds_list = [1, a, step, nsamples] in
   let max_length = 1. in
-  let rec plot_other i tmin x0 y0 bounds =
+  let rec next_point i tmin x0 y0 bounds listxy =
     match bounds with
-      [] -> ()
+      [] -> (fun use_sampling -> List.rev_map use_sampling listxy)
     | (prev_stop, prev_tmin, step, samples) :: list ->
         if i <= samples then
           (let p = tmin +. (float i) *. step in
            let x,y = f p in
            let diffx = x -. x0 and diffy = y -. y0 in
            let rel_max =
-             let ax0 = abs_float x0
-             and ay0 = abs_float y0 in
-             max_length *. (ax0 *. ax0 +. ay0 *. ay0 +. step *. step)
+             max_length *. (x0 *. x0 +. y0 *. y0 +. (b-.a) *. (b-.a))
            in
-           if diffx *. diffx +. diffy *. diffy > rel_max then
+           if diffx *. diffx +. diffy *. diffy < rel_max
+             || step < min_step then
+              next_point (i+1) tmin x y bounds ((x,y)::listxy)
+           else
              (*increase precision by dividing step by 2.*)
              let ntmin = tmin +. (float (i-1)) *. step in
             (* print_string "DIV -> ";
              print_float (step /. 2.);*)
-             plot_other 1 ntmin x0 y0 ((i, tmin, step/.2., 2)::bounds)
-           else
-             (line_to t x y;
-             (* print_int i;*)
-              plot_other (i+1) tmin x y bounds)
+             next_point 1 ntmin x0 y0 ((i, tmin, step/.2., 2)::bounds) listxy
+
           )
         else
           (*Plot with current step size finished; return to previous step size.*)
-          plot_other (prev_stop + 1) prev_tmin x0 y0 list
-  in plot_other 1 a x y bounds_list
+          next_point (prev_stop + 1) prev_tmin x0 y0 list listxy
+  in next_point 1 a x y bounds_list [x,y]
 
-let plot t f = plot_param t (fun t -> t,f t)
+let samplefx f ?(min_step=1E-9) ?(nsamples = 100) a b =
+  let step = (b -. a) /. (float nsamples) in
+  (*Can be negative; in this way, plotting is done 'in the reverse order'*)
+  let y = f a in
+  let bounds_list = [1, a, step, nsamples] in
+  let max_length = 1. in
+  let rec next_point i tmin y0 bounds listy =
+    match bounds with
+      [] -> (fun use_sampling -> List.rev_map use_sampling listy)
+    | (prev_stop, prev_tmin, step, samples) :: list ->
+        if i > samples then
+          (*Plot with current step size finished; return to previous step size.*)
+          next_point (prev_stop + 1) prev_tmin y0 list listy
+        else
+          let p = tmin +. (float i) *. step in
+          let y = f p in
+          let diffy = y -. y0 in
+          let rel_max =
+            max_length *. (y0 *. y0 +. (b-.a) *. (b-.a))
+          in
+          if step *. step +. diffy *. diffy < rel_max
+            || step < min_step then
+              next_point (i+1) tmin y bounds (y::listy)
+          else
+            (*increase precision by dividing step by 2.*)
+            let ntmin = tmin +. (float (i-1)) *. step in
+            next_point 1 ntmin y0 ((i, tmin, step/.2., 2)::bounds) listy
+  in
+  next_point 1 a y bounds_list [y]
+
+
+
+let plotfxy t f ?(nsamples = 100) a b =
+  List.iter (fun (x,y) -> Backend.line_to t x y)
+    (samplefxy f ~nsamples b a (fun t -> t))
+
+let plotfx t f = plotfxy t (fun t -> t,f t)
 
 let stroke_plot ?(init=true) t f ?(nsamples = 100) a b =
-  plot t f ~nsamples a b;
-  (if init then stroke_init else stroke) t
+  plotfx t f ~nsamples a b;
+  if init then
+    let ctm = Coordinate.use t (Coordinate.make_identity ()) in
+    stroke t;
+    Coordinate.restore t ctm
+  else stroke t
 
 let stroke_plot_param ?(init=true) t f ?(nsamples = 100) a b =
-  plot_param t f ~nsamples a b;
-  (if init then stroke_init else stroke) t
+  plotfxy t f ~nsamples a b;
+  if init then
+    let ctm = Coordinate.use t (Coordinate.make_identity ()) in
+    stroke t;
+    Coordinate.restore t ctm
+  else stroke t
 
 type extend =
     NONE (**No extends, transparent color*)
