@@ -14,4 +14,9 @@ val of_bigarrays:
   ?xclayout:bool -> (float, 'b, 'c)Bigarray.Array1.t ->
   ?yclayout:bool -> (float, 'b, 'c)Bigarray.Array1.t -> t
 
+val from_sampling :
+  (float -> float * float) ->
+  ?min_step:float -> ?nsamples:int ->
+  float -> float -> t
+
 val next: t -> (float * float) option

@@ -1,12 +1,14 @@
 val samplefxy :
   (float -> float * float) ->
   ?min_step:float ->
-  ?nsamples:int -> float -> float -> ('a -> float * float -> 'a) -> 'a -> 'a
+  ?nsamples:int -> float -> float ->
+  int * (('a -> float * float -> 'a) -> 'a -> 'a)
 
 val samplefx :
   (float -> float) ->
   ?min_step:float ->
-  ?nsamples:int -> float -> float -> ('a -> float -> 'a) -> 'a -> 'a
+  ?nsamples:int -> float -> float ->
+  int * (('a -> float -> 'a) -> 'a -> 'a)
 
 val fxy_list :
   (float -> float * float) ->

@@ -88,3 +88,15 @@ let next iter =
   with Invalid_argument _ ->
     iter.pos <- n;
     None
+
+let from_sampling f ?min_step ?nsamples a b =
+  let len, fct = Functions.samplefxy f ?min_step ?nsamples a b in
+  let array = Array2.create float64 c_layout len 2 in
+  let n = ref 0 in
+  let fill_array array (x,y) =
+    array.{!n,0} <- x;
+    array.{!n,1} <- y;
+    n := !n + 1;
+    array
+  in 
+  {data = fct fill_array array; pos = 0}

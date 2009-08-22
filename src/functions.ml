@@ -6,9 +6,10 @@ let samplefxy f ?(min_step=1E-9) ?(nsamples = 100) a b =
   let x,y = f a in
   let bounds_list = [1, a, step, nsamples] in
   let max_length = 1. in
-  let rec next_point i tmin x0 y0 bounds listxy =
+  let rec next_point i tmin x0 y0 bounds listxy len =
     match bounds with
-      [] -> (fun use_sampling init -> List.fold_left use_sampling init listxy)
+      [] -> (len,
+             fun use_sampling init -> List.fold_left use_sampling init listxy)
     | (prev_stop, prev_tmin, step, samples) :: list ->
         if i <= samples then
           (let p = tmin +. (float i) *. step in
@@ -19,19 +20,20 @@ let samplefxy f ?(min_step=1E-9) ?(nsamples = 100) a b =
            in
            if diffx *. diffx +. diffy *. diffy < rel_max
              || step < min_step then
-              next_point (i+1) tmin x y bounds ((x,y)::listxy)
+              next_point (i+1) tmin x y bounds ((x,y)::listxy) (len+1)
            else
              (*increase precision by dividing step by 2.*)
              let ntmin = tmin +. (float (i-1)) *. step in
             (* print_string "DIV -> ";
              print_float (step /. 2.);*)
-             next_point 1 ntmin x0 y0 ((i, tmin, step/.2., 2)::bounds) listxy
+             next_point 1 ntmin x0 y0 ((i, tmin, step/.2., 2)::bounds)
+               listxy len
 
           )
         else
           (*Plot with current step size finished; return to previous step size.*)
-          next_point (prev_stop + 1) prev_tmin x0 y0 list listxy
-  in next_point 1 a x y bounds_list [x,y]
+          next_point (prev_stop + 1) prev_tmin x0 y0 list listxy len
+  in next_point 1 a x y bounds_list [x,y] 1
 
 let samplefx f ?(min_step=1E-9) ?(nsamples = 100) a b =
   let step = (b -. a) /. (float nsamples) in
@@ -39,13 +41,14 @@ let samplefx f ?(min_step=1E-9) ?(nsamples = 100) a b =
   let y = f a in
   let bounds_list = [1, a, step, nsamples] in
   let max_length = 1. in
-  let rec next_point i tmin y0 bounds listy =
+  let rec next_point i tmin y0 bounds listy len =
     match bounds with
-      [] -> (fun use_sampling init -> List.fold_left use_sampling init listy)
+      [] -> (len,
+             fun use_sampling init -> List.fold_left use_sampling init listy)
     | (prev_stop, prev_tmin, step, samples) :: list ->
         if i > samples then
           (*Plot with current step size finished; return to previous step size.*)
-          next_point (prev_stop + 1) prev_tmin y0 list listy
+          next_point (prev_stop + 1) prev_tmin y0 list listy len
         else
           let p = tmin +. (float i) *. step in
           let y = f p in
@@ -55,27 +58,25 @@ let samplefx f ?(min_step=1E-9) ?(nsamples = 100) a b =
           in
           if step *. step +. diffy *. diffy < rel_max
             || step < min_step then
-              next_point (i+1) tmin y bounds (y::listy)
+              next_point (i+1) tmin y bounds (y::listy) (len+1)
           else
             (*increase precision by dividing step by 2.*)
             let ntmin = tmin +. (float (i-1)) *. step in
-            next_point 1 ntmin y0 ((i, tmin, step/.2., 2)::bounds) listy
+            next_point 1 ntmin y0 ((i, tmin, step/.2., 2)::bounds) listy len
   in
-  next_point 1 a y bounds_list [y]
+  next_point 1 a y bounds_list [y] 1
 
 let fxy_list f ?min_step ?nsamples a b =
-  samplefxy f ?min_step ?nsamples a b (fun l a-> a::l) []
+  let _, f = samplefxy f ?min_step ?nsamples a b in
+  f (fun l a-> a::l) []
 
 let fx_list f ?min_step ?nsamples a b =
-  samplefx f ?min_step ?nsamples a b (fun l a -> a::l) []
-
-(*
-let fxy_iter f ?min_step ?nsamples a b =
-  samplefxy f ?min_step ?nsamples a b (fun l a -> a::l) []
-*)
+  let _, f = samplefx f ?min_step ?nsamples a b in
+  f (fun l a -> a::l) []
 
 let plotfxy t f ?(nsamples = 100) a b =
-  samplefxy f ~nsamples a b (fun () (x,y) -> Backend.line_to t x y) ()
+  let _, f = samplefxy f ~nsamples a b in
+  f (fun () (x,y) -> Backend.line_to t x y) ()
 
 let plotfx t f = plotfxy t (fun t -> t,f t)
 
