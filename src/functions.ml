@@ -8,7 +8,7 @@ let samplefxy f ?(min_step=1E-9) ?(nsamples = 100) a b =
   let max_length = 1. in
   let rec next_point i tmin x0 y0 bounds listxy =
     match bounds with
-      [] -> (fun use_sampling -> List.rev_map use_sampling listxy)
+      [] -> (fun use_sampling init -> List.fold_left use_sampling init listxy)
     | (prev_stop, prev_tmin, step, samples) :: list ->
         if i <= samples then
           (let p = tmin +. (float i) *. step in
@@ -41,7 +41,7 @@ let samplefx f ?(min_step=1E-9) ?(nsamples = 100) a b =
   let max_length = 1. in
   let rec next_point i tmin y0 bounds listy =
     match bounds with
-      [] -> (fun use_sampling -> List.rev_map use_sampling listy)
+      [] -> (fun use_sampling init -> List.fold_left use_sampling init listy)
     | (prev_stop, prev_tmin, step, samples) :: list ->
         if i > samples then
           (*Plot with current step size finished; return to previous step size.*)
@@ -63,11 +63,19 @@ let samplefx f ?(min_step=1E-9) ?(nsamples = 100) a b =
   in
   next_point 1 a y bounds_list [y]
 
+let fxy_list f ?min_step ?nsamples a b =
+  samplefxy f ?min_step ?nsamples a b (fun l a-> a::l) []
 
+let fx_list f ?min_step ?nsamples a b =
+  samplefx f ?min_step ?nsamples a b (fun l a -> a::l) []
+
+(*
+let fxy_iter f ?min_step ?nsamples a b =
+  samplefxy f ?min_step ?nsamples a b (fun l a -> a::l) []
+*)
 
 let plotfxy t f ?(nsamples = 100) a b =
-  List.iter (fun (x,y) -> Backend.line_to t x y)
-    (samplefxy f ~nsamples b a (fun t -> t))
+  samplefxy f ~nsamples a b (fun () (x,y) -> Backend.line_to t x y) ()
 
 let plotfx t f = plotfxy t (fun t -> t,f t)
 
