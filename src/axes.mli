@@ -16,9 +16,9 @@ val print_tic : Backend.t -> [> tic] -> unit
 val tic_extents : [> tic] -> Backend.rectangle
 
 type label1 =
-{action:B.t -> unit;
+{action:Backend.t -> unit;
  (**Action to perform as a label.*)
- box:B.t -> Backend.rectangle;
+ box:Backend.t -> Backend.rectangle;
  (**Place needed to do it; it is the smallest rectangle containing the action.*)
 }
 
@@ -29,7 +29,7 @@ val tic_label_extents : Backend.rectangle -> label option ->
 
 type data =
     [ `Label of label
-    | `Text_label of string
+    | `Text_label of string * float * Backend.text_position
     | `Abscissa
     | `Ordinate
     | `Expabscissa

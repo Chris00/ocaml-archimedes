@@ -94,7 +94,7 @@ type position =
 
 type data =
     [ `Label of label
-    | `Text_label of string
+    | `Text_label of string * float * Backend.text_position
     | `Abscissa
     | `Ordinate
     | `Expabscissa
