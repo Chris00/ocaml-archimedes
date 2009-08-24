@@ -31,15 +31,15 @@ byte: archimedes.cma $(PLUGINS:.ml=.cmo)
 native: archimedes.cmxa $(PLUGINS:.ml=.cmxs)
 
 ARCHIMEDES_FILES = string_utils.ml color.ml backend.ml coordinate.ml \
-   pointstyle.ml axes.ml functions.ml archimedes.ml
+   pointstyle.ml axes.ml functions.ml iterator.ml
 
 archimedes.cma: archimedes.cmo
 archimedes.cmxa: archimedes.cmx
 
-archimedes.cmo: $(ARCHIMEDES_FILES:.ml=.cmo)
+archimedes.cmo: $(ARCHIMEDES_FILES:.ml=.cmo) archimedes.ml
 	$(OCAMLC) -o $@ $(OCAMLC_FLAGS) -pack $^
 
-archimedes.cmx: $(ARCHIMEDES_FILES:.ml=.cmx)
+archimedes.cmx: $(ARCHIMEDES_FILES:.ml=.cmx) archimedes.ml
 	$(OCAMLOPT) -o $@ $(OCAMLOPT_FLAGS) -pack $^
 
 $(ARCHIMEDES_FILES:.ml=.cmx): OCAMLOPT_FLAGS += -for-pack Archimedes

@@ -20,3 +20,9 @@ val from_sampling :
   float -> float -> t
 
 val next: t -> (float * float) option
+
+val reinit : t -> unit
+
+val nb_data : t -> int
+
+val extents : t -> float * float * float * float
