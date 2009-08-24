@@ -237,18 +237,23 @@ let rec put_children_not_up_to_date coord =
 
 let translate coord ~x ~y =
   Matrix.translate coord.tm ~x ~y;
+  Matrix.translate coord.ctm ~x ~y;
   put_children_not_up_to_date coord
 
 let scale coord ~x ~y =
   Matrix.scale coord.tm ~x ~y;
+  Matrix.scale coord.ctm ~x ~y;
   put_children_not_up_to_date coord
 
 let rotate coord ~angle =
   Matrix.rotate coord.tm ~angle;
+  Matrix.rotate coord.ctm ~angle;
   put_children_not_up_to_date coord
 
 let transform coord tm =
   Matrix.blit coord.tm tm;
+  update coord.parent;
+  Matrix.mul_in coord.ctm tm coord.parent.ctm;
   put_children_not_up_to_date coord
 
 
