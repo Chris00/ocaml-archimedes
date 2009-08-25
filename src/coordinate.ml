@@ -224,7 +224,8 @@ let make_rotate coord ~angle =
 
 let rec put_children_not_up_to_date coord =
   (*Cannot put any root 'not up to date'*)
-  if coord == coord.parent then
+  if coord == coord.depends_on then
+    (*that must be the root.*)
     failwith "Coordinate: Trying to modify root coordinate";
   (* If the current coordinate system is not up to date (which implies
      its children are not either -- because of the invariant), there

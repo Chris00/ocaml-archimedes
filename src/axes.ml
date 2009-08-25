@@ -68,17 +68,16 @@ let tic_extents tic =
      w = rect.B.w/. 100.; h = rect.B.h/. 100.}
   | _ -> raise Not_available
 
+type label =
+    {action: float -> float -> B.text_position -> B.t -> unit;
+     box:float -> float -> B.text_position -> B.t -> Backend.rectangle;
+     rotation:float}
 
-
-type label1 = {action:B.t -> unit; box:B.t -> Backend.rectangle}
-
-type label = {label:float -> float -> label1; rotation:float}
-
-let tic_label_extents tic_rect label x y b =
+let tic_label_extents tic_extents label x y pos b =
   match label with
-    None -> tic_rect
+    None -> tic_extents
   | Some label ->
-      let box = (label.label x y).box b in
+      let box = label.box x y pos b in
       let matrix = Backend.Matrix.make_rotate label.rotation in
       let wx, wy = Backend.Matrix.transform_distance matrix box.Backend.w 0.
       and hx, hy = Backend.Matrix.transform_distance matrix 0. box.Backend.h in
@@ -86,22 +85,25 @@ let tic_label_extents tic_rect label x y b =
       let x2 = x1 +. (abs_float wx) +. (abs_float hx) in
       let y1 = box.Backend.y +. (min 0. wy) +. (min 0. hy) in
       let y2 = y1 +. (abs_float wy) +. (abs_float hy) in
-      rectangle_extents tic_rect x1 x2 y1 y2
+      rectangle_extents tic_extents x1 x2 y1 y2
 
 
-type position =
+type tic_position =
      float -> float -> float -> float -> (float*float*label option) list
 
+type label_collection =
+    Fixed of label array
+  | Variable of label
+
 type data =
-    [ `Label of label
-    | `Text_label of string * float * Backend.text_position
+    [ `Label of label array
+    | `Text_label of string array * float
     | `Abscissa
     | `Ordinate
     | `Expabscissa
-    | `Expordinate ]
+    | `Expordinate]
 
-
-let make_box_from_text txt pos x y b =
+let make_box_from_text txt x y pos b =
   let rect = B.text_extents b txt in
   let rx, ry, w, h =
     rect.B.x +. x, rect.B.y +. y, rect.B.w, rect.B.h
@@ -117,77 +119,135 @@ let make_box_from_text txt pos x y b =
   in
   {B.x = x; y = y; w = w; h = h}
 
-let get_label data =
+let get_labels data =
   match data with
-  | `Label l -> l
-  | `Text_label(txt, rotate, pos) ->
-      let f x y =
-        {action = (fun b -> B.show_text b x y rotate pos txt);
-         box = make_box_from_text txt pos x y}
-      in {label = f; rotation = rotate}
+  | `Label l -> Fixed l
+  | `Text_label(txts, rotate) ->
+      let f txt =
+        {action = (fun x y pos b -> B.show_text b rotate x y pos txt);
+         box = make_box_from_text txt;
+         rotation = rotate}
+      in
+      Fixed (Array.map f txts)
   | `Abscissa ->
-      let f x y =
-        let txt = Printf.sprintf "%g" x in
-        {action = (fun b -> B.show_text b x y 0. B.CB txt);
-         box =make_box_from_text txt B.CB x y}
-      in {label = f; rotation = 0.}
+      Variable ({action = (fun x y ->
+                   let txt = Printf.sprintf "%g" x in
+                   fun pos b -> B.show_text b x y 0. pos txt);
+       box = (fun x y ->
+                let txt = Printf.sprintf "%g" x in
+                make_box_from_text txt x y);
+       rotation = 0.})
   | `Ordinate ->
-      let f x y =
-        let txt = Printf.sprintf "%g" y in
-        {action = (fun b -> B.show_text b x y 0. B.LC txt);
-         box =make_box_from_text txt B.LC x y}
-      in {label = f; rotation = 0.}
+      Variable (
+      {action = (fun x y ->
+                   let txt = Printf.sprintf "%g" y in
+                   fun pos b -> B.show_text b x y 0. pos txt);
+       box = (fun x y ->
+                let txt = Printf.sprintf "%g" y in
+                make_box_from_text txt x y);
+       rotation = 0.})
   | `Expabscissa ->
-      let f x y =
-        let txt = Printf.sprintf "%g" (10.**x) in
-        {action = (fun b -> B.show_text b x y 0. B.CB txt);
-         box =make_box_from_text txt B.CB x y}
-      in {label = f; rotation = 0.}
+      Variable (
+      {action = (fun x y ->
+                   let txt = Printf.sprintf "%g" (10.**x) in
+                   fun pos b -> B.show_text b x y 0. pos txt);
+       box = (fun x y ->
+                let txt = Printf.sprintf "%g" (10.**x) in
+                make_box_from_text txt x y);
+       rotation = 0.})
   | `Expordinate ->
-      let f x y =
-        let txt = Printf.sprintf "%g" (10.**y) in
-        {action = (fun b -> B.show_text b x y 0. B.LC txt);
-         box =make_box_from_text txt B.LC x y}
-      in {label = f; rotation = 0.}
+      Variable (
+      {action = (fun x y ->
+                   let txt = Printf.sprintf "%g" (10.**y) in
+                   fun pos b -> B.show_text b x y 0. pos txt);
+       box = (fun x y ->
+                let txt = Printf.sprintf "%g" (10.**y) in
+                make_box_from_text txt x y);
+       rotation = 0.})
   | _ -> raise Not_available
 
 
 type loc_tics =
-    [ `Fixed_pos of (float * label option) list
-    | `Fixed_numbers of int list * label list
-    | `Regular of int * label array]
+    [ `Fixed_pos of (float * bool) list
+    | `Fixed_numbers of int array
+    | `Regular of int * int]
 
-let get_position loc =
+let get_position loc labels =
   match loc with
-    `Fixed_pos list ->
+    `Fixed_pos t_list ->
       (fun x x' y y' ->
          let f x x' t = x +. t *. (x' -. x) in
-         let g (t,label) = f x x' t, f y y' t, label in
-         List.map g list)
-  | `Fixed_numbers(numbers, labels) ->
-      (*let nmajors = List.length numbers in*)
-      let nall = List.fold_left (+) 0 numbers in
-      let list_tics =
+         let m = ref 0 in (*Used in case of Fixed labels*)
+         let g (t,b) =
+           let labelopt =
+             if b then (*major tic => add a label*)
+               match labels with
+                 Variable l -> Some l
+               | Fixed larray ->
+                   let label =
+                     try Some larray.(!m)
+                     with Invalid_argument _ -> None
+                       (*too few labels : the last major tics won't
+                         get any label.*)
+                   in
+                   m := !m + 1;
+                   label
+             else (*Minor tic => no label*)
+               None
+           in
+           f x x' t, f y y' t, labelopt
+         in
+         List.map g t_list)
+  | `Fixed_numbers numbers ->
+      let f (list, len) m =
+        let rec do_minors list i =
+          if i <= 0 then list
+          else
+            do_minors ((len + m - i, None)::list) (i-1)
+        in
+        let list = do_minors list m in
+        let label =
+          match labels with
+            Variable l -> Some l
+          | Fixed larray -> try Some larray.(m+1)
+            with Invalid_argument _ -> None
+        in
+        ((len + m, label)::list, len + m + 1)
+      in
+      let list_tics, nall =
+        let first_tic =
+          [0,
+           (match labels with
+              Variable l -> Some l
+            | Fixed larray -> try Some larray.(0)
+              with Invalid_argument _ -> None)]
+        in
+        Array.fold_left f (first_tic, 1) numbers
+      in
+
+
+      (*(*List version*)
+        let list_tics =
         let rec make_list_tics k nums labels ltics =
-          match nums with
-            [] -> ltics
-          | i::l ->
-              if i = 0 then
-                (*Facing a major tic: get a label*)
-                let label, rest =
-                  match labels with
-                    [] -> None, []
-                  | s::l2 -> Some s, l2
-                in make_list_tics (k+1) l rest ((k, label)::ltics)
-              else (*facing a minor tic*)
-                make_list_tics (k+1) ((i-1)::l) labels ((k, None)::ltics)
+        match nums with
+        [] -> ltics
+        | i::l ->
+        if i = 0 then
+      (*Facing a major tic: get a label*)
+        let label, rest =
+        match labels with
+        [] -> None, []
+        | s::l2 -> Some s, l2
+        in make_list_tics (k+1) l rest ((k, label)::ltics)
+        else (*facing a minor tic*)
+        make_list_tics (k+1) ((i-1)::l) labels ((k, None)::ltics)
         in (*Initialisation: make the first major tic, then start.*)
         let firstlabel, labels =
-          match labels with
-          | [] -> None, []
-          | s::l2 -> Some s, l2
+        match labels with
+        | [] -> None, []
+        | s::l2 -> Some s, l2
         in make_list_tics 1 numbers labels [0, firstlabel]
-      in
+        in*)
       (fun x x' y y' ->
          let xstep = (x' -. x) /. (float nall)
          and ystep = (y' -. y) /. (float nall) in
@@ -197,8 +257,8 @@ let get_position loc =
               x +. t *. xstep, y +. t *. ystep, label)
            list_tics
       )
-  | `Regular(minors,array) ->
-      let majors = Array.length array in
+  | `Regular(majors,minors) ->
+      (*let majors = Array.length array in*)
       let nall = minors * (majors - 1) + majors in
       let intlist =
         let rec make_list i list =
@@ -215,7 +275,12 @@ let get_position loc =
               let t = float i in
               let label =
                 let j,k = i/(minors + 1), i mod minors + 1 in
-                if k = 0 then Some array.(j)
+                if k = 0 then
+                  match labels with
+                    Variable l -> Some l
+                  | Fixed larray ->
+                      try Some larray.(j)
+                      with Invalid_argument _ -> None
                 else None
               in
               x +. t *. xstep, y +. t*. ystep, label)
@@ -223,15 +288,18 @@ let get_position loc =
   | _ -> raise Not_available
 
 type 'a axis = (*'a for tic type*)
-    {major:'a; minor:'a; positions:position}
+    {major:'a; minor:'a; positions:tic_position; label_position:B.text_position}
 
 type ('a,'b) t = (*'a for axes type, 'b for tic types*)
     {axes:'a; x:'b axis; y:'b axis}
 
 
-let make_axis major minor ?(get_position = get_position) loc=
-  let positions = get_position loc in
-  {major = major; minor = minor; positions = positions}
+let make_axis major data label_position minor ?(get_labels = get_labels)
+    ?(get_position = get_position) loc =
+  let labels = get_labels data in
+  let positions = get_position loc labels in
+  {major = major; minor = minor; positions = positions;
+   label_position = label_position}
 
 let make axes x y =
   {axes = axes; x = x; y = y}
@@ -245,7 +313,7 @@ let print_tics axis vmin vmax wmin wmax print_tic backend =
           None -> print_tic backend axis.minor
         | Some label ->
             print_tic backend axis.major;
-            (label.label x y).action backend;
+            label.action x y axis.label_position backend;
             print l
   in print (axis.positions vmin vmax wmin wmax)
 
@@ -256,7 +324,9 @@ let axis_margins axis xmin xmax ymin ymax tic_extents backend =
       [] -> rect
     | (x,y,label)::l ->
         let tic = match label with None -> axis.minor | Some _ -> axis.major in
-        let extents = tic_label_extents (tic_extents tic) label x y backend in
+        let extents = tic_label_extents
+          (tic_extents tic) label x y axis.label_position backend
+        in
         let x1,y1 = extents.B.x, extents.B.y in
         let x2,y2 = x1 +. extents.B.w, y1 +. extents.B.h in
         let newrect = rectangle_extents rect

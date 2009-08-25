@@ -193,7 +193,7 @@ let select_font_face t = Backend.select_font_face t.backend
 (*let set_font_size t size =
   let factor = size /. 100. in*)
 
-let adapt_font_size ?(factor=0.8) t =
+let adjust_font_size t factor =
   Coordinate.scale t.coords.normalized factor factor
 
 let show_text t ~rotate ~x ~y pos txt=
@@ -252,7 +252,7 @@ let mark_extents t name =
 
 let plotfx t ?axes ?nsamples ?min_step f a b =
   let _, (xmin,xmax,ymin, ymax) , fct =
-    Functions.samplefxy (fun t -> (t,f t)) ?nsamples ?min_step a b
+    Functions.samplefxy (fun t -> (t,f t)) ?nsamples ?min_step b a
   in
   fct (fun () (x,y) -> Backend.line_to t.backend x y) ();
   match axes with

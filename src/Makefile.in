@@ -36,10 +36,10 @@ ARCHIMEDES_FILES = string_utils.ml color.ml backend.ml coordinate.ml \
 archimedes.cma: archimedes.cmo
 archimedes.cmxa: archimedes.cmx
 
-archimedes.cmo: $(ARCHIMEDES_FILES:.ml=.cmo) archimedes.ml
+archimedes.cmo: $(ARCHIMEDES_FILES:.ml=.cmo)
 	$(OCAMLC) -o $@ $(OCAMLC_FLAGS) -pack $^
 
-archimedes.cmx: $(ARCHIMEDES_FILES:.ml=.cmx) archimedes.ml
+archimedes.cmx: $(ARCHIMEDES_FILES:.ml=.cmx)
 	$(OCAMLOPT) -o $@ $(OCAMLOPT_FLAGS) -pack $^
 
 $(ARCHIMEDES_FILES:.ml=.cmx): OCAMLOPT_FLAGS += -for-pack Archimedes
