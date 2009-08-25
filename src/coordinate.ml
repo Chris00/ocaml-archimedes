@@ -223,13 +223,15 @@ let make_rotate coord ~angle =
  ***********************************************************************)
 
 let rec put_children_not_up_to_date coord =
+  (*Cannot put any root 'not up to date'*)
+  if coord == coord.parent then
+    failwith "Coordinate: Trying to modify root coordinate";
   (* If the current coordinate system is not up to date (which implies
      its children are not either -- because of the invariant), there
-     is no need to update the CTM until its parents are brought up to
-     date. *)
+     is nothing to do (no need to update the CTM until its parents are
+     brought up to date). Otherwise, put this coordinate not up to
+     date and transmit this information to children. *)
   if coord.up_to_date then begin
-    (* If [coord] was already not up to date (and so were all its
-       children), there is nothing to do. *)
     coord.up_to_date <- false;
     W.iter put_children_not_up_to_date coord.children; (* => invariant *)
     WM.iter Monitor.set coord.monitors;
@@ -237,23 +239,18 @@ let rec put_children_not_up_to_date coord =
 
 let translate coord ~x ~y =
   Matrix.translate coord.tm ~x ~y;
-  Matrix.translate coord.ctm ~x ~y;
   put_children_not_up_to_date coord
 
 let scale coord ~x ~y =
   Matrix.scale coord.tm ~x ~y;
-  Matrix.scale coord.ctm ~x ~y;
   put_children_not_up_to_date coord
 
 let rotate coord ~angle =
   Matrix.rotate coord.tm ~angle;
-  Matrix.rotate coord.ctm ~angle;
   put_children_not_up_to_date coord
 
 let transform coord tm =
   Matrix.blit coord.tm tm;
-  update coord.parent;
-  Matrix.mul_in coord.ctm tm coord.parent.ctm;
   put_children_not_up_to_date coord
 
 
