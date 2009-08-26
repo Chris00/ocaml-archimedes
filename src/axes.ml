@@ -169,8 +169,10 @@ let get_labels data =
 
 type loc_tics =
     [ `Fixed_pos of (float * bool) list
-    | `Fixed_numbers of int array
-    | `Regular of int * int]
+    | `Linear_variable of int array
+    | `Linear of int * int
+    | `Logarithmic of int * int
+    ]
 
 let get_position loc labels =
   match loc with
@@ -198,7 +200,7 @@ let get_position loc labels =
            f x x' t, f y y' t, labelopt
          in
          List.map g t_list)
-  | `Fixed_numbers numbers ->
+  | `Linear_variable numbers ->
       let f (list, len) m =
         let rec do_minors list i =
           if i <= 0 then list
@@ -257,37 +259,78 @@ let get_position loc labels =
               x +. t *. xstep, y +. t *. ystep, label)
            list_tics
       )
-  | `Regular(majors,minors) ->
-      (*let majors = Array.length array in*)
+  | `Linear(majors,minors) ->
       let nall = minors * (majors - 1) + majors in
-      let intlist =
-        let rec make_list i list =
-          if i >= nall then list
-          else make_list (i-1) (i::list)
-        in
-        make_list 0 []
+      let rec make_list list i =
+        if i >= nall then list
+        else
+          let label =
+            let j,k = i/(minors + 1), i mod minors + 1 in
+            if k = 0 then
+              match labels with
+                Variable l -> Some l
+              | Fixed larray ->
+                  try Some larray.(j)
+                  with Invalid_argument _ -> None
+            else None
+          in
+          let tuple = i, label in
+          make_list (tuple::list) (i+1)
       in
+      let list = make_list [] 0 in
+      (*List of the form [(i, label);...]: [i]th tic gets
+        [label]. Note that, for efficiency reasons (tail-recursivity
+        of rev-mapping), the first label is the last element of the
+        list.*)
       (fun x x' y y' ->
          let xstep = (x' -. x) /. (float nall)
          and ystep = (y' -. y) /. (float nall) in
          List.rev_map
-           (fun i ->
+           (fun (i,label) ->
               let t = float i in
-              let label =
-                let j,k = i/(minors + 1), i mod minors + 1 in
-                if k = 0 then
-                  match labels with
-                    Variable l -> Some l
-                  | Fixed larray ->
-                      try Some larray.(j)
-                      with Invalid_argument _ -> None
-                else None
-              in
               x +. t *. xstep, y +. t*. ystep, label)
-           intlist)
-  | _ -> raise Not_available
+           list)
+       | `Logarithmic(majors, minors) ->
+           let nall = minors * (majors - 1) + majors in
+           let rec make_list list i =
+             if i >= nall then list
+             else
+               let j,k = i/(minors + 1), i mod minors + 1 in
+               let label =
+                 if k = 0 then
+                   match labels with
+                     Variable l -> Some l
+                   | Fixed larray ->
+                       try Some larray.(j)
+                       with Invalid_argument _ -> None
+                 else None
+               in
+               let tuple = j, k, label in
+               make_list (tuple::list) (i+1)
+           in
+           let list = make_list [] 0 in
+           (*List of the form [(j,k, label);...]: [j*(minors+1) + k]th tic
+             gets [label].  Note that, for efficiency reasons
+             (tail-recursivity of rev-mapping), the first label is the last
+             element of the list.*)
+      (fun x x' y y' ->
+         let xmajorstep = (x' -. x) /. (float majors)
+         and ymajorstep = (y' -. y) /. (float majors) in
+         List.rev_map
+           (fun (j,k,label) ->
+              let t = float j in
+              let x0 = x +. t *. xmajorstep
+              and y0 = y +. t *. ymajorstep in
+              let f mstep v0 =
+                let ministep = mstep *. (float k) /. (float (minors + 1)) in
+                let g st = log (1. +. st /. v0) in
+                x0 +. mstep *. (g ministep) /. (g mstep)
+              in
+              f xmajorstep x0, f ymajorstep y0, label)
+           list)
+       | _ -> raise Not_available
 
-type 'a axis = (*'a for tic type*)
+       type 'a axis = (*'a for tic type*)
     {major:'a; minor:'a; positions:tic_position; label_position:B.text_position}
 
 type ('a,'b) t = (*'a for axes type, 'b for tic types*)

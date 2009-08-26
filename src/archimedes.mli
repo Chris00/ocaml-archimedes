@@ -653,17 +653,18 @@ type label_collection =
       | `Expordinate
           (**Labels of the form [10^y] with [y] ordinate*)
       ]
-        (**Type for data to put as labels.*)
+        (**This type informs on which type of data we want as labels.*)
 
   val get_labels: [> data] -> label_collection
-    (**Converts a [data] into a [label_collection], which will be used by [get_position] (see below).*)
+    (**Converts a [data] into a [label_collection], which will be used
+       by [get_position] (see below).*)
 
   type tic_position =
       float -> float -> float -> float -> (float * float * label option) list
     (**Shortcut. This function has to be understood as: [fun xmin xmax
        ymin ymax -> list], where [list] contains tuples of the form
        [(x,y,labelopt)], with [(x,y)] a point where we want a tic and
-       [labelopt] indicates the (optional) label wanted (it is [None] exactly
+       [labelopt] indicates the (optional) label wanted (it is [None]
        for the minor tics).*)
 
   type loc_tics =
@@ -671,13 +672,21 @@ type label_collection =
           (**List of pairs [(x, major)] with [x] a number between 0 and
              1, specifying the relative position of the tic and [major]
              indicating whether the tic is major.*)
-      | `Fixed_numbers of int array
+      | `Linear_variable of int array
           (**The [i]th element of the array specifies the number of
-             minor tics between the [i]th major tic and the [i+1]th one
-             (starting count at 0).*)
-      | `Regular of int * int
+             minor tics between the [i]th major tic and the [i+1]th
+             one (starting count at 0). All tics are placed linearly;
+             that is, if the length of the axis is [len], then the
+             [i]th tic (among all tics, starting to count at 0) is
+             placed at distance [i /. len].*)
+      | `Linear of int * int
           (**Fixed number of major tics, and number of minor tics
-             between two consecutive major tics.*)]
+             between two consecutive major tics. They are all placed linearly.*)
+      | `Logarithmic of int * int
+          (**Same as [`Linear] except that the minor tics are placed
+             in a logarithmic scale.*)
+      ]
+
 
   (**Convenient ways to specify where we want tics.*)
 
