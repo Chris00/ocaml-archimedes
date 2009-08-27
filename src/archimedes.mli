@@ -103,6 +103,27 @@ module Backend: sig
     h:float;   (** height of the rectangle  *)
   }
 
+  (** A data structure holding ranges. Note that, contrary to
+      rectangle fields, these ones are mutable. Note also that there's
+      no restriction on using the values. However, we make the
+      convention that the first value ([x0] or [y0]) is less than the
+      second one, and the subsequent usings of this record satisfy
+      this convention.*)
+  type xyranges = {
+    mutable x1:float; (** First abscissa *)
+    mutable y1:float; (** First ordinate *)
+    mutable x2:float; (** Second abscissa *)
+    mutable y2:float; (** Second ordinate *)
+  }
+
+  (** Makes a [xyranges] follow the convention *)
+  val make_range_min1 : xyranges -> unit
+
+  (**Transformation functions: switching between [rectangle]s and [xyranges]s*)
+  val ranges_of_rect: rectangle -> xyranges
+  val rect_of_ranges: xyranges -> rectangle
+
+
   (** Holds an affine transformation, such as a scale, rotation, shear,
       or a combination of those. The transformation of a point (x, y) is
       given by:
@@ -382,17 +403,17 @@ module Backend: sig
     val transform_distance : t -> dx:float -> dy:float -> float * float
       (** [transform_distance m dx dy] transforms the distance vector
           ([dx],[dy]) by [m].  This is similar to
-          {!Cairo.Matrix.transform_point} except that the translation
+          {!Matrix.transform_point} except that the translation
           components of the transformation are ignored.  The calculation
           of the returned vector is as follows:
           {[
-          dx2 = dx1 * a + dy1 * c;
-          dy2 = dx1 * b + dy1 * d;
+          dx2 = dx1 * xx + dy1 * xy;
+          dy2 = dx1 * yx + dy1 * yy;
           ]}
           Affine transformations are position invariant, so the same
           vector always transforms to the same vector.  If (x1,y1)
           transforms to (x2,y2) then (x1+dx1,y1+dy1) will transform to
-          (x1+dx2,y1+dy2) for all values of x1 and x2.  *)
+          (x2+dx2,y2+dy2) for all values of dx1 and dy1.  *)
 
     val inv_transform_point : t -> x:float -> y:float -> float * float
       (** Makes the inverse transformation of a point. *)
@@ -579,21 +600,26 @@ module Axes: sig
       | `Two_lines of float * float
           (**Abscissas axes are represented in a horizontal line,
              ordinates in a vertical line. The pair of floats is
-             precisely the intersection of these two lines.*)]
+             precisely the intersection of these two lines.*)
+      | `Two_lines_rel of float * float
+          (**Same as [Two_lines] except that the two floats are
+             relative; that is, if [(t,u)] is an argument pair, and
+             [xmin, ..., ymax] are the bounds, then the intersection
+             is computed as [(xmin +. t *.(xmax -. xmin), ymin +. u
+             *. (ymax -. ymin) )].*)
+      ]
 
   (**Different axes modes. They all specify which point has to
      be taken into account for the intersection of the
      axes. This point determine the position of tics.*)
 
   val print_axes :
-    [> axes] ->
-    xmin:float -> xmax:float -> ymin:float -> ymax:float -> Backend.t -> unit
+    [> axes] -> Backend.xyranges -> Backend.t -> unit
     (**Given the axes mode, the bounds and a backend to draw on,
        prints the corresponding axes on the backend.*)
 
   val axes_meeting :
-    [> axes] ->
-    xmin:float -> xmax:float -> ymin:float -> ymax:float -> float * float
+    [> axes] -> Backend.xyranges -> float * float
     (**Returns the point where the axes meet.*)
 
 
@@ -631,12 +657,12 @@ module Axes: sig
        as if all is done at the point [(x,y)]. The backend [b] is used
        only to determine the extents ([box]) of the label.*)*)
 
-type label_collection =
-    Fixed of label array
-      (**One (different) label per major tic. (eg: text data)*)
-  | Variable of label
+  type label_collection =
+      Fixed of label array
+        (**One (different) label per major tic. (eg: text data)*)
+    | Variable of label
       (**A unique label is OK for all major tics. (eg: abscissa)*)
-(**Storing several labels*)
+        (**Storing several labels*)
 
 
   type data =
@@ -680,8 +706,9 @@ type label_collection =
              [i]th tic (among all tics, starting to count at 0) is
              placed at distance [i /. len].*)
       | `Linear of int * int
-          (**Fixed number of major tics, and number of minor tics
-             between two consecutive major tics. They are all placed linearly.*)
+          (**[`Linear(majors, minors)]: Fixed number of major tics,
+             and number of minor tics between two consecutive major
+             tics. They are all placed linearly.*)
       | `Logarithmic of int * int
           (**Same as [`Linear] except that the minor tics are placed
              in a logarithmic scale.*)
@@ -721,12 +748,9 @@ type label_collection =
 
   val get_margins :
     ([> axes ] as 'a, [> tic] as 'b) t ->
-    ?axes_meeting:('a ->
-                     xmin:float -> xmax:float -> ymin:float -> ymax:float ->
-                    float * float) ->
+    ?axes_meeting:('a -> Backend.xyranges -> float * float) ->
     ?tic_extents:('b -> Backend.rectangle) ->
-    float -> float -> float -> float ->
-    Backend.t -> Backend.rectangle * Backend.rectangle
+    Backend.xyranges -> Backend.t -> Backend.rectangle * Backend.rectangle
     (**Returns the margins needed to print the axes. Returns a pair of
        [Backend.rectangle], the first one represents the extents for the X
        axis, and the second one the extents for the Y axis.*)
@@ -734,16 +758,9 @@ type label_collection =
   val print :
     ([> axes] as 'a, [> tic] as 'b) t ->
     lines:Coordinate.t ->
-    xmin:float ->
-    xmax:float ->
-    ymin:float ->
-    ymax:float ->
-    ?print_axes:('a ->
-                   xmin:float -> xmax:float -> ymin:float -> ymax:float ->
-                  Backend.t -> unit) ->
-    ?axes_meeting:('a ->
-                     xmin:float -> xmax:float -> ymin:float -> ymax:float ->
-                    float * float) ->
+    ranges:Backend.xyranges ->
+    ?print_axes:('a -> Backend.xyranges -> Backend.t -> unit) ->
+    ?axes_meeting:('a -> Backend.xyranges -> float * float) ->
     ?print_tic:(Backend.t -> 'b -> unit) -> Backend.t -> unit
 
 (**Prints axes, following the parameters stored in [t] and the
@@ -925,7 +942,6 @@ module Handle: sig
   val save : t -> unit
   val restore : t -> unit
   val select_font_face : t -> Backend.slant -> Backend.weight -> string -> unit
-  val adjust_font_size : t -> float -> unit
   val show_text :
     t ->
     rotate:float ->

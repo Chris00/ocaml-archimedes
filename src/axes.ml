@@ -17,39 +17,58 @@ let rectangle_extents rect xmin xmax ymin ymax =
 
 
 type axes =
-    [`Rectangle of bool * bool
+    [ `None of bool * bool
+    | `Rectangle of bool * bool
     | `Two_lines of float * float
-    | `None of bool * bool]
+    | `Two_lines_rel of float * float
+    ]
     (*Style of axes.*)
 
 
 
 
-let print_axes axes ~xmin ~xmax ~ymin ~ymax backend =
+let print_axes axes ranges backend =
+  Backend.make_range_min1 ranges;
   match axes with
     `None (_,_) -> ()
   | `Rectangle(_, _) ->
-      let x, y = min xmin xmax, min ymin ymax in
-      let w, h = abs_float (xmax -. xmin), abs_float (ymax -. ymin) in
-      B.rectangle backend x y w h
+      let rect = Backend.rect_of_ranges ranges in
+      B.rectangle backend rect.B.x rect.B.y rect.B.w rect.B.h
   | `Two_lines(x,y) ->
       (*Need to update -before- so that mins/maxs are correctly
         initialized for making the axes lines.*)
-      let xmin,ymin = min x xmin, min y ymin
-      and xmax,ymax = max x xmax, max y ymax in
+      let xmin,ymin = min x ranges.B.x1, min y ranges.B.y1
+      and xmax,ymax = max x ranges.B.x2, max y ranges.B.y2 in
+      B.move_to backend xmin y;
+      B.line_to backend xmax y;
+      B.move_to backend x ymin;
+      B.line_to backend x ymax
+  | `Two_lines_rel(t,u) ->
+      (*Need to update -before- so that mins/maxs are correctly
+        initialized for making the axes lines.*)
+      let x,y =
+        ranges.B.x1 +. t *. (ranges.B.x2 -. ranges.B.x1),
+        ranges.B.y1 +. u *. (ranges.B.y2 -. ranges.B.y1)
+      in
+      let xmin,ymin = min x ranges.B.x1, min y ranges.B.y1
+      and xmax,ymax = max x ranges.B.x2, max y ranges.B.y2 in
       B.move_to backend xmin y;
       B.line_to backend xmax y;
       B.move_to backend x ymin;
       B.line_to backend x ymax
   | _ -> raise Not_available
 
-let axes_meeting axes ~xmin ~xmax ~ymin ~ymax =
+let axes_meeting axes ranges =
+  Backend.make_range_min1 ranges;
   match axes with
   | `None(bx, by)
   | `Rectangle(bx, by) ->
-      (if bx then xmin else xmax),
-      (if by then ymin else ymax)
+      (if bx then ranges.B.x1 else ranges.B.x2),
+      (if by then ranges.B.y1 else ranges.B.y2)
   | `Two_lines(x,y) -> x,y
+  | `Two_lines_rel(t,u) ->
+      ranges.B.x1 +. t *. (ranges.B.x2 -. ranges.B.x1),
+      ranges.B.y1 +. u *. (ranges.B.y2 -. ranges.B.y1)
   | _ -> raise Not_available
 
 type tic = [`P of Pointstyle.name]
@@ -381,25 +400,26 @@ let axis_margins axis xmin xmax ymin ymax tic_extents backend =
 
 let get_margins t
     ?(axes_meeting = axes_meeting) ?(tic_extents = tic_extents)
-    xmin xmax ymin ymax backend=
-  let x,y = axes_meeting t.axes ~xmin ~xmax ~ymin ~ymax in
-  let xmin,ymin = min x xmin, min y ymin
-  and xmax,ymax = max x xmax, max y ymax in
+    ranges backend=
+  Backend.make_range_min1 ranges;
+  let x,y = axes_meeting t.axes ranges in
+  let xmin,ymin = min x ranges.B.x1, min y ranges.B.y1
+  and xmax,ymax = max x ranges.B.x2, max y ranges.B.y2 in
   axis_margins t.x xmin xmax ymin ymax tic_extents backend,
   axis_margins t.y xmin xmax ymin ymax tic_extents backend
 
 
-let print t ~lines ~xmin ~xmax ~ymin ~ymax
+let print t ~lines ~ranges
     ?(print_axes = print_axes) ?(axes_meeting = axes_meeting)
     ?(print_tic = print_tic) backend =
   (*let xxx = backend and yyy = B.get_handle backend in*)
-  let x,y = axes_meeting t.axes ~xmin ~xmax ~ymin ~ymax in
-  print_axes t.axes ~xmin ~xmax ~ymin ~ymax backend;
+  let x,y = axes_meeting t.axes ranges in
+  print_axes t.axes ranges backend;
   let ctm = Coordinate.use backend lines in
   B.stroke backend;
   Coordinate.restore backend ctm;
-  print_tics t.x xmin xmax y y print_tic backend; (*X axis*)
-  print_tics t.y ymin ymax x x print_tic backend  (*Y axis*)
+  print_tics t.x ranges.B.x1 ranges.B.x2 y y print_tic backend; (*X axis*)
+  print_tics t.y x x ranges.B.y1 ranges.B.y2 print_tic backend  (*Y axis*)
 (*Local variables:*)
 (*compile-command: "ocamlopt -c -dtypes axes.ml && ocamlc -c -dtypes axes.ml"*)
 (*End:*)

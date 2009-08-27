@@ -37,10 +37,11 @@ archimedes.cma: archimedes.cmo
 archimedes.cmxa: archimedes.cmx
 
 archimedes.cmo: $(ARCHIMEDES_FILES:.ml=.cmo)
-	$(OCAMLC) -o $@ $(OCAMLC_FLAGS) -pack $^
+	$(OCAMLC) -o $@ $(OCAMLC_FLAGS) -pack $(filter-out archimedes.cmi,$^)
 
 archimedes.cmx: $(ARCHIMEDES_FILES:.ml=.cmx)
-	$(OCAMLOPT) -o $@ $(OCAMLOPT_FLAGS) -pack $^
+	$(OCAMLOPT) -o $@ $(OCAMLOPT_FLAGS) -pack \
+	$(filter-out archimedes.cmi,$^)
 
 $(ARCHIMEDES_FILES:.ml=.cmx): OCAMLOPT_FLAGS += -for-pack Archimedes
 

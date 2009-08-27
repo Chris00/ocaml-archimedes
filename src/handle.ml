@@ -461,7 +461,8 @@ let plotfx t ?axes ?nsamples ?min_step f a b =
   | Some axes ->
       let lw = Sizes.get_lw t.coords.scalings in
       let lines = Coordinate.make_scale t.normalized lw lw in
-      Axes.print axes ~lines ~xmin ~xmax ~ymin ~ymax t.backend
+      let ranges = {Backend.x1=xmin;x2=xmax;y1=ymin;y2=ymax} in
+      Axes.print axes ~lines ~ranges t.backend
 
 let f t mark x y =
   move_to t x y;
@@ -481,6 +482,7 @@ let plotxy t ?axes ?(f = f) ?(mark = "X") iter =
   | Some axes ->
       let lw = Sizes.get_lw t.coords.scalings in
       let lines = Coordinate.make_scale t.normalized lw lw in
-      Axes.print axes ~lines ~xmin ~xmax ~ymin ~ymax t.backend
+      let ranges = {Backend.x1=xmin;x2=xmax;y1=ymin;y2=ymax} in
+      Axes.print axes ~lines ~ranges t.backend
 
 
