@@ -452,7 +452,7 @@ let mark_extents t name =
 
 
 let plotfx t ?axes ?nsamples ?min_step f a b =
-  let _, (xmin,xmax,ymin, ymax) , fct =
+  let _, ranges , fct =
     Functions.samplefxy (fun t -> (t,f t)) ?nsamples ?min_step b a
   in
   fct (fun () (x,y) -> Backend.line_to t.backend x y) ();
@@ -461,7 +461,6 @@ let plotfx t ?axes ?nsamples ?min_step f a b =
   | Some axes ->
       let lw = Sizes.get_lw t.coords.scalings in
       let lines = Coordinate.make_scale t.normalized lw lw in
-      let ranges = {Backend.x1=xmin;x2=xmax;y1=ymin;y2=ymax} in
       Axes.print axes ~lines ~ranges t.backend
 
 let f t mark x y =
@@ -469,7 +468,7 @@ let f t mark x y =
   render t mark
 
 let plotxy t ?axes ?(f = f) ?(mark = "X") iter =
-  let xmin, xmax, ymin, ymax = Iterator.extents iter in
+  let ranges = Iterator.extents iter in
   let rec plot () =
     match Iterator.next iter with
       None -> ()
@@ -482,7 +481,6 @@ let plotxy t ?axes ?(f = f) ?(mark = "X") iter =
   | Some axes ->
       let lw = Sizes.get_lw t.coords.scalings in
       let lines = Coordinate.make_scale t.normalized lw lw in
-      let ranges = {Backend.x1=xmin;x2=xmax;y1=ymin;y2=ymax} in
       Axes.print axes ~lines ~ranges t.backend
 
 

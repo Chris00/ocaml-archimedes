@@ -3,7 +3,7 @@ open Bigarray
 type t =
     {
       data:(float,float64_elt,c_layout) Array2.t;
-      xmin: float; xmax: float; ymin: float; ymax: float;
+      extents: Backend.xyranges;
       mutable pos: int;len: int
     }
 
@@ -13,7 +13,7 @@ let of_list list =
   let rec fill_array i xmin xmax ymin ymax = function
       [] -> (*Make the iterator*)
         {data= array;
-         xmin = xmin; xmax = xmax; ymin = ymin; ymax = ymax;
+         extents = {Backend.x1 = xmin; x2 = xmax; y1 = ymin; y2 = ymax};
          pos = 0; len = n}
     | (x,y)::l ->
         array.{i,0} <- x;
@@ -27,7 +27,7 @@ let of_array array =
   let rec fill_array i xmin xmax ymin ymax =
     if i >= n then
       {data= bigarray;
-       xmin = xmin; xmax = xmax; ymin = ymin; ymax = ymax;
+       extents = {Backend.x1 = xmin; x2 = xmax; y1 = ymin; y2 = ymax};
        pos = 0; len = n}
     else
       let x,y = array.(i) in
@@ -47,7 +47,7 @@ let of_bigarray2 ?(clayout=true) array =
     let rec fill_array i xmin xmax ymin ymax =
       if i >= dim then
         {data= bigarray;
-         xmin = xmin; xmax = xmax; ymin = ymin; ymax = ymax;
+         extents = {Backend.x1 = xmin; x2 = xmax; y1 = ymin; y2 = ymax};
          pos = 0; len = dim}
       else
         let x = array.{i+ofs, ofs}
@@ -72,7 +72,7 @@ let of_lists listx listy =
         (*Condition on lengths ensures that this matches only two
           empty lists.*)
         {data= array;
-         xmin = xmin; xmax = xmax; ymin = ymin; ymax = ymax;
+         extents = {Backend.x1 = xmin; x2 = xmax; y1 = ymin; y2 = ymax};
          pos = 0; len = n}
   in fill_array 0 max_float (-.max_float) max_float (-.max_float) (listx,listy)
 
@@ -84,7 +84,7 @@ let of_arrays arrayx arrayy =
   let rec fill_array i xmin xmax ymin ymax =
     if i >= n then
       {data= bigarray;
-       xmin = xmin; xmax = xmax; ymin = ymin; ymax = ymax;
+       extents = {Backend.x1 = xmin; x2 = xmax; y1 = ymin; y2 = ymax};
        pos = 0; len = n}
     else
       let x = arrayx.(i)
@@ -104,7 +104,7 @@ let of_bigarrays ?(xclayout=true) arrayx ?(yclayout=true) arrayy =
   let rec fill_array i xmin xmax ymin ymax =
     if i >= n then
       {data= bigarray;
-       xmin = xmin; xmax = xmax; ymin = ymin; ymax = ymax;
+       extents = {Backend.x1 = xmin; x2 = xmax; y1 = ymin; y2 = ymax};
        pos = 0; len = n}
     else
       let x = arrayx.{i+ofsx}
@@ -115,7 +115,7 @@ let of_bigarrays ?(xclayout=true) arrayx ?(yclayout=true) arrayy =
   in fill_array 0 max_float (-.max_float) max_float (-.max_float)
 
 let from_sampling f ?min_step ?nsamples a b =
-  let len, (xmin,xmax,ymin,ymax), fct =
+  let len, extents, fct =
     Functions.samplefxy f ?min_step ?nsamples a b
   in
   let array = Array2.create float64 c_layout len 2 in
@@ -127,7 +127,7 @@ let from_sampling f ?min_step ?nsamples a b =
     array
   in
   {data = fct fill_array array;
-   xmin = xmin; xmax = xmax; ymin = ymin; ymax = ymax;
+   extents = extents;
    pos = 0; len = len}
 
 let next iter =
@@ -143,4 +143,5 @@ let reinit iter = iter.pos <- 0
 
 let nb_data iter = iter.len
 
-let extents iter = iter.xmin, iter.xmax, iter.ymin, iter.ymax
+let extents iter = (*Make a copy*)
+  {iter.extents with Backend.x1 = iter.extents.Backend.x1}

@@ -19,15 +19,15 @@ let samplefxy f ?(min_step=1E-9) ?(nsamples = 100) a b =
              max_length *. (x0 *. x0 +. y0 *. y0 +. (b-.a) *. (b-.a))
            in
            if diffx *. diffx +. diffy *. diffy < rel_max
-             || step < min_step then
-               let xmin, xmax, ymin, ymax = extents in
-               let new_ext = (min x xmin, max x xmax, min y ymin, max y ymax) in
-              next_point (i+1) tmin x y bounds ((x,y)::listxy) (len+1) new_ext
+             || step < min_step then (
+               Backend.update_ranges extents x y;
+               next_point (i+1) tmin x y bounds ((x,y)::listxy) (len+1) extents
+             )
            else
              (*increase precision by dividing step by 2.*)
              let ntmin = tmin +. (float (i-1)) *. step in
-            (* print_string "DIV -> ";
-             print_float (step /. 2.);*)
+             (* print_string "DIV -> ";
+                print_float (step /. 2.);*)
              next_point 1 ntmin x0 y0 ((i, tmin, step/.2., 2)::bounds)
                listxy len extents
 
@@ -35,7 +35,8 @@ let samplefxy f ?(min_step=1E-9) ?(nsamples = 100) a b =
         else
           (*Plot with current step size finished; return to previous step size.*)
           next_point (prev_stop + 1) prev_tmin x0 y0 list listxy len extents
-  in next_point 1 a x y bounds_list [x,y] 1 (x,x,y,y)
+  in next_point 1 a x y bounds_list
+       [x,y] 1 {Backend.x1 = x; x2 = x; y1 = y; y2 = y}
 
 let samplefx f ?(min_step=1E-9) ?(nsamples = 100) a b =
   let step = (b -. a) /. (float nsamples) in

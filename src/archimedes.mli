@@ -119,6 +119,8 @@ module Backend: sig
   (** Makes a [xyranges] follow the convention *)
   val make_range_min1 : xyranges -> unit
 
+  val update_ranges: xyranges -> float -> float -> unit
+
   (**Transformation functions: switching between [rectangle]s and [xyranges]s*)
   val ranges_of_rect: rectangle -> xyranges
   val rect_of_ranges: xyranges -> rectangle
@@ -686,9 +688,8 @@ module Axes: sig
        by [get_position] (see below).*)
 
   type tic_position =
-      float -> float -> float -> float -> (float * float * label option) list
-    (**Shortcut. This function has to be understood as: [fun xmin xmax
-       ymin ymax -> list], where [list] contains tuples of the form
+      Backend.xyranges -> (float * float * label option) list
+    (**Shortcut. The output [list] contains tuples of the form
        [(x,y,labelopt)], with [(x,y)] a point where we want a tic and
        [labelopt] indicates the (optional) label wanted (it is [None]
        for the minor tics).*)
@@ -773,8 +774,7 @@ val samplefxy :
   (float -> float * float) ->
   ?min_step:float ->
   ?nsamples:int -> float -> float ->
-  int * (float * float * float * float)
-  * (('a -> float * float -> 'a) -> 'a -> 'a)
+  int * Backend.xyranges * (('a -> float * float -> 'a) -> 'a -> 'a)
 
 val samplefx :
   (float -> float) ->
@@ -876,7 +876,7 @@ module Iterator : sig
 
   val nb_data : t -> int
 
-  val extents : t -> float * float * float * float
+  val extents : t -> Backend.xyranges
 end
 
 module Handle: sig

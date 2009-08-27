@@ -108,7 +108,7 @@ let tic_label_extents tic_extents label x y pos b =
 
 
 type tic_position =
-     float -> float -> float -> float -> (float*float*label option) list
+     Backend.xyranges -> (float*float*label option) list
 
 type label_collection =
     Fixed of label array
@@ -196,29 +196,30 @@ type loc_tics =
 let get_position loc labels =
   match loc with
     `Fixed_pos t_list ->
-      (fun x x' y y' ->
-         let f x x' t = x +. t *. (x' -. x) in
-         let m = ref 0 in (*Used in case of Fixed labels*)
-         let g (t,b) =
-           let labelopt =
-             if b then (*major tic => add a label*)
-               match labels with
-                 Variable l -> Some l
-               | Fixed larray ->
-                   let label =
-                     try Some larray.(!m)
-                     with Invalid_argument _ -> None
-                       (*too few labels : the last major tics won't
-                         get any label.*)
-                   in
-                   m := !m + 1;
-                   label
-             else (*Minor tic => no label*)
-               None
-           in
-           f x x' t, f y y' t, labelopt
-         in
-         List.map g t_list)
+      let f x x' t = x +. t *. (x' -. x) in
+      let m = ref 0 in (*Used in case of Fixed labels*)
+      let g ranges (t,b) =
+        let labelopt =
+          if b then (*major tic => add a label*)
+            match labels with
+              Variable l -> Some l
+            | Fixed larray ->
+                let label =
+                  try Some larray.(!m)
+                  with Invalid_argument _ -> None
+                    (*too few labels : the last major tics won't
+                      get any label.*)
+                in
+                m := !m + 1;
+                label
+          else (*Minor tic => no label*)
+            None
+        in
+        f ranges.B.x1 ranges.B.x2 t, f ranges.B.y1 ranges.B.y2 t, labelopt
+      in
+      (fun ranges ->
+         Backend.make_range_min1 ranges;
+         List.map (g ranges) t_list)
   | `Linear_variable numbers ->
       let f (list, len) m =
         let rec do_minors list i =
@@ -245,37 +246,14 @@ let get_position loc labels =
         in
         Array.fold_left f (first_tic, 1) numbers
       in
-
-
-      (*(*List version*)
-        let list_tics =
-        let rec make_list_tics k nums labels ltics =
-        match nums with
-        [] -> ltics
-        | i::l ->
-        if i = 0 then
-      (*Facing a major tic: get a label*)
-        let label, rest =
-        match labels with
-        [] -> None, []
-        | s::l2 -> Some s, l2
-        in make_list_tics (k+1) l rest ((k, label)::ltics)
-        else (*facing a minor tic*)
-        make_list_tics (k+1) ((i-1)::l) labels ((k, None)::ltics)
-        in (*Initialisation: make the first major tic, then start.*)
-        let firstlabel, labels =
-        match labels with
-        | [] -> None, []
-        | s::l2 -> Some s, l2
-        in make_list_tics 1 numbers labels [0, firstlabel]
-        in*)
-      (fun x x' y y' ->
-         let xstep = (x' -. x) /. (float nall)
-         and ystep = (y' -. y) /. (float nall) in
+      (fun ranges ->
+         Backend.make_range_min1 ranges;
+         let xstep = (ranges.B.x2 -. ranges.B.x1) /. (float nall)
+         and ystep = (ranges.B.y2 -. ranges.B.y1) /. (float nall) in
          List.rev_map
            (fun (i,label) ->
               let t = float i in
-              x +. t *. xstep, y +. t *. ystep, label)
+              ranges.B.x1 +. t *. xstep, ranges.B.y1 +. t *. ystep, label)
            list_tics
       )
   | `Linear(majors,minors) ->
@@ -301,45 +279,47 @@ let get_position loc labels =
         [label]. Note that, for efficiency reasons (tail-recursivity
         of rev-mapping), the first label is the last element of the
         list.*)
-      (fun x x' y y' ->
-         let xstep = (x' -. x) /. (float nall)
-         and ystep = (y' -. y) /. (float nall) in
+      (fun ranges ->
+         Backend.make_range_min1 ranges;
+         let xstep = (ranges.B.x2 -. ranges.B.x1) /. (float nall)
+         and ystep = (ranges.B.y2 -. ranges.B.y1) /. (float nall) in
          List.rev_map
            (fun (i,label) ->
               let t = float i in
-              x +. t *. xstep, y +. t*. ystep, label)
+              ranges.B.x1 +. t *. xstep, ranges.B.y1 +. t*. ystep, label)
            list)
-       | `Logarithmic(majors, minors) ->
-           let nall = minors * (majors - 1) + majors in
-           let rec make_list list i =
-             if i >= nall then list
-             else
-               let j,k = i/(minors + 1), i mod minors + 1 in
-               let label =
-                 if k = 0 then
-                   match labels with
-                     Variable l -> Some l
-                   | Fixed larray ->
-                       try Some larray.(j)
-                       with Invalid_argument _ -> None
-                 else None
-               in
-               let tuple = j, k, label in
-               make_list (tuple::list) (i+1)
-           in
-           let list = make_list [] 0 in
-           (*List of the form [(j,k, label);...]: [j*(minors+1) + k]th tic
-             gets [label].  Note that, for efficiency reasons
-             (tail-recursivity of rev-mapping), the first label is the last
-             element of the list.*)
-      (fun x x' y y' ->
-         let xmajorstep = (x' -. x) /. (float majors)
-         and ymajorstep = (y' -. y) /. (float majors) in
+  | `Logarithmic(majors, minors) ->
+      let nall = minors * (majors - 1) + majors in
+      let rec make_list list i =
+        if i >= nall then list
+        else
+          let j,k = i/(minors + 1), i mod minors + 1 in
+          let label =
+            if k = 0 then
+              match labels with
+                Variable l -> Some l
+              | Fixed larray ->
+                  try Some larray.(j)
+                  with Invalid_argument _ -> None
+            else None
+          in
+          let tuple = j, k, label in
+          make_list (tuple::list) (i+1)
+      in
+      let list = make_list [] 0 in
+      (*List of the form [(j,k, label);...]: [j*(minors+1) + k]th tic
+        gets [label].  Note that, for efficiency reasons
+        (tail-recursivity of rev-mapping), the first label is the last
+        element of the list.*)
+      (fun ranges ->
+         Backend.make_range_min1 ranges;
+         let xmajorstep = (ranges.B.x2 -. ranges.B.x1) /. (float majors)
+         and ymajorstep = (ranges.B.y2 -. ranges.B.y1) /. (float majors) in
          List.rev_map
            (fun (j,k,label) ->
               let t = float j in
-              let x0 = x +. t *. xmajorstep
-              and y0 = y +. t *. ymajorstep in
+              let x0 = ranges.B.x1 +. t *. xmajorstep
+              and y0 = ranges.B.y1 +. t *. ymajorstep in
               let f mstep v0 =
                 let ministep = mstep *. (float k) /. (float (minors + 1)) in
                 let g st = log (1. +. st /. v0) in
@@ -347,7 +327,7 @@ let get_position loc labels =
               in
               f xmajorstep x0, f ymajorstep y0, label)
            list)
-       | _ -> raise Not_available
+  | _ -> raise Not_available
 
        type 'a axis = (*'a for tic type*)
     {major:'a; minor:'a; positions:tic_position; label_position:B.text_position}
@@ -366,7 +346,7 @@ let make_axis major data label_position minor ?(get_labels = get_labels)
 let make axes x y =
   {axes = axes; x = x; y = y}
 
-let print_tics axis vmin vmax wmin wmax print_tic backend =
+let print_tics axis ranges print_tic backend =
   let rec print = function
       [] -> ()
     | (x,y,label)::l ->
@@ -377,10 +357,11 @@ let print_tics axis vmin vmax wmin wmax print_tic backend =
             print_tic backend axis.major;
             label.action x y axis.label_position backend;
             print l
-  in print (axis.positions vmin vmax wmin wmax)
+  in print (axis.positions ranges)
 
-let axis_margins axis xmin xmax ymin ymax tic_extents backend =
-  let list = axis.positions xmin xmax ymin ymax in
+let axis_margins axis ranges tic_extents backend =
+  Backend.make_range_min1 ranges;
+  let list = axis.positions ranges in
   let rec make_rect list rect =
     match list with
       [] -> rect
@@ -395,7 +376,7 @@ let axis_margins axis xmin xmax ymin ymax tic_extents backend =
           (x1 +. x) (x2 +. x) (y1 +. y) (y2 +. y)
         in
         make_rect l newrect
-  in make_rect list {B.x=xmin; y=ymin; w=0.;h=0.}
+  in make_rect list {B.x=ranges.B.x1; y=ranges.B.y1; w=0.;h=0.}
 
 
 let get_margins t
@@ -403,10 +384,12 @@ let get_margins t
     ranges backend=
   Backend.make_range_min1 ranges;
   let x,y = axes_meeting t.axes ranges in
+  Backend.update_ranges ranges x y;(*
   let xmin,ymin = min x ranges.B.x1, min y ranges.B.y1
   and xmax,ymax = max x ranges.B.x2, max y ranges.B.y2 in
-  axis_margins t.x xmin xmax ymin ymax tic_extents backend,
-  axis_margins t.y xmin xmax ymin ymax tic_extents backend
+  let newranges = {B.x1 = xmin; y1 = ymin; x2 = xmax; y2 = ymax} in*)
+  axis_margins t.x ranges tic_extents backend,
+  axis_margins t.y ranges tic_extents backend
 
 
 let print t ~lines ~ranges
@@ -418,8 +401,10 @@ let print t ~lines ~ranges
   let ctm = Coordinate.use backend lines in
   B.stroke backend;
   Coordinate.restore backend ctm;
-  print_tics t.x ranges.B.x1 ranges.B.x2 y y print_tic backend; (*X axis*)
-  print_tics t.y x x ranges.B.y1 ranges.B.y2 print_tic backend  (*Y axis*)
+  let xrange = {B.x1 = ranges.B.x1; x2 = ranges.B.x2; y1 = y; y2 = y}
+  and yrange = {B.x1 = x; x2 = x; y1 = ranges.B.y1; y2 = ranges.B.y2} in
+  print_tics t.x xrange print_tic backend; (*X axis*)
+  print_tics t.y yrange print_tic backend  (*Y axis*)
 (*Local variables:*)
 (*compile-command: "ocamlopt -c -dtypes axes.ml && ocamlc -c -dtypes axes.ml"*)
 (*End:*)
