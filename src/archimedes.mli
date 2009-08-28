@@ -900,6 +900,8 @@ module Handle: sig
     val sub :
       vp -> xmin:float -> xmax:float -> ymin:float -> ymax:float -> vp
     val use : vp -> unit
+
+    (**{2 Convenience functions to create viewports}*)
     val rows : t -> int -> vp array
     val columns : t -> int -> vp array
     val matrix : t -> int -> int -> vp array array
@@ -907,7 +909,16 @@ module Handle: sig
     val sub_columns : vp -> int -> vp array
     val sub_matrix : vp -> int -> int -> vp array array
   end
-  val add_order : (Backend.t -> unit) -> t -> unit
+  val use : Viewport.vp -> unit
+  val use_initial : t -> unit
+  val set_line_width : t -> float -> unit
+  val set_mark_size : t -> float -> unit
+  val set_font_size : t -> float -> unit
+  val set_global_line_width : t -> float -> unit
+  val set_global_mark_size : t -> float -> unit
+  val set_global_font_size : t -> float -> unit
+  val get_line_width : t -> float
+  val get_mark_size : t -> float
   val width : t -> float
   val height : t -> float
   val set_color : t -> Color.t -> unit
@@ -931,7 +942,7 @@ module Handle: sig
   val arc : t -> x:float -> y:float -> r:float -> a1:float -> a2:float -> unit
   val close_path : t -> unit
   val clear_path : t -> unit
-  val path_extents : t -> Backend.rectangle
+  (*val path_extents : t -> Backend.rectangle*)
   val stroke_current : t -> unit
   val stroke_current_preserve : t -> unit
   val stroke : t -> unit
@@ -939,8 +950,8 @@ module Handle: sig
   val fill : t -> unit
   val fill_preserve : t -> unit
   val clip_rectangle : t -> x:float -> y:float -> w:float -> h:float -> unit
-  val save : t -> unit
-  val restore : t -> unit
+  val save_vp : t -> unit
+  val restore_vp : t -> unit
   val select_font_face : t -> Backend.slant -> Backend.weight -> string -> unit
   val show_text :
     t ->
@@ -948,7 +959,6 @@ module Handle: sig
     x:float -> y:float -> Backend.text_position -> string -> unit
   val text_extents : t -> string -> Backend.rectangle
   val render : t -> Pointstyle.name -> unit
-  val render_extents : t -> Pointstyle.name -> Backend.rectangle
   val mark_extents : t -> Pointstyle.name -> Backend.rectangle
   val plotfx :
     t ->
