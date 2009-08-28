@@ -169,17 +169,16 @@ type t =
      rawcoords: Coordinate.t;
      normalized: Coordinate.t;
      initial_coord : Coordinate.t;(*Initial coordinate system --
-                                  the one which makes the surface as a unit square*)
+                                    the one which makes the surface as a unit square*)
      initial_vp: viewport;(*Initial viewport --
-                         the one which is associated with the initial coordinates.*)
+                            the one which is associated with the initial coordinates.*)
      mutable current_coord: Coordinate.t;(*Currently used coordinate
-                                            transformation.*)
+                                           transformation.*)
      mutable current_vp : viewport;(*Current viewport*)
-     used_vp: viewport Queue.t; (*Viewports that have been used. We
-                                  can ensure that only one copy of
-                                  each used viewport will be in this
-                                  queue -- because of the viewport
-                                  flag.*)
+     used_vp: (Coordinate.t * viewport) Queue.t;
+     (*Viewports that have been used. We can ensure that only one copy
+       of each used viewport will be in this queue -- because of the
+       viewport flag.*)
     }
 
 (*Default line width, text size, mark size: if the height is less than
@@ -205,23 +204,18 @@ let make ~dirs name w h =
     Coordinate.make_scale init z z
   in
   let initial =
-    (*On every viewport, the first action to perform is to change the
-      backend coordinates, to draw on this viewport.*)
-    let orders = Queue.create () in
-    (*Here, we're setting transformation to initially draw on [0,1]^2*)
-    Queue.push (fun () -> ignore (Coordinate.use backend coord)) orders;
     {scalings = Sizes.make_root def_lw def_ts def_marks;
      (*No drawings yet*)
      bounds =
         {Backend.x1 = max_float; x2 = -.max_float;
          y1 = max_float; y2 = -.max_float;};
-     orders = orders;
+     orders = Queue.create ();
      scalings_hist = Stack.create ();
     }
   in
   (*The initial viewport is in use, so must be in the [used_vp].*)
   let init_used_vp = Queue.create () in
-  Queue.push initial init_used_vp;
+  Queue.push (coord, initial) init_used_vp;
   {backend=backend;
    rawcoords = init;
    normalized = norm;
@@ -240,9 +234,17 @@ let close t =
           (Queue.pop orders ();
            make_orders orders)
       in
-      let vp = Queue.pop t.used_vp in
-      (make_orders vp.orders;
-       make_viewports ())
+      let coord, vp = Queue.pop t.used_vp in
+      let ranges = vp.bounds in
+      let real_transform =
+        Coordinate.make_translate coord ranges.Backend.x1 ranges.Backend.y1
+      in
+      ( Coordinate.scale real_transform
+          (ranges.Backend.x2 -. ranges.Backend.x1)
+          (ranges.Backend.y2 -. ranges.Backend.y1);
+        ignore (Coordinate.use t.backend real_transform);
+        make_orders vp.orders;
+        make_viewports ())
   in make_viewports ();
   Backend.close t.backend
 
@@ -262,9 +264,6 @@ struct
   let make arch ~xmin ~xmax ~ymin ~ymax =
     let ndrawings = Coordinate.make_translate arch.current_coord xmin ymin in
     Coordinate.scale ndrawings (xmax -. xmin) (ymax -. ymin);
-    let init_orders = Queue.create () in
-    Queue.push (fun () -> ignore (Coordinate.use arch.backend ndrawings))
-      init_orders;
     let data =
       { (*Line width and text and mark sizes are preserved, but are new ones,
           depending on the previous ones.*)
@@ -274,7 +273,7 @@ struct
           {Backend.x1 = max_float; x2 = -.max_float;
            y1 = max_float; y2 = -.max_float;};
         (*A first order: changement of coordinates.*)
-        orders = init_orders;
+        orders = Queue.create ();
         (*Not in use*)
         scalings_hist = Stack.create();
       }
@@ -284,9 +283,6 @@ struct
   let sub vp ~xmin ~xmax ~ymin ~ymax =
     let ndrawings = Coordinate.make_translate vp.coord xmin ymin in
     Coordinate.scale ndrawings (xmax -. xmin) (ymax -. ymin);
-    let init_orders = Queue.create () in
-    Queue.push (fun () -> ignore (Coordinate.use vp.context.backend ndrawings))
-      init_orders;
     let data =
       { (*Line width and text and mark sizes are preserved, but are new ones,
           depending on the previous ones.*)
@@ -296,7 +292,7 @@ struct
           {Backend.x1 = max_float; x2 = -.max_float;
            y1 = max_float; y2 = -.max_float;};
         (*A first order: changement of coordinates.*)
-        orders = init_orders;
+        orders =  Queue.create ();
         scalings_hist = Stack.create();
       }
     in
@@ -311,7 +307,7 @@ struct
     arch.current_vp <- vp.data;
     if not vp.used then (
       vp.used <- true;
-      Queue.push vp.data arch.used_vp)
+      Queue.push (vp.coord, vp.data) arch.used_vp)
 
   (*{2 Convenience functions to create viewports}*)
   let rows arch n =
