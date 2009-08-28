@@ -152,12 +152,16 @@ struct
     set_none_marks node
 end
 
+exception No_current_point
+
 (*Context-independent viewport data*)
 type viewport =
     { (*For text, line width, marks size*)
       scalings: Sizes.t;
       (*Bounds*)
-      bounds: Backend.xyranges;
+      ranges: Backend.xyranges;
+      (*To update the ranges correctly, we need the current point.*)
+      mutable current_pt: (float * float) option;
       (*What has to be plotted in this viewport*)
       orders: (unit -> unit) Queue.t;
       (*For saving and restoring states*)
@@ -206,9 +210,8 @@ let make ~dirs name w h =
   let initial =
     {scalings = Sizes.make_root def_lw def_ts def_marks;
      (*No drawings yet*)
-     bounds =
-        {Backend.x1 = max_float; x2 = -.max_float;
-         y1 = max_float; y2 = -.max_float;};
+     ranges = Backend.make_ranges ();
+     current_pt = None;
      orders = Queue.create ();
      scalings_hist = Stack.create ();
     }
@@ -235,7 +238,7 @@ let close t =
            make_orders orders)
       in
       let coord, vp = Queue.pop t.used_vp in
-      let ranges = vp.bounds in
+      let ranges = vp.ranges in
       let real_transform =
         Coordinate.make_translate coord ranges.Backend.x1 ranges.Backend.y1
       in
@@ -269,10 +272,8 @@ struct
           depending on the previous ones.*)
         scalings = Sizes.child arch.current_vp.scalings 1. 1. 1.;
         (*No drawings yet on this viewport.*)
-        bounds =
-          {Backend.x1 = max_float; x2 = -.max_float;
-           y1 = max_float; y2 = -.max_float;};
-        (*A first order: changement of coordinates.*)
+        ranges =Backend.make_ranges ();
+        current_pt = None;
         orders = Queue.create ();
         (*Not in use*)
         scalings_hist = Stack.create();
@@ -288,10 +289,8 @@ struct
           depending on the previous ones.*)
         scalings = Sizes.child vp.data.scalings 1. 1. 1.;
         (*No drawings yet on this viewport.*)
-        bounds =
-          {Backend.x1 = max_float; x2 = -.max_float;
-           y1 = max_float; y2 = -.max_float;};
-        (*A first order: changement of coordinates.*)
+        ranges =Backend.make_ranges ();
+        current_pt = None;
         orders =  Queue.create ();
         scalings_hist = Stack.create();
       }
@@ -387,6 +386,11 @@ let get_mark_size t = (Sizes.get_marks t.current_vp.scalings) *. usr_marks
 (* Backend primitives (not overriden by viewport system)
  **********************************************************************)
 let add_order f t = Queue.add f t.current_vp.orders
+let get_current_pt t = match t.current_vp.current_pt with
+    None -> raise No_current_point
+  | Some (x,y) -> x,y
+let set_current_pt t x y = t.current_vp.current_pt <- Some (x,y)
+
 
 (*FIXME: needed?*)
 let width t = Backend.width t.backend
@@ -412,28 +416,48 @@ let get_dash t = Backend.get_dash t.backend
 let get_line_join t = Backend.get_line_join t.backend
 
 let move_to t ~x ~y =
+  set_current_pt t x y;
+  Backend.update_ranges t.current_vp.ranges x y;
   add_order (fun () -> Backend.move_to t.backend x y) t
 
 let line_to t ~x ~y =
+  set_current_pt t x y;
+  Backend.update_ranges t.current_vp.ranges x y;
   add_order (fun () -> Backend.line_to t.backend x y) t
 
 let rel_move_to t ~x ~y =
+  let x', y' = get_current_pt t in
+  Backend.update_ranges t.current_vp.ranges (x +. x') (y +. y');
+  set_current_pt t (x +. x') (y +. y');
   add_order (fun () -> Backend.rel_move_to t.backend x y) t
 
 let rel_line_to t ~x ~y =
+  let x', y' = get_current_pt t in
+  Backend.update_ranges t.current_vp.ranges (x +. x') (y +. y');
+  set_current_pt t (x +. x') (y +. y');
   add_order (fun () -> Backend.rel_line_to t.backend x y) t
 
 let curve_to t ~x1 ~y1 ~x2 ~y2 ~x3 ~y3 =
+  Backend.update_ranges t.current_vp.ranges x1 y1;
+  Backend.update_ranges t.current_vp.ranges x2 y2;
+  Backend.update_ranges t.current_vp.ranges x3 y3;
+  set_current_pt t x3 y3;
   add_order (fun () -> Backend.curve_to t.backend x1 y1 x2 y2 x3 y3) t
 
 let rectangle t ~x ~y ~w ~h =
+  Backend.update_ranges t.current_vp.ranges x y;
+  Backend.update_ranges t.current_vp.ranges (x+.w) (y+.h);
   add_order (fun () -> Backend.rectangle t.backend x y w h) t
 
 let arc t ~x ~y ~r ~a1 ~a2 =
+  (*FIXME: better bounds for the arc can be found.*)
+  Backend.update_ranges t.current_vp.ranges (x+.r) (y+.r);
+  Backend.update_ranges t.current_vp.ranges (x-.r) (y-.r);
   add_order (fun () -> Backend.arc t.backend x y r a1 a2) t
 
 let close_path t =
  add_order (fun () -> Backend.close_path t.backend) t
+
 let clear_path t =
  add_order (fun () -> Backend.clear_path t.backend) t
 (*let path_extents t = Backend.path_extents t.backend*)
@@ -511,11 +535,22 @@ let show_text t ~rotate ~x ~y pos txt=
     Backend.show_text t.backend ~rotate ~x ~y pos txt;
     Coordinate.restore t.backend ctm
   in
+  let ctm = Coordinate.use t.backend t.normalized in
+  Backend.set_font_size t.backend (Sizes.get_ts t.current_vp.scalings);
+  let rect = Backend.text_extents t.backend txt in
+  Coordinate.restore t.backend ctm;
+  Backend.update_ranges t.current_vp.ranges rect.Backend.x rect.Backend.y;
+  Backend.update_ranges t.current_vp.ranges
+    (rect.Backend.x +. rect.Backend.w)
+    (rect.Backend.y +. rect.Backend.h);
   add_order f t
 
-let text_extents t =
+let text_extents t txt =
+  let ctm = Coordinate.use t.backend t.normalized in
   Backend.set_font_size t.backend (Sizes.get_ts t.current_vp.scalings);
-  Backend.text_extents t.backend
+  let rect = Backend.text_extents t.backend txt in
+  Coordinate.restore t.backend ctm;
+  rect
 
 let render t name =
   let f () =

@@ -109,15 +109,16 @@ module Backend: sig
       convention that the first value ([x0] or [y0]) is less than the
       second one, and the subsequent usings of this record satisfy
       this convention.*)
-  type xyranges = {
+  type xyranges = private {
     mutable x1:float; (** First abscissa *)
     mutable y1:float; (** First ordinate *)
     mutable x2:float; (** Second abscissa *)
     mutable y2:float; (** Second ordinate *)
+    mutable fresh: bool (** Range is a new one?*)
   }
 
-  (** Makes a [xyranges] follow the convention *)
-  val make_range_min1 : xyranges -> unit
+  (** Makes a [xyranges] *)
+  val make_ranges : unit -> xyranges
 
   val update_ranges: xyranges -> float -> float -> unit
 
@@ -178,7 +179,9 @@ module Backend: sig
     val rel_line_to : t -> x:float -> y:float -> unit
 
     val curve_to : t ->
-      x1:float -> y1:float -> x2:float -> y2:float -> x3:float -> y3:float -> unit
+      x1:float -> y1:float ->
+      x2:float -> y2:float ->
+      x3:float -> y3:float -> unit
 
     val rectangle : t -> x:float -> y:float -> w:float -> h:float -> unit
 

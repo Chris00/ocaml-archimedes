@@ -401,8 +401,12 @@ let print t ~lines ~ranges
   let ctm = Coordinate.use backend lines in
   B.stroke backend;
   Coordinate.restore backend ctm;
-  let xrange = {B.x1 = ranges.B.x1; x2 = ranges.B.x2; y1 = y; y2 = y}
-  and yrange = {B.x1 = x; x2 = x; y1 = ranges.B.y1; y2 = ranges.B.y2} in
+  let xrange = Backend.make_ranges () in
+  Backend.update_ranges xrange ranges.B.x1 y;
+  Backend.update_ranges xrange ranges.B.x2 y;
+  let yrange =Backend.make_ranges () in
+  Backend.update_ranges yrange x ranges.B.y1;
+  Backend.update_ranges yrange x ranges.B.y2;
   print_tics t.x xrange print_tic backend; (*X axis*)
   print_tics t.y yrange print_tic backend  (*Y axis*)
 (*Local variables:*)

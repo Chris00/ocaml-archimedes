@@ -35,8 +35,10 @@ let samplefxy f ?(min_step=1E-9) ?(nsamples = 100) a b =
         else
           (*Plot with current step size finished; return to previous step size.*)
           next_point (prev_stop + 1) prev_tmin x0 y0 list listxy len extents
-  in next_point 1 a x y bounds_list
-       [x,y] 1 {Backend.x1 = x; x2 = x; y1 = y; y2 = y}
+  in
+  let extents = Backend.make_ranges () in
+  Backend.update_ranges extents x y;
+  next_point 1 a x y bounds_list [x,y] 1 extents
 
 let samplefx f ?(min_step=1E-9) ?(nsamples = 100) a b =
   let step = (b -. a) /. (float nsamples) in
