@@ -875,7 +875,7 @@ module Iterator : sig
 
   val next: t -> (float * float) option
 
-  val reinit : t -> unit
+  val reset : t -> unit
 
   val nb_data : t -> int
 
@@ -902,6 +902,10 @@ module Handle: sig
       t -> xmin:float -> xmax:float -> ymin:float -> ymax:float -> vp
     val sub :
       vp -> xmin:float -> xmax:float -> ymin:float -> ymax:float -> vp
+    val make_rect :
+      t -> x:float -> y:float -> w:float -> h:float -> vp
+    val sub_rect :
+      vp -> x:float -> y:float -> w:float -> h:float -> vp
     val use : vp -> unit
 
     (**{2 Convenience functions to create viewports}*)

@@ -431,6 +431,7 @@ struct
   let clear_path t =
     check_valid_handle t;
     t.curr_path <- "";
+    t.state.curr_pt <- false;
     t.state.path_extents <- { Backend.x=0.; y=0.; w=0.; h=0. }
 
   let path_extents t = (get_state t).path_extents
@@ -441,7 +442,6 @@ struct
     t.indent <- t.indent + 2;
     write t (t.curr_path^";");
     t.indent <- t.indent - 2
-
 
   let stroke t = stroke_preserve t; clear_path t
 

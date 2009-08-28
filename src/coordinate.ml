@@ -123,7 +123,7 @@ let rec update coord =
       b.B.xx b.B.xy b.B.yx b.B.yy b.B.x0 b.B.y0
       a.B.xx a.B.xy a.B.yx a.B.yy a.B.x0 a.B.y0
       c.B.xx c.B.xy c.B.yx c.B.yy c.B.x0 c.B.y0;*)
-    Matrix.mul_in coord.ctm  coord.tm parent.ctm;
+    Matrix.mul_in coord.ctm parent.ctm coord.tm;
     coord.up_to_date <- true;
   )
  (* else
@@ -224,8 +224,7 @@ let make_rotate coord ~angle =
 
 let rec put_children_not_up_to_date coord =
   (*Cannot put any root 'not up to date'*)
-  if coord == coord.depends_on then
-    (*that must be the root.*)
+  if coord == coord.depends_on then (*that must be the root.*)
     failwith "Coordinate: Trying to modify root coordinate";
   (* If the current coordinate system is not up to date (which implies
      its children are not either -- because of the invariant), there

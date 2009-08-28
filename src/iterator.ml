@@ -150,7 +150,7 @@ let next iter =
     iter.pos <- n;
     None
 
-let reinit iter = iter.pos <- 0
+let reset iter = iter.pos <- 0
 
 let nb_data iter = iter.len
 

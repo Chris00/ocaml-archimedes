@@ -185,6 +185,10 @@ struct
     }
 
   let close ~options t =
+    if Sys.os_type = "Win32" then (
+      Printf.printf "Please press a key to continue...%!";
+      ignore (Graphics.wait_next_event [Graphics.Key_pressed])
+    );
     if not(t.closed) then (
       Graphics.close_graph();
       t.closed <- true;
@@ -286,6 +290,8 @@ struct
     let st = get_state t in
     let x', y' = Matrix.transform_point st.ctm x y
     and w', h' = Matrix.transform_distance st.ctm w h in
+    (*FIXME: this is not sufficient to make a rectangle ("rectangle on
+      their corner"...)*)
     st.current_path <- RECTANGLE(x, y, w, h) :: st.current_path;
     (* Update the current point and extents *)
     st.path_extents <-

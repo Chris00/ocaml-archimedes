@@ -239,12 +239,15 @@ let close t =
       in
       let coord, vp = Queue.pop t.used_vp in
       let ranges = vp.ranges in
-      let real_transform =
-        Coordinate.make_translate coord ranges.Backend.x1 ranges.Backend.y1
+      let diffx, diffy =
+        (ranges.Backend.x2 -. ranges.Backend.x1),
+        (ranges.Backend.y2 -. ranges.Backend.y1)
       in
-      ( Coordinate.scale real_transform
-          (ranges.Backend.x2 -. ranges.Backend.x1)
-          (ranges.Backend.y2 -. ranges.Backend.y1);
+      let real_transform =
+        Coordinate.make_scale coord (1. /. diffx) (1. /. diffy)
+      in
+      ( Coordinate.translate real_transform
+          (-.ranges.Backend.x1) (-.ranges.Backend.y1);
         ignore (Coordinate.use t.backend real_transform);
         make_orders vp.orders;
         make_viewports ())
@@ -264,13 +267,11 @@ struct
        (*Flag indicating if this viewport has been used in an Archimedes context*)
        mutable used : bool;}
 
-  let make arch ~xmin ~xmax ~ymin ~ymax =
-    let ndrawings = Coordinate.make_translate arch.current_coord xmin ymin in
-    Coordinate.scale ndrawings (xmax -. xmin) (ymax -. ymin);
+  let inner_make context coord =
     let data =
       { (*Line width and text and mark sizes are preserved, but are new ones,
           depending on the previous ones.*)
-        scalings = Sizes.child arch.current_vp.scalings 1. 1. 1.;
+        scalings = Sizes.child context.current_vp.scalings 1. 1. 1.;
         (*No drawings yet on this viewport.*)
         ranges =Backend.make_ranges ();
         current_pt = None;
@@ -279,23 +280,31 @@ struct
         scalings_hist = Stack.create();
       }
     in
-    { context = arch; coord = ndrawings; data = data;used = false;}
+    { context = context; coord = coord; data = data;used = false;}
+
+  let make arch ~xmin ~xmax ~ymin ~ymax =
+    let ndrawings = Coordinate.make_translate arch.current_coord xmin ymin in
+    Coordinate.scale ndrawings (xmax -. xmin) (ymax -. ymin);
+    inner_make arch ndrawings
+
 
   let sub vp ~xmin ~xmax ~ymin ~ymax =
     let ndrawings = Coordinate.make_translate vp.coord xmin ymin in
     Coordinate.scale ndrawings (xmax -. xmin) (ymax -. ymin);
-    let data =
-      { (*Line width and text and mark sizes are preserved, but are new ones,
-          depending on the previous ones.*)
-        scalings = Sizes.child vp.data.scalings 1. 1. 1.;
-        (*No drawings yet on this viewport.*)
-        ranges =Backend.make_ranges ();
-        current_pt = None;
-        orders =  Queue.create ();
-        scalings_hist = Stack.create();
-      }
-    in
-    { context = vp.context; coord = ndrawings; data = data; used = false;}
+    inner_make vp.context ndrawings
+
+
+  let make_rect arch ~x ~y ~w ~h =
+    let ndrawings = Coordinate.make_translate arch.current_coord x y in
+    Coordinate.scale ndrawings w h;
+    inner_make arch ndrawings
+
+
+  let sub_rect vp ~x ~y ~w ~h =
+    let ndrawings = Coordinate.make_translate vp.coord x y in
+    Coordinate.scale ndrawings w h;
+    inner_make vp.context ndrawings
+
 
   let use vp =
     (*Need to change the current viewport and coordinates of the
@@ -311,39 +320,37 @@ struct
   (*{2 Convenience functions to create viewports}*)
   let rows arch n =
     let step = 1./.(float n) in
-    let f i = make arch 0. 1. ((float i)*. step) ((float (i+1) *. step)) in
+    let f i = make_rect arch 0. ((float i)*. step)  1. step in
     Array.init n f
 
   let columns arch n =
     let step = 1./.(float n) in
-    let f i = make arch ((float i)*. step) ((float (i+1) *. step)) 0. 1. in
+    let f i = make_rect arch ((float i)*. step) 0. step 1. in
     Array.init n f
 
   let matrix arch n m =
     let stepx = 1./.(float n)
     and stepy = 1./.(float m) in
-    let f i j = make arch
-      ((float i)*. stepx) ((float (i+1) *. stepx))
-      ((float j)*. stepy) ((float (j+1) *. stepy)) in
+    let f i j = make_rect arch
+      ((float i)*. stepx) ((float j)*. stepy) stepx stepy in
     let make_row i = Array.init m (f i) in
     Array.init n make_row
 
   let sub_rows vp n =
     let step = 1./.(float n) in
-    let f i = sub vp 0. 1. ((float i)*. step) ((float (i+1) *. step)) in
+    let f i = sub_rect vp 0. ((float i)*. step) 1. step in
     Array.init n f
 
   let sub_columns vp n =
     let step = 1./.(float n) in
-    let f i = sub vp ((float i)*. step) ((float (i+1) *. step)) 0. 1. in
+    let f i = sub_rect vp ((float i)*. step) 0. step 1. in
     Array.init n f
 
   let sub_matrix vp n m =
     let stepx = 1./.(float n)
     and stepy = 1./.(float m) in
-    let f i j = sub vp
-      ((float i)*. stepx) ((float (i+1) *. stepx))
-      ((float j)*. stepy) ((float (j+1) *. stepy)) in
+    let f i j = sub_rect vp
+      ((float i)*. stepx) ((float j)*. stepy) stepx stepy in
     let make_row i = Array.init m (f i) in
     Array.init n make_row
 end
@@ -606,10 +613,10 @@ let mark_extents t name =
 
 
 let plotfx t ?axes ?nsamples ?min_step f a b =
+  let _, ranges , fct =
+    Functions.samplefxy (fun t -> (t,f t)) ?nsamples ?min_step b a
+  in
   let f () =
-    let _, ranges , fct =
-      Functions.samplefxy (fun t -> (t,f t)) ?nsamples ?min_step b a
-    in
     fct (fun () (x,y) -> Backend.line_to t.backend x y) ();
     match axes with
       None -> ()
@@ -618,6 +625,8 @@ let plotfx t ?axes ?nsamples ?min_step f a b =
         let lines = Coordinate.make_scale t.normalized lw lw in
         Axes.print axes ~lines ~ranges t.backend
   in
+  Backend.update_ranges t.current_vp.ranges ranges.Backend.x1 ranges.Backend.y1;
+  Backend.update_ranges t.current_vp.ranges ranges.Backend.x2 ranges.Backend.y2;
   add_order f t
 
 let f t mark x y =
@@ -625,14 +634,18 @@ let f t mark x y =
   render t mark
 
 let plotxy t ?axes ?(f = f) ?(mark = "X") iter =
+  let marker = f t mark
+  and update = Backend.update_ranges t.current_vp.ranges in
+  let rec iterate do_with =
+    match Iterator.next iter with
+      None -> ()
+    | Some(x,y) ->
+        do_with x y;
+        iterate do_with
+  in
   let f () =
-    let rec plot () =
-      match Iterator.next iter with
-        None -> ()
-      | Some(x,y) ->
-          f t mark x y;
-          plot ()
-    in plot ();
+    Iterator.reset iter;
+    iterate marker;
     match axes with
       None -> ()
     | Some axes ->
@@ -641,6 +654,7 @@ let plotxy t ?axes ?(f = f) ?(mark = "X") iter =
         let ranges = Iterator.extents iter in
         Axes.print axes ~lines ~ranges t.backend
   in
+  iterate update;
   add_order f t
 
 

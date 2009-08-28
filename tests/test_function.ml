@@ -12,19 +12,23 @@ let () =
       H.set_color handle Color.blue;
       let parabola x = x *. x in
       H.plotfx handle parabola (-3.) 3.;
+      H.stroke handle;
       H.use (vps.(1).(0));
       H.set_color handle Color.red;
       H.plotfx handle parabola (-3.) 3.;
-      let xaxis =
+      H.stroke handle;
+      (*let xaxis =
         A.make_axis (`P "|") `Abscissa B.CB (`P "tic_up") (`Linear(7,0))
       in
       let yaxis =
         A.make_axis (`P "-") `Ordinate B.LC (`P "tic_left") (`Linear(7,2))
       in
-      let axes = A.make (`Rectangle(true,true)) xaxis yaxis in
+      let axes = A.make (`Rectangle(true,true)) xaxis yaxis in*)
      (* H.use (vps.(1).(0));
       H.set_color handle Color.red;
-      H.plotfx handle (*~axes*) parabola (-3.) 3.;*)
+      H.plotfx handle (*~axes*) parabola (-3.) 3.;
+      H.stroke handle;
+*)
       H.close handle
     with
       B.Error e ->
