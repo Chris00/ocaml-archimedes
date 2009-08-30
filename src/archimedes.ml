@@ -15,6 +15,7 @@
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the file
    LICENSE for more details. *)
 
+(* Helper module *)
 module String_utils =
 struct
   INCLUDE "string_utils.ml"

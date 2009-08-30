@@ -40,35 +40,6 @@ type line_join =
 
 type rectangle = {x:float; y:float; w:float; h:float}
 
-type xyranges =
-    {mutable x1:float;
-     mutable y1:float;
-     mutable x2:float;
-     mutable y2:float;
-     mutable fresh:bool}
-
-let make_ranges () = {x1 = 0.;y1 = 0.; x2 = 1.; y2 = 1.; fresh = true}
-
-let make_range_min1 rg = ()
-
-let update_ranges rg x y =
-  if (rg.x1 > x || rg.fresh) then rg.x1 <- x;
-  if (rg.x2 < x || rg.fresh) then rg.x2 <- x;
-  if (rg.y1 > y || rg.fresh) then rg.y1 <- y;
-  if (rg.y2 < y || rg.fresh) then rg.y2 <- y;
-  rg.fresh <- false
-
-let ranges_of_rect rect =
-  {x1 = rect.x; y1 = rect.y;
-   x2 = rect.x +. rect.w; y2 = rect.x +. rect.h; fresh = false}
-
-let rect_of_ranges rg =
-  let x = min rg.x1 rg.x2
-  and y = min rg.y1 rg.y2 in
-  let w = abs_float (rg.x2 -. rg.x1)
-  and h = abs_float (rg.y2 -. rg.y1) in
-  {x = x; y = y; w = w; h = h}
-
 type slant = Upright | Italic
 
 type weight = Normal | Bold
