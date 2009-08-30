@@ -38,36 +38,46 @@ type line_join =
   | JOIN_ROUND
   | JOIN_BEVEL
 
+
 type rectangle = {x:float; y:float; w:float; h:float}
 
-type xyranges =
-    {mutable x1:float;
-     mutable y1:float;
-     mutable x2:float;
-     mutable y2:float;
-     mutable fresh:bool}
+(*Trick to make [xyranges] private (but allows to create some of them,
+  access data but no other way to set values than update)*)
+module Ranges =
+struct
+  type t =
+      {mutable xmin:float;
+       mutable ymin:float;
+       mutable xmax:float;
+       mutable ymax:float;
+       mutable fresh:bool}
 
-let make_ranges () = {x1 = 0.;y1 = 0.; x2 = 1.; y2 = 1.; fresh = true}
+  let make () = {xmin = 0.;ymin = 0.; xmax = 1.; ymax = 1.; fresh = true}
 
-let make_range_min1 rg = ()
+  let update rg x y =
+    if (rg.xmin > x || rg.fresh) then rg.xmin <- x;
+    if (rg.xmax < x || rg.fresh) then rg.xmax <- x;
+    if (rg.ymin > y || rg.fresh) then rg.ymin <- y;
+    if (rg.ymax < y || rg.fresh) then rg.ymax <- y;
+    rg.fresh <- false
 
-let update_ranges rg x y =
-  if (rg.x1 > x || rg.fresh) then rg.x1 <- x;
-  if (rg.x2 < x || rg.fresh) then rg.x2 <- x;
-  if (rg.y1 > y || rg.fresh) then rg.y1 <- y;
-  if (rg.y2 < y || rg.fresh) then rg.y2 <- y;
-  rg.fresh <- false
+  let of_rect rect =
+    {xmin = rect.x; ymin = rect.y;
+     xmax = rect.x +. rect.w; ymax = rect.x +. rect.h; fresh = false}
 
-let ranges_of_rect rect =
-  {x1 = rect.x; y1 = rect.y;
-   x2 = rect.x +. rect.w; y2 = rect.x +. rect.h; fresh = false}
+  let to_rect rg =
+    (*Private type ensures that [xmin] contains the minimal abscissa, and so on.*)
+    {x = rg.xmin; y = rg.ymin; w = rg.xmax -. rg.xmin; h = rg.ymax -. rg.ymin}
+end
 
-let rect_of_ranges rg =
-  let x = min rg.x1 rg.x2
-  and y = min rg.y1 rg.y2 in
-  let w = abs_float (rg.x2 -. rg.x1)
-  and h = abs_float (rg.y2 -. rg.y1) in
-  {x = x; y = y; w = w; h = h}
+type ranges = Ranges.t =
+    private
+      {mutable xmin:float;
+       mutable ymin:float;
+       mutable xmax:float;
+       mutable ymax:float;
+       mutable fresh:bool}
+
 
 type matrix = { mutable xx: float; mutable yx: float;
                 mutable xy: float; mutable yy: float;

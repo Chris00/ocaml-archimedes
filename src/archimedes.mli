@@ -103,29 +103,39 @@ module Backend: sig
     h:float;   (** height of the rectangle  *)
   }
 
-  (** A data structure holding ranges. Note that, contrary to
-      rectangle fields, these ones are mutable. Note also that there's
-      no restriction on using the values. However, we make the
-      convention that the first value ([x0] or [y0]) is less than the
-      second one, and the subsequent usings of this record satisfy
-      this convention.*)
-  type xyranges = private {
-    mutable x1:float; (** First abscissa *)
-    mutable y1:float; (** First ordinate *)
-    mutable x2:float; (** Second abscissa *)
-    mutable y2:float; (** Second ordinate *)
-    mutable fresh: bool (** Range is a new one?*)
-  }
+  module Ranges: sig
+    (** A data structure holding ranges. Note that, contrary to
+        rectangle fields, these ones are mutable. Note also that there's
+        no restriction on using the values. However, we make the
+        convention that the first value ([x0] or [y0]) is less than the
+        second one, and the subsequent usings of this record satisfy
+        this convention.*)
+    type t = private {
+      mutable xmin:float; (** First abscissa *)
+      mutable ymin:float; (** First ordinate *)
+      mutable xmax:float; (** Second abscissa *)
+      mutable ymax:float; (** Second ordinate *)
+      mutable fresh: bool (** Range is a new one?*)
+    }
 
-  (** Makes a [xyranges] *)
-  val make_ranges : unit -> xyranges
+    (** Makes a [t] *)
+    val make : unit -> t
 
-  val update_ranges: xyranges -> float -> float -> unit
+    val update: t -> float -> float -> unit
 
-  (**Transformation functions: switching between [rectangle]s and [xyranges]s*)
-  val ranges_of_rect: rectangle -> xyranges
-  val rect_of_ranges: xyranges -> rectangle
+    (**Transformation functions: switching between [rectangle]s and [t]s*)
+    val of_rect: rectangle -> t
+    val to_rect: t -> rectangle
+  end
 
+  type ranges = Ranges.t =
+      private {
+      mutable xmin:float; (** First abscissa *)
+      mutable ymin:float; (** First ordinate *)
+      mutable xmax:float; (** Second abscissa *)
+      mutable ymax:float; (** Second ordinate *)
+      mutable fresh: bool (** Range is a new one?*)
+    }
 
   (** Holds an affine transformation, such as a scale, rotation, shear,
       or a combination of those. The transformation of a point (x, y) is
@@ -619,12 +629,12 @@ module Axes: sig
      axes. This point determine the position of tics.*)
 
   val print_axes :
-    [> axes] -> Backend.xyranges -> Backend.t -> unit
+    [> axes] -> Backend.ranges -> Backend.t -> unit
     (**Given the axes mode, the bounds and a backend to draw on,
        prints the corresponding axes on the backend.*)
 
   val axes_meeting :
-    [> axes] -> Backend.xyranges -> float * float
+    [> axes] -> Backend.ranges -> float * float
     (**Returns the point where the axes meet.*)
 
 
@@ -691,7 +701,7 @@ module Axes: sig
        by [get_position] (see below).*)
 
   type tic_position =
-      Backend.xyranges -> (float * float * label option) list
+      Backend.ranges -> (float * float * label option) list
     (**Shortcut. The output [list] contains tuples of the form
        [(x,y,labelopt)], with [(x,y)] a point where we want a tic and
        [labelopt] indicates the (optional) label wanted (it is [None]
@@ -752,9 +762,9 @@ module Axes: sig
 
   val get_margins :
     ([> axes ] as 'a, [> tic] as 'b) t ->
-    ?axes_meeting:('a -> Backend.xyranges -> float * float) ->
+    ?axes_meeting:('a -> Backend.ranges -> float * float) ->
     ?tic_extents:('b -> Backend.rectangle) ->
-    Backend.xyranges -> Backend.t -> Backend.rectangle * Backend.rectangle
+    Backend.ranges -> Backend.t -> Backend.rectangle * Backend.rectangle
     (**Returns the margins needed to print the axes. Returns a pair of
        [Backend.rectangle], the first one represents the extents for the X
        axis, and the second one the extents for the Y axis.*)
@@ -762,9 +772,9 @@ module Axes: sig
   val print :
     ([> axes] as 'a, [> tic] as 'b) t ->
     lines:Coordinate.t ->
-    ranges:Backend.xyranges ->
-    ?print_axes:('a -> Backend.xyranges -> Backend.t -> unit) ->
-    ?axes_meeting:('a -> Backend.xyranges -> float * float) ->
+    ranges:Backend.Ranges.t ->
+    ?print_axes:('a -> Backend.ranges -> Backend.t -> unit) ->
+    ?axes_meeting:('a -> Backend.ranges -> float * float) ->
     ?print_tic:(Backend.t -> 'b -> unit) -> Backend.t -> unit
 
 (**Prints axes, following the parameters stored in [t] and the
@@ -773,82 +783,82 @@ end
 
 
 module Functions: sig
-val samplefxy :
-  (float -> float * float) ->
-  ?min_step:float ->
-  ?nsamples:int -> float -> float ->
-  int * Backend.xyranges * (('a -> float * float -> 'a) -> 'a -> 'a)
+  val samplefxy :
+    (float -> float * float) ->
+    ?min_step:float ->
+    ?nsamples:int -> float -> float ->
+    int * Backend.ranges * (('a -> float * float -> 'a) -> 'a -> 'a)
 
-val samplefx :
-  (float -> float) ->
-  ?min_step:float ->
-  ?nsamples:int -> float -> float ->
-  int * (float * float) * (('a -> float -> 'a) -> 'a -> 'a)
+  val samplefx :
+    (float -> float) ->
+    ?min_step:float ->
+    ?nsamples:int -> float -> float ->
+    int * (float * float) * (('a -> float -> 'a) -> 'a -> 'a)
 
-val fxy_list :
-  (float -> float * float) ->
-  ?min_step:float -> ?nsamples:int -> float -> float -> (float * float) list
+  val fxy_list :
+    (float -> float * float) ->
+    ?min_step:float -> ?nsamples:int -> float -> float -> (float * float) list
 
-val fx_list :
-  (float -> float) ->
-  ?min_step:float -> ?nsamples:int -> float -> float -> float list
+  val fx_list :
+    (float -> float) ->
+    ?min_step:float -> ?nsamples:int -> float -> float -> float list
 
-val plotfxy :
-  Backend.t ->
-  (float -> float * float) -> ?nsamples:int -> float -> float -> unit
+  val plotfxy :
+    Backend.t ->
+    (float -> float * float) -> ?nsamples:int -> float -> float -> unit
 
-val plotfx :
-  Backend.t -> (float -> float) -> ?nsamples:int -> float -> float -> unit
+  val plotfx :
+    Backend.t -> (float -> float) -> ?nsamples:int -> float -> float -> unit
 
-val stroke_plot :
-  ?init:bool ->
-  Backend.t -> (float -> float) -> ?nsamples:int -> float -> float -> unit
+  val stroke_plot :
+    ?init:bool ->
+    Backend.t -> (float -> float) -> ?nsamples:int -> float -> float -> unit
 
-val stroke_plot_param :
-  ?init:bool ->
-  Backend.t ->
-  (float -> float * float) -> ?nsamples:int -> float -> float -> unit
+  val stroke_plot_param :
+    ?init:bool ->
+    Backend.t ->
+    (float -> float * float) -> ?nsamples:int -> float -> float -> unit
 
-type extend =
-    NONE (**No extends, transparent color*)
-  | PAD(**Takes the nearest color available*)
-  | REPEAT(**Repeats the colors*)
-  | REFLECT(**Reflects the colors*)
+  type extend =
+      NONE (**No extends, transparent color*)
+    | PAD(**Takes the nearest color available*)
+    | REPEAT(**Repeats the colors*)
+    | REFLECT(**Reflects the colors*)
 
-val color_level :
-  (float -> float -> float) ->
-  ?extend:extend ->
-  xmin:float ->
-  xmax:float ->
-  ymin:float ->
-  ymax:float ->
-  float -> Color.t -> float -> Color.t -> float -> float -> Color.t
-(**[color_level f ~xmin ~xmax ~ymin ~ymax fmin cmin fmax cmax] makes a
-   function whose domain is [0,1]^2 and image is colors, constructed
-   upon f as follows:
+  val color_level :
+    (float -> float -> float) ->
+    ?extend:extend ->
+    xmin:float ->
+    xmax:float ->
+    ymin:float ->
+    ymax:float ->
+    float -> Color.t -> float -> Color.t -> float -> float -> Color.t
+    (**[color_level f ~xmin ~xmax ~ymin ~ymax fmin cmin fmax cmax] makes a
+       function whose domain is [0,1]^2 and image is colors, constructed
+       upon f as follows:
 
-   -Let [(t,u)] a point of [0,1]^2. We find [x], resp.  [y] as a
-   convex combination of [xmin] and [xmax], resp. [ymin] and [ymax].
+       -Let [(t,u)] a point of [0,1]^2. We find [x], resp.  [y] as a
+       convex combination of [xmin] and [xmax], resp. [ymin] and [ymax].
 
-   -We then compute [f x y] and set [v] the number for which [f x y =
-   v *. fmax +. (1.-.v) *. fmin].
+       -We then compute [f x y] and set [v] the number for which [f x y =
+       v *. fmax +. (1.-.v) *. fmin].
 
-   -If [v] is in the interval [0,1], then the function gives the
-   convex combination of the colors [cmin] and [cmax] (formally, each
-   component of the new color is computed as [v*.a +. (1.-.v)*.b],
-   where [a] and [b] are respectively the components of [cmin] and
-   [cmax]).
+       -If [v] is in the interval [0,1], then the function gives the
+       convex combination of the colors [cmin] and [cmax] (formally, each
+       component of the new color is computed as [v*.a +. (1.-.v)*.b],
+       where [a] and [b] are respectively the components of [cmin] and
+       [cmax]).
 
-   -If not, the optional extent gives which color must be returned:
-   *PAD (default) makes the function return [cmin] if [v < 0.] and
-   [cmax] otherwise.
-   *NONE makes the function return a transparent color.
-   *REPEAT takes [v] "modulo 1" and finds the corresponding
-   color as if [v] was actually in [0,1].
-   *REFLECT  takes [v] "modulo 2" and finds the corresponding
-   color, taking [v] or [2.-.v]; this corresponds to "reflecting the color"
-   beyond the bounds [fmin] and [fmax].
-*)
+       -If not, the optional extent gives which color must be returned:
+       *PAD (default) makes the function return [cmin] if [v < 0.] and
+       [cmax] otherwise.
+       *NONE makes the function return a transparent color.
+       *REPEAT takes [v] "modulo 1" and finds the corresponding
+       color as if [v] was actually in [0,1].
+       *REFLECT  takes [v] "modulo 2" and finds the corresponding
+       color, taking [v] or [2.-.v]; this corresponds to "reflecting the color"
+       beyond the bounds [fmin] and [fmax].
+    *)
 end
 
 module Iterator : sig
@@ -879,7 +889,7 @@ module Iterator : sig
 
   val nb_data : t -> int
 
-  val extents : t -> Backend.xyranges
+  val extents : t -> Backend.rectangle
 end
 
 module Handle: sig
