@@ -97,9 +97,9 @@ let tic_label_extents tic_extents label x y pos b =
     None -> tic_extents
   | Some label ->
       let box = label.box x y pos b in
-      let matrix = Backend.Matrix.make_rotate label.rotation in
-      let wx, wy = Backend.Matrix.transform_distance matrix box.Backend.w 0.
-      and hx, hy = Backend.Matrix.transform_distance matrix 0. box.Backend.h in
+      let matrix = Matrix.make_rotate label.rotation in
+      let wx, wy = Matrix.transform_distance matrix box.Backend.w 0.
+      and hx, hy = Matrix.transform_distance matrix 0. box.Backend.h in
       let x1 = box.Backend.x +. (min 0. wx) +. (min 0. hx) in
       let x2 = x1 +. (abs_float wx) +. (abs_float hx) in
       let y1 = box.Backend.y +. (min 0. wy) +. (min 0. hy) in
@@ -409,6 +409,3 @@ let print t ~lines ~ranges
   Backend.update_ranges yrange x ranges.B.y2;
   print_tics t.x xrange print_tic backend; (*X axis*)
   print_tics t.y yrange print_tic backend  (*Y axis*)
-(*Local variables:*)
-(*compile-command: "ocamlopt -c -dtypes axes.ml && ocamlc -c -dtypes axes.ml"*)
-(*End:*)
