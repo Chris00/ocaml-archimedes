@@ -5,13 +5,15 @@ let half_pi = 2. *. atan 1.
 let two_pi = 8. *. half_pi
 
 let () =
+  let f s =
   try
     let dirs = [ "./src"; "../src" ] in
-    let b = B.make "cairo PDF backend_test.pdf" 200. 100. ~dirs in
+    let b = B.make s 200. 100. ~dirs in
 
-    (* Chenge the coordinate system.  This will not affect the text. *)
-    B.translate b 0. 100.;
-    B.scale b 1. (-1.);
+    (* Change the cairo coordinate system.  This will not affect the text. *)
+    if String.sub s 0 5 = "cairo" then
+      (B.translate b 0. 100.;
+       B.scale b 1. (-1.));
 
     B.select_font_face b B.Upright B.Normal "times";
     B.show_text b ~x:50. ~y:20. ~rotate:half_pi B.CC "Joy";
@@ -30,4 +32,4 @@ let () =
     B.close b
   with B.Error e ->
     eprintf "Backend.Error: %s\n" (B.string_of_error e)
-
+  in List.iter f ["cairo PDF backend_test.pdf"; "tikz backend_text.tex"]

@@ -16,6 +16,7 @@
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the file
    LICENSE for more details. *)
 
+(*module B = Backend (*only used for debugging*)*)
 module Matrix = Backend.Matrix
 
 type ctm = Matrix.t
@@ -115,9 +116,22 @@ let rec update coord =
     (* First make sure its parent is up to date.  This recursion stops
        because the "device coordinates" are always up to date. *)
     update parent;
-    Matrix.mul_in coord.ctm  parent.ctm coord.tm;
+ (*   let a = parent.ctm and b = coord.ctm and c = coord.tm in
+    Printf.printf
+      "\nUpdate matrix %f %f %f %f %f %f\n with matrices \
+ %f %f %f %f %f %f and %f %f %f %f %f %f\n"
+      b.B.xx b.B.xy b.B.yx b.B.yy b.B.x0 b.B.y0
+      a.B.xx a.B.xy a.B.yx a.B.yy a.B.x0 a.B.y0
+      c.B.xx c.B.xy c.B.yx c.B.yy c.B.x0 c.B.y0;*)
+    Matrix.mul_in coord.ctm parent.ctm coord.tm;
     coord.up_to_date <- true;
   )
+ (* else
+    let b = coord.ctm in
+    Printf.printf
+      "\nMatrix %f %f %f %f %f %f up to date\n"
+      b.B.xx b.B.xy b.B.yx b.B.yy b.B.x0 b.B.y0*)
+
 
 (* Just replace the current CTM with the one of the transformation *)
 let use b coord =
@@ -138,6 +152,14 @@ let to_device coord ~x ~y =
 let to_device_distance coord ~dx ~dy =
   update coord;
   Matrix.transform_distance coord.ctm ~dx ~dy
+
+let to_coord coord ~x ~y =
+  update coord;
+  Matrix.inv_transform_point coord.ctm ~x ~y
+
+let to_coord_distance coord ~dx ~dy =
+  update coord;
+  Matrix.inv_transform_distance coord.ctm ~dx ~dy
 
 (* Creating new coordinate systems
  ***********************************************************************)
@@ -169,9 +191,17 @@ let copy coord =
 (* Create a new coordinate system that consists into first applying
    the transformation [tm] before the one of [coord]. *)
 let make_from_transform coord tm =
+(*  let a = tm and b = coord.ctm and c = Matrix.mul coord.ctm tm in
+      Printf.printf
+      "\nCreating a child from coord %f %f %f %f %f %f and transformation \
+ %f %f %f %f %f %f\nResult: %f %f %f %f %f %f\n"
+      b.B.xx b.B.xy b.B.yx b.B.yy b.B.x0 b.B.y0
+      a.B.xx a.B.xy a.B.yx a.B.yy a.B.x0 a.B.y0
+      c.B.xx c.B.xy c.B.yx c.B.yy c.B.x0 c.B.y0;*)
+
   let coord' = { depends_on = coord;
                  tm = tm;
-                 ctm = Matrix.mul coord.ctm coord.tm;
+                 ctm = Matrix.mul tm coord.ctm;
                  up_to_date = coord.up_to_date; (* iff [coord] is up to date *)
                  children = W.create 5;
                  monitors = WM.create 2;
@@ -193,13 +223,15 @@ let make_rotate coord ~angle =
  ***********************************************************************)
 
 let rec put_children_not_up_to_date coord =
+  (*Cannot put any root 'not up to date'*)
+  if coord == coord.depends_on then (*that must be the root.*)
+    failwith "Coordinate: Trying to modify root coordinate";
   (* If the current coordinate system is not up to date (which implies
      its children are not either -- because of the invariant), there
-     is no need to update the CTM until its parents are brought up to
-     date. *)
+     is nothing to do (no need to update the CTM until its parents are
+     brought up to date). Otherwise, put this coordinate not up to
+     date and transmit this information to children. *)
   if coord.up_to_date then begin
-    (* If [coord] was already not up to date (and so were all its
-       children), there is nothing to do. *)
     coord.up_to_date <- false;
     W.iter put_children_not_up_to_date coord.children; (* => invariant *)
     WM.iter Monitor.set coord.monitors;

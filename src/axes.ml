@@ -1,304 +1,414 @@
 (**Styles definitions to make axes*)
+module B = Backend
 
-module L = Layer
+exception Not_available
 
-module P = Pointstyle.Default
-
-(* What an Axes must provide:*)
-module type Axes =
-sig
-  val name: string (*A name for registering*)
-  type t (*Type storing the information to make axes*)
-  val make: string list -> t
-    (*Given a string list whose interpretation is implementation-dependent, makes a [t].*)
-  val print_axes: t -> ?xmin:float -> ?xmax:float -> ?ymin:float -> ?ymax:float ->
-    ?color_axes:Color.t -> ?color_labels:Color.t -> L.t -> unit
-    (*How to make the axes in a Layer.*)
-end
-
-type t = ?xmin:float -> ?xmax:float -> ?ymin:float -> ?ymax:float ->
-     ?color_axes:Color.t -> ?color_labels:Color.t -> L.t -> unit
-      (*Type which will be registered*)
-
-(*This is the module we provide by default.*)
-module Default =
-struct
-  open String_utils
-  let name = "default"
-
-  type data =
-      Graph of int * int
-    | Tics of float * int
-
-  type ticstyle = P.t
-
-  type mode =
-      Rectangle
-    | Two_lines of float * float
-
-  type t =
-      {mutable mode: mode;
-       mutable datax:data; mutable ticx:ticstyle; mutable minticx:ticstyle;
-       mutable datay:data; mutable ticy:ticstyle; mutable minticy:ticstyle;}
-
-  let make_options_list mode datax ticx minticx datay ticy minticy =
-    let smode = match mode with
-        Rectangle -> "rectangle"
-      | Two_lines(x,y) -> Printf.sprintf "two_lines %f %f" x y
-    in
-    let get_sdata data = match data with
-        Graph(n,m) -> Printf.sprintf "graph %i %i" n m
-      | Tics(x,n) -> Printf.sprintf "tics %f %i" x n
-    in
-    let get_tic tic =
-      List.fold_left (fun res elt -> res^" "^elt) "" (P.unmake tic)
-    in
-    [smode;
-     get_sdata datax; get_tic ticx; get_tic minticx;
-     get_sdata datay; get_tic ticy; get_tic minticy ]
-
-  (*Possible errors when decoding*)
-  (*FIXME: Enumerative type for errors? What about a declared
-    exception in the interface?*)
-  let error reason = invalid_arg ("Axes.Default.make -- "^reason)
-  let nonvalid =
-    Printf.sprintf "%s argument in the list is not valid (found %s)"
-  and not_understood = Printf.sprintf "%s is not understood as %s type"
-  and unparseable = Printf.sprintf "%s cannot be parsed as %s arguments for %s"
+let rectangle_extents rect xmin xmax ymin ymax =
+    let xmin, xmax =
+        let x0 = rect.Backend.x in
+        let x1 = x0 +. rect.Backend.w in
+        min x0 xmin, max x1 xmax
+      and ymin, ymax =
+        let y0 = rect.Backend.y in
+        let y1 = y0 +. rect.Backend.h in
+        min y0 ymin, max y1 ymax
+      in
+      {Backend.x = xmin; y = ymin; w = xmax -. xmin; h = ymax -. ymin}
 
 
-  (*Decoding string options*)
-  let get_mode mode =
-    match mode with
-      "rectangle"  -> Rectangle
-    | _ ->
-        let mode_opts = split_on_spaces mode 0 (String.length mode) in
-        match mode_opts with
-        | [opt; x; y] ->
-            (match opt with
-             | "two_lines" ->
-                 (try
-                    Two_lines(float_of_string x, float_of_string y)
-                  with Failure "float_of_string" ->
-                    error (unparseable (x^" and/or "^y) "float" "mode"))
-             | _ -> error (not_understood opt "mode"))
-        | _ -> error(nonvalid "first" mode)
-
-  let get_data which data =
-    let data_opts = split_on_spaces data 0 (String.length data) in
-    if List.length data_opts <> 3 then
-      error(nonvalid which data)
-    else
-      let opt::x::y::[] = data_opts in
-      match opt with
-        "graph" ->
-          (try Graph(int_of_string x, int_of_string y)
-           with Failure "int_of_string" ->
-             error (unparseable (x^" and/or "^y) "int" "data"))
-      | "tics" ->
-          (try Tics(float_of_string x, int_of_string y)
-           with Failure "int_of_string" ->
-             error (unparseable y "int" "data")
-           | Failure "float_of_string" ->
-               error (unparseable x "float" "data"))
-      | _ -> error (not_understood opt "data")
-
-  let get_tic which tic =
-    try P.make (String_utils.split_on_spaces tic 0 (String.length tic))
-    with (*Pointstyle.PSError(s) ->
-      error (Printf.sprintf
-               "%s argument: '%s' cannot be found as point style (tic: %s)"
-               which s tic)*)
-    | Invalid_argument reason ->
-        error (Printf.sprintf
-                 "%s argument: cannot find a point style (tic: %s, error: %s)"
-               which tic reason)
-
-
-  (*Function make to be exported*)
-  let make list =
-    if List.length list <> 7 then
-      error (Printf.sprintf "options list is not of length 7 (found %i)"
-               (List.length list))
-    else
-      (*Printf.printf "Axes.Default.make...%!";*)
-      let mode::datax::ticx::minticx::datay::ticy::minticy::[] = list in
-      {mode = get_mode mode;
-       datax = get_data "second" datax; ticx = get_tic "third" ticx;
-       minticx =  get_tic "fourth" minticx;
-       datay = get_data "fifth" datay; ticy = get_tic "sixth" ticy;
-       minticy = get_tic "seventh" minticy;}
+type axes =
+    [ `None of bool * bool
+    | `Rectangle of bool * bool
+    | `Two_lines of float * float
+    | `Two_lines_rel of float * float
+    ]
+    (*Style of axes.*)
 
 
 
-  let make_tic layer ?color_labels ?text x y =
-    L.point layer x y;
-    match text with
-      None -> ()
-    | Some (pos, txt) ->
-        ((match color_labels with
-           Some c ->
-             L.save layer;
-             L.set_color layer c
-         | None -> ());
-        L.show_text layer ~rotate:0. ~x ~y pos txt;
-        match color_labels with
-          Some _ -> L.restore layer;
-        | None -> ())
 
-  let print_axes t ?xmin ?xmax ?ymin ?ymax ?color_axes ?color_labels layer =
-    (*Make default values for xmin,..., ymax*)
-    let rect = L.layer_extents layer in
-    let xmin = match xmin with
-        None -> rect.Backend.x
-      | Some x -> x
-    and xmax = match xmax with
-        None -> rect.Backend.x +. rect.Backend.w
-      | Some x -> x
-    and ymin = match ymin with
-        None -> rect.Backend.y
-      | Some y -> y
-    and ymax = match ymax with
-        None -> rect.Backend.y +. rect.Backend.h
-      | Some y -> y
-    in
-    (match color_axes with
-       Some c -> L.save layer; L.set_color layer c
-     | None -> ());
+let print_axes axes ranges backend =
+  Backend.make_range_min1 ranges;
+  match axes with
+    `None (_,_) -> ()
+  | `Rectangle(_, _) ->
+      let rect = Backend.rect_of_ranges ranges in
+      B.rectangle backend rect.B.x rect.B.y rect.B.w rect.B.h
+  | `Two_lines(x,y) ->
+      (*Need to update -before- so that mins/maxs are correctly
+        initialized for making the axes lines.*)
+      let xmin,ymin = min x ranges.B.x1, min y ranges.B.y1
+      and xmax,ymax = max x ranges.B.x2, max y ranges.B.y2 in
+      B.move_to backend xmin y;
+      B.line_to backend xmax y;
+      B.move_to backend x ymin;
+      B.line_to backend x ymax
+  | `Two_lines_rel(t,u) ->
+      (*Need to update -before- so that mins/maxs are correctly
+        initialized for making the axes lines.*)
+      let x,y =
+        ranges.B.x1 +. t *. (ranges.B.x2 -. ranges.B.x1),
+        ranges.B.y1 +. u *. (ranges.B.y2 -. ranges.B.y1)
+      in
+      let xmin,ymin = min x ranges.B.x1, min y ranges.B.y1
+      and xmax,ymax = max x ranges.B.x2, max y ranges.B.y2 in
+      B.move_to backend xmin y;
+      B.line_to backend xmax y;
+      B.move_to backend x ymin;
+      B.line_to backend x ymax
+  | _ -> raise Not_available
 
-    (*Axes*)
-    let ofsx, ofsy =
-      match t.mode with
-        Rectangle ->
-          let x, y = min xmin xmax, min ymin ymax in
-          let w, h = abs_float (xmax -. xmin), abs_float (ymax -. ymin) in
-          L.rectangle layer x y w h;
-          xmin, ymin
-      | Two_lines(x,y) ->
-          (*Need to update -before- so that mins/maxs are correctly
-            initialized for making the axes lines.*)
-          let xmin,ymin = min x xmin, min y ymin
-          and xmax,ymax = max x xmax, max y ymax in
-          L.move_to layer xmin y;
-          L.line_to layer xmax y;
-          L.move_to layer x ymin;
-          L.line_to layer x ymax;
-          x,y
-    in
-    let xmin,ymin = min ofsx xmin, min ofsy ymin
-    and xmax,ymax = max ofsx xmax, max ofsy ymax in
+let axes_meeting axes ranges =
+  Backend.make_range_min1 ranges;
+  match axes with
+  | `None(bx, by)
+  | `Rectangle(bx, by) ->
+      (if bx then ranges.B.x1 else ranges.B.x2),
+      (if by then ranges.B.y1 else ranges.B.y2)
+  | `Two_lines(x,y) -> x,y
+  | `Two_lines_rel(t,u) ->
+      ranges.B.x1 +. t *. (ranges.B.x2 -. ranges.B.x1),
+      ranges.B.y1 +. u *. (ranges.B.y2 -. ranges.B.y1)
+  | _ -> raise Not_available
 
-    (*Tics or like*)
-    let make_data x_axis =
-      match (if x_axis then t.datax else t.datay) with
-        Graph(major,minor) ->
-          let step =
-            let diff = if x_axis then xmax -. xmin else ymax -. ymin in
-            diff /. (float major) in
-          let ministep = step /. (float minor) in
-          let tic, minitic =
-            if x_axis then
-              (Pointstyle.make_default t.ticx),
-              (Pointstyle.make_default t.minticx)
-            else
-              (Pointstyle.make_default t.ticy),
-              (Pointstyle.make_default t.minticy)
+type tic = [`P of Pointstyle.name]
+    (*Style of tics.*)
+
+let print_tic backend tic =
+  match tic with `P name ->
+    Pointstyle.render name backend
+  | _ -> raise Not_available
+
+let tic_extents tic =
+  (*Fixed dimension: 1/100 of normalized coordinates.*)
+  match tic with `P name ->
+    let rect = Pointstyle.extents name in
+    {B.x = rect.B.x /. 100.; y = rect.B.y/. 100.;
+     w = rect.B.w/. 100.; h = rect.B.h/. 100.}
+  | _ -> raise Not_available
+
+type label =
+    {action: float -> float -> B.text_position -> B.t -> unit;
+     box:float -> float -> B.text_position -> B.t -> Backend.rectangle;
+     rotation:float}
+
+let tic_label_extents tic_extents label x y pos b =
+  match label with
+    None -> tic_extents
+  | Some label ->
+      let box = label.box x y pos b in
+      let matrix = Backend.Matrix.make_rotate label.rotation in
+      let wx, wy = Backend.Matrix.transform_distance matrix box.Backend.w 0.
+      and hx, hy = Backend.Matrix.transform_distance matrix 0. box.Backend.h in
+      let x1 = box.Backend.x +. (min 0. wx) +. (min 0. hx) in
+      let x2 = x1 +. (abs_float wx) +. (abs_float hx) in
+      let y1 = box.Backend.y +. (min 0. wy) +. (min 0. hy) in
+      let y2 = y1 +. (abs_float wy) +. (abs_float hy) in
+      rectangle_extents tic_extents x1 x2 y1 y2
+
+
+type tic_position =
+     Backend.xyranges -> (float*float*label option) list
+
+type label_collection =
+    Fixed of label array
+  | Variable of label
+
+type data =
+    [ `Label of label array
+    | `Text_label of string array * float
+    | `Abscissa
+    | `Ordinate
+    | `Expabscissa
+    | `Expordinate]
+
+let make_box_from_text txt x y pos b =
+  let rect = B.text_extents b txt in
+  let rx, ry, w, h =
+    rect.B.x +. x, rect.B.y +. y, rect.B.w, rect.B.h
+  in
+  let x = match pos with
+    | Backend.CC | Backend.CT | Backend.CB -> rx -. 0.5 *. w
+    | Backend.RC | Backend.RT | Backend.RB -> rx
+    | Backend.LC | Backend.LT | Backend.LB -> rx -. w
+  and y = match pos with
+    | Backend.CC | Backend.RC | Backend.LC -> ry -. 0.5 *. h
+    | Backend.CT | Backend.RT | Backend.LT -> ry -. h
+    | Backend.CB | Backend.RB | Backend.LB -> ry
+  in
+  {B.x = x; y = y; w = w; h = h}
+
+let get_labels data =
+  match data with
+  | `Label l -> Fixed l
+  | `Text_label(txts, rotate) ->
+      let f txt =
+        {action = (fun x y pos b -> B.show_text b rotate x y pos txt);
+         box = make_box_from_text txt;
+         rotation = rotate}
+      in
+      Fixed (Array.map f txts)
+  | `Abscissa ->
+      Variable ({action = (fun x y ->
+                   let txt = Printf.sprintf "%g" x in
+                   fun pos b -> B.show_text b x y 0. pos txt);
+       box = (fun x y ->
+                let txt = Printf.sprintf "%g" x in
+                make_box_from_text txt x y);
+       rotation = 0.})
+  | `Ordinate ->
+      Variable (
+      {action = (fun x y ->
+                   let txt = Printf.sprintf "%g" y in
+                   fun pos b -> B.show_text b x y 0. pos txt);
+       box = (fun x y ->
+                let txt = Printf.sprintf "%g" y in
+                make_box_from_text txt x y);
+       rotation = 0.})
+  | `Expabscissa ->
+      Variable (
+      {action = (fun x y ->
+                   let txt = Printf.sprintf "%g" (10.**x) in
+                   fun pos b -> B.show_text b x y 0. pos txt);
+       box = (fun x y ->
+                let txt = Printf.sprintf "%g" (10.**x) in
+                make_box_from_text txt x y);
+       rotation = 0.})
+  | `Expordinate ->
+      Variable (
+      {action = (fun x y ->
+                   let txt = Printf.sprintf "%g" (10.**y) in
+                   fun pos b -> B.show_text b x y 0. pos txt);
+       box = (fun x y ->
+                let txt = Printf.sprintf "%g" (10.**y) in
+                make_box_from_text txt x y);
+       rotation = 0.})
+  | _ -> raise Not_available
+
+
+type loc_tics =
+    [ `Fixed_pos of (float * bool) list
+    | `Linear_variable of int array
+    | `Linear of int * int
+    | `Logarithmic of int * int
+    ]
+
+let get_position loc labels =
+  match loc with
+    `Fixed_pos t_list ->
+      let f x x' t = x +. t *. (x' -. x) in
+      let m = ref 0 in (*Used in case of Fixed labels*)
+      let g ranges (t,b) =
+        let labelopt =
+          if b then (*major tic => add a label*)
+            match labels with
+              Variable l -> Some l
+            | Fixed larray ->
+                let label =
+                  try Some larray.(!m)
+                  with Invalid_argument _ -> None
+                    (*too few labels : the last major tics won't
+                      get any label.*)
+                in
+                m := !m + 1;
+                label
+          else (*Minor tic => no label*)
+            None
+        in
+        f ranges.B.x1 ranges.B.x2 t, f ranges.B.y1 ranges.B.y2 t, labelopt
+      in
+      (fun ranges ->
+         Backend.make_range_min1 ranges;
+         List.map (g ranges) t_list)
+  | `Linear_variable numbers ->
+      let f (list, len) m =
+        let rec do_minors list i =
+          if i <= 0 then list
+          else
+            do_minors ((len + m - i, None)::list) (i-1)
+        in
+        let list = do_minors list m in
+        let label =
+          match labels with
+            Variable l -> Some l
+          | Fixed larray -> try Some larray.(m+1)
+            with Invalid_argument _ -> None
+        in
+        ((len + m, label)::list, len + m + 1)
+      in
+      let list_tics, nall =
+        let first_tic =
+          [0,
+           (match labels with
+              Variable l -> Some l
+            | Fixed larray -> try Some larray.(0)
+              with Invalid_argument _ -> None)]
+        in
+        Array.fold_left f (first_tic, 1) numbers
+      in
+      (fun ranges ->
+         Backend.make_range_min1 ranges;
+         let xstep = (ranges.B.x2 -. ranges.B.x1) /. (float nall)
+         and ystep = (ranges.B.y2 -. ranges.B.y1) /. (float nall) in
+         List.rev_map
+           (fun (i,label) ->
+              let t = float i in
+              ranges.B.x1 +. t *. xstep, ranges.B.y1 +. t *. ystep, label)
+           list_tics
+      )
+  | `Linear(majors,minors) ->
+      let nall = minors * (majors - 1) + majors in
+      let rec make_list list i =
+        if i >= nall then list
+        else
+          let label =
+            let j,k = i/(minors + 1), i mod minors + 1 in
+            if k = 0 then
+              match labels with
+                Variable l -> Some l
+              | Fixed larray ->
+                  try Some larray.(j)
+                  with Invalid_argument _ -> None
+            else None
           in
-          L.set_point_style layer tic;
-          for i = 0 to major do (*major tics in X axis*)
-            let ofs = (float i) *. step in
-            let x, y =
-              if x_axis then xmin +. ofs, ofsy
-              else ofsx, ymin +. ofs
-            in
-            (*Tic to put, centered in (x, y), with label 'x' or 'y' as
-              given by x_axis.*)
-            let text =
-              if x_axis then Backend.CB, string_of_float x
-              else Backend.LC, string_of_float y
-            in
-            make_tic layer ?color_labels ~text x y;
-            if i < major then
-              (L.save layer;
-               L.set_point_style layer minitic;
-               for j = 1 to minor - 1 do
-                 let x,y =
-                   if x_axis then x +. (float j) *. ministep, y
-                   else x, y +. (float j) *. ministep
-                 in
-                 make_tic layer x y;
-               done;
-               L.restore layer);
-          done
-      | Tics(minor,num_minors) ->
-          let rec make_tics x y n =
-            if not ((x_axis && x > xmax) || (not x_axis && y > ymax)) then
-              let xnew, ynew =
-                if x_axis then
-                  x+.minor, y
-                else x, y+.minor
+          let tuple = i, label in
+          make_list (tuple::list) (i+1)
+      in
+      let list = make_list [] 0 in
+      (*List of the form [(i, label);...]: [i]th tic gets
+        [label]. Note that, for efficiency reasons (tail-recursivity
+        of rev-mapping), the first label is the last element of the
+        list.*)
+      (fun ranges ->
+         Backend.make_range_min1 ranges;
+         let xstep = (ranges.B.x2 -. ranges.B.x1) /. (float nall)
+         and ystep = (ranges.B.y2 -. ranges.B.y1) /. (float nall) in
+         List.rev_map
+           (fun (i,label) ->
+              let t = float i in
+              ranges.B.x1 +. t *. xstep, ranges.B.y1 +. t*. ystep, label)
+           list)
+  | `Logarithmic(majors, minors) ->
+      let nall = minors * (majors - 1) + majors in
+      let rec make_list list i =
+        if i >= nall then list
+        else
+          let j,k = i/(minors + 1), i mod minors + 1 in
+          let label =
+            if k = 0 then
+              match labels with
+                Variable l -> Some l
+              | Fixed larray ->
+                  try Some larray.(j)
+                  with Invalid_argument _ -> None
+            else None
+          in
+          let tuple = j, k, label in
+          make_list (tuple::list) (i+1)
+      in
+      let list = make_list [] 0 in
+      (*List of the form [(j,k, label);...]: [j*(minors+1) + k]th tic
+        gets [label].  Note that, for efficiency reasons
+        (tail-recursivity of rev-mapping), the first label is the last
+        element of the list.*)
+      (fun ranges ->
+         Backend.make_range_min1 ranges;
+         let xmajorstep = (ranges.B.x2 -. ranges.B.x1) /. (float majors)
+         and ymajorstep = (ranges.B.y2 -. ranges.B.y1) /. (float majors) in
+         List.rev_map
+           (fun (j,k,label) ->
+              let t = float j in
+              let x0 = ranges.B.x1 +. t *. xmajorstep
+              and y0 = ranges.B.y1 +. t *. ymajorstep in
+              let f mstep v0 =
+                let ministep = mstep *. (float k) /. (float (minors + 1)) in
+                let g st = log (1. +. st /. v0) in
+                x0 +. mstep *. (g ministep) /. (g mstep)
               in
-              let text =
-                if n = num_minors then
-                  Some (if x_axis then
-                          Backend.CB, string_of_float x
-                        else
-                          Backend.LC, string_of_float y)
-                else None
-              in
-              (make_tic layer ?color_labels ?text x y;
-               make_tics xnew ynew ((n mod num_minors)+1))
+              f xmajorstep x0, f ymajorstep y0, label)
+           list)
+  | _ -> raise Not_available
 
-          in make_tics xmin ymin num_minors
-               (*First tic will be a major tic.*)
-    in
-    (*Make data for X axis*)
-    make_data true;
-    (*Make data for Y axis*)
-    make_data false;
-    L.stroke layer;
-    (match color_axes with
-       Some _ -> L.restore layer
-     | None -> ())
-end
+       type 'a axis = (*'a for tic type*)
+    {major:'a; minor:'a; positions:tic_position; label_position:B.text_position}
 
-(*Registering axes representations.*)
-module M = Map.Make(String)
+type ('a,'b) t = (*'a for axes type, 'b for tic types*)
+    {axes:'a; x:'b axis; y:'b axis}
 
-let registry = ref M.empty
 
-module Register(A:Axes) =
-struct
-  if not(M.mem A.name !registry) then
-    let axes_maker options =
-      let t = A.make options in
-      A.print_axes t
-    in
-    registry := M.add A.name axes_maker !registry;
-end
+let make_axis major data label_position minor ?(get_labels = get_labels)
+    ?(get_position = get_position) loc =
+  let labels = get_labels data in
+  let positions = get_position loc labels in
+  {major = major; minor = minor; positions = positions;
+   label_position = label_position}
 
-(*Default is always available*)
-let () =
-  let module D = Register(Default) in ()
+let make axes x y =
+  {axes = axes; x = x; y = y}
 
-(*Working with axes*)
-exception Axes_error of string
+let print_tics axis ranges print_tic backend =
+  let rec print = function
+      [] -> ()
+    | (x,y,label)::l ->
+        B.move_to backend x y;
+        match label with
+          None -> print_tic backend axis.minor
+        | Some label ->
+            print_tic backend axis.major;
+            label.action x y axis.label_position backend;
+            print l
+  in print (axis.positions ranges)
 
-let make name options =
-  try
-    let f = M.find name !registry in
-    f options
-  with Not_found ->
-    raise (Axes_error name)
+let axis_margins axis ranges tic_extents backend =
+  Backend.make_range_min1 ranges;
+  let list = axis.positions ranges in
+  let rec make_rect list rect =
+    match list with
+      [] -> rect
+    | (x,y,label)::l ->
+        let tic = match label with None -> axis.minor | Some _ -> axis.major in
+        let extents = tic_label_extents
+          (tic_extents tic) label x y axis.label_position backend
+        in
+        let x1,y1 = extents.B.x, extents.B.y in
+        let x2,y2 = x1 +. extents.B.w, y1 +. extents.B.h in
+        let newrect = rectangle_extents rect
+          (x1 +. x) (x2 +. x) (y1 +. y) (y2 +. y)
+        in
+        make_rect l newrect
+  in make_rect list {B.x=ranges.B.x1; y=ranges.B.y1; w=0.;h=0.}
 
-let make_default ?(mode= Default.Rectangle)
-    ?(ticx=(P.TIC_UP 4.)) ?(minticx=(P.TIC_UP 2.)) datax
-    ?(ticy=(P.TIC_LEFT 4.)) ?(minticy=(P.TIC_LEFT 2.)) datay =
-  let list = Default.make_options_list mode datax ticx minticx datay ticy minticy
-  in make "default" list
 
-let print_axes t = t
+let get_margins t
+    ?(axes_meeting = axes_meeting) ?(tic_extents = tic_extents)
+    ranges backend=
+  Backend.make_range_min1 ranges;
+  let x,y = axes_meeting t.axes ranges in
+  Backend.update_ranges ranges x y;(*
+  let xmin,ymin = min x ranges.B.x1, min y ranges.B.y1
+  and xmax,ymax = max x ranges.B.x2, max y ranges.B.y2 in
+  let newranges = {B.x1 = xmin; y1 = ymin; x2 = xmax; y2 = ymax} in*)
+  axis_margins t.x ranges tic_extents backend,
+  axis_margins t.y ranges tic_extents backend
 
+
+let print t ~lines ~ranges
+    ?(print_axes = print_axes) ?(axes_meeting = axes_meeting)
+    ?(print_tic = print_tic) backend =
+  (*let xxx = backend and yyy = B.get_handle backend in*)
+  let x,y = axes_meeting t.axes ranges in
+  print_axes t.axes ranges backend;
+  let ctm = Coordinate.use backend lines in
+  B.stroke backend;
+  Coordinate.restore backend ctm;
+  let xrange = Backend.make_ranges () in
+  Backend.update_ranges xrange ranges.B.x1 y;
+  Backend.update_ranges xrange ranges.B.x2 y;
+  let yrange =Backend.make_ranges () in
+  Backend.update_ranges yrange x ranges.B.y1;
+  Backend.update_ranges yrange x ranges.B.y2;
+  print_tics t.x xrange print_tic backend; (*X axis*)
+  print_tics t.y yrange print_tic backend  (*Y axis*)
 (*Local variables:*)
-(*compile-command: "ocamlopt -c -for-pack Archimedes axes.ml && ocamlc -c -for-pack Archimedes axes.ml"*)
+(*compile-command: "ocamlopt -c -dtypes axes.ml && ocamlc -c -dtypes axes.ml"*)
 (*End:*)

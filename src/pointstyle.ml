@@ -1,162 +1,308 @@
 module B = Backend
 
-module type Style =
-  sig
-    val name: string
-    type t
-    val make: string list -> t
-    val point: t -> float -> float -> Backend.t -> unit
-  end
-
-module Default =
-struct
-  open String_utils
-  let name = "default"
-  type t =
-      NONE
-    | X of float
-    | HORIZ of float
-    | VERT of float
-    | TIC_UP of float (*Useful for axes tics*)
-    | TIC_DOWN of float
-    | TIC_LEFT of float
-    | TIC_RIGHT of float
-
-  type style = t
-
-  let unmake = function
-    | NONE -> []
-    | X(len) -> ["X"; string_of_float len]
-    | HORIZ(len) -> ["-"; string_of_float len]
-    | VERT(len) ->["|"; string_of_float len]
-    | TIC_UP(len) -> ["TU"; string_of_float len]
-    | TIC_DOWN(len) -> ["TD"; string_of_float len]
-    | TIC_LEFT(len) -> ["TL"; string_of_float len]
-    | TIC_RIGHT(len) -> ["TR"; string_of_float len]
-
-  let make opt =
-    let error reason = invalid_arg ("Pointstyle.Default.make -- "^reason) in
-    let args t n m = Printf.sprintf "%s has only %i args (found %i)" t n m
-    and unparseable s = Printf.sprintf "Unparseable arg to float: %s" s
-    in
-    match opt with
-    | [] -> NONE
-    | t::opts ->
-        match t with
-        | "X" ->
-            if List.length opts <> 1 then error (args t 1 (List.length opts));
-            (try
-               X(float_of_string (List.hd opts))
-         with Failure "float_of_string" -> error (unparseable (List.hd opts)))
-    | "-" ->
-        if List.length opts <> 1 then error (args t 1 (List.length opts));
-        (try
-           HORIZ(float_of_string (List.hd opts))
-         with Failure "float_of_string" -> error (unparseable (List.hd opts)))
-    | "|"  ->
-        if List.length opts <> 1 then error (args t 1 (List.length opts));
-        (try
-           VERT(float_of_string (List.hd opts))
-         with Failure "float_of_string" -> error (unparseable (List.hd opts)))
-    | "TU" ->
-        if List.length opts <> 1 then error (args t 1 (List.length opts));
-        (try
-           TIC_UP(float_of_string (List.hd opts))
-         with Failure "float_of_string" -> error (unparseable (List.hd opts)))
-    | "TD" ->
-        if List.length opts <> 1 then error (args t 1 (List.length opts));
-        (try
-           TIC_DOWN(float_of_string (List.hd opts))
-         with Failure "float_of_string" -> error (unparseable (List.hd opts)))
-    | "TL" ->
-        if List.length opts <> 1 then error (args t 1 (List.length opts));
-        (try
-           TIC_LEFT(float_of_string (List.hd opts))
-         with Failure "float_of_string" -> error (unparseable (List.hd opts)))
-    | "TR" ->
-        if List.length opts <> 1 then error (args t 1 (List.length opts));
-        (try
-           TIC_RIGHT(float_of_string (List.hd opts))
-         with Failure "float_of_string" -> error (unparseable (List.hd opts)))
-    | _ -> error (t^" is not recognized as a default point style")
-
-  let point t x y handle =
-    B.move_to handle x y;
-    B.save handle;
-    B.set_matrix handle (B.Matrix.make_identity ());
-    (match t with
-      NONE -> ()
-    | X(len) ->
-        let x = len /. 2. in
-        B.rel_move_to handle (-.x) (-.x);
-        B.rel_line_to handle len len;
-        B.rel_move_to handle (-.len) 0.;
-        B.rel_line_to handle len (-.len)
-    | HORIZ(len) ->
-        B.rel_move_to handle (-.len /. 2.) 0.;
-        B.rel_line_to handle len 0.
-    | VERT(len) ->
-        B.rel_move_to handle 0. (-.len /. 2.);
-        B.rel_line_to handle 0. len
-    | TIC_UP(len) ->
-        B.rel_move_to handle 0. (-.len);
-        B.rel_line_to handle 0. len
-    | TIC_DOWN(len) ->
-        B.rel_move_to handle 0. len;
-        B.rel_line_to handle 0. (-.len)
-    | TIC_LEFT(len) ->
-        B.rel_move_to handle (-.len) 0.;
-        B.rel_line_to handle len 0.
-    | TIC_RIGHT(len) ->
-        B.rel_move_to handle len 0.;
-        B.rel_line_to handle (-.len) 0.
-
-    );
-    B.restore handle
-end
-
-type t = float -> float -> B.t -> unit
-
+let pi = 4.*. atan 1.
 
 (*Registering point styles.*)
 module M = Map.Make(String)
 
-let registry = ref M.empty
+type name = string
 
-module Register(S:Style) =
-struct
-  if not(M.mem S.name !registry) then
-    let maker options =
-      let t = S.make options in
-      S.point t
-    in
-    registry := M.add S.name maker !registry;
-end
+let registry =
+  let rec create registry = function
+      [] -> registry
+    | (name,f,g)::l -> create (M.add name (f,g) registry) l
+  in
+  let pointstyles = [
+    "",(fun _ -> ()), {B.x=0.; y=0.; w=0.;h=0.};
 
-(*Default is always available*)
-let () =
-  let module D = Register(Default) in ()
+    "X", (fun handle ->
+            B.rel_move_to handle (-0.5) (-0.5);
+            B.rel_line_to handle 1. 1.;
+            B.rel_move_to handle (-1.) 0.;
+            B.rel_line_to handle 1. (-1.);
+            B.stroke handle),
+    {B.x=(-0.5); y=(-0.5); w=1.;h=1.};
 
-(*Working with axes*)
-exception PSError of string
+    "-", (fun handle ->
+            B.rel_move_to handle (-0.5) 0.;
+            B.rel_line_to handle 1. 0.;
+            B.stroke handle),
+    {B.x=(-0.5); y=0.; w=1.;h=0.};
 
-let make options =
-  let name, opts = String_utils.first_and_list options in
+    "|", (fun handle ->
+            B.rel_move_to handle 0. (-0.5);
+            B.rel_line_to handle 0. 1.;
+            B.stroke handle),
+    {B.x=0.; y=(-0.5); w=0.;h=1.};
+
+    "o", (fun handle ->
+            let x,y = 0., 0. (*B.get_point handle*) in
+            B.arc handle x y 1. 0. (2. *. pi);
+            B.stroke handle),
+    {B.x=(-0.5); y=(-0.5); w=1.;h=1.};
+
+    "O", (fun handle ->
+            let x,y =  0., 0. (*B.get_point handle*) in
+            B.arc handle x y 1. 0. (2. *. pi);
+            B.fill handle),
+    {B.x=(-0.5); y=(-0.5); w=1.;h=1.};
+
+    "+", (fun handle ->
+            B.rel_move_to handle (-0.5) 0.;
+            B.rel_line_to handle 1. 0.;
+            B.rel_move_to handle (-0.5) (-0.5);
+            B.rel_line_to handle 0. 1.;
+            B.stroke handle),
+    {B.x=(-0.5); y=(-0.5); w=1.;h=1.};
+
+    "s", (fun handle ->
+            B.rel_move_to handle (-0.5) (-0.5);
+            B.rel_line_to handle 1. 0.;
+            B.rel_line_to handle 0. 1.;
+            B.rel_line_to handle (-1.) 0.;
+            B.rel_line_to handle 0. (-1.);
+            B.stroke handle),
+    {B.x=(-0.5); y=(-0.5); w=1.;h=1.};
+
+    "S", (fun handle ->
+            B.rel_move_to handle (-0.5) (-0.5);
+            B.rel_line_to handle 1. 0.;
+            B.rel_line_to handle 0. 1.;
+            B.rel_line_to handle (-1.) 0.;
+            B.rel_line_to handle 0. (-1.);
+            B.fill handle),
+    {B.x=(-0.5); y=(-0.5); w=1.;h=1.};
+
+    "d", (fun handle ->
+            B.rel_move_to handle (-1.) 0.;
+            B.rel_line_to handle 0.5 0.5;
+            B.rel_line_to handle 0.5 (-0.5);
+            B.rel_line_to handle (-0.5) (-0.5);
+            B.rel_line_to handle (-0.5) 0.5;
+            B.stroke handle),
+    {B.x=(-0.5); y=(-0.5); w=1.;h=1.};
+
+    "D", (fun handle ->
+            B.rel_move_to handle (-1.) 0.;
+            B.rel_line_to handle 0.5 0.5;
+            B.rel_line_to handle 0.5 (-0.5);
+            B.rel_line_to handle (-0.5) (-0.5);
+            B.rel_line_to handle (-0.5) 0.5;
+            B.fill handle),
+    {B.x=(-0.5); y=(-0.5); w=1.;h=1.};
+
+    "v", (fun handle ->
+            B.rel_move_to handle (-0.5) (-0.5);
+            B.rel_line_to handle 0.5 1.;
+            B.rel_line_to handle 0.5 (-1.);
+            B.stroke handle),
+    {B.x=(-0.5); y=(-0.5); w=1.;h=1.};
+
+    "^", (fun handle ->
+            B.rel_move_to handle (-0.5) 0.5;
+            B.rel_line_to handle 0.5 (-1.);
+            B.rel_line_to handle 0.5 1.;
+            B.stroke handle),
+    {B.x=(-0.5); y=(-0.5); w=1.;h=1.};
+
+    ">", (fun handle ->
+            B.rel_move_to handle (-0.5) (-0.5);
+            B.rel_line_to handle 1. 0.5;
+            B.rel_line_to handle (-1.) 0.5;
+            B.stroke handle),
+    {B.x=(-0.5); y=(-0.5); w=1.;h=1.};
+
+    "<", (fun handle ->
+            B.rel_move_to handle 0.5 (-0.5);
+            B.rel_line_to handle (-1.) 0.5;
+            B.rel_line_to handle 1. 0.5;
+            B.stroke handle),
+    {B.x=(-0.5); y=(-0.5); w=1.;h=1.};
+
+    "-v", (fun handle ->
+             B.rel_move_to handle (-0.5) (-0.5);
+             B.rel_line_to handle 0.5 1.;
+             B.rel_line_to handle 0.5 (-1.);
+             B.rel_line_to handle (-1.) 0.;
+             B.stroke handle),
+    {B.x=(-0.5); y=(-0.5); w=1.;h=1.};
+
+    "^-", (fun handle ->
+             B.rel_move_to handle (-0.5) 0.5;
+             B.rel_line_to handle 0.5 (-1.);
+             B.rel_line_to handle 0.5 1.;
+             B.rel_line_to handle (-1.) 0.;
+             B.stroke handle),
+    {B.x=(-0.5); y=(-0.5); w=1.;h=1.};
+
+    "|>", (fun handle ->
+             B.rel_move_to handle (-0.5) (-0.5);
+             B.rel_line_to handle 1. 0.5;
+             B.rel_line_to handle (-1.) 0.5;
+             B.rel_line_to handle 0. (-1.);
+             B.stroke handle),
+    {B.x=(-0.5); y=(-0.5); w=1.;h=1.};
+
+    "<|", (fun handle ->
+             B.rel_move_to handle 0.5 (-0.5);
+             B.rel_line_to handle (-1.) 0.5;
+             B.rel_line_to handle 1. 0.5;
+             B.rel_line_to handle 0. (-1.);
+             B.stroke handle),
+    {B.x=(-0.5); y=(-0.5); w=1.;h=1.};
+
+    "-V", (fun handle ->
+             B.rel_move_to handle (-0.5) (-0.5);
+             B.rel_line_to handle 0.5 1.;
+             B.rel_line_to handle 0.5 (-1.);
+             B.rel_line_to handle (-1.) 0.;
+             B.fill handle),
+    {B.x=(-0.5); y=(-0.5); w=1.;h=1.};
+
+    "--v", (fun handle ->
+              B.rel_move_to handle (-0.5) (-0.5);
+              B.rel_line_to handle 0.5 1.;
+              B.rel_line_to handle 0.5 (-1.);
+              B.rel_line_to handle (-1.) 0.;
+              B.fill handle),
+    {B.x=(-0.5); y=(-0.5); w=1.;h=1.};
+
+    "^--", (fun handle ->
+              B.rel_move_to handle (-0.5) 0.5;
+              B.rel_line_to handle 0.5 (-1.);
+              B.rel_line_to handle 0.5 1.;
+              B.rel_line_to handle (-1.) 0.;
+              B.fill handle),
+    {B.x=(-0.5); y=(-0.5); w=1.;h=1.};
+
+    "||>", (fun handle ->
+              B.rel_move_to handle (-0.5) (-0.5);
+              B.rel_line_to handle 1. 0.5;
+              B.rel_line_to handle (-1.) 0.5;
+              B.rel_line_to handle 0. (-1.);
+              B.fill handle),
+    {B.x=(-0.5); y=(-0.5); w=1.;h=1.};
+
+    "<||", (fun handle ->
+              B.rel_move_to handle 0.5 (-0.5);
+              B.rel_line_to handle (-1.) 0.5;
+              B.rel_line_to handle 1. 0.5;
+              B.rel_line_to handle 0. (-1.);
+              B.fill handle),
+    {B.x=(-0.5); y=(-0.5); w=1.;h=1.};
+
+    "*", (fun handle ->
+            for i = 0 to 4 do
+              let angle = (float (2*i)) *. pi /. 5. in
+              let cosa = cos angle
+              and sina = sin angle in
+              (*We want (0,1) and other points uniformly. It is
+                equivalent to get the axes rotated.*)
+              B.rel_line_to handle (-.sina) cosa;
+              B.rel_move_to handle sina (-.cosa)
+            done;
+            B.stroke handle),
+    {B.x=(-0.5); y=(-0.5); w=1.;h=1.};
+
+    "p", (fun handle ->
+            B.rel_move_to handle 0. 1.;
+            for i = 1 to 5 do
+              let angle = (float (2*i)) *. pi /. 5. in
+              let cosa = cos angle
+              and sina = sin angle in
+              (*We want (0,1) and other points uniformly. It is
+                equivalent to get the axes rotated.*)
+              B.rel_line_to handle (-.sina) cosa;
+            done;
+            B.stroke handle),
+    {B.x=(-0.5); y=(-0.5); w=1.;h=1.};
+
+    "P", (fun handle ->
+            B.rel_move_to handle 0. 1.;
+            for i = 1 to 5 do
+              let angle = (float (2*i)) *. pi /. 5. in
+              let cosa = cos angle
+              and sina = sin angle in
+              (*We want (0,1) and other points uniformly. It is
+                equivalent to get the axes rotated.*)
+              B.rel_line_to handle (-.sina) cosa;
+            done;
+            B.fill handle),
+    {B.x=(-0.5); y=(-0.5); w=1.;h=1.};
+
+    "h", (fun handle ->
+            B.rel_move_to handle 0. 1.;
+            for i = 1 to 6 do
+              let angle = (float (2*i)) *. pi /. 6. in
+              let cosa = cos angle
+              and sina = sin angle in
+              (*We want (0,1) and other points uniformly. It is
+                equivalent to get the axes rotated.*)
+              B.rel_line_to handle (-.sina) cosa;
+            done;
+            B.stroke handle),
+    {B.x=(-0.5); y=(-0.5); w=1.;h=1.};
+
+    "H", (fun handle ->
+            B.rel_move_to handle 0. 1.;
+            for i = 1 to 6 do
+              let angle = (float (2*i)) *. pi /. 6. in
+              let cosa = cos angle
+              and sina = sin angle in
+              (*We want (0,1) and other points uniformly. It is
+                equivalent to get the axes rotated.*)
+              B.rel_line_to handle (-.sina) cosa;
+            done;
+            B.fill handle),
+    {B.x=(-0.5); y=(-0.5); w=1.;h=1.};
+
+    "tic_up", (fun handle ->
+                 B.rel_move_to handle 0. (-0.5);
+                 B.rel_line_to handle 0. 0.5;
+                 B.stroke handle),
+    {B.x=0.; y=(-0.5); w=0.;h=0.5};
+
+    "tic_down", (fun handle ->
+                   B.rel_move_to handle 0. 0.5;
+                   B.rel_line_to handle 0. (-0.5);
+                   B.stroke handle),
+    {B.x=0.; y=0.; w=0.;h=0.5};
+
+    "tic_left", (fun handle ->
+                   B.rel_move_to handle (-0.5) 0.;
+                   B.rel_line_to handle 0.5 0.;
+                   B.stroke handle),
+    {B.x=(-0.5); y=0.; w=0.5;h=0.};
+
+    "tic_right", (fun handle ->
+                    B.rel_move_to handle 0.5 0.;
+                    B.rel_line_to handle (-0.5) 0.;
+                    B.stroke handle),
+    {B.x=0.; y=0.; w=0.5;h=0.}
+  ]
+  in
+  ref (create M.empty pointstyles)
+
+exception Error of string
+
+let add ~name f g =
+  (*FIXME: what to do if name already used?*)
+  registry := M.add name (f,g) !registry
+
+let render name =
   try
-    let maker = M.find name !registry in
-    maker opts
-  with Not_found ->
-    raise (PSError name)
+    let f, _ = M.find name !registry in
+    f
+  with Not_found -> raise (Error name)
 
-let make_default def = Default.point def
+let extents name =
+  try
+    let _, rect = M.find name !registry in
+    rect
+  with Not_found -> raise (Error name)
 
-let point t = t
-
-let make_point options = make options
-
-let points t list handle =
-  let rec points list =
-    match list with
-      [] -> ()
-    | (x,y) :: l -> point t x y handle; points l
-  in points list
+let render_extents name =
+  try
+    let f, rect = M.find name !registry in
+    fun b -> (f b; rect)
+  with Not_found -> raise (Error name)

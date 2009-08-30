@@ -38,68 +38,68 @@ let white = {r = 1.; g = 1.; b = 1.; a = 1.}
 
 
 type operator =
-    OVER
-  | SOURCE
-  | CLEAR
-  | IN
-  | OUT
-  | ATOP
-  | DEST
-  | DEST_OVER
-  | DEST_IN
-  | DEST_OUT
-  | DEST_ATOP
-  | XOR
-  | ADD
-  | SATURATE
+    Over
+  | Source
+  | Clear
+  | In
+  | Out
+  | Atop
+  | Dest
+  | Dest_Over
+  | Dest_In
+  | Dest_Out
+  | Dest_Atop
+  | Xor
+  | Add
+  | Saturate
 
-let add ?(op=OVER) init newc =
+let add ?(op=Over) init newc =
   let alpha, merge =
     match op with
-      OVER ->
+      Over ->
         let conv ?(x=1.) cn ?(y=1.) ci =
           y *. cn  +.  x  *. ci *.(1. -. cn)
         in
         let alphares = conv newc.a init.a in
         let colorres x y = conv ~x newc.a ~y init.a /. alphares in
         alphares, colorres
-    | SOURCE ->
+    | Source ->
         let f _ y = y in
         newc.a, f
-    | CLEAR ->
+    | Clear ->
         let f _ _ = 0. in
         0., f
-    | IN ->
+    | In ->
         let f _ y = y in
         init.a *. newc.a, f
-    | OUT ->
+    | Out ->
         let f _ y = y in
         newc.a *. (1. -. init.a), f
-    | ATOP ->
+    | Atop ->
         let f x y =
           y *. newc.a  +. x *. (1. -. init.a)
         in init.a, f
-    | DEST ->
+    | Dest ->
         let f x _ = x
         in init.a, f
-    | DEST_OVER ->
+    | Dest_Over ->
         let conv ?(x=1.) cn ?(y=1.) ci =
           x *. ci  +.  y  *. cn *.(1. -. ci)
         in
         let alphares = conv newc.a init.a in
         let colorres x y = conv ~x newc.a ~y init.a /. alphares in
         alphares, colorres
-    | DEST_IN ->
+    | Dest_In ->
         let f x _ = x in
         init.a *. newc.a, f
-    | DEST_OUT ->
+    | Dest_Out ->
         let f x _ = x in
         init.a *. (1. -. newc.a), f
-    | DEST_ATOP ->
+    | Dest_Atop ->
         let f x y =
           y *.(1. -. newc.a)  +. x *. init.a
         in newc.a, f
-    | XOR ->
+    | Xor ->
         let f ?(x=1.) a ?(y=1.) b =
           let ca,cb = 1. -. a, 1. -. b in
           y *. b *. ca +. x *. a *. cb
@@ -107,11 +107,11 @@ let add ?(op=OVER) init newc =
         let alphares = f newc.a init.a in
         let colorres x y = f ~x newc.a ~y init.a /. alphares in
         alphares, colorres
-    | ADD ->
+    | Add ->
         let alphares = min 1. (init.a +. newc.a) in
         let colorres x y = (x *. init.a  +. y *. newc.a) /. alphares
         in alphares, colorres
-    | SATURATE ->
+    | Saturate ->
         let alphares = min 1. (init.a +. newc.a) in
         let colorres x y =
           let transp_sat = min newc.a (1. -. init.a) in

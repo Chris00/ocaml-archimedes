@@ -58,7 +58,8 @@ struct
   let set_dash cr ofs arr = set_dash cr ~ofs arr
 
   let set_color cr c =
-    Cairo.set_source_rgba cr (Color.r c) (Color.g c) (Color.b c) (Color.a c)
+    let r,g,b,a = Color.get_rgba c in
+    Cairo.set_source_rgba cr r g b a
 
   let clip_rectangle cr ~x ~y ~w ~h =
     Cairo.Path.clear cr;

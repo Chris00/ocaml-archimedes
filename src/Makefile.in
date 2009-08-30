@@ -21,6 +21,8 @@ ifneq "@OCAML_PKG_graphics@" "no"
   PLUGINS += archimedes_graphics.ml
 endif
 
+PLUGINS += archimedes_tikz.ml
+
 .PHONY: default all opt byte native
 default: @OCAMLBEST@
 all: byte native
@@ -29,16 +31,17 @@ byte: archimedes.cma $(PLUGINS:.ml=.cmo)
 native: archimedes.cmxa $(PLUGINS:.ml=.cmxs)
 
 ARCHIMEDES_FILES = string_utils.ml color.ml backend.ml coordinate.ml \
-   pointstyle.ml transform_coord.ml layer.ml axes.ml functions.ml
+   pointstyle.ml axes.ml functions.ml iterator.ml handle.ml
 
 archimedes.cma: archimedes.cmo
 archimedes.cmxa: archimedes.cmx
 
 archimedes.cmo: $(ARCHIMEDES_FILES:.ml=.cmo)
-	$(OCAMLC) -o $@ $(OCAMLC_FLAGS) -pack $^
+	$(OCAMLC) -o $@ $(OCAMLC_FLAGS) -pack $(filter-out archimedes.cmi,$^)
 
 archimedes.cmx: $(ARCHIMEDES_FILES:.ml=.cmx)
-	$(OCAMLOPT) -o $@ $(OCAMLOPT_FLAGS) -pack $^
+	$(OCAMLOPT) -o $@ $(OCAMLOPT_FLAGS) -pack \
+	$(filter-out archimedes.cmi,$^)
 
 $(ARCHIMEDES_FILES:.ml=.cmx): OCAMLOPT_FLAGS += -for-pack Archimedes
 
@@ -54,6 +57,11 @@ archimedes_cairo.cmo: archimedes_cairo.ml
 archimedes_cairo.cmxs: archimedes_cairo.ml
 	$(OCAMLFIND) ocamlopt -passopt -shared -o $@ $(OCAMLOPT_FLAGS) \
 	  -package cairo2 $<
+
+archimedes_tikz.cmo: archimedes_tikz.ml
+	$(OCAMLFIND) ocamlc -c -o $@ $(OCAMLC_FLAGS) $<
+archimedes_tikz.cmxs: archimedes_tikz.ml
+	$(OCAMLFIND) ocamlopt -passopt -shared -o $@ $(OCAMLOPT_FLAGS) $<
 
 
 .PHONY: doc
