@@ -7,7 +7,7 @@ LDFLAGS = @LDFLAGS@
 LIBS = @LIBS@
 OS_TYPE = @OCAML_OS_TYPE@
 
-DOC_FILES = $(wildcard *.mli)
+DOC_FILES = archimedes.mli
 DOC_DIR = $(ROOT)/doc/html/
 
 # Native code versions must be installed if and only if make opt was

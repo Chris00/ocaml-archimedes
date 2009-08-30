@@ -16,6 +16,7 @@
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the file
    LICENSE for more details. *)
 
+(** A 2D plotting library with various backends. *)
 
 
 (** Representation of colors.*)
@@ -99,7 +100,7 @@ module Color: sig
        [op] (default : [Over]).*)
 end
 
-
+(************************************************************************)
 (** {2 Affine transformations} *)
 
 (** Holds an affine transformation, such as a scale, rotation, shear,
@@ -107,8 +108,7 @@ end
     given by:
     {[
     x_new = xx *. x +. xy *. y +. x0;
-    y_new = yx *. x +. yy *. y +. y0;
-    ]} *)
+    y_new = yx *. x +. yy *. y +. y0;      ]} *)
 type matrix = { mutable xx: float; mutable yx: float;
                 mutable xy: float; mutable yy: float;
                 mutable x0: float; mutable y0: float; }
@@ -183,7 +183,7 @@ sig
         transformation in [b] to the coordinates.
 
         BEWARE that the order of the arguments is different from
-        e.g. {!Cairo.Matrix.multiply}. *)
+        e.g. [Cairo.Matrix.multiply]. *)
 
   val mul_in : t -> t -> t -> unit
     (** [mul_in c b a] computes [mul b a] and put the result in [c]. *)
@@ -216,6 +216,127 @@ sig
     (** Tests whether the transformation has shears.  This is also the
         case if the transformation does a rotation.  *)
 end
+
+(** Affine systems of coordinates relative to other coordinate systems
+    with automatic updates. *)
+module Coordinate:
+sig
+  type t
+    (** Mutable affine coordinate system. *)
+
+  type ctm
+    (** Current transformation matrix of the backend (to be able to
+        restore it through {!Coordinate.restore}. *)
+
+  val use : Backend.t -> t -> ctm
+    (** After a call to [use b c], all backend operations will be
+        performed in the corrdinates [c].  It returns the current
+        coordinate system so one can restore it with
+        {!Coordinate.restore}. *)
+
+  val restore : Backend.t -> ctm -> unit
+    (** [restore b c] restore the coordinate transformation matrix [ctm]
+        for the backend [b]. *)
+
+
+  (** {2 Transforming coordinates} *)
+
+  val to_device : t -> x:float -> y:float -> float * float
+    (**[to_device coord x y] returns the location of the point [(x,y)]
+       in device coordinates.*)
+
+  val to_device_distance : t -> dx:float -> dy:float -> float * float
+    (**[to_device coord dx dy] returns the distance of [(dx,dy)]
+       in device coordinates.*)
+
+  val to_coord : t -> x:float -> y:float -> float * float
+    (**[to_coord coord x y] converts the (device) point [(x,y)] into
+       the corresponding point, expressed in [coord] coordinates.*)
+
+  val to_coord_distance : t -> dx:float -> dy:float -> float * float
+    (**[to_coord coord x y] converts the (device) distance [(dx,dy)] into
+       the corresponding distance, expressed in [coord] coordinates.*)
+
+  (** {2 Creating new coordinate systems} *)
+
+  val make_identity : unit -> t
+    (** Make a system of coordinates which, when used, amounts to plot
+        in the "raw" device coordinates. *)
+
+  val make_translate : t -> x:float -> y:float -> t
+    (** [make_translate coord x y] defines a new coordinate system that
+        consists in moving the origin of [coord] to the point [(x,y)]
+        (understood as coordinates in the system [coord]).  If [coord]
+        is modified, the new system will be updated as well. *)
+
+  val make_scale : t -> x:float -> y:float -> t
+    (** [make_scale coord x y] defines a new coordinate system that
+        consists in dilating axis X and Y of [coord] by a factor of [x]
+        and [y] respectively.  If [coord] is modified, the new system
+        will be updated as well. *)
+
+  val make_rotate : t -> angle:float -> t
+    (** [make_rotate coord a] defines a new coordinate system that
+        consists in rotating the axis X and Y of [coord] by [a] radians
+        (assuming the axis of the system [coord] are orthonormal).  If
+        [coord] is modified, the new system will be updated as well.  *)
+
+  val make_from_transform : t -> Matrix.t -> t
+    (** [make_from_transform coord tm] defines a new coordinate system
+        that consists first in applying [tm] and then the tranformation
+        in [coord].  In other words, [tm] is the affine transformation
+        from the desired coordinate system to [coord].  If [coord] is
+        modified, the new system will be updated as well. *)
+
+  val copy : t -> t
+    (** Returns a completely independent copy of the current coordinate
+        system. *)
+
+
+  (** {2 Modifying this coordinate system} *)
+
+  val translate : t -> x:float -> y:float -> unit
+    (** [translate coord x y] modifies the coordinate system [coord]
+        translating its origin to the point [(x,y)] (understood as
+        coordinates in the system [coord]). *)
+
+  val scale : t -> x:float -> y:float -> unit
+    (** [scale coord x y] modifies the coordinate system [coord]
+        dilating its axis X and Y by a factor of [x] and [y]
+        respectively. *)
+
+  val rotate : t -> angle:float -> unit
+    (** [rotate coord a] modifies the coordinate system [coord] rotating
+        its axis X and Y by [a] radians (assuming the axis of the system
+        [coord] are orthonormal). *)
+
+  val transform : t -> Matrix.t -> unit
+    (** [transform coord tm] modifies the coordinate system [coord]
+        changing the transformation matrix to its parent (the one it was
+        created from) to [tm]. *)
+
+
+  (** {2 Monitoring coordinate systems for updates} *)
+
+  type monitor
+    (** Handle to monitor the updates to a coordinate system. *)
+
+  val monitor : t -> monitor
+    (** [monitor coord] creates a new monitor for changes to [coord]
+        (initially not set). *)
+
+  val reset : monitor -> unit
+    (** [reset m] reset the monitor.  See {!Coordinate.changed}. *)
+
+  val changed : monitor -> bool
+    (** [changed m] tell whether the coordinate system [m] is attached
+        to was updated (possibly because of one of the coordinate sytems
+        it (transitively) depends on was mofidied) since the last
+        [reset]. *)
+end
+
+(************************************************************************)
+(** {2 Registering backends and extending the library} *)
 
 (** Module managing the dynamic loading of the backends.  This modules
     is only useful to create new backends and should not be used for
@@ -316,9 +437,10 @@ sig
     val arc : t -> x:float -> y:float -> r:float -> a1:float -> a2:float -> unit
 
     val close_path : t -> unit
-      (** Adds a line segment to the path from the current point to the
-          beginning of the current sub-path (the most recent point
-          passed to {!Bmove_to}) and closes this sub-path. *)
+      (** Adds a line segment to the path from the current point to
+          the beginning of the current sub-path (the most recent point
+          passed to {!Archimedes.Backend.T.move_to}) and closes this
+          sub-path. *)
     val clear_path : t -> unit
       (** Clears the current path. After this call there will be no path.
           Nothing is guaranteed about the current point. *)
@@ -450,11 +572,7 @@ sig
         application must be executed as part of the initialisation code.
         We recommend the use of [let module U = Register(B) in ()] to
         perform the registration.  *)
-
-
-  (************************************************************************)
 end
-
 
 (** Module handling point styles and marks. *)
 module Pointstyle:
@@ -489,123 +607,9 @@ sig
        does not refer to a point style.*)
 end
 
-(** Affine systems of coordinates relative to other coordinate systems
-    with automatic updates. *)
-module Coordinate:
-sig
-  type t
-    (** Mutable affine coordinate system. *)
 
-  type ctm
-    (** Current transformation matrix of the backend (to be able to
-        restore it through {!Coordinate.restore}. *)
-
-  val use : Backend.t -> t -> ctm
-    (** After a call to [use b c], all backend operations will be
-        performed in the corrdinates [c].  It returns the current
-        coordinate system so one can restore it with
-        {!Coordinate.restore}. *)
-
-  val restore : Backend.t -> ctm -> unit
-    (** [restore b c] restore the coordinate transformation matrix [ctm]
-        for the backend [b]. *)
-
-
-  (** {2 Transforming coordinates} *)
-
-  val to_device : t -> x:float -> y:float -> float * float
-    (**[to_device coord x y] returns the location of the point [(x,y)]
-       in device coordinates.*)
-
-  val to_device_distance : t -> dx:float -> dy:float -> float * float
-    (**[to_device coord dx dy] returns the distance of [(dx,dy)]
-       in device coordinates.*)
-
-  val to_coord : t -> x:float -> y:float -> float * float
-    (**[to_coord coord x y] converts the (device) point [(x,y)] into
-       the corresponding point, expressed in [coord] coordinates.*)
-
-  val to_coord_distance : t -> dx:float -> dy:float -> float * float
-    (**[to_coord coord x y] converts the (device) distance [(dx,dy)] into
-       the corresponding distance, expressed in [coord] coordinates.*)
-
-  (** {2 Creating new coordinate systems} *)
-
-  val make_identity : unit -> t
-    (** Make a system of coordinates which, when used, amounts to plot
-        in the "raw" device coordinates. *)
-
-  val make_translate : t -> x:float -> y:float -> t
-    (** [make_translate coord x y] defines a new coordinate system that
-        consists in moving the origin of [coord] to the point [(x,y)]
-        (understood as coordinates in the system [coord]).  If [coord]
-        is modified, the new system will be updated as well. *)
-
-  val make_scale : t -> x:float -> y:float -> t
-    (** [make_scale coord x y] defines a new coordinate system that
-        consists in dilating axis X and Y of [coord] by a factor of [x]
-        and [y] respectively.  If [coord] is modified, the new system
-        will be updated as well. *)
-
-  val make_rotate : t -> angle:float -> t
-    (** [make_rotate coord a] defines a new coordinate system that
-        consists in rotating the axis X and Y of [coord] by [a] radians
-        (assuming the axis of the system [coord] are orthonormal).  If
-        [coord] is modified, the new system will be updated as well.  *)
-
-  val make_from_transform : t -> Matrix.t -> t
-    (** [make_from_transform coord tm] defines a new coordinate system
-        that consists first in applying [tm] and then the tranformation
-        in [coord].  In other words, [tm] is the affine transformation
-        from the desired coordinate system to [coord].  If [coord] is
-        modified, the new system will be updated as well. *)
-
-  val copy : t -> t
-    (** Returns a completely independent copy of the current coordinate
-        system. *)
-
-
-  (** {2 Modifying this coordinate system} *)
-
-  val translate : t -> x:float -> y:float -> unit
-    (** [translate coord x y] modifies the coordinate system [coord]
-        translating its origin to the point [(x,y)] (understood as
-        coordinates in the system [coord]). *)
-
-  val scale : t -> x:float -> y:float -> unit
-    (** [scale coord x y] modifies the coordinate system [coord]
-        dilating its axis X and Y by a factor of [x] and [y]
-        respectively. *)
-
-  val rotate : t -> angle:float -> unit
-    (** [rotate coord a] modifies the coordinate system [coord] rotating
-        its axis X and Y by [a] radians (assuming the axis of the system
-        [coord] are orthonormal). *)
-
-  val transform : t -> Matrix.t -> unit
-    (** [transform coord tm] modifies the coordinate system [coord]
-        changing the transformation matrix to its parent (the one it was
-        created from) to [tm]. *)
-
-
-  (** {2 Monitoring coordinate systems for updates} *)
-
-  type monitor
-    (** Handle to monitor the updates to a coordinate system. *)
-
-  val monitor : t -> monitor
-    (** [monitor coord] creates a new monitor for changes to [coord]
-        (initially not set). *)
-
-  val reset : monitor -> unit
-    (** [reset m] reset the monitor.  See {!Coordinate.changed}. *)
-
-  val changed : monitor -> bool
-    (** [changed m] tell whether the coordinate system [m] is attached
-        to was updated (possibly because of one of the coordinate sytems
-        it (transitively) depends on was mofidied) since the last
-        [reset]. *)
-end
+(************************************************************************)
+(** {2 Plotting functions} *)
 
 module Axes: sig
 (**Axes maker and convenient ways to create axes.*)
