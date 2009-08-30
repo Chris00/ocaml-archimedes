@@ -1,5 +1,25 @@
+(* File: archimedes.mli
+
+   Copyright (C) 2009
+
+     Bertrand Desmons <Bertrand.Desmons@umons.ac.be>
+     Christophe Troestler <Christophe.Troestler@umons.ac.be>
+     WWW: http://math.umons.ac.be/an/software/
+
+   This library is free software; you can redistribute it and/or modify
+   it under the terms of the GNU Lesser General Public License version 3 or
+   later as published by the Free Software Foundation, with the special
+   exception on linking described in the file LICENSE.
+
+   This library is distributed in the hope that it will be useful, but
+   WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the file
+   LICENSE for more details. *)
+
+
+
+(** Representation of colors.*)
 module Color: sig
-  (**Colors representation.*)
 
   type t
     (**The type for colors*)
@@ -79,9 +99,11 @@ module Color: sig
        [op] (default : [Over]).*)
 end
 
-module Backend: sig
-  (** Module managing the dynamic loading of the backends. *)
 
+(** Module managing the dynamic loading of the backends.  This modules
+    is only useful to create new backends and should not be used for
+    plotting data. *)
+module Backend: sig
 
   type line_cap =
     | BUTT  (** start(stop) the line exactly at the start(end) point *)
@@ -431,6 +453,8 @@ module Backend: sig
           case if the transformation does a rotation.  *)
   end
 end
+
+
 
 module Pointstyle: sig
   (**Module handling with point styles and marks.*)
