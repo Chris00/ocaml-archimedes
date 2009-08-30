@@ -103,7 +103,8 @@ end
 (** Module managing the dynamic loading of the backends.  This modules
     is only useful to create new backends and should not be used for
     plotting data. *)
-module Backend: sig
+module Backend:
+sig
 
   type line_cap =
     | BUTT  (** start(stop) the line exactly at the start(end) point *)
@@ -455,14 +456,14 @@ module Backend: sig
 end
 
 
-
-module Pointstyle: sig
-  (**Module handling with point styles and marks.*)
+(** Module handling point styles and marks. *)
+module Pointstyle:
+sig
   exception Error of string
     (**Raised for undefined point styles.*)
 
   type name = string
-      (**Type to specify a point style*)
+    (** Point styles are identified by strings. *)
 
   val add : name:name -> (Backend.t -> unit) -> Backend.rectangle -> unit
     (**[add name f extents] adds to the existing point styles, a new
@@ -488,10 +489,10 @@ module Pointstyle: sig
        does not refer to a point style.*)
 end
 
-module Coordinate: sig
-  (** Affine systems of coordinates relative to other coordinate systems
-      with automatic updates. *)
-
+(** Affine systems of coordinates relative to other coordinate systems
+    with automatic updates. *)
+module Coordinate:
+sig
   type t
     (** Mutable affine coordinate system. *)
 
