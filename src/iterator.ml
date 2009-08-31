@@ -2,7 +2,7 @@ open Bigarray
 
 type t = {
   data:(float,float64_elt,c_layout) Array2.t;
-  extents: Axes.xyranges;
+  extents: Axes.ranges;
   mutable pos: int;len: int
 }
 
@@ -41,9 +41,10 @@ let of_array array =
   else (
     let bigarray = Array2.create float64 c_layout n 2 in
     (*Initialisation*)
+    let x,y = array.(0) in
     let extents = Axes.Ranges.make x y in
-    bigarray.{i,0} <- x;
-    bigarray.{i,1} <- y;
+    bigarray.{0,0} <- x;
+    bigarray.{0,1} <- y;
     (*Recursion*)
     let rec fill_array i =
       if i >= n then
@@ -91,28 +92,31 @@ let of_bigarray2 ?(clayout=true) array =
 
 let of_lists listx listy =
   let n = List.length listx in
-  if n <> (List.length listy) then invalid_arg "Data.of_lists"
+  if n <> (List.length listy) then invalid_arg "Iterator.of_lists"
   else
     match listx, listy with
       [], [] -> dummy
     | (x::listx),(y::listy) ->
-    let array = Array2.create float64 c_layout n 2 in
-    let extents = Axes.Ranges.make x y in
-    array.{0,0} <- x;
-    array.{0,1} <- y;
-    let rec fill_array i = function
-      | (x::l),(y::l') ->
-        Axes.Ranges.update extents x y;
-        array.{i,0} <- x;
-        array.{i,1} <- y;
-        fill_array (i+1) (l,l')
-    | _,_ ->
-        (*Condition on lengths ensures that this matches only two
-          empty lists.*)
-        {data= array;
-         extents = extents;
-         pos = 0; len = n}
-  in fill_array 1 (listx, listy)
+        let array = Array2.create float64 c_layout n 2 in
+        let extents = Axes.Ranges.make x y in
+        array.{0,0} <- x;
+        array.{0,1} <- y;
+        let rec fill_array i = function
+          | (x::l),(y::l') ->
+              Axes.Ranges.update extents x y;
+              array.{i,0} <- x;
+              array.{i,1} <- y;
+              fill_array (i+1) (l,l')
+          | _,_ ->
+              (*Condition on lengths ensures that this matches only two
+                empty lists.*)
+              {data= array;
+               extents = extents;
+               pos = 0; len = n}
+        in fill_array 1 (listx, listy)
+    | _,_ -> failwith "Iterator.of_lists : internal error"
+        (*this cannot happen due to lengths checking.*)
+
 
 let of_arrays arrayx arrayy =
   let n = Array.length arrayx in
@@ -123,8 +127,8 @@ let of_arrays arrayx arrayy =
     let x = arrayx.(0)
     and y = arrayy.(0) in
     let extents = Axes.Ranges.make x y in
-    bigarray.{i,0} <- x;
-    bigarray.{i,1} <- y;
+    bigarray.{0,0} <- x;
+    bigarray.{0,1} <- y;
     let rec fill_array i=
       if i >= n then
         {data= bigarray;

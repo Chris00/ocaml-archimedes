@@ -16,13 +16,11 @@
    LICENSE for more details. *)
 
 
-type ranges = {
-  mutable x1:float;
-  mutable y1:float;
-  mutable x2:float;
-  mutable y2:float;
-  mutable fresh: bool
-}
+type ranges =
+    private {mutable xmin:float;
+             mutable ymin:float;
+             mutable xmax:float;
+             mutable ymax:float}
 
 module Ranges: sig
   val make : float -> float -> ranges

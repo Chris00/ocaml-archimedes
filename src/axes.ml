@@ -18,44 +18,31 @@
 
 (**Styles definitions to make axes*)
 
-module Ranges :
-sig
-  type t = private {mutable xmin:float;
-                    mutable ymin:float;
-                    mutable xmax:float;
-                    mutable ymax:float}
-
-  val make_ranges : float -> float -> t
-  val update_ranges : t -> float -> float -> unit
-  val to_rect: t -> Backend.rectangle
-  val of_rect: Backend.rectangle -> t
-end =
+module Ranges =
 struct
-type t =
-    {mutable xmin:float;
-     mutable ymin:float;
-     mutable xmax:float;
-     mutable ymax:float;
-     mutable fresh:bool}
+  type t =
+      {mutable xmin:float;
+       mutable ymin:float;
+       mutable xmax:float;
+       mutable ymax:float;}
 
-let make_ranges x y = {xmin = x;ymin = y; xmax = x; ymax = y}
+  let make x y = {xmin = x;ymin = y; xmax = x; ymax = y}
 
-let update_ranges rg x y =
-  if rg.xmin > x then rg.xmin <- x;
-  if rg.xmax < x then rg.xmax <- x;
-  if rg.ymin > y then rg.ymin <- y;
-  if rg.ymax < y then rg.ymax <- y;
-  rg.fresh <- false
+  let update rg x y =
+    if rg.xmin > x then rg.xmin <- x;
+    if rg.xmax < x then rg.xmax <- x;
+    if rg.ymin > y then rg.ymin <- y;
+    if rg.ymax < y then rg.ymax <- y
 
-let ranges_of_rect rect =
-  {xmin = rect.Backend.x; ymin = rect.Backend.y;
-   xmax = rect.Backend.x +. rect.Backend.w;
-   ymax = rect.Backend.x +. rect.Backend.h}
+  let of_rect rect =
+    {xmin = rect.Backend.x; ymin = rect.Backend.y;
+     xmax = rect.Backend.x +. rect.Backend.w;
+     ymax = rect.Backend.x +. rect.Backend.h}
 
-let rect_of_ranges rg =
-  {Backend.x = rg.xmin; y = rg.ymin;
-   w = rg.xmax -. rg.xmin;
-   h = rg.ymax -. rg.ymin}
+  let to_rect rg =
+    {Backend.x = rg.xmin; y = rg.ymin;
+     w = rg.xmax -. rg.xmin;
+     h = rg.ymax -. rg.ymin}
 end
 
 type ranges = Ranges.t =
@@ -94,7 +81,7 @@ let print_axes axes ranges backend =
   match axes with
     `None (_,_) -> ()
   | `Rectangle(_, _) ->
-      let rect = rect_of_ranges ranges in
+      let rect = Ranges.to_rect ranges in
       Backend.rectangle backend
         rect.Backend.x rect.Backend.y rect.Backend.w rect.Backend.h
   | `Two_lines(x,y) ->
@@ -440,7 +427,7 @@ let get_margins t
     ?(axes_meeting = axes_meeting) ?(tic_extents = tic_extents)
     ranges backend=
   let x,y = axes_meeting t.axes ranges in
-  update_ranges ranges x y;
+  Ranges.update ranges x y;
   axis_margins t.x ranges tic_extents backend,
   axis_margins t.y ranges tic_extents backend
 
@@ -453,11 +440,9 @@ let print t ~lines ~ranges
   let ctm = Coordinate.use backend lines in
   Backend.stroke backend;
   Coordinate.restore backend ctm;
-  let xrange = make_ranges () in
-  update_ranges xrange ranges.xmin y;
-  update_ranges xrange ranges.xmax y;
-  let yrange = make_ranges () in
-  update_ranges yrange x ranges.ymin;
-  update_ranges yrange x ranges.ymax;
+  let xrange = Ranges.make ranges.xmin y in
+  Ranges.update xrange ranges.xmax y;
+  let yrange = Ranges.make x ranges.ymin in
+  Ranges.update yrange x ranges.ymax;
   print_tics t.x xrange print_tic backend; (*X axis*)
   print_tics t.y yrange print_tic backend  (*Y axis*)

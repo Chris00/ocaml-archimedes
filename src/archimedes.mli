@@ -128,13 +128,11 @@ module Axes: sig
       that the first value ([x0] or [y0]) is less than the second one,
       and the subsequent usings of this record satisfy this
       convention.*)
-  type xyranges = private {
-    mutable x1:float; (** First abscissa *)
-    mutable y1:float; (** First ordinate *)
-    mutable x2:float; (** Second abscissa *)
-    mutable y2:float; (** Second ordinate *)
-    mutable fresh: bool (** Range is a new one?*)
-  }
+  type ranges =
+      private {mutable xmin:float;
+               mutable ymin:float;
+               mutable xmax:float;
+               mutable ymax:float}
 
   type 'a axis
     (**This type stores all information about an axis: major, minor
@@ -203,7 +201,7 @@ module Iterator : sig
 
   val nb_data : t -> int
 
-  val extents : t -> Axes.xyranges
+  val extents : t -> Axes.ranges
 end
 
 module Handle: sig
