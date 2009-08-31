@@ -103,32 +103,13 @@ module Backend: sig
     h:float;   (** height of the rectangle  *)
   }
 
-  module Ranges: sig
     (** A data structure holding ranges. Note that, contrary to
         rectangle fields, these ones are mutable. Note also that there's
         no restriction on using the values. However, we make the
         convention that the first value ([x0] or [y0]) is less than the
         second one, and the subsequent usings of this record satisfy
         this convention.*)
-    type t = private {
-      mutable xmin:float; (** First abscissa *)
-      mutable ymin:float; (** First ordinate *)
-      mutable xmax:float; (** Second abscissa *)
-      mutable ymax:float; (** Second ordinate *)
-      mutable fresh: bool (** Range is a new one?*)
-    }
-
-    (** Makes a [t] *)
-    val make : unit -> t
-
-    val update: t -> float -> float -> unit
-
-    (**Transformation functions: switching between [rectangle]s and [t]s*)
-    val of_rect: rectangle -> t
-    val to_rect: t -> rectangle
-  end
-
-  type ranges = Ranges.t =
+  type ranges =
       private {
       mutable xmin:float; (** First abscissa *)
       mutable ymin:float; (** First ordinate *)
@@ -136,6 +117,21 @@ module Backend: sig
       mutable ymax:float; (** Second ordinate *)
       mutable fresh: bool (** Range is a new one?*)
     }
+
+  module Ranges: sig
+    (**Managing with [ranges]: make new ranges, update, conversion to
+       [rectangle]s.*)
+    val make : unit -> ranges
+      (** Makes a [ranges] *)
+
+    val update: ranges -> float -> float -> unit
+      (**[update ranges x y] extends the ranges so that [x] is between
+         [ranges.xmin] and [ranges.xmax], and similarly for [y].*)
+
+    val of_rect: rectangle -> ranges
+    val to_rect: ranges -> rectangle
+      (**Transformation functions: switching between [rectangle]s and [ranges]s*)
+  end
 
   (** Holds an affine transformation, such as a scale, rotation, shear,
       or a combination of those. The transformation of a point (x, y) is
@@ -169,6 +165,8 @@ module Backend: sig
 
   module type T =
   sig
+    (**To be able to register a given backend, it must provide an
+       implementation for all these functions.*)
     type t
       (** Handle of a backend or a coordinate system. *)
 
@@ -260,8 +258,6 @@ module Backend: sig
           any effect).  *)
   end
 
-  include T
-
   type error =
     | Corrupted_dependency of string
     | Non_loadable_dependency of string
@@ -274,7 +270,7 @@ module Backend: sig
   val string_of_error : error -> string
 
   exception Error of error
-
+(*
   val make : ?dirs:string list -> string -> float -> float -> t
     (** [make backend width height] creates a new backend of the given
         dimensions.
@@ -292,7 +288,10 @@ module Backend: sig
     (** Returns the width of the backend canvas. *)
 
   val width : t -> float
-    (** Returns the height of the backend canvas. *)
+    (** Returns the height of the backend canvas. *)*)
+
+
+  type t
 
   val registered: unit -> string list
     (** Return the list of registered (i.e. loaded) backends. *)
@@ -772,7 +771,7 @@ module Axes: sig
   val print :
     ([> axes] as 'a, [> tic] as 'b) t ->
     lines:Coordinate.t ->
-    ranges:Backend.Ranges.t ->
+    ranges:Backend.ranges ->
     ?print_axes:('a -> Backend.ranges -> Backend.t -> unit) ->
     ?axes_meeting:('a -> Backend.ranges -> float * float) ->
     ?print_tic:(Backend.t -> 'b -> unit) -> Backend.t -> unit
