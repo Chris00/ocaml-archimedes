@@ -35,6 +35,20 @@ struct
   INCLUDE "matrix.ml"
 end
 
+type line_cap =
+  | BUTT
+  | ROUND
+  | SQUARE
+
+type line_join =
+  | JOIN_MITER
+  | JOIN_ROUND
+  | JOIN_BEVEL
+
+type slant = Upright | Italic
+
+type weight = Normal | Bold
+
 module Backend =
 struct
   INCLUDE "backend.ml"
@@ -55,7 +69,7 @@ struct
   INCLUDE "axes.ml"
 end
 
-module Functions =
+module Functions : sig INCLUDE "functions.mli" end =
 struct
   INCLUDE "functions.ml"
 end

@@ -18,6 +18,23 @@
 
 (** A 2D plotting library with various backends. *)
 
+type line_cap =
+  | BUTT  (** start(stop) the line exactly at the start(end) point *)
+  | ROUND (** use a round ending, the center of the circle is the end point *)
+  | SQUARE (** use squared ending, the center of the square is the end point *)
+
+type line_join =
+  | JOIN_MITER (** use a sharp (angled) corner *)
+  | JOIN_ROUND (** use a rounded join, the center of the circle is the
+                   joint point *)
+  | JOIN_BEVEL (** use a cut-off join, the join is cut off at half the line
+                     width from the joint point *)
+
+type slant = Upright | Italic
+    (** Specifies variants of a font face based on their slant. *)
+
+type weight = Normal | Bold
+    (** Specifies variants of a font face based on their weight. *)
 
 (** Representation of colors.*)
 module Color: sig
@@ -101,6 +118,194 @@ module Color: sig
 end
 
 (************************************************************************)
+(** {2 Plotting functions} *)
+
+(** Axes maker and convenient ways to create axes. *)
+module Axes: sig
+  (** A data structure holding ranges. Note that, contrary to rectangle
+      fields, these ones are mutable. Note also that there's no
+      restriction on using the values. However, we make the convention
+      that the first value ([x0] or [y0]) is less than the second one,
+      and the subsequent usings of this record satisfy this
+      convention.*)
+  type xyranges = private {
+    mutable x1:float; (** First abscissa *)
+    mutable y1:float; (** First ordinate *)
+    mutable x2:float; (** Second abscissa *)
+    mutable y2:float; (** Second ordinate *)
+    mutable fresh: bool (** Range is a new one?*)
+  }
+
+  type 'a axis
+    (**This type stores all information about an axis: major, minor
+       tics, their positioning and how to position labels relative to
+       tics.*)
+
+  type ('a, 'b) t
+    (**This type stores information about a pair of axes.*)
+
+  type axes =
+      [ `None of bool * bool
+          (**No axis will be printed. The bools have to be interpreted
+             this way:
+
+             -for the first one, [true] means: minimal abscissa;
+             [false]: maximal abscissa.
+
+             -for the second one, same meaning, but on ordinates.*)
+      | `Rectangle of bool * bool
+          (**A rectangle, whose corners are taken so that it fits the
+             zone. The bools have the same meaning as for [`None].*)
+      | `Two_lines of float * float
+          (**Abscissas axes are represented in a horizontal line,
+             ordinates in a vertical line. The pair of floats is
+             precisely the intersection of these two lines.*)
+      | `Two_lines_rel of float * float
+          (**Same as [Two_lines] except that the two floats are
+             relative; that is, if [(t,u)] is an argument pair, and
+             [xmin, ..., ymax] are the bounds, then the intersection
+             is computed as [(xmin +. t *.(xmax -. xmin), ymin +. u
+             *. (ymax -. ymin) )].*)
+      ]
+
+  type tic = [ `P of string ]
+      (**Type for tics.*)
+
+
+end
+
+
+module Iterator : sig
+  type t
+
+  val of_list: (float * float) list -> t
+
+  val of_array: (float * float) array -> t
+
+  val of_bigarray2: ?clayout:bool -> (float, 'b, 'c)  Bigarray.Array2.t -> t
+
+  val of_lists: float list -> float list -> t
+
+  val of_arrays: float array -> float array -> t
+
+  val of_bigarrays:
+    ?xclayout:bool -> (float, 'b, 'c)Bigarray.Array1.t ->
+    ?yclayout:bool -> (float, 'b, 'c)Bigarray.Array1.t -> t
+
+  val from_sampling :
+    (float -> float * float) ->
+    ?min_step:float -> ?nsamples:int ->
+    float -> float -> t
+
+  val next: t -> (float * float) option
+
+  val reset : t -> unit
+
+  val nb_data : t -> int
+
+  val extents : t -> Axes.xyranges
+end
+
+module Handle: sig
+  (*type coordinate = {
+    mutable linewidth : Coordinate.t;
+    mutable drawings : Coordinate.t;
+    mutable normalized : Coordinate.t;
+    mutable xmin : float;
+    mutable xmax : float;
+    mutable ymin : float;
+    mutable ymax : float;
+  }*)
+  type t
+  val make : dirs:string list -> string -> float -> float -> t
+  val close : t -> unit
+  module Viewport :
+  sig
+    type vp
+    val make :
+      t -> xmin:float -> xmax:float -> ymin:float -> ymax:float -> vp
+    val sub :
+      vp -> xmin:float -> xmax:float -> ymin:float -> ymax:float -> vp
+    val make_rect :
+      t -> x:float -> y:float -> w:float -> h:float -> vp
+    val sub_rect :
+      vp -> x:float -> y:float -> w:float -> h:float -> vp
+    val use : vp -> unit
+
+    (**{2 Convenience functions to create viewports}*)
+    val rows : t -> int -> vp array
+    val columns : t -> int -> vp array
+    val matrix : t -> int -> int -> vp array array
+    val sub_rows : vp -> int -> vp array
+    val sub_columns : vp -> int -> vp array
+    val sub_matrix : vp -> int -> int -> vp array array
+  end
+  val use : Viewport.vp -> unit
+  val use_initial : t -> unit
+  val set_line_width : t -> float -> unit
+  val set_mark_size : t -> float -> unit
+  val set_font_size : t -> float -> unit
+  val set_global_line_width : t -> float -> unit
+  val set_global_mark_size : t -> float -> unit
+  val set_global_font_size : t -> float -> unit
+  val get_line_width : t -> float
+  val get_mark_size : t -> float
+  val width : t -> float
+  val height : t -> float
+  val set_color : t -> Color.t -> unit
+  val set_line_width : t -> float -> unit
+  val set_line_cap : t -> line_cap -> unit
+  val set_dash : t -> float -> float array -> unit
+  val set_line_join : t -> line_join -> unit
+  val get_line_width : t -> float
+  val get_line_cap : t -> line_cap
+  val get_dash : t -> float array * float
+  val get_line_join : t -> line_join
+  val move_to : t -> x:float -> y:float -> unit
+  val line_to : t -> x:float -> y:float -> unit
+  val rel_move_to : t -> x:float -> y:float -> unit
+  val rel_line_to : t -> x:float -> y:float -> unit
+  val curve_to :
+    t ->
+    x1:float ->
+    y1:float -> x2:float -> y2:float -> x3:float -> y3:float -> unit
+  val rectangle : t -> x:float -> y:float -> w:float -> h:float -> unit
+  val arc : t -> x:float -> y:float -> r:float -> a1:float -> a2:float -> unit
+  val close_path : t -> unit
+  val clear_path : t -> unit
+  (*val path_extents : t -> Backend.rectangle*)
+  val stroke_current : t -> unit
+  val stroke_current_preserve : t -> unit
+  val stroke : t -> unit
+  val stroke_preserve : t -> unit
+  val fill : t -> unit
+  val fill_preserve : t -> unit
+  val clip_rectangle : t -> x:float -> y:float -> w:float -> h:float -> unit
+  val save_vp : t -> unit
+  val restore_vp : t -> unit
+  val select_font_face : t -> slant -> weight -> string -> unit
+  (* val show_text : *)
+  (*   t -> *)
+  (*   rotate:float -> *)
+  (*   x:float -> y:float -> Backend.text_position -> string -> unit *)
+  (* val text_extents : t -> string -> rectangle *)
+  val render : t -> string -> unit
+  (* val mark_extents : t -> string -> rectangle *)
+  val plotfx :
+    t ->
+    ?axes:([> Axes.axes ],[> Axes.tic]) Axes.t ->
+    ?nsamples:int ->
+    ?min_step:float ->
+    (float -> float) -> float -> float -> unit
+  val plotxy :
+    t ->
+    ?axes:([> Axes.axes ],[> Axes.tic]) Axes.t ->
+    ?f:(t -> string -> float -> float -> unit) ->
+    ?mark:string -> Iterator.t -> unit
+end
+
+
+(************************************************************************)
 (** {2 Registering backends and extending the library} *)
 
 (** Holds an affine transformation, such as a scale, rotation, shear,
@@ -119,18 +324,6 @@ type matrix = { mutable xx: float; mutable yx: float;
 module Backend:
 sig
 
-  type line_cap =
-    | BUTT  (** start(stop) the line exactly at the start(end) point *)
-    | ROUND (** use a round ending, the center of the circle is the end point *)
-    | SQUARE (** use squared ending, the center of the square is the end point *)
-
-  type line_join =
-    | JOIN_MITER (** use a sharp (angled) corner *)
-    | JOIN_ROUND (** use a rounded join, the center of the circle is the
-                     joint point *)
-    | JOIN_BEVEL (** use a cut-off join, the join is cut off at half the line
-                     width from the joint point *)
-
   (** A data structure for holding a rectangle. *)
   type rectangle = {
     x:float;   (** X coordinate of the left side of the rectangle *)
@@ -138,12 +331,6 @@ sig
     w:float;   (** width of the rectangle *)
     h:float;   (** height of the rectangle  *)
   }
-
-  type slant = Upright | Italic
-      (** Specifies variants of a font face based on their slant. *)
-
-  type weight = Normal | Bold
-      (** Specifies variants of a font face based on their weight. *)
 
   type text_position =
     | CC  (** centrer horizontally and vertically *)
@@ -582,271 +769,4 @@ sig
         to was updated (possibly because of one of the coordinate sytems
         it (transitively) depends on was mofidied) since the last
         [reset]. *)
-end
-
-
-(************************************************************************)
-(** {2 Plotting functions} *)
-
-(** Axes maker and convenient ways to create axes. *)
-module Axes: sig
-  (** A data structure holding ranges. Note that, contrary to rectangle
-      fields, these ones are mutable. Note also that there's no
-      restriction on using the values. However, we make the convention
-      that the first value ([x0] or [y0]) is less than the second one,
-      and the subsequent usings of this record satisfy this
-      convention.*)
-  type xyranges = private {
-    mutable x1:float; (** First abscissa *)
-    mutable y1:float; (** First ordinate *)
-    mutable x2:float; (** Second abscissa *)
-    mutable y2:float; (** Second ordinate *)
-    mutable fresh: bool (** Range is a new one?*)
-  }
-
-  type 'a axis
-    (**This type stores all information about an axis: major, minor
-       tics, their positioning and how to position labels relative to
-       tics.*)
-
-  type ('a, 'b) t
-    (**This type stores information about a pair of axes.*)
-
-  type axes =
-      [ `None of bool * bool
-          (**No axis will be printed. The bools have to be interpreted
-             this way:
-
-             -for the first one, [true] means: minimal abscissa;
-             [false]: maximal abscissa.
-
-             -for the second one, same meaning, but on ordinates.*)
-      | `Rectangle of bool * bool
-          (**A rectangle, whose corners are taken so that it fits the
-             zone. The bools have the same meaning as for [`None].*)
-      | `Two_lines of float * float
-          (**Abscissas axes are represented in a horizontal line,
-             ordinates in a vertical line. The pair of floats is
-             precisely the intersection of these two lines.*)
-      | `Two_lines_rel of float * float
-          (**Same as [Two_lines] except that the two floats are
-             relative; that is, if [(t,u)] is an argument pair, and
-             [xmin, ..., ymax] are the bounds, then the intersection
-             is computed as [(xmin +. t *.(xmax -. xmin), ymin +. u
-             *. (ymax -. ymin) )].*)
-      ]
-
-  type tic = [ `P of Pointstyle.name ]
-      (**Type for tics.*)
-
-
-end
-
-
-module Functions: sig
-  val samplefxy :
-    (float -> float * float) ->
-    ?min_step:float ->
-    ?nsamples:int -> float -> float ->
-    int * Axes.xyranges * (('a -> float * float -> 'a) -> 'a -> 'a)
-
-  val samplefx :
-    (float -> float) ->
-    ?min_step:float ->
-    ?nsamples:int -> float -> float ->
-    int * (float * float) * (('a -> float -> 'a) -> 'a -> 'a)
-
-  val fxy_list :
-    (float -> float * float) ->
-    ?min_step:float -> ?nsamples:int -> float -> float -> (float * float) list
-
-  val fx_list :
-    (float -> float) ->
-    ?min_step:float -> ?nsamples:int -> float -> float -> float list
-
-  val plotfxy :
-    Backend.t ->
-    (float -> float * float) -> ?nsamples:int -> float -> float -> unit
-
-  val plotfx :
-    Backend.t -> (float -> float) -> ?nsamples:int -> float -> float -> unit
-
-  val stroke_plot :
-    ?init:bool ->
-    Backend.t -> (float -> float) -> ?nsamples:int -> float -> float -> unit
-
-  val stroke_plot_param :
-    ?init:bool ->
-    Backend.t ->
-    (float -> float * float) -> ?nsamples:int -> float -> float -> unit
-
-  type extend =
-      NONE (**No extends, transparent color*)
-    | PAD(**Takes the nearest color available*)
-    | REPEAT(**Repeats the colors*)
-    | REFLECT(**Reflects the colors*)
-
-  val color_level :
-    (float -> float -> float) ->
-    ?extend:extend ->
-    xmin:float ->
-    xmax:float ->
-    ymin:float ->
-    ymax:float ->
-    float -> Color.t -> float -> Color.t -> float -> float -> Color.t
-    (**[color_level f ~xmin ~xmax ~ymin ~ymax fmin cmin fmax cmax] makes a
-       function whose domain is [0,1]^2 and image is colors, constructed
-       upon f as follows:
-
-       -Let [(t,u)] a point of [0,1]^2. We find [x], resp.  [y] as a
-       convex combination of [xmin] and [xmax], resp. [ymin] and [ymax].
-
-       -We then compute [f x y] and set [v] the number for which [f x y =
-       v *. fmax +. (1.-.v) *. fmin].
-
-       -If [v] is in the interval [0,1], then the function gives the
-       convex combination of the colors [cmin] and [cmax] (formally, each
-       component of the new color is computed as [v*.a +. (1.-.v)*.b],
-       where [a] and [b] are respectively the components of [cmin] and
-       [cmax]).
-
-       -If not, the optional extent gives which color must be returned:
-       *PAD (default) makes the function return [cmin] if [v < 0.] and
-       [cmax] otherwise.
-       *NONE makes the function return a transparent color.
-       *REPEAT takes [v] "modulo 1" and finds the corresponding
-       color as if [v] was actually in [0,1].
-       *REFLECT  takes [v] "modulo 2" and finds the corresponding
-       color, taking [v] or [2.-.v]; this corresponds to "reflecting the color"
-       beyond the bounds [fmin] and [fmax].
-    *)
-end
-
-module Iterator : sig
-  type t
-
-  val of_list: (float * float) list -> t
-
-  val of_array: (float * float) array -> t
-
-  val of_bigarray2: ?clayout:bool -> (float, 'b, 'c)  Bigarray.Array2.t -> t
-
-  val of_lists: float list -> float list -> t
-
-  val of_arrays: float array -> float array -> t
-
-  val of_bigarrays:
-    ?xclayout:bool -> (float, 'b, 'c)Bigarray.Array1.t ->
-    ?yclayout:bool -> (float, 'b, 'c)Bigarray.Array1.t -> t
-
-  val from_sampling :
-    (float -> float * float) ->
-    ?min_step:float -> ?nsamples:int ->
-    float -> float -> t
-
-  val next: t -> (float * float) option
-
-  val reset : t -> unit
-
-  val nb_data : t -> int
-
-  val extents : t -> Axes.xyranges
-end
-
-module Handle: sig
-  (*type coordinate = {
-    mutable linewidth : Coordinate.t;
-    mutable drawings : Coordinate.t;
-    mutable normalized : Coordinate.t;
-    mutable xmin : float;
-    mutable xmax : float;
-    mutable ymin : float;
-    mutable ymax : float;
-  }*)
-  type t
-  val make : dirs:string list -> string -> float -> float -> t
-  val close : t -> unit
-  module Viewport :
-  sig
-    type vp
-    val make :
-      t -> xmin:float -> xmax:float -> ymin:float -> ymax:float -> vp
-    val sub :
-      vp -> xmin:float -> xmax:float -> ymin:float -> ymax:float -> vp
-    val make_rect :
-      t -> x:float -> y:float -> w:float -> h:float -> vp
-    val sub_rect :
-      vp -> x:float -> y:float -> w:float -> h:float -> vp
-    val use : vp -> unit
-
-    (**{2 Convenience functions to create viewports}*)
-    val rows : t -> int -> vp array
-    val columns : t -> int -> vp array
-    val matrix : t -> int -> int -> vp array array
-    val sub_rows : vp -> int -> vp array
-    val sub_columns : vp -> int -> vp array
-    val sub_matrix : vp -> int -> int -> vp array array
-  end
-  val use : Viewport.vp -> unit
-  val use_initial : t -> unit
-  val set_line_width : t -> float -> unit
-  val set_mark_size : t -> float -> unit
-  val set_font_size : t -> float -> unit
-  val set_global_line_width : t -> float -> unit
-  val set_global_mark_size : t -> float -> unit
-  val set_global_font_size : t -> float -> unit
-  val get_line_width : t -> float
-  val get_mark_size : t -> float
-  val width : t -> float
-  val height : t -> float
-  val set_color : t -> Color.t -> unit
-  val set_line_width : t -> float -> unit
-  val set_line_cap : t -> Backend.line_cap -> unit
-  val set_dash : t -> float -> float array -> unit
-  val set_line_join : t -> Backend.line_join -> unit
-  val get_line_width : t -> float
-  val get_line_cap : t -> Backend.line_cap
-  val get_dash : t -> float array * float
-  val get_line_join : t -> Backend.line_join
-  val move_to : t -> x:float -> y:float -> unit
-  val line_to : t -> x:float -> y:float -> unit
-  val rel_move_to : t -> x:float -> y:float -> unit
-  val rel_line_to : t -> x:float -> y:float -> unit
-  val curve_to :
-    t ->
-    x1:float ->
-    y1:float -> x2:float -> y2:float -> x3:float -> y3:float -> unit
-  val rectangle : t -> x:float -> y:float -> w:float -> h:float -> unit
-  val arc : t -> x:float -> y:float -> r:float -> a1:float -> a2:float -> unit
-  val close_path : t -> unit
-  val clear_path : t -> unit
-  (*val path_extents : t -> Backend.rectangle*)
-  val stroke_current : t -> unit
-  val stroke_current_preserve : t -> unit
-  val stroke : t -> unit
-  val stroke_preserve : t -> unit
-  val fill : t -> unit
-  val fill_preserve : t -> unit
-  val clip_rectangle : t -> x:float -> y:float -> w:float -> h:float -> unit
-  val save_vp : t -> unit
-  val restore_vp : t -> unit
-  val select_font_face : t -> Backend.slant -> Backend.weight -> string -> unit
-  val show_text :
-    t ->
-    rotate:float ->
-    x:float -> y:float -> Backend.text_position -> string -> unit
-  val text_extents : t -> string -> Backend.rectangle
-  val render : t -> Pointstyle.name -> unit
-  val mark_extents : t -> Pointstyle.name -> Backend.rectangle
-  val plotfx :
-    t ->
-    ?axes:([> Axes.axes ],[> Axes.tic]) Axes.t ->
-    ?nsamples:int ->
-    ?min_step:float ->
-    (float -> float) -> float -> float -> unit
-  val plotxy :
-    t ->
-    ?axes:([> Axes.axes ],[> Axes.tic]) Axes.t ->
-    ?f:(t -> Pointstyle.name -> float -> float -> unit) ->
-    ?mark:Pointstyle.name -> Iterator.t -> unit
 end

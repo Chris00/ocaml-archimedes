@@ -28,21 +28,7 @@ module ForLinking_1__ = Callback
 external for_linking_1__ : unit -> unit = "caml_hash_variant"
 
 
-type line_cap =
-  | BUTT
-  | ROUND
-  | SQUARE
-
-type line_join =
-  | JOIN_MITER
-  | JOIN_ROUND
-  | JOIN_BEVEL
-
 type rectangle = {x:float; y:float; w:float; h:float}
-
-type slant = Upright | Italic
-
-type weight = Normal | Bold
 
 type text_position =
   | CC
