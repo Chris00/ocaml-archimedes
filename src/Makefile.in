@@ -7,7 +7,7 @@ LDFLAGS = @LDFLAGS@
 LIBS = @LIBS@
 OS_TYPE = @OCAML_OS_TYPE@
 
-DOC_FILES = $(wildcard *.mli)
+DOC_FILES = archimedes.mli
 DOC_DIR = $(ROOT)/doc/html/
 
 # Native code versions must be installed if and only if make opt was
@@ -30,20 +30,20 @@ opt: native
 byte: archimedes.cma $(PLUGINS:.ml=.cmo)
 native: archimedes.cmxa $(PLUGINS:.ml=.cmxs)
 
-ARCHIMEDES_FILES = string_utils.ml color.ml backend.ml coordinate.ml \
+ARCHIMEDES_FILES = string_utils.ml color.ml matrix.ml backend.ml coordinate.ml \
    pointstyle.ml axes.ml functions.ml iterator.ml handle.ml
 
 archimedes.cma: archimedes.cmo
 archimedes.cmxa: archimedes.cmx
 
-archimedes.cmo: $(ARCHIMEDES_FILES:.ml=.cmo)
-	$(OCAMLC) -o $@ $(OCAMLC_FLAGS) -pack $(filter-out archimedes.cmi,$^)
+# The library is created by inclusion of the various source files
+# which breaks separate compilation of those but is more flexible for
+# providing a nice interface and hiding submodules.
+archimedes.cmo: archimedes.ml $(ARCHIMEDES_FILES)
+	$(OCAMLC) -o $@ -pp "@CAMLP4O@ -parser macro" $(OCAMLC_FLAGS) -c $<
 
-archimedes.cmx: $(ARCHIMEDES_FILES:.ml=.cmx)
-	$(OCAMLOPT) -o $@ $(OCAMLOPT_FLAGS) -pack \
-	$(filter-out archimedes.cmi,$^)
-
-$(ARCHIMEDES_FILES:.ml=.cmx): OCAMLOPT_FLAGS += -for-pack Archimedes
+archimedes.cmx: archimedes.ml  $(ARCHIMEDES_FILES)
+	$(OCAMLOPT) -o $@ -pp "@CAMLP4O@ -parser macro" $(OCAMLOPT_FLAGS) -c $<
 
 # Plugins
 archimedes_graphics.cmo: archimedes_graphics.ml
@@ -77,6 +77,8 @@ install: META $(INSTALL_FILES)
 
 uninstall:
 	ocamlfind remove $(PACKAGE)
+
+.depend.ocaml: PP_FLAGS=-pp "@CAMLP4O@ -parser macro"
 
 include $(ROOT)/Makefile.ocaml
 

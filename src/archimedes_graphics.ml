@@ -19,13 +19,13 @@
 (** Graphics Archimedes plugin *)
 
 open Printf
-open Archimedes
-module Matrix = Backend.Matrix
+module Matrix = Archimedes.Matrix
+module Backend = Archimedes.Backend
 
 (* Re-export the labels so we do not have to qualify them with [Backend]. *)
-type matrix = Backend.matrix = { mutable xx: float; mutable yx: float;
-                                 mutable xy: float; mutable yy: float;
-                                 mutable x0: float; mutable y0: float; }
+type matrix = Archimedes.matrix = { mutable xx: float; mutable yx: float;
+                                    mutable xy: float; mutable yy: float;
+                                    mutable x0: float; mutable y0: float; }
 
 let is_infinite x = 1. /. x = 0.
 let min a b = if (a:float) < b then a else b
@@ -202,9 +202,9 @@ struct
 
   let set_color t c =
     let st = get_state t in
-    let r = round(Color.r c *. 255.)
-    and g = round(Color.g c *. 255.)
-    and b = round(Color.b c *. 255.) in
+    let r = round(Archimedes.Color.r c *. 255.)
+    and g = round(Archimedes.Color.g c *. 255.)
+    and b = round(Archimedes.Color.b c *. 255.) in
     let color = Graphics.rgb r g b in
     st.color <- color;
     Graphics.set_color color

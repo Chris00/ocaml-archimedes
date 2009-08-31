@@ -16,6 +16,7 @@ aclocal.m4
 Makefile.ocaml
 *.com
 *.exe
+doc/html/
 # Generated dependency files
 *.dep
 # Tests and examples

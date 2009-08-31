@@ -18,8 +18,7 @@
 
 (** Cairo Archimedes plugin *)
 
-open Cairo
-open Archimedes
+module Backend = Archimedes.Backend
 
 module B : Backend.Capabilities =
 struct
@@ -41,24 +40,22 @@ struct
   let path_extents cr = (Obj.magic (path_extents cr) : Backend.rectangle)
 
   let set_matrix cr m =
-    set_matrix cr
-    {Cairo.xx = m.Backend.xx; xy = m.Backend.xy;
-     yx = m.Backend.yx; yy = m.Backend.yy;
-     x0 = m.Backend.x0; y0 = m.Backend.y0;}
+    set_matrix cr { Cairo.xx = m.Archimedes.xx; xy = m.Archimedes.xy;
+                    yx = m.Archimedes.yx; yy = m.Archimedes.yy;
+                    x0 = m.Archimedes.x0; y0 = m.Archimedes.y0;}
+      (*(Obj.magic m : Cairo.matrix)*)
 
-        (*(Obj.magic m : Cairo.matrix)*)
   let get_matrix cr =
     let m = get_matrix cr in
-    {Backend.xx = m.Cairo.xx; xy = m.Cairo.xy;
-     yx = m.Cairo.yx; yy = m.Cairo.yy;
-     x0 = m.Cairo.x0; y0 = m.Cairo.y0;}
+    { Archimedes.xx = m.Cairo.xx;  xy = m.Cairo.xy;
+      yx = m.Cairo.yx; yy = m.Cairo.yy;
+      x0 = m.Cairo.x0; y0 = m.Cairo.y0;}
     (*(Obj.magic (get_matrix cr) : Backend.matrix)*)
-
 
   let set_dash cr ofs arr = set_dash cr ~ofs arr
 
   let set_color cr c =
-    let r,g,b,a = Color.get_rgba c in
+    let r,g,b,a = Archimedes.Color.get_rgba c in
     Cairo.set_source_rgba cr r g b a
 
   let clip_rectangle cr ~x ~y ~w ~h =

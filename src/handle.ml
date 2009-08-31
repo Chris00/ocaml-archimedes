@@ -159,7 +159,7 @@ type viewport =
     { (*For text, line width, marks size*)
       scalings: Sizes.t;
       (*Bounds*)
-      ranges: Backend.ranges;
+      ranges: Axes.ranges;
       (*To update the ranges correctly, we need the current point.*)
       mutable current_pt: (float * float) option;
       (*What has to be plotted in this viewport*)
@@ -210,7 +210,7 @@ let make ~dirs name w h =
   let initial =
     {scalings = Sizes.make_root def_lw def_ts def_marks;
      (*No drawings yet*)
-     ranges = Backend.Ranges.make ();
+     ranges = Axes.Ranges.make ();
      current_pt = None;
      orders = Queue.create ();
      scalings_hist = Stack.create ();
@@ -231,27 +231,26 @@ let make ~dirs name w h =
 
 let close t =
   let rec make_viewports () =
-    if not (Queue.is_empty t.used_vp) then
+    if not (Queue.is_empty t.used_vp) then (
       let rec make_orders orders =
-        if not (Queue.is_empty orders) then
-          (Queue.pop orders ();
-           make_orders orders)
-      in
+        if not (Queue.is_empty orders) then (
+          Queue.pop orders ();
+          make_orders orders
+        ) in
       let coord, vp = Queue.pop t.used_vp in
       let ranges = vp.ranges in
-      let diffx, diffy =
-        (ranges.Backend.xmax -. ranges.Backend.xmin),
-        (ranges.Backend.ymax -. ranges.Backend.ymin)
+      let diffx = ranges.Axes.xmax -. ranges.Axes.xmin
+      and diffy = ranges.Axes.ymax -. ranges.Axes.ymin
       in
-      let real_transform =
+      let user_device =
         Coordinate.make_scale coord (1. /. diffx) (1. /. diffy)
       in
-      ( Coordinate.translate real_transform
-          (-.ranges.Backend.xmin) (-.ranges.Backend.ymin);
-        ignore (Coordinate.use t.backend real_transform);
-        make_orders vp.orders;
-        make_viewports ())
-  in make_viewports ();
+      Coordinate.translate user_device (-.ranges.Axes.xmin) (-.ranges.Axes.ymin);
+      ignore (Coordinate.use t.backend user_device);
+      make_orders vp.orders;
+      make_viewports ()
+    ) in
+  make_viewports ();
   Backend.close t.backend
 
 let check t =
@@ -273,7 +272,7 @@ struct
           depending on the previous ones.*)
         scalings = Sizes.child context.current_vp.scalings 1. 1. 1.;
         (*No drawings yet on this viewport.*)
-        ranges =Backend.Ranges.make ();
+        ranges = Axes.Ranges.make ();
         current_pt = None;
         orders = Queue.create ();
         (*Not in use*)
@@ -424,42 +423,42 @@ let get_line_join t = Backend.get_line_join t.backend
 
 let move_to t ~x ~y =
   set_current_pt t x y;
-  Backend.Ranges.update t.current_vp.ranges x y;
+  Axes.Ranges.update t.current_vp.ranges x y;
   add_order (fun () -> Backend.move_to t.backend x y) t
 
 let line_to t ~x ~y =
   set_current_pt t x y;
-  Backend.Ranges.update t.current_vp.ranges x y;
+  Axes.Ranges.update t.current_vp.ranges x y;
   add_order (fun () -> Backend.line_to t.backend x y) t
 
 let rel_move_to t ~x ~y =
   let x', y' = get_current_pt t in
-  Backend.Ranges.update t.current_vp.ranges (x +. x') (y +. y');
+  Axes.Ranges.update t.current_vp.ranges (x +. x') (y +. y');
   set_current_pt t (x +. x') (y +. y');
   add_order (fun () -> Backend.rel_move_to t.backend x y) t
 
 let rel_line_to t ~x ~y =
   let x', y' = get_current_pt t in
-  Backend.Ranges.update t.current_vp.ranges (x +. x') (y +. y');
+  Axes.Ranges.update t.current_vp.ranges (x +. x') (y +. y');
   set_current_pt t (x +. x') (y +. y');
   add_order (fun () -> Backend.rel_line_to t.backend x y) t
 
 let curve_to t ~x1 ~y1 ~x2 ~y2 ~x3 ~y3 =
-  Backend.Ranges.update t.current_vp.ranges x1 y1;
-  Backend.Ranges.update t.current_vp.ranges x2 y2;
-  Backend.Ranges.update t.current_vp.ranges x3 y3;
+  Axes.Ranges.update t.current_vp.ranges x1 y1;
+  Axes.Ranges.update t.current_vp.ranges x2 y2;
+  Axes.Ranges.update t.current_vp.ranges x3 y3;
   set_current_pt t x3 y3;
   add_order (fun () -> Backend.curve_to t.backend x1 y1 x2 y2 x3 y3) t
 
 let rectangle t ~x ~y ~w ~h =
-  Backend.Ranges.update t.current_vp.ranges x y;
-  Backend.Ranges.update t.current_vp.ranges (x+.w) (y+.h);
+  Axes.Ranges.update t.current_vp.ranges x y;
+  Axes.Ranges.update t.current_vp.ranges (x+.w) (y+.h);
   add_order (fun () -> Backend.rectangle t.backend x y w h) t
 
 let arc t ~x ~y ~r ~a1 ~a2 =
   (*FIXME: better bounds for the arc can be found.*)
-  Backend.Ranges.update t.current_vp.ranges (x+.r) (y+.r);
-  Backend.Ranges.update t.current_vp.ranges (x-.r) (y-.r);
+  Axes.Ranges.update t.current_vp.ranges (x+.r) (y+.r);
+  Axes.Ranges.update t.current_vp.ranges (x-.r) (y-.r);
   add_order (fun () -> Backend.arc t.backend x y r a1 a2) t
 
 let close_path t =
@@ -546,8 +545,8 @@ let show_text t ~rotate ~x ~y pos txt=
   Backend.set_font_size t.backend (Sizes.get_ts t.current_vp.scalings);
   let rect = Backend.text_extents t.backend txt in
   Coordinate.restore t.backend ctm;
-  Backend.Ranges.update t.current_vp.ranges rect.Backend.x rect.Backend.y;
-  Backend.Ranges.update t.current_vp.ranges
+  Axes.Ranges.update t.current_vp.ranges rect.Backend.x rect.Backend.y;
+  Axes.Ranges.update t.current_vp.ranges
     (rect.Backend.x +. rect.Backend.w)
     (rect.Backend.y +. rect.Backend.h);
   add_order f t
@@ -625,10 +624,8 @@ let plotfx t ?axes ?nsamples ?min_step f a b =
         let lines = Coordinate.make_scale t.normalized lw lw in
         Axes.print axes ~lines ~ranges t.backend
   in
-  Backend.Ranges.update t.current_vp.ranges
-    ranges.Backend.xmin ranges.Backend.ymin;
-  Backend.Ranges.update t.current_vp.ranges
-    ranges.Backend.xmax ranges.Backend.ymax;
+  Axes.Ranges.update t.current_vp.ranges ranges.Axes.xmin ranges.Axes.ymin;
+  Axes.Ranges.update t.current_vp.ranges ranges.Axes.xmax ranges.Axes.ymax;
   add_order f t
 
 let f t mark x y =
@@ -637,7 +634,7 @@ let f t mark x y =
 
 let plotxy t ?axes ?(f = f) ?(mark = "X") iter =
   let marker = f t mark
-  and update = Backend.Ranges.update t.current_vp.ranges in
+  and update = Axes.Ranges.update t.current_vp.ranges in
   let rec iterate do_with =
     match Iterator.next iter with
       None -> ()
@@ -654,7 +651,7 @@ let plotxy t ?axes ?(f = f) ?(mark = "X") iter =
         let lw = Sizes.get_lw t.current_vp.scalings in
         let lines = Coordinate.make_scale t.normalized lw lw in
         let rect = Iterator.extents iter in
-        Axes.print axes ~lines ~ranges:(Backend.Ranges.of_rect rect) t.backend
+        Axes.print axes ~lines ~ranges:(Axes.Ranges.of_rect rect) t.backend
   in
   iterate update;
   add_order f t

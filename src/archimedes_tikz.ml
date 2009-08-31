@@ -16,16 +16,15 @@
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the file
    LICENSE for more details. *)
 
-(** Ti{i k}Z Archimedes plugin *)
+(** TikZ Archimedes plugin *)
 
 open Printf
-open Archimedes
-module B = Backend
+module Backend = Archimedes.Backend
 
 (* Re-export the labels so we do not have to qualify them with [Backend]. *)
-type matrix = Backend.matrix = { mutable xx: float; mutable yx: float;
-                                 mutable xy: float; mutable yy: float;
-                                 mutable x0: float; mutable y0: float; }
+type matrix = Archimedes.matrix = { mutable xx: float; mutable yx: float;
+                                    mutable xy: float; mutable yy: float;
+                                    mutable x0: float; mutable y0: float; }
 
 let is_infinite x = 1. /. x = 0.
 let min a b = if (a:float) < b then a else b
@@ -103,7 +102,7 @@ let update_curve r x0 y0 x1 y1 x2 y2 x3 y3 =
 
 let point_string x y = "("^(string_of_float x)^", "^(string_of_float y)^")"
 
-module T =
+module B =
 struct
   let name = "tikz"
 
@@ -215,7 +214,7 @@ struct
           slant_weight_family = "%s";
           path_extents = { Backend.x=0.; y=0.; w=0.; h=0. };
           (* Identity transformation matrix *)
-          ctm = B.Matrix.make_identity();
+          ctm = Archimedes.Matrix.make_identity();
         } in
         { color_number=0;
           closed = false;
@@ -227,7 +226,7 @@ struct
         }
     | _ -> invalid_arg "Archimedes_tikz.make"
 
-  let close ~options t =
+  let close ~options:_ t =
     if not(t.closed) then (
       write t "\\end{tikzpicture}";
       close_out t.writer;
@@ -236,7 +235,7 @@ struct
 
   let set_color t c =
     let st =  get_state t in
-    let r,g,b,a = Color.get_rgba c in
+    let r,g,b,a = Archimedes.Color.get_rgba c in
     write t (Printf.sprintf
                "\\definecolor{archimedes_tikz %i}{rgb}{%.2f, %.2f, %.2f}"
                t.color_number r g b);
@@ -268,7 +267,7 @@ struct
         let data = string_of_float arr.(i) in
         let new_str = str^mode^data^" " in
         make_dash (i+1) (switch mode) new_str
-      with Invalid_argument ioob ->
+      with Invalid_argument _ ->
         if str = "" then "solid"
         else if i mod 2 <> 0 then (*adds an "off" with last available value*)
           str^mode^(string_of_float arr.(i-1))^" "
@@ -284,17 +283,17 @@ struct
     let st = get_state t in
     st.line_cap <- "line cap="^
       (match cap with
-         B.BUTT -> "butt"
-       | B.SQUARE -> "rect"
-       | B.ROUND -> "round")
+         Backend.BUTT -> "butt"
+       | Backend.SQUARE -> "rect"
+       | Backend.ROUND -> "round")
 
   let get_line_cap t =
     let st = get_state t in
     match String.sub st.line_cap 9 (String.length st.line_cap - 9) with
       (*Removes first characters: 'line cap='*)
-      "butt" -> B.BUTT
-    | "rect" -> B.SQUARE
-    | "round" -> B.ROUND
+      "butt" -> Backend.BUTT
+    | "rect" -> Backend.SQUARE
+    | "round" -> Backend.ROUND
     | _ -> failwith ("Archimedes TikZ.line_cap: error; cannot parse "
                      ^( String.sub st.line_cap 9 (String.length st.line_cap - 9)))
 
@@ -303,17 +302,17 @@ struct
     let st = get_state t in
     st.line_join <- "line join="^
       (match join with
-         B.JOIN_BEVEL -> "bevel"
-       | B.JOIN_MITER -> "miter"
-       | B.JOIN_ROUND -> "round")
+         Backend.JOIN_BEVEL -> "bevel"
+       | Backend.JOIN_MITER -> "miter"
+       | Backend.JOIN_ROUND -> "round")
 
   let get_line_join t =
     let st = get_state t in
     match String.sub st.line_join 10 (String.length st.line_join - 10) with
       (*Removes first characters: 'line join='*)
-      "bevel" -> B.JOIN_BEVEL
-    | "miter" -> B.JOIN_MITER
-    | "round" -> B.JOIN_ROUND
+      "bevel" -> Backend.JOIN_BEVEL
+    | "miter" -> Backend.JOIN_MITER
+    | "round" -> Backend.JOIN_ROUND
     | _ -> failwith ("Archimedes TikZ.line_join: error; cannot parse "
                      ^( String.sub st.line_join 10
                           (String.length st.line_join - 10)))
@@ -326,7 +325,7 @@ struct
   (* Paths are not acted upon directly but wait for [stroke] or [fill]. *)
   let move_to t ~x ~y =
     let st = get_state t in
-    let x,y = B.Matrix.transform_point st.ctm x y in
+    let x,y = Archimedes.Matrix.transform_point st.ctm x y in
     (* move only updates the current point but not the path extents *)
     st.curr_pt <- true;
     st.x <- x;
@@ -335,12 +334,12 @@ struct
 
   let line_to t ~x ~y =
     let st = get_state t in
-    let x',y' = B.Matrix.transform_point st.ctm x y in
+    let x',y' = Archimedes.Matrix.transform_point st.ctm x y in
     (*Note: if there's no current point then line_to behaves as move_to.*)
     if st.curr_pt then (
       t.curr_path <- t.curr_path^" -- "^(point_string x' y');
       (* Update extents and current point *)
-      let x0', y0' = B.Matrix.transform_point st.ctm st.x st.y in
+      let x0', y0' = Archimedes.Matrix.transform_point st.ctm st.x st.y in
       st.path_extents <- update_rectangle st.path_extents x0' y0' x' y';
     )
     else
@@ -351,7 +350,7 @@ struct
 
   let rel_move_to t ~x ~y =
     let st = get_state t in
-    let x,y = B.Matrix.transform_point st.ctm x y in
+    let x,y = Archimedes.Matrix.transform_point st.ctm x y in
     t.curr_path <- t.curr_path^" ++"^(point_string x y);
     st.curr_pt <- true;
     st.x <- st.x +. x;
@@ -359,7 +358,7 @@ struct
 
   let rel_line_to t ~x ~y =
     let st = get_state t in
-    let x,y = B.Matrix.transform_point st.ctm x y in
+    let x,y = Archimedes.Matrix.transform_point st.ctm x y in
     t.curr_path <- t.curr_path^" -- ++"^(point_string x y);
     st.curr_pt <- true;
     st.x <- st.x +. x;
@@ -370,9 +369,9 @@ struct
     (* Suffices to transform the control point by the affine
        transformation to have the affine image of the curve *)
     let st = get_state t in
-    let x1', y1' = B.Matrix.transform_point st.ctm x1 y1 in
-    let x2', y2' = B.Matrix.transform_point st.ctm x2 y2 in
-    let x3', y3' = B.Matrix.transform_point st.ctm x3 y3 in
+    let x1', y1' = Archimedes.Matrix.transform_point st.ctm x1 y1 in
+    let x2', y2' = Archimedes.Matrix.transform_point st.ctm x2 y2 in
+    let x3', y3' = Archimedes.Matrix.transform_point st.ctm x3 y3 in
     let x0', y0' =
       if not st.curr_pt then
         (t.curr_path <- t.curr_path^" "^(point_string x1' y1');
@@ -391,8 +390,8 @@ struct
 
   let rectangle t ~x ~y ~w ~h =
     let st = get_state t in
-    let x', y' = B.Matrix.transform_point st.ctm x y
-    and w', h' = B.Matrix.transform_distance st.ctm w h in
+    let x', y' = Archimedes.Matrix.transform_point st.ctm x y
+    and w', h' = Archimedes.Matrix.transform_distance st.ctm w h in
     t.curr_path <-t.curr_path^" "^(point_string x' y')^" rectangle "^
       (point_string (x'+.w') (y'+.h'));
     (* Update the current point and extents *)
@@ -405,7 +404,7 @@ struct
     account.*)
   let arc t ~x ~y ~r ~a1 ~a2 =
     let st = get_state t in
-    let x', y' = B.Matrix.transform_point st.ctm x y
+    let x', y' = Archimedes.Matrix.transform_point st.ctm x y
     in
     move_to t x' y';
     let rec arc a1 a2 = (*FIXME: angles expressed in degrees here*)
@@ -459,28 +458,28 @@ struct
                " rectangle "^(point_string (x+.w) (y+.h))^";")
 
 
-  let translate t ~x ~y = B.Matrix.translate (get_state t).ctm x y
+  let translate t ~x ~y = Archimedes.Matrix.translate (get_state t).ctm x y
 
-  let scale t ~x ~y = B.Matrix.scale (get_state t).ctm x y
+  let scale t ~x ~y = Archimedes.Matrix.scale (get_state t).ctm x y
 
-  let rotate t ~angle = B.Matrix.rotate (get_state t).ctm ~angle
+  let rotate t ~angle = Archimedes.Matrix.rotate (get_state t).ctm ~angle
 
   let set_matrix t m = (get_state t).ctm <- m
 
-  let get_matrix t = B.Matrix.copy (get_state t).ctm
+  let get_matrix t = Archimedes.Matrix.copy (get_state t).ctm
   
   let select_font_face t slant weight family =
     check_valid_handle t;
     let begin_slant, end_slant =
       match slant with
-        B.Upright -> "",""
-      | B.Italic -> "\textit{","}"
-      (*| B.Oblique -> "\textsl{","}"(*Slanted*)*)
+        Backend.Upright -> "",""
+      | Backend.Italic -> "\textit{","}"
+      (*| Backend.Oblique -> "\textsl{","}"(*Slanted*)*)
     in
     let begin_weight, end_weight =
       match weight with
-        B.Normal -> "",""
-      | B.Bold -> "\textbf{","}"
+        Backend.Normal -> "",""
+      | Backend.Bold -> "\textbf{","}"
     in
     let begin_family, end_family =
       match family with
@@ -492,13 +491,13 @@ struct
     t.state.slant_weight_family <- s;
     let series =
       match weight with
-        B.Normal -> "n"
-      | B.Bold -> "b"
+        Backend.Normal -> "n"
+      | Backend.Bold -> "b"
     and shape =
       match slant with
-        B.Upright -> "m"
-      | B.Italic -> "it"
-     (* | B.Oblique -> "sl" (*Slanted*)*)
+        Backend.Upright -> "m"
+      | Backend.Italic -> "it"
+     (* | Backend.Oblique -> "sl" (*Slanted*)*)
     in
     write t (Printf.sprintf "\\usefont{T1}{%s}{%s}{%s}"
                family series shape)
@@ -523,19 +522,20 @@ struct
     let st = get_state t in
     (* Compute the angle between the desired direction and the X axis
        in the device coord. system. *)
-    let dx, dy = B.Matrix.transform_distance st.ctm (cos rotate) (sin rotate) in
+    let dx, dy =
+      Archimedes.Matrix.transform_distance st.ctm (cos rotate) (sin rotate) in
     let angle = atan2 dy dx in
-    let x', y' = B.Matrix.transform_point st.ctm x y in
+    let x', y' = Archimedes.Matrix.transform_point st.ctm x y in
     let pos = match pos with
-      | B.LT -> "south east"
-      | B.LC -> "east"
-      | B.LB -> "north east"
-      | B.CT -> "south"
-      | B.CC -> "center"
-      | B.CB -> "north"
-      | B.RT -> "south west"
-      | B.RC -> "west"
-      | B.RB -> "north west"
+      | Backend.LT -> "south east"
+      | Backend.LC -> "east"
+      | Backend.LB -> "north east"
+      | Backend.CT -> "south"
+      | Backend.CC -> "center"
+      | Backend.CB -> "north"
+      | Backend.RT -> "south west"
+      | Backend.RC -> "west"
+      | Backend.RB -> "north west"
     in
     (*let txt = Printf.sprintf (format_of_string st.slant_weight_family) txt in*)
     write t (Printf.sprintf
@@ -545,9 +545,9 @@ struct
 end
 
 let () =
-  let module U = Backend.Register(T)  in ()
+  let module U = Backend.Register(B)  in ()
 
 
 (* Local Variables: *)
-(* compile-command: "make -k archimedes_tikz.cmo" *)
+(* compile-command: "make -k" *)
 (* End: *)

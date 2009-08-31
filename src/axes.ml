@@ -1,17 +1,80 @@
+(* File: axes.ml
+
+   Copyright (C) 2009
+
+     Bertrand Desmons <Bertrand.Desmons@umons.ac.be>
+     Christophe Troestler <Christophe.Troestler@umons.ac.be>
+     WWW: http://math.umons.ac.be/an/software/
+
+   This library is free software; you can redistribute it and/or modify
+   it under the terms of the GNU Lesser General Public License version 3 or
+   later as published by the Free Software Foundation, with the special
+   exception on linking described in the file LICENSE.
+
+   This library is distributed in the hope that it will be useful, but
+   WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the file
+   LICENSE for more details. *)
+
 (**Styles definitions to make axes*)
-module B = Backend
+
+module Ranges :
+sig
+  type t = private {mutable xmin:float;
+                    mutable ymin:float;
+                    mutable xmax:float;
+                    mutable ymax:float}
+
+  val make_ranges : float -> float -> t
+  val update_ranges : t -> float -> float -> unit
+  val to_rect: t -> Backend.rectangle
+  val of_rect: Backend.rectangle -> t
+end =
+struct
+type t =
+    {mutable xmin:float;
+     mutable ymin:float;
+     mutable xmax:float;
+     mutable ymax:float;
+     mutable fresh:bool}
+
+let make_ranges x y = {xmin = x;ymin = y; xmax = x; ymax = y}
+
+let update_ranges rg x y =
+  if rg.xmin > x then rg.xmin <- x;
+  if rg.xmax < x then rg.xmax <- x;
+  if rg.ymin > y then rg.ymin <- y;
+  if rg.ymax < y then rg.ymax <- y;
+  rg.fresh <- false
+
+let ranges_of_rect rect =
+  {xmin = rect.Backend.x; ymin = rect.Backend.y;
+   xmax = rect.Backend.x +. rect.Backend.w;
+   ymax = rect.Backend.x +. rect.Backend.h}
+
+let rect_of_ranges rg =
+  {Backend.x = rg.xmin; y = rg.ymin;
+   w = rg.xmax -. rg.xmin;
+   h = rg.ymax -. rg.ymin}
+end
+
+type ranges = Ranges.t =
+    private {mutable xmin:float;
+             mutable ymin:float;
+             mutable xmax:float;
+             mutable ymax:float}
 
 exception Not_available
 
 let rectangle_extents rect xmin xmax ymin ymax =
     let xmin, xmax =
         let x0 = rect.Backend.x in
-        let x1 = x0 +. rect.Backend.w in
-        min x0 xmin, max x1 xmax
+        let xmin = x0 +. rect.Backend.w in
+        min x0 xmin, max xmin xmax
       and ymin, ymax =
         let y0 = rect.Backend.y in
-        let y1 = y0 +. rect.Backend.h in
-        min y0 ymin, max y1 ymax
+        let ymin = y0 +. rect.Backend.h in
+        min y0 ymin, max ymin ymax
       in
       {Backend.x = xmin; y = ymin; w = xmax -. xmin; h = ymax -. ymin}
 
@@ -31,42 +94,41 @@ let print_axes axes ranges backend =
   match axes with
     `None (_,_) -> ()
   | `Rectangle(_, _) ->
-      let rect = Backend.Ranges.to_rect ranges in
-      B.rectangle backend rect.B.x rect.B.y rect.B.w rect.B.h
+      let rect = rect_of_ranges ranges in
+      Backend.rectangle backend
+        rect.Backend.x rect.Backend.y rect.Backend.w rect.Backend.h
   | `Two_lines(x,y) ->
       (*Need to update -before- so that mins/maxs are correctly
         initialized for making the axes lines.*)
-      let xmin,ymin = min x ranges.B.xmin, min y ranges.B.ymin
-      and xmax,ymax = max x ranges.B.xmax, max y ranges.B.ymax in
-      B.move_to backend xmin y;
-      B.line_to backend xmax y;
-      B.move_to backend x ymin;
-      B.line_to backend x ymax
+      let xmin,ymin = min x ranges.xmin, min y ranges.ymin
+      and xmax,ymax = max x ranges.xmax, max y ranges.ymax in
+      Backend.move_to backend xmin y;
+      Backend.line_to backend xmax y;
+      Backend.move_to backend x ymin;
+      Backend.line_to backend x ymax
   | `Two_lines_rel(t,u) ->
       (*Need to update -before- so that mins/maxs are correctly
         initialized for making the axes lines.*)
-      let x,y =
-        ranges.B.xmin +. t *. (ranges.B.xmax -. ranges.B.xmin),
-        ranges.B.ymin +. u *. (ranges.B.ymax -. ranges.B.ymin)
-      in
-      let xmin,ymin = min x ranges.B.xmin, min y ranges.B.ymin
-      and xmax,ymax = max x ranges.B.xmax, max y ranges.B.ymax in
-      B.move_to backend xmin y;
-      B.line_to backend xmax y;
-      B.move_to backend x ymin;
-      B.line_to backend x ymax
+      let x = ranges.xmin +. t *. (ranges.xmax -. ranges.xmin)
+      and y = ranges.ymin +. u *. (ranges.ymax -. ranges.ymin) in
+      let xmin = min x ranges.xmin and ymin = min y ranges.ymin
+      and xmax = max x ranges.xmax and ymax = max y ranges.ymax in
+      Backend.move_to backend xmin y;
+      Backend.line_to backend xmax y;
+      Backend.move_to backend x ymin;
+      Backend.line_to backend x ymax
   | _ -> raise Not_available
 
 let axes_meeting axes ranges =
   match axes with
   | `None(bx, by)
   | `Rectangle(bx, by) ->
-      (if bx then ranges.B.xmin else ranges.B.xmax),
-      (if by then ranges.B.ymin else ranges.B.ymax)
+      (if bx then ranges.xmin else ranges.xmax),
+      (if by then ranges.ymin else ranges.ymax)
   | `Two_lines(x,y) -> x,y
   | `Two_lines_rel(t,u) ->
-      ranges.B.xmin +. t *. (ranges.B.xmax -. ranges.B.xmin),
-      ranges.B.ymin +. u *. (ranges.B.ymax -. ranges.B.ymin)
+      ranges.xmin +. t *. (ranges.xmax -. ranges.xmin),
+      ranges.ymin +. u *. (ranges.ymax -. ranges.ymin)
   | _ -> raise Not_available
 
 type tic = [`P of Pointstyle.name]
@@ -81,13 +143,13 @@ let tic_extents tic =
   (*Fixed dimension: 1/100 of normalized coordinates.*)
   match tic with `P name ->
     let rect = Pointstyle.extents name in
-    {B.x = rect.B.x /. 100.; y = rect.B.y/. 100.;
-     w = rect.B.w/. 100.; h = rect.B.h/. 100.}
+    {Backend.x = rect.Backend.x /. 100.; y = rect.Backend.y/. 100.;
+     w = rect.Backend.w/. 100.; h = rect.Backend.h/. 100.}
   | _ -> raise Not_available
 
 type label =
-    {action: float -> float -> B.text_position -> B.t -> unit;
-     box:float -> float -> B.text_position -> B.t -> Backend.rectangle;
+    {action: float -> float -> Backend.text_position -> Backend.t -> unit;
+     box:float -> float ->Backend.text_position ->Backend.t -> Backend.rectangle;
      rotation:float}
 
 let tic_label_extents tic_extents label x y pos b =
@@ -95,18 +157,17 @@ let tic_label_extents tic_extents label x y pos b =
     None -> tic_extents
   | Some label ->
       let box = label.box x y pos b in
-      let matrix = Backend.Matrix.make_rotate label.rotation in
-      let wx, wy = Backend.Matrix.transform_distance matrix box.Backend.w 0.
-      and hx, hy = Backend.Matrix.transform_distance matrix 0. box.Backend.h in
-      let x1 = box.Backend.x +. (min 0. wx) +. (min 0. hx) in
-      let x2 = x1 +. (abs_float wx) +. (abs_float hx) in
-      let y1 = box.Backend.y +. (min 0. wy) +. (min 0. hy) in
-      let y2 = y1 +. (abs_float wy) +. (abs_float hy) in
-      rectangle_extents tic_extents x1 x2 y1 y2
+      let matrix = Matrix.make_rotate label.rotation in
+      let wx, wy = Matrix.transform_distance matrix box.Backend.w 0.
+      and hx, hy = Matrix.transform_distance matrix 0. box.Backend.h in
+      let xmin = box.Backend.x +. (min 0. wx) +. (min 0. hx) in
+      let xmax = xmin +. (abs_float wx) +. (abs_float hx) in
+      let ymin = box.Backend.y +. (min 0. wy) +. (min 0. hy) in
+      let ymax = ymin +. (abs_float wy) +. (abs_float hy) in
+      rectangle_extents tic_extents xmin xmax ymin ymax
 
 (*FIXME: really need a range?*)
-type tic_position =
-     Backend.ranges -> (float*float*label option) list
+type tic_position = ranges -> (float*float*label option) list
 
 type label_collection =
     Fixed of label array
@@ -121,9 +182,9 @@ type data =
     | `Expordinate]
 
 let make_box_from_text txt x y pos b =
-  let rect = B.text_extents b txt in
+  let rect = Backend.text_extents b txt in
   let rx, ry, w, h =
-    rect.B.x +. x, rect.B.y +. y, rect.B.w, rect.B.h
+    rect.Backend.x +. x, rect.Backend.y +. y, rect.Backend.w, rect.Backend.h
   in
   let x = match pos with
     | Backend.CC | Backend.CT | Backend.CB -> rx -. 0.5 *. w
@@ -134,14 +195,14 @@ let make_box_from_text txt x y pos b =
     | Backend.CT | Backend.RT | Backend.LT -> ry -. h
     | Backend.CB | Backend.RB | Backend.LB -> ry
   in
-  {B.x = x; y = y; w = w; h = h}
+  {Backend.x = x; y = y; w = w; h = h}
 
 let get_labels data =
   match data with
   | `Label l -> Fixed l
   | `Text_label(txts, rotate) ->
       let f txt =
-        {action = (fun x y pos b -> B.show_text b rotate x y pos txt);
+        {action = (fun x y pos b -> Backend.show_text b rotate x y pos txt);
          box = make_box_from_text txt;
          rotation = rotate}
       in
@@ -149,7 +210,7 @@ let get_labels data =
   | `Abscissa ->
       Variable ({action = (fun x y ->
                    let txt = Printf.sprintf "%g" x in
-                   fun pos b -> B.show_text b x y 0. pos txt);
+                   fun pos b -> Backend.show_text b x y 0. pos txt);
        box = (fun x y ->
                 let txt = Printf.sprintf "%g" x in
                 make_box_from_text txt x y);
@@ -158,7 +219,7 @@ let get_labels data =
       Variable (
       {action = (fun x y ->
                    let txt = Printf.sprintf "%g" y in
-                   fun pos b -> B.show_text b x y 0. pos txt);
+                   fun pos b -> Backend.show_text b x y 0. pos txt);
        box = (fun x y ->
                 let txt = Printf.sprintf "%g" y in
                 make_box_from_text txt x y);
@@ -167,7 +228,7 @@ let get_labels data =
       Variable (
       {action = (fun x y ->
                    let txt = Printf.sprintf "%g" (10.**x) in
-                   fun pos b -> B.show_text b x y 0. pos txt);
+                   fun pos b -> Backend.show_text b x y 0. pos txt);
        box = (fun x y ->
                 let txt = Printf.sprintf "%g" (10.**x) in
                 make_box_from_text txt x y);
@@ -176,7 +237,7 @@ let get_labels data =
       Variable (
       {action = (fun x y ->
                    let txt = Printf.sprintf "%g" (10.**y) in
-                   fun pos b -> B.show_text b x y 0. pos txt);
+                   fun pos b -> Backend.show_text b x y 0. pos txt);
        box = (fun x y ->
                 let txt = Printf.sprintf "%g" (10.**y) in
                 make_box_from_text txt x y);
@@ -213,9 +274,7 @@ let get_position loc labels =
           else (*Minor tic => no label*)
             None
         in
-        (f ranges.B.xmin ranges.B.xmax t,
-         f ranges.B.ymin ranges.B.ymax t,
-         labelopt)
+        f ranges.xmin ranges.xmax t, f ranges.ymin ranges.ymax t, labelopt
       in
       (fun ranges ->
          List.map (g ranges) t_list)
@@ -246,12 +305,12 @@ let get_position loc labels =
         Array.fold_left f (first_tic, 1) numbers
       in
       (fun ranges ->
-         let xstep = (ranges.B.xmax -. ranges.B.xmin) /. (float nall)
-         and ystep = (ranges.B.ymax -. ranges.B.ymin) /. (float nall) in
+         let xstep = (ranges.xmax -. ranges.xmin) /. (float nall)
+         and ystep = (ranges.ymax -. ranges.ymin) /. (float nall) in
          List.rev_map
            (fun (i,label) ->
               let t = float i in
-              ranges.B.xmin +. t *. xstep, ranges.B.ymin +. t *. ystep, label)
+              ranges.xmin +. t *. xstep, ranges.ymin +. t *. ystep, label)
            list_tics
       )
   | `Linear(majors,minors) ->
@@ -278,12 +337,12 @@ let get_position loc labels =
         of rev-mapping), the first label is the last element of the
         list.*)
       (fun ranges ->
-         let xstep = (ranges.B.xmax -. ranges.B.xmin) /. (float nall)
-         and ystep = (ranges.B.ymax -. ranges.B.ymin) /. (float nall) in
+         let xstep = (ranges.xmax -. ranges.xmin) /. (float nall)
+         and ystep = (ranges.ymax -. ranges.ymin) /. (float nall) in
          List.rev_map
            (fun (i,label) ->
               let t = float i in
-              ranges.B.xmin +. t *. xstep, ranges.B.ymin +. t*. ystep, label)
+              ranges.xmin +. t *. xstep, ranges.ymin +. t*. ystep, label)
            list)
   | `Logarithmic(majors, minors) ->
       let nall = minors * (majors - 1) + majors in
@@ -309,13 +368,13 @@ let get_position loc labels =
         (tail-recursivity of rev-mapping), the first label is the last
         element of the list.*)
       (fun ranges ->
-         let xmajorstep = (ranges.B.xmax -. ranges.B.xmin) /. (float majors)
-         and ymajorstep = (ranges.B.ymax -. ranges.B.ymin) /. (float majors) in
+         let xmajorstep = (ranges.xmax -. ranges.xmin) /. (float majors)
+         and ymajorstep = (ranges.ymax -. ranges.ymin) /. (float majors) in
          List.rev_map
            (fun (j,k,label) ->
               let t = float j in
-              let x0 = ranges.B.xmin +. t *. xmajorstep
-              and y0 = ranges.B.ymin +. t *. ymajorstep in
+              let x0 = ranges.xmin +. t *. xmajorstep
+              and y0 = ranges.ymin +. t *. ymajorstep in
               let f mstep v0 =
                 let ministep = mstep *. (float k) /. (float (minors + 1)) in
                 let g st = log (1. +. st /. v0) in
@@ -326,7 +385,9 @@ let get_position loc labels =
   | _ -> raise Not_available
 
 type 'a axis = (*'a for tic type*)
-    {major:'a; minor:'a; positions:tic_position; label_position:B.text_position}
+    {major:'a; minor:'a;
+     positions:tic_position;
+     label_position:Backend.text_position}
 
 type ('a,'b) t = (*'a for axes type, 'b for tic types*)
     {axes:'a; x:'b axis; y:'b axis}
@@ -347,7 +408,7 @@ let print_tics axis ranges print_tic backend =
   let rec print = function
       [] -> ()
     | (x,y,label)::l ->
-        B.move_to backend x y;
+        Backend.move_to backend x y;
         match label with
           None -> print_tic backend axis.minor
         | Some label ->
@@ -366,41 +427,37 @@ let axis_margins axis ranges tic_extents backend =
         let extents = tic_label_extents
           (tic_extents tic) label x y axis.label_position backend
         in
-        let x1,y1 = extents.B.x, extents.B.y in
-        let x2,y2 = x1 +. extents.B.w, y1 +. extents.B.h in
+        let xmin,ymin = extents.Backend.x, extents.Backend.y in
+        let xmax,ymax = xmin +. extents.Backend.w, ymin +. extents.Backend.h in
         let newrect = rectangle_extents rect
-          (x1 +. x) (x2 +. x) (y1 +. y) (y2 +. y)
+          (xmin +. x) (xmax +. x) (ymin +. y) (ymax +. y)
         in
         make_rect l newrect
-  in make_rect list {B.x=ranges.B.xmin; y=ranges.B.ymin; w=0.;h=0.}
+  in make_rect list {Backend.x=ranges.xmin; y=ranges.ymin; w=0.;h=0.}
 
 
 let get_margins t
     ?(axes_meeting = axes_meeting) ?(tic_extents = tic_extents)
     ranges backend=
   let x,y = axes_meeting t.axes ranges in
-  Backend.Ranges.update ranges x y;
+  update_ranges ranges x y;
   axis_margins t.x ranges tic_extents backend,
   axis_margins t.y ranges tic_extents backend
-
 
 let print t ~lines ~ranges
     ?(print_axes = print_axes) ?(axes_meeting = axes_meeting)
     ?(print_tic = print_tic) backend =
-  (*let xxx = backend and yyy = B.get_handle backend in*)
+  (*let xxx = backend and yyy = Backend.get_handle backend in*)
   let x,y = axes_meeting t.axes ranges in
   print_axes t.axes ranges backend;
   let ctm = Coordinate.use backend lines in
-  B.stroke backend;
+  Backend.stroke backend;
   Coordinate.restore backend ctm;
-  let xrange = Backend.Ranges.make () in
-  Backend.Ranges.update xrange ranges.B.xmin y;
-  Backend.Ranges.update xrange ranges.B.xmax y;
-  let yrange =Backend.Ranges.make () in
-  Backend.Ranges.update yrange x ranges.B.ymin;
-  Backend.Ranges.update yrange x ranges.B.ymax;
+  let xrange = make_ranges () in
+  update_ranges xrange ranges.xmin y;
+  update_ranges xrange ranges.xmax y;
+  let yrange = make_ranges () in
+  update_ranges yrange x ranges.ymin;
+  update_ranges yrange x ranges.ymax;
   print_tics t.x xrange print_tic backend; (*X axis*)
   print_tics t.y yrange print_tic backend  (*Y axis*)
-(*Local variables:*)
-(*compile-command: "ocamlopt -c -dtypes axes.ml && ocamlc -c -dtypes axes.ml"*)
-(*End:*)

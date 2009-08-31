@@ -16,9 +16,6 @@
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the file
    LICENSE for more details. *)
 
-(*module B = Backend (*only used for debugging*)*)
-module Matrix = Backend.Matrix
-
 type ctm = Matrix.t
 
 (* Monitors are used to keep track of wether a given coordinate system

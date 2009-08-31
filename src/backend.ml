@@ -27,65 +27,7 @@ module ForLinking_1__ = Callback
    symbol: caml_hash_variant" when loading Cairo. *)
 external for_linking_1__ : unit -> unit = "caml_hash_variant"
 
-
-type line_cap =
-  | BUTT
-  | ROUND
-  | SQUARE
-
-type line_join =
-  | JOIN_MITER
-  | JOIN_ROUND
-  | JOIN_BEVEL
-
-
 type rectangle = {x:float; y:float; w:float; h:float}
-
-(*Trick to make [xyranges] private (but allows to create some of them,
-  access data but no other way to set values than update)*)
-module Ranges =
-struct
-  type t =
-      {mutable xmin:float;
-       mutable ymin:float;
-       mutable xmax:float;
-       mutable ymax:float;
-       mutable fresh:bool}
-
-  let make () = {xmin = 0.;ymin = 0.; xmax = 1.; ymax = 1.; fresh = true}
-
-  let update rg x y =
-    if (rg.xmin > x || rg.fresh) then rg.xmin <- x;
-    if (rg.xmax < x || rg.fresh) then rg.xmax <- x;
-    if (rg.ymin > y || rg.fresh) then rg.ymin <- y;
-    if (rg.ymax < y || rg.fresh) then rg.ymax <- y;
-    rg.fresh <- false
-
-  let of_rect rect =
-    {xmin = rect.x; ymin = rect.y;
-     xmax = rect.x +. rect.w; ymax = rect.x +. rect.h; fresh = false}
-
-  let to_rect rg =
-    (*Private type ensures that [xmin] contains the minimal abscissa, and so on.*)
-    {x = rg.xmin; y = rg.ymin; w = rg.xmax -. rg.xmin; h = rg.ymax -. rg.ymin}
-end
-
-type ranges = Ranges.t =
-    private
-      {mutable xmin:float;
-       mutable ymin:float;
-       mutable xmax:float;
-       mutable ymax:float;
-       mutable fresh:bool}
-
-
-type matrix = { mutable xx: float; mutable yx: float;
-                mutable xy: float; mutable yy: float;
-                mutable x0: float; mutable y0: float; }
-
-type slant = Upright | Italic
-
-type weight = Normal | Bold
 
 type text_position =
   | CC
@@ -103,24 +45,17 @@ module type T =
 sig
   type t
 
-  (* val set_pointstyle : t -> pointstyle -> unit *)
-  (* val set_pattern : t -> pattern -> unit *)
   val set_color : t -> Color.t -> unit
   val set_line_width : t -> float -> unit
   val set_line_cap : t -> line_cap -> unit
   val set_dash : t -> float -> float array -> unit
   val set_line_join : t -> line_join -> unit
-  (* val set_miter_limit : t -> float -> unit *)
 
-  (* val get_pointstyle: t -> pointstyle *)
-  (* val get_pattern: t -> pattern *)
   val get_line_width: t -> float
   val get_line_cap: t -> line_cap
   val get_dash: t -> float array * float
   val get_line_join: t -> line_join
 
-  (* val string_of_error : t -> backend_error -> string *)
-    (*val point : t -> float -> float -> unit*)
   val move_to : t -> x:float -> y:float -> unit
   val line_to : t -> x:float -> y:float -> unit
   val rel_move_to : t -> x:float -> y:float -> unit
@@ -176,8 +111,6 @@ type t = {
   height: float; (* height of the backend canvas in its original units *)
   close: unit -> unit;
 
-  (* set_pointstyle: 'a -> pointstyle -> unit; *)
-  (* set_pattern: 'a -> pattern -> unit; *)
   set_color : Color.t -> unit;
   set_line_width : float -> unit;
   set_line_cap : line_cap -> unit;
@@ -441,130 +374,3 @@ let available ~dirs =
       end bk files
     with Sys_error _ -> bk (* e.g. if [d] not a dir, not readable,... *)
   end [] dirs
-
-
-module Matrix =
-struct
-  type t = matrix
-
-  exception Not_invertible
-
-  let make_identity () = { xx=1.; yx=0.; xy=0.; yy=1.; x0=0.; y0=0. }
-
-  let make_translate ~x ~y =
-    { xx=1.; yx=0.; xy=0.; yy=1.;  x0=x;  y0=y }
-
-  let make_scale ~x ~y =
-    { xx=x; yx=0.; xy=0.; yy=y;  x0=0.;  y0=0. }
-
-  let make_rotate ~angle =
-    { xx=cos(angle);    yx=sin(angle);
-      xy= -. sin(angle); yy=cos(angle);  x0=0.;  y0=0. }
-
-  let set_to_identity m =
-    m.xx <- 1.; m.xy <- 0.; m.x0 <- 0.;
-    m.yx <- 0.; m.yy <- 1.; m.y0 <- 0.
-
-  let translate m ~x ~y =
-    m.x0 <- m.x0 +. m.xx *. x +. m.xy *. y;
-    m.y0 <- m.y0 +. m.yx *. x +. m.yy *. y
-
-  let scale m ~x ~y =
-    m.xx <- m.xx *. x;
-    m.yx <- m.yx *. x;
-    m.xy <- m.xy *. y;
-    m.yy <- m.yy *. y
-
-  let rotate m ~angle =
-    let cosa = cos angle and sina = sin angle in
-    let xx = m.xx in
-    m.xx <- xx *. cosa +. m.xy *. sina;
-    m.xy <- m.xy *. cosa -. xx *. sina;
-    let yx = m.yx in
-    m.yx <- yx *. cosa +. m.yy *. sina;
-    m.yy <- m.yy *. cosa -. yx *. sina
-
-  let invert m =
-    (* Optimize for scaling|translation matrices which are the ones
-       most used. *)
-    if m.xy = 0. && m.yx = 0. then (
-      m.x0 <- -. m.x0;
-      m.y0 <- -. m.y0;
-      if m.xx <> 1. then (
-        if m.xx = 0. then raise Not_invertible;
-        m.xx <- 1. /. m.xx;
-        m.x0 <- m.x0 *. m.xx;
-      );
-      if m.yy <> 1. then (
-        if m.yy = 0. then raise Not_invertible;
-        m.yy <- 1. /. m.yy;
-        m.y0 <- m.y0 *. m.yy;
-      );
-    )
-    else
-      let det = m.xx *. m.yy -. m.yx *. m.xy in
-      if det = 0. || 1. /. det = 0. (* infinite det *) then
-        raise Not_invertible;
-      let yy = m.xx /. det in
-      m.xx <- m.yy /. det;
-      m.xy <- -. m.xy /. det;
-      m.yx <- -. m.yx /. det;
-      m.yy <- yy;
-      let y0 = -. m.yx *. m.x0 -. yy *. m.y0 in
-      m.x0 <- -. m.xx *. m.x0 -. m.xy *. m.y0;
-      m.y0 <- y0
-
-
-  let det m = m.xx *. m.yy -. m.xy *. m.yx
-
-  let transform_distance m ~dx ~dy =
-    (m.xx *. dx +. m.xy *. dy,  m.yx *. dx +. m.yy *. dy)
-
-  let transform_point m ~x ~y =
-    (m.xx *. x +. m.xy *. y +. m.x0,  m.yx *. x +. m.yy *. y +. m.y0)
-
-  let blit m1 m2 =
-    m2.xx <- m1.xx;
-    m2.yx <- m1.yx;
-    m2.xy <- m1.xy;
-    m2.yy <- m1.yy;
-    m2.x0 <- m1.x0;
-    m2.y0 <- m1.y0
-
-  let copy t = { t with xx = t.xx }
-
-  let inv_transform_point m =
-    let m_inv = copy m in
-    invert m_inv;
-    transform_point m_inv
-
-  let inv_transform_distance m =
-    let m_inv = copy m in
-    invert m_inv;
-    transform_distance m_inv
-
-  let mul b a =
-    { xx = b.xx *. a.xx +. b.xy *. a.yx;
-      xy = b.xx *. a.xy +. b.xy *. a.yy;
-      yx = b.yx *. a.xx +. b.yy *. a.yx;
-      yy = b.yx *. a.xy +. b.yy *. a.yy;
-      x0 = b.xx *. a.x0 +. b.xy *. a.y0 +. b.x0;
-      y0 = b.yx *. a.x0 +. b.yy *. a.y0 +. b.y0; }
-
-  (* allow [c] to be [a] or [b]. *)
-  let mul_in c b a =
-    let c_xx = b.xx *. a.xx +. b.xy *. a.yx in
-    let c_xy = b.xx *. a.xy +. b.xy *. a.yy in
-    let c_yx = b.yx *. a.xx +. b.yy *. a.yx in
-    let c_yy = b.yx *. a.xy +. b.yy *. a.yy in
-    let c_x0 = b.xx *. a.x0 +. b.xy *. a.y0 +. b.x0 in
-    c.y0 <- b.yx *. a.x0 +. b.yy *. a.y0 +. b.y0;
-    c.xx <- c_xx;
-    c.xy <- c_xy;
-    c.yx <- c_yx;
-    c.yy <- c_yy;
-    c.x0 <- c_x0
-
-  let has_shear t =
-    t.yx <> 0. || t.xy <> 0.
-end
