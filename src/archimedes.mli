@@ -205,15 +205,6 @@ module Iterator : sig
 end
 
 module Handle: sig
-  (*type coordinate = {
-    mutable linewidth : Coordinate.t;
-    mutable drawings : Coordinate.t;
-    mutable normalized : Coordinate.t;
-    mutable xmin : float;
-    mutable xmax : float;
-    mutable ymin : float;
-    mutable ymax : float;
-  }*)
   type t
   val make : dirs:string list -> string -> float -> float -> t
   val close : t -> unit
@@ -450,7 +441,9 @@ sig
   val string_of_error : error -> string
 
   exception Error of error
-(*
+
+  include T
+
   val make : ?dirs:string list -> string -> float -> float -> t
     (** [make backend width height] creates a new backend of the given
         dimensions.
@@ -468,10 +461,9 @@ sig
     (** Returns the width of the backend canvas. *)
 
   val width : t -> float
-    (** Returns the height of the backend canvas. *)*)
+    (** Returns the height of the backend canvas. *)
 
 
-  type t
 
   val registered: unit -> string list
     (** Return the list of registered (i.e. loaded) backends. *)

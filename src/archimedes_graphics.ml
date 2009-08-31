@@ -380,8 +380,18 @@ struct
     let x', y' = Matrix.transform_point st.ctm x y in
     if abs_float angle <= 1e-6 then
       let w, h = Graphics.text_size txt in
-
-      Graphics.moveto (round x') (round y');
+      let wx, wy = Matrix.transform_distance st.ctm (float w) 0.
+      and hx, hy = Matrix.transform_distance st.ctm 0. (float h) in
+      let x'' =  match pos with
+        | Backend.CC | Backend.CT | Backend.CB -> x' -. (wx +. hx) *. 0.5
+        | Backend.RC | Backend.RT | Backend.RB -> x'
+        | Backend.LC | Backend.LT | Backend.LB -> x' -. wx -. hx
+      and y'' = match pos with
+        | Backend.CC | Backend.RC | Backend.LC -> y' -. (hy +. wy) *. 0.5
+        | Backend.CT | Backend.RT | Backend.LT -> y'
+        | Backend.CB | Backend.RB | Backend.LB -> y' -. hy -. wy
+      in
+      Graphics.moveto (round x'') (round y'');
       Graphics.draw_string txt
     else (
       (* Text rotation is not possible with graphics.  Just display
@@ -395,5 +405,5 @@ let () =
 
 
 (* Local Variables: *)
-(* compile-command: "make -k archimedes_graphics.cmo" *)
+(* compile-command: "make -k archimedes_graphics.cmo archimedes_graphics.cmxs" *)
 (* End: *)

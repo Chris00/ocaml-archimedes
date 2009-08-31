@@ -511,7 +511,7 @@ struct
 (*FIXME: raw way to find the extents; must be reworked.*)
   let text_extents t txt =
     let h = (get_state t).fsize in
-    let w = (float (String.length txt)) *. h in
+    let w = (float (String.length txt)) *. h /. 1.5 in
     { Backend.x = 0.; y = 0.; w = w ; h = h }
 
   let show_text t ~rotate ~x ~y pos txt =
@@ -545,5 +545,5 @@ let () =
 
 
 (* Local Variables: *)
-(* compile-command: "make -k" *)
+(* compile-command: "make -k archimedes_tikz.cmo archimedes_tikz.cmxs" *)
 (* End: *)

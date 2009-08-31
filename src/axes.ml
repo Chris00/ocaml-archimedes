@@ -56,12 +56,12 @@ exception Not_available
 let rectangle_extents rect xmin xmax ymin ymax =
     let xmin, xmax =
         let x0 = rect.Backend.x in
-        let xmin = x0 +. rect.Backend.w in
-        min x0 xmin, max xmin xmax
+        let x1 = x0 +. rect.Backend.w in
+        min x0 xmin, max x1 xmax
       and ymin, ymax =
         let y0 = rect.Backend.y in
-        let ymin = y0 +. rect.Backend.h in
-        min y0 ymin, max ymin ymax
+        let y1 = y0 +. rect.Backend.h in
+        min y0 ymin, max y1 ymax
       in
       {Backend.x = xmin; y = ymin; w = xmax -. xmin; h = ymax -. ymin}
 
@@ -128,6 +128,7 @@ let print_tic backend tic =
 
 let tic_extents tic =
   (*Fixed dimension: 1/100 of normalized coordinates.*)
+  (*FIXME: coordinate transformation for tics?*)
   match tic with `P name ->
     let rect = Pointstyle.extents name in
     {Backend.x = rect.Backend.x /. 100.; y = rect.Backend.y/. 100.;
@@ -423,8 +424,7 @@ let axis_margins axis ranges tic_extents backend =
   in make_rect list {Backend.x=ranges.xmin; y=ranges.ymin; w=0.;h=0.}
 
 
-let get_margins t
-    ?(axes_meeting = axes_meeting) ?(tic_extents = tic_extents)
+let get_margins t ?(axes_meeting = axes_meeting) ?(tic_extents = tic_extents)
     ranges backend=
   let x,y = axes_meeting t.axes ranges in
   Ranges.update ranges x y;
