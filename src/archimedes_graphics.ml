@@ -227,9 +227,9 @@ struct
 
   (* Not supported, do nothing *)
   let set_line_cap t _ = check_valid_handle t
-  let get_line_cap t = check_valid_handle t; Backend.BUTT
+  let get_line_cap t = check_valid_handle t; Archimedes.BUTT
   let set_line_join t _ = check_valid_handle t
-  let get_line_join t = check_valid_handle t; Backend.JOIN_MITER
+  let get_line_join t = check_valid_handle t; Archimedes.JOIN_MITER
   let set_miter_limit t _ = check_valid_handle t
 
   (* Paths are not acted upon directly but wait for [stroke] or [fill]. *)

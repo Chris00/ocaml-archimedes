@@ -32,10 +32,10 @@ struct
 
   (* Same type (same internal representation), just in different modules *)
   let set_line_cap cr c = set_line_cap cr (Obj.magic c : Cairo.line_cap)
-  let get_line_cap cr = (Obj.magic(get_line_cap cr) : Backend.line_cap)
+  let get_line_cap cr = (Obj.magic(get_line_cap cr) : Archimedes.line_cap)
 
   let set_line_join cr j = set_line_join cr (Obj.magic j : Cairo.line_join)
-  let get_line_join cr = (Obj.magic(get_line_join cr) : Backend.line_join)
+  let get_line_join cr = (Obj.magic(get_line_join cr) : Archimedes.line_join)
 
   let path_extents cr = (Obj.magic (path_extents cr) : Backend.rectangle)
 
@@ -96,11 +96,11 @@ struct
   let select_font_face cr slant weight family =
     (* Could be (unsafely) optimized *)
     let slant = match slant with
-      | Backend.Upright -> Cairo.Upright
-      | Backend.Italic -> Cairo.Italic
+      | Archimedes.Upright -> Cairo.Upright
+      | Archimedes.Italic -> Cairo.Italic
     and weight = match weight with
-      | Backend.Normal -> Cairo.Normal
-      | Backend.Bold -> Cairo.Bold in
+      | Archimedes.Normal -> Cairo.Normal
+      | Archimedes.Bold -> Cairo.Bold in
     Cairo.select_font_face cr ~slant ~weight family
 
   (* identity CTM -- never modified *)

@@ -151,10 +151,6 @@ struct
   let get_state t =
     check_valid_handle t; t.state
 
- (* let print_ctm st =
-    let m = st.ctm in
-    Printf.sprintf "{ %f, %f, %f, %f, (%f, %f)}" m.xx m.xy m.yx m.yy m.x0 m.y0*)
-
   let make_options t =
     let st = get_state t in
    (* "cm="^print_ctm st^","^*)
@@ -283,17 +279,17 @@ struct
     let st = get_state t in
     st.line_cap <- "line cap="^
       (match cap with
-         Backend.BUTT -> "butt"
-       | Backend.SQUARE -> "rect"
-       | Backend.ROUND -> "round")
+         Archimedes.BUTT -> "butt"
+       | Archimedes.SQUARE -> "rect"
+       | Archimedes.ROUND -> "round")
 
   let get_line_cap t =
     let st = get_state t in
     match String.sub st.line_cap 9 (String.length st.line_cap - 9) with
       (*Removes first characters: 'line cap='*)
-      "butt" -> Backend.BUTT
-    | "rect" -> Backend.SQUARE
-    | "round" -> Backend.ROUND
+      "butt" -> Archimedes.BUTT
+    | "rect" -> Archimedes.SQUARE
+    | "round" -> Archimedes.ROUND
     | _ -> failwith ("Archimedes TikZ.line_cap: error; cannot parse "
                      ^( String.sub st.line_cap 9 (String.length st.line_cap - 9)))
 
@@ -302,17 +298,17 @@ struct
     let st = get_state t in
     st.line_join <- "line join="^
       (match join with
-         Backend.JOIN_BEVEL -> "bevel"
-       | Backend.JOIN_MITER -> "miter"
-       | Backend.JOIN_ROUND -> "round")
+         Archimedes.JOIN_BEVEL -> "bevel"
+       | Archimedes.JOIN_MITER -> "miter"
+       | Archimedes.JOIN_ROUND -> "round")
 
   let get_line_join t =
     let st = get_state t in
     match String.sub st.line_join 10 (String.length st.line_join - 10) with
       (*Removes first characters: 'line join='*)
-      "bevel" -> Backend.JOIN_BEVEL
-    | "miter" -> Backend.JOIN_MITER
-    | "round" -> Backend.JOIN_ROUND
+      "bevel" -> Archimedes.JOIN_BEVEL
+    | "miter" -> Archimedes.JOIN_MITER
+    | "round" -> Archimedes.JOIN_ROUND
     | _ -> failwith ("Archimedes TikZ.line_join: error; cannot parse "
                      ^( String.sub st.line_join 10
                           (String.length st.line_join - 10)))
@@ -472,14 +468,14 @@ struct
     check_valid_handle t;
     let begin_slant, end_slant =
       match slant with
-        Backend.Upright -> "",""
-      | Backend.Italic -> "\textit{","}"
-      (*| Backend.Oblique -> "\textsl{","}"(*Slanted*)*)
+        Archimedes.Upright -> "",""
+      | Archimedes.Italic -> "\textit{","}"
+      (*| Archimedes.Oblique -> "\textsl{","}"(*Slanted*)*)
     in
     let begin_weight, end_weight =
       match weight with
-        Backend.Normal -> "",""
-      | Backend.Bold -> "\textbf{","}"
+        Archimedes.Normal -> "",""
+      | Archimedes.Bold -> "\textbf{","}"
     in
     let begin_family, end_family =
       match family with
@@ -491,13 +487,13 @@ struct
     t.state.slant_weight_family <- s;
     let series =
       match weight with
-        Backend.Normal -> "n"
-      | Backend.Bold -> "b"
+        Archimedes.Normal -> "n"
+      | Archimedes.Bold -> "b"
     and shape =
       match slant with
-        Backend.Upright -> "m"
-      | Backend.Italic -> "it"
-     (* | Backend.Oblique -> "sl" (*Slanted*)*)
+        Archimedes.Upright -> "m"
+      | Archimedes.Italic -> "it"
+     (* | Archimedes.Oblique -> "sl" (*Slanted*)*)
     in
     write t (Printf.sprintf "\\usefont{T1}{%s}{%s}{%s}"
                family series shape)
