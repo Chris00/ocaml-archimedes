@@ -50,7 +50,7 @@ struct
   INCLUDE "pointstyle.ml"
 end
 
-module Axes =
+module Axes : sig INCLUDE "axes.mli" end =
 struct
   INCLUDE "axes.ml"
 end

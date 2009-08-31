@@ -27,8 +27,6 @@ type xyranges =
 
 let make_ranges () = {x1 = 0.;y1 = 0.; x2 = 1.; y2 = 1.; fresh = true}
 
-let make_range_min1 rg = ()
-
 let update_ranges rg x y =
   if (rg.x1 > x || rg.fresh) then rg.x1 <- x;
   if (rg.x2 < x || rg.fresh) then rg.x2 <- x;
@@ -75,7 +73,6 @@ type axes =
 
 
 let print_axes axes ranges backend =
-  make_range_min1 ranges;
   match axes with
     `None (_,_) -> ()
   | `Rectangle(_, _) ->
@@ -106,7 +103,6 @@ let print_axes axes ranges backend =
   | _ -> raise Not_available
 
 let axes_meeting axes ranges =
-  make_range_min1 ranges;
   match axes with
   | `None(bx, by)
   | `Rectangle(bx, by) ->
@@ -264,7 +260,6 @@ let get_position loc labels =
         f ranges.x1 ranges.x2 t, f ranges.y1 ranges.y2 t, labelopt
       in
       (fun ranges ->
-         make_range_min1 ranges;
          List.map (g ranges) t_list)
   | `Linear_variable numbers ->
       let f (list, len) m =
@@ -293,7 +288,6 @@ let get_position loc labels =
         Array.fold_left f (first_tic, 1) numbers
       in
       (fun ranges ->
-         make_range_min1 ranges;
          let xstep = (ranges.x2 -. ranges.x1) /. (float nall)
          and ystep = (ranges.y2 -. ranges.y1) /. (float nall) in
          List.rev_map
@@ -326,7 +320,6 @@ let get_position loc labels =
         of rev-mapping), the first label is the last element of the
         list.*)
       (fun ranges ->
-         make_range_min1 ranges;
          let xstep = (ranges.x2 -. ranges.x1) /. (float nall)
          and ystep = (ranges.y2 -. ranges.y1) /. (float nall) in
          List.rev_map
@@ -358,7 +351,6 @@ let get_position loc labels =
         (tail-recursivity of rev-mapping), the first label is the last
         element of the list.*)
       (fun ranges ->
-         make_range_min1 ranges;
          let xmajorstep = (ranges.x2 -. ranges.x1) /. (float majors)
          and ymajorstep = (ranges.y2 -. ranges.y1) /. (float majors) in
          List.rev_map
@@ -406,7 +398,6 @@ let print_tics axis ranges print_tic backend =
   in print (axis.positions ranges)
 
 let axis_margins axis ranges tic_extents backend =
-  make_range_min1 ranges;
   let list = axis.positions ranges in
   let rec make_rect list rect =
     match list with
@@ -428,7 +419,6 @@ let axis_margins axis ranges tic_extents backend =
 let get_margins t
     ?(axes_meeting = axes_meeting) ?(tic_extents = tic_extents)
     ranges backend=
-  make_range_min1 ranges;
   let x,y = axes_meeting t.axes ranges in
   update_ranges ranges x y;(*
   let xmin,ymin = min x ranges.Backend.x1, min y ranges.Backend.y1

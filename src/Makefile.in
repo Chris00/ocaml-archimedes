@@ -78,6 +78,8 @@ install: META $(INSTALL_FILES)
 uninstall:
 	ocamlfind remove $(PACKAGE)
 
+.depend.ocaml: PP_FLAGS=-pp "@CAMLP4O@ -parser macro"
+
 include $(ROOT)/Makefile.ocaml
 
 dist-clean::
