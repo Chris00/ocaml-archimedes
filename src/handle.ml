@@ -189,14 +189,14 @@ type t =
   width, then height is by default equal to:
 
   * 500 superposed lines, or
-  * 20 lines of text, or
+  * 15 lines of text, or
   * 100 boxes of 1x1 marks.
 *)
-let def_lw, def_ts, def_marks = 0.002, 0.05, 0.01
+let def_lw, def_ts, def_marks = 0.002, (1./.15.), 0.01
 
 (*User transformations. To get the previous defaults, the user will
   enter resp. 1, 10, 1 (which are the "usual" defaults in a drawing). *)
-let usr_lw, usr_ts, usr_marks = 500., 200., 100.
+let usr_lw, usr_ts, usr_marks = 500., 150., 100.
 
 
 (*Easy update Axes.ranges options*)

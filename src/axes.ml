@@ -137,7 +137,7 @@ let tic_extents tic =
 
 type label =
     {action: float -> float -> Backend.text_position -> Backend.t -> unit;
-     box:float -> float ->Backend.text_position ->Backend.t -> Backend.rectangle;
+     box: float ->float ->Backend.text_position ->Backend.t ->Backend.rectangle;
      rotation:float}
 
 let tic_label_extents tic_extents label x y pos b =
@@ -157,13 +157,12 @@ let tic_label_extents tic_extents label x y pos b =
 (*FIXME: really need a range?*)
 type tic_position = ranges -> (float*float*label option) list
 
-type label_collection =
-    Fixed of label array
-  | Variable of label
+type label_collection = int -> label
+
+exception Too_few_labels
 
 type data =
-    [ `Label of label array
-    | `Text_label of string array * float
+    [ `Text_label of string array * float
     | `Abscissa
     | `Ordinate
     | `Expabscissa
@@ -187,54 +186,56 @@ let make_box_from_text txt x y pos b =
 
 let get_labels data =
   match data with
-  | `Label l -> Fixed l
   | `Text_label(txts, rotate) ->
       let f txt =
         {action = (fun x y pos b -> Backend.show_text b rotate x y pos txt);
          box = make_box_from_text txt;
          rotation = rotate}
       in
-      Fixed (Array.map f txts)
+      let array = Array.map f txts in
+      (fun i -> try array.(i) with Invalid_argument _ -> raise Too_few_labels)
   | `Abscissa ->
-      Variable ({action = (fun x y ->
+      (fun _ ->
+         {action = (fun x y ->
+                      let txt = Printf.sprintf "%g" x in
+                      fun pos b -> Backend.show_text b x y 0. pos txt);
+          box = (fun x y ->
                    let txt = Printf.sprintf "%g" x in
-                   fun pos b -> Backend.show_text b x y 0. pos txt);
-       box = (fun x y ->
-                let txt = Printf.sprintf "%g" x in
-                make_box_from_text txt x y);
-       rotation = 0.})
+                   make_box_from_text txt x y);
+          rotation = 0.})
   | `Ordinate ->
-      Variable (
-      {action = (fun x y ->
+      (fun _ ->
+         {action = (fun x y ->
+                      let txt = Printf.sprintf "%g" y in
+                      fun pos b -> Backend.show_text b x y 0. pos txt);
+          box = (fun x y ->
                    let txt = Printf.sprintf "%g" y in
-                   fun pos b -> Backend.show_text b x y 0. pos txt);
-       box = (fun x y ->
-                let txt = Printf.sprintf "%g" y in
-                make_box_from_text txt x y);
-       rotation = 0.})
+                   make_box_from_text txt x y);
+          rotation = 0.})
   | `Expabscissa ->
-      Variable (
-      {action = (fun x y ->
+      (fun _ ->
+         {action = (fun x y ->
+                      let txt = Printf.sprintf "%g" (10.**x) in
+                      fun pos b -> Backend.show_text b x y 0. pos txt);
+          box = (fun x y ->
                    let txt = Printf.sprintf "%g" (10.**x) in
-                   fun pos b -> Backend.show_text b x y 0. pos txt);
-       box = (fun x y ->
-                let txt = Printf.sprintf "%g" (10.**x) in
-                make_box_from_text txt x y);
-       rotation = 0.})
+                   make_box_from_text txt x y);
+          rotation = 0.})
   | `Expordinate ->
-      Variable (
-      {action = (fun x y ->
+      (fun _ ->
+         {action = (fun x y ->
+                      let txt = Printf.sprintf "%g" (10.**y) in
+                      fun pos b -> Backend.show_text b x y 0. pos txt);
+          box = (fun x y ->
                    let txt = Printf.sprintf "%g" (10.**y) in
-                   fun pos b -> Backend.show_text b x y 0. pos txt);
-       box = (fun x y ->
-                let txt = Printf.sprintf "%g" (10.**y) in
-                make_box_from_text txt x y);
-       rotation = 0.})
+                   make_box_from_text txt x y);
+          rotation = 0.})
   | _ -> raise Not_available
 
 
 type loc_tics =
-    [ `Fixed_pos of (float * bool) list
+    [ `Fixed_rel of (float * bool) list
+   (* | `Fixed_abs of (float * bool) list*)
     | `Linear_variable of int array
     | `Linear of int * int
     | `Logarithmic of int * int
@@ -242,23 +243,19 @@ type loc_tics =
 
 let get_position loc labels =
   match loc with
-    `Fixed_pos t_list ->
+    `Fixed_rel t_list ->
       let f x x' t = x +. t *. (x' -. x) in
       let m = ref 0 in (*Used in case of Fixed labels*)
       let g ranges (t,b) =
         let labelopt =
           if b then (*major tic => add a label*)
-            match labels with
-              Variable l -> Some l
-            | Fixed larray ->
-                let label =
-                  try Some larray.(!m)
-                  with Invalid_argument _ -> None
-                    (*too few labels : the last major tics won't
-                      get any label.*)
-                in
-                m := !m + 1;
-                label
+            try
+              let label = labels !m in
+              m := !m + 1;
+              Some label
+            with Too_few_labels -> None
+              (*too few labels : the last major tics won't get any
+                label.*)
           else (*Minor tic => no label*)
             None
         in
@@ -266,29 +263,42 @@ let get_position loc labels =
       in
       (fun ranges ->
          List.map (g ranges) t_list)
+        (*| `Fixed_abs t_list ->
+          let m = ref 0 in (*Used in case of Fixed labels*)
+          let g ranges (t,b) =
+          let labelopt =
+          if b then (*major tic => add a label*)
+          try
+          let label = labels !m in
+          m := !m + 1;
+          Some label
+          with Too_few_labels -> None
+          else (*Minor tic => no label*)
+          None
+          in
+          t, _, labelopt
+          in
+          (fun ranges ->
+          List.map (g ranges) t_list)*)
   | `Linear_variable numbers ->
+      let major_number = ref 0 in
       let f (list, len) m =
+        incr major_number;
         let rec do_minors list i =
           if i <= 0 then list
           else
             do_minors ((len + m - i, None)::list) (i-1)
         in
         let list = do_minors list m in
-        let label =
-          match labels with
-            Variable l -> Some l
-          | Fixed larray -> try Some larray.(m+1)
-            with Invalid_argument _ -> None
+        let labelopt =
+          try Some (labels !major_number)
+          with Too_few_labels -> None
         in
-        ((len + m, label)::list, len + m + 1)
+        ((len + m, labelopt)::list, len + m + 1)
       in
       let list_tics, nall =
         let first_tic =
-          [0,
-           (match labels with
-              Variable l -> Some l
-            | Fixed larray -> try Some larray.(0)
-              with Invalid_argument _ -> None)]
+          [0, (try Some (labels 0) with Too_few_labels -> None)]
         in
         Array.fold_left f (first_tic, 1) numbers
       in
@@ -309,11 +319,8 @@ let get_position loc labels =
           let label =
             let j,k = i/(minors + 1), i mod (minors + 1) in
             if k = 0 then
-              match labels with
-                Variable l -> Some l
-              | Fixed larray ->
-                  try Some larray.(j)
-                  with Invalid_argument _ -> None
+              try Some (labels j)
+              with Too_few_labels -> None
             else None
           in
           let tuple = i, label in
@@ -340,11 +347,8 @@ let get_position loc labels =
           let j,k = i/(minors + 1), i mod (minors + 1) in
           let label =
             if k = 0 then
-              match labels with
-                Variable l -> Some l
-              | Fixed larray ->
-                  try Some larray.(j)
-                  with Invalid_argument _ -> None
+              try Some (labels j)
+              with Too_few_labels -> None
             else None
           in
           let tuple = j, k, label in

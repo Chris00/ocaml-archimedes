@@ -881,7 +881,7 @@ module Axes: sig
        for the minor tics).*)
 
   type loc_tics =
-      [ `Fixed_pos of (float * bool) list
+      [ `Fixed_rel of (float * bool) list
           (**List of pairs [(x, major)] with [x] a number between 0 and
              1, specifying the relative position of the tic and [major]
              indicating whether the tic is major.*)

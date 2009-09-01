@@ -67,21 +67,8 @@ val tic_extents : [> tic] -> Backend.rectangle
     (**Returns the extents for the given tic. (This is needed to place
        the labels correctly.)*)
 
-type label =
-    {action:float -> float -> Backend.text_position -> Backend.t -> unit;
-     (**Action to perform as a label. Takes as arguments: [x y pos backend],
-        where [(x,y)] is the point where the major tic has
-        been made, [pos] a text position (to be used to correctly
-        put the label relative to the tic), and [backend] the
-        backend on which the operation will be made. *)
-     box:float -> float -> Backend.text_position -> Backend.t -> Backend.rectangle;
-     (**Place needed to do it; it is the smallest rectangle
-        containing the action. Takes as arguments: [x y pos backend] (no
-        rotation is used; the box is understood as if the action has
-        been made without it.)*)
-     rotation:float(**Rotation to be applied to all labels. *)
-    }
-        (**The type which manages with labels on axes.*)
+type label
+  (**The type which manages with labels on axes.*)
 
 (*  val tic_label_extents : Backend.rectangle -> label option ->
     float -> float -> Backend.text_position -> Backend.t -> Backend.rectangle
@@ -90,17 +77,18 @@ type label =
        as if all is done at the point [(x,y)]. The backend [b] is used
        only to determine the extents ([box]) of the label.*)*)
 
-type label_collection =
+type label_collection
+(* =
     Fixed of label array
       (**One (different) label per major tic. (eg: text data)*)
   | Variable of label
-      (**A unique label is OK for all major tics. (eg: abscissa)*)
-        (**Storing several labels*)
+      (**A unique label is OK for all major tics. (eg: abscissa)*)*)
+      (**Storing several labels*)
 
 
 type data =
-    [ `Label of label array
-        (**Labels already known*)
+    [ (*`Label of label array
+        (**Labels already known*)*)
     | `Text_label of string array * float
         (**Labels will be text labels, rotated by the second argument*)
     | `Abscissa
@@ -125,7 +113,7 @@ type tic_position = ranges -> (float * float * label option) list
      for the minor tics).*)
 
 type loc_tics =
-    [ `Fixed_pos of (float * bool) list
+    [ `Fixed_rel of (float * bool) list
         (**List of pairs [(x, major)] with [x] a number between 0 and
            1, specifying the relative position of the tic and [major]
            indicating whether the tic is major.*)
