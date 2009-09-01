@@ -23,45 +23,85 @@ module Backend = Archimedes.Backend
 module B : Backend.Capabilities =
 struct
   include Cairo
+
+  (*Matrix used to make the origin at the bottom left corner of the context.*)
+  let initial_matrix h =
+    {Cairo.xx = 1.; xy = 0.; yx = 0.; yy = -1.; x0 = 0.; y0 = h}
   let name = "cairo"
 
-  type t = Cairo.context
-  let path_extents = Cairo.Path.extents
-  let close_path = Cairo.Path.close
-  let clear_path = Cairo.Path.clear
+  type t = { cr:Cairo.context; m:Cairo.matrix}
+      (*The m field contains the correct transformation for this
+        context, which makes the origin at the bottom left corner of the
+        device.*)
+
+ (* let path_extents cr = Cairo.Path.extents cr
+  let close_path cr = Cairo.Path.close cr
+  let clear_path cr = Cairo.Path.clear cr*)
 
   (* Same type (same internal representation), just in different modules *)
-  let set_line_cap cr c = set_line_cap cr (Obj.magic c : Cairo.line_cap)
-  let get_line_cap cr = (Obj.magic(get_line_cap cr) : Archimedes.line_cap)
+  let set_line_cap t c = set_line_cap t.cr (Obj.magic c : Cairo.line_cap)
+  let get_line_cap t = (Obj.magic(get_line_cap t.cr) : Archimedes.line_cap)
 
-  let set_line_join cr j = set_line_join cr (Obj.magic j : Cairo.line_join)
-  let get_line_join cr = (Obj.magic(get_line_join cr) : Archimedes.line_join)
+  let set_line_join t j = set_line_join t.cr (Obj.magic j : Cairo.line_join)
+  let get_line_join t = (Obj.magic(get_line_join t.cr) : Archimedes.line_join)
 
-  let path_extents cr = (Obj.magic (path_extents cr) : Backend.rectangle)
+  (*Get needed functions which are in submodule Path*)
+  let path_extents t = (Obj.magic (Cairo.Path.extents t.cr) : Backend.rectangle)
+  let close_path t = Cairo.Path.close t.cr
+  let clear_path t = Cairo.Path.clear t.cr
 
-  let set_matrix cr m =
-    set_matrix cr { Cairo.xx = m.Archimedes.xx; xy = m.Archimedes.xy;
+
+  let set_line_width t = set_line_width t.cr
+  let get_line_width t = get_line_width t.cr
+
+  let set_dash t ofs arr = set_dash t.cr ~ofs arr
+  let get_dash t = get_dash t.cr
+
+  let set_matrix t m =
+    let m' = { Cairo.xx = m.Archimedes.xx; xy = m.Archimedes.xy;
                     yx = m.Archimedes.yx; yy = m.Archimedes.yy;
                     x0 = m.Archimedes.x0; y0 = m.Archimedes.y0;}
       (*(Obj.magic m : Cairo.matrix)*)
+    in
+    let matrix = Cairo.Matrix.multiply t.m m' in
+    set_matrix t.cr matrix
 
-  let get_matrix cr =
-    let m = get_matrix cr in
+  let get_matrix t =
+    let m = Cairo.Matrix.multiply t.m (get_matrix t.cr) in
     { Archimedes.xx = m.Cairo.xx;  xy = m.Cairo.xy;
       yx = m.Cairo.yx; yy = m.Cairo.yy;
       x0 = m.Cairo.x0; y0 = m.Cairo.y0;}
     (*(Obj.magic (get_matrix cr) : Backend.matrix)*)
 
-  let set_dash cr ofs arr = set_dash cr ~ofs arr
-
-  let set_color cr c =
+  let set_color t c =
     let r,g,b,a = Archimedes.Color.get_rgba c in
-    Cairo.set_source_rgba cr r g b a
+    Cairo.set_source_rgba t.cr r g b a
 
-  let clip_rectangle cr ~x ~y ~w ~h =
-    Cairo.Path.clear cr;
-    Cairo.rectangle cr ~x ~y ~w ~h;
-    Cairo.clip cr
+  let move_to t = move_to t.cr
+  let line_to t = line_to t.cr
+  let rel_move_to t = rel_move_to t.cr
+  let rel_line_to t = rel_line_to t.cr
+  let curve_to t = curve_to t.cr
+  let rectangle t = rectangle t.cr
+  let arc t = arc t.cr
+
+  let stroke t = stroke t.cr
+  let stroke_preserve t = stroke_preserve t.cr
+  let fill t = fill t.cr
+  let fill_preserve t = fill_preserve t.cr
+
+  let clip_rectangle t ~x ~y ~w ~h =
+    Cairo.Path.clear t.cr;
+    Cairo.rectangle t.cr ~x ~y ~w ~h;
+    Cairo.clip t.cr
+
+  let save t = save t.cr
+  let restore t = restore t.cr
+  let translate t = translate t.cr
+  let scale t = scale t.cr
+  let rotate t = rotate t.cr
+
+
 (*
   (* FIXME: must be reworked *)
   let text cr ~size ~x ~y txt =
@@ -83,17 +123,20 @@ struct
           let opt = String.concat "; " options in
           failwith("Archimedes_cairo.make: options [" ^ opt
                    ^ "] not understood") in
-    Cairo.create surface
+    let cr = Cairo.create surface in
+    let matrix = initial_matrix height in
+    Cairo.set_matrix cr matrix;
+    {cr = cr; m = matrix}
 
-  let close ~options cr =
-    let surface = Cairo.get_target cr in
+  let close ~options t =
+    let surface = Cairo.get_target t.cr in
     (match options with
      | ["PNG"; fname] -> PNG.write surface fname;
      | _ -> ());
     Surface.finish surface
 
 
-  let select_font_face cr slant weight family =
+  let select_font_face t slant weight family =
     (* Could be (unsafely) optimized *)
     let slant = match slant with
       | Archimedes.Upright -> Cairo.Upright
@@ -101,14 +144,17 @@ struct
     and weight = match weight with
       | Archimedes.Normal -> Cairo.Normal
       | Archimedes.Bold -> Cairo.Bold in
-    Cairo.select_font_face cr ~slant ~weight family
+    Cairo.select_font_face t.cr ~slant ~weight family
+
+  let set_font_size t = set_font_size t.cr
 
   (* identity CTM -- never modified *)
   let id = { Cairo.xx = 1.; xy = 0.;  yx = 0.; yy = 1.;  x0 = 0.; y0 = 0. }
 
-  let show_text cr ~rotate ~x ~y pos text =
+  let show_text t ~rotate ~x ~y pos text =
     (* Compute the angle between the desired direction and the X axis
        in the device coord. system. *)
+    let cr = t.cr in
     let dx, dy = user_to_device_distance cr (cos rotate) (sin rotate) in
     let angle = atan2 dy dx in
     Cairo.save cr;
@@ -123,17 +169,22 @@ struct
     and y0 = match pos with
       | Backend.CC | Backend.RC | Backend.LC -> te.y_bearing +. 0.5 *. te.height
       | Backend.CT | Backend.RT | Backend.LT -> te.y_bearing +. te.height
-      | Backend.CB | Backend.RB | Backend.LB -> te.y_bearing  in
+      | Backend.CB | Backend.RB | Backend.LB -> te.y_bearing in
     Cairo.rel_move_to cr (-. x0) (-. y0);
     Cairo.show_text cr text;
     Cairo.stroke cr; (* without this, the current position is the end
                         of the text which is not desired. *)
     Cairo.restore cr
 
-  let text_extents cr text =
-    let te = Cairo.text_extents cr text in
-    { Backend.x = te.x_bearing; y = te.y_bearing;
-      w = te.width; h = te.height }
+  let text_extents t text =
+    let te = Cairo.text_extents t.cr text in
+    (*An extents is always expressed in device coordinates; we need to
+      go to user coordinates.*)
+    (*Note: The following transformations assume that the coordinates
+      are orthogonal.*)
+    let x,y = Cairo.device_to_user_distance t.cr te.x_bearing te.y_bearing in
+    let w,h = Cairo.device_to_user_distance t.cr te.width te.height in
+    { Backend.x = x; y = -.y; w = w; h = -.h}
 end
 
 let () =

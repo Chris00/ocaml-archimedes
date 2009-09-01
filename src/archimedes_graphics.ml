@@ -161,7 +161,7 @@ struct
     with Stack.Empty -> ()
 
   (* FIXME: options "x=" and "y=" for the position *)
-  let make ~options width height =
+  let make ~options:_ width height =
     if !in_use then failwith "Archimedes_graphics.make: in use";
     Graphics.open_graph(sprintf " %.0fx%.0f" width height);
     Graphics.set_window_title "Archimedes";
@@ -184,7 +184,7 @@ struct
       state = state;
     }
 
-  let close ~options t =
+  let close ~options:_ t =
     if Sys.os_type = "Win32" then (
       Printf.printf "Please press a key to continue...%!";
       ignore (Graphics.wait_next_event [Graphics.Key_pressed])
@@ -301,7 +301,25 @@ struct
     st.y <- y
 
   let arc t ~x ~y ~r ~a1 ~a2 =
-    ()
+    let rec arcin a1 a2 =
+      let curvelen = r *. abs_float (a2 -. a1) in
+      (*if curvelen < 1. then ( *)
+        move_to t x y;
+        let cos1 = r *. cos a1 and sin1 = r *. sin a1 in
+        let cos2 = r *. cos a2 and sin2 = r *. sin a2 in
+        rel_move_to t cos1 sin1;
+        (*let coeff = (2. *. (sqrt 5.) -. 4.) /. 3. in*)
+        let coeff = 1. in
+        (*This coefficient makes the middle point of a Bezier curve
+          coïncide with the arc.*)
+        let f z a = coeff *. (z -. a) in
+        curve_to t (f x sin1) (f y cos1) (f x sin2) (f y cos2) (x+.cos2) (y+.sin2)
+      (* )
+      else (
+        let a3 = (a1 +. a2) /.2. in
+        arcin a1 a3;
+        arcin a3 a2)*)
+    in arcin a1 a2
 
   let rec beginning_of_subpath list =
     match list with
@@ -377,11 +395,13 @@ struct
        in the device coord. system. *)
     let dx, dy = Matrix.transform_distance st.ctm (cos rotate) (sin rotate) in
     let angle = atan2 dy dx in
-    let x', y' = Matrix.transform_point st.ctm x y in
+    let x', y' = (*Matrix.transform_point st.ctm*) x, y in
     if abs_float angle <= 1e-6 then
       let w, h = Graphics.text_size txt in
-      let wx, wy = Matrix.transform_distance st.ctm (float w) 0.
-      and hx, hy = Matrix.transform_distance st.ctm 0. (float h) in
+      (*let wx, wy = Matrix.transform_distance st.ctm (float w) 0.
+      and hx, hy = Matrix.transform_distance st.ctm 0. (float h) in*)
+      let wx = float w and wy = 0. in
+      let hx = 0. and hy = float h in
       let x'' =  match pos with
         | Backend.CC | Backend.CT | Backend.CB -> x' -. (wx +. hx) *. 0.5
         | Backend.RC | Backend.RT | Backend.RB -> x'

@@ -5,39 +5,37 @@ let () =
   let f s =
     try
       let cr =
-        B.make ~dirs:[ "../src"; "./src"] s 250. 150.
+        B.make ~dirs:[ "../src"; "./src"] s 300. 300.
       in
-      if String.sub s 0 5 = "cairo" then (
-        B.scale cr 1. (-1.);
-        B.translate cr 0. (-150.));
+      B.scale cr 1. 2.;
+      B.set_font_size cr 12.;
       let text = "Test with a y."  in
-     (* B.scale cr 1. 2.;*)
       let rect = B.text_extents cr text in
-      let w = rect.B.w and h = rect.B.h in
-      let w = 2. *. w and h = 2.*.h in
+      let w = 140. and h = 40. in
       let w' = 2.*.w and h' = 2.*.h in
       let plot_text (x,y,pos,r,g,b) =
-        let left_x = x and top_y = y in
         let dx =  match pos with
-          | B.CC | B.CT | B.CB -> left_x -. rect.B.w *. 0.5
-          | B.RC | B.RT | B.RB -> left_x
-          | B.LC | B.LT | B.LB -> left_x -. rect.B.w
+          | B.CC | B.CT | B.CB -> x -. rect.B.w *. 0.5
+          | B.RC | B.RT | B.RB -> x
+          | B.LC | B.LT | B.LB -> x -. rect.B.w
         and dy = match pos with
-          | B.CC | B.RC | B.LC -> top_y -. rect.B.h *. 0.5
-          | B.CT | B.RT | B.LT -> top_y
-          | B.CB | B.RB | B.LB -> top_y -. rect.B.h
+          | B.CC | B.RC | B.LC -> y -. rect.B.h *. 0.5
+          | B.CT | B.RT | B.LT -> y
+          | B.CB | B.RB | B.LB -> y -. rect.B.h
         in
-        B.set_color cr (Color.make ~a:0.6 r g b);
-        B.rectangle cr dx dy rect.B.w rect.B.h;
-        B.stroke cr;
-        B.set_color cr (Color.make r g b);
-        B.show_text cr 0. x y pos text;
-        B.arc cr x y 2. 0. 7.;
-        B.set_color cr (Color.make ~a:0.5 r g b);
-        B.stroke cr;
+        (*let wx,wy = Matrix.inv_transform_distance matrix rect.B.w 0.
+        and hx,hy = Matrix.inv_transform_distance matrix 0. rect.B.h in*)
+        let wx = rect.B.w
+        and hy = rect.B.h in
         B.arc cr dx dy 1. 0. 7.;
-        B.set_color cr (Color.make ~a:0.3 r g b);
-        B.stroke cr
+        B.set_color cr (Color.make r g b);
+        B.stroke cr;
+        B.rectangle cr dx dy wx hy;
+        (*B.line_to cr x y;*)
+        B.stroke cr;
+        B.arc cr x y 2. 0. 7.;
+        B.stroke cr;
+        B.show_text cr 0. x y pos text
       in
       let x,y = 10.,20. in
       List.iter plot_text
@@ -62,7 +60,7 @@ let () =
   in List.iter f
        ["cairo PDF text.pdf";
         "cairo PNG text.png";
-        "tikz text.tex";
+        "tikz text.tex draw";
         "graphics"]
 
 (*Local Variables:*)
