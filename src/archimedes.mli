@@ -70,7 +70,7 @@ module Color: sig
   val green : t
   val blue : t
   val yellow : t
-  val purple : t
+  val magenta : t
   val cyan : t
   val white : t
     (**Predefined colors.*)
