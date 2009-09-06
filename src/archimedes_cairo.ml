@@ -163,13 +163,20 @@ struct
     Cairo.rotate cr angle;
     let te = Cairo.text_extents cr text in
     let x0 = match pos with
-      | Backend.CC | Backend.CT | Backend.CB -> te.x_bearing +. 0.5 *. te.width
-      | Backend.RC | Backend.RT | Backend.RB -> te.x_bearing
-      | Backend.LC | Backend.LT | Backend.LB -> te.x_bearing +. te.width
+      | Archimedes.CC | Archimedes.CT | Archimedes.CB ->
+          te.x_bearing +. 0.5 *. te.width
+      | Archimedes.RC | Archimedes.RT | Archimedes.RB ->
+          te.x_bearing
+      | Archimedes.LC | Archimedes.LT | Archimedes.LB ->
+          te.x_bearing +. te.width
     and y0 = match pos with
-      | Backend.CC | Backend.RC | Backend.LC -> te.y_bearing +. 0.5 *. te.height
-      | Backend.CT | Backend.RT | Backend.LT -> te.y_bearing +. te.height
-      | Backend.CB | Backend.RB | Backend.LB -> te.y_bearing in
+      | Archimedes.CC | Archimedes.RC | Archimedes.LC ->
+          te.y_bearing +. 0.5 *. te.height
+      | Archimedes.CT | Archimedes.RT | Archimedes.LT ->
+          te.y_bearing +. te.height
+      | Archimedes.CB | Archimedes.RB | Archimedes.LB ->
+          te.y_bearing
+    in
     Cairo.rel_move_to cr (-. x0) (-. y0);
     Cairo.show_text cr text;
     Cairo.stroke cr; (* without this, the current position is the end

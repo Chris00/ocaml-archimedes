@@ -563,15 +563,15 @@ struct
     let angle = atan2 dy dx in
     let x', y' = Archimedes.Matrix.transform_point st.ctm x y in
     let pos = match pos with
-      | Backend.LT -> "south east"
-      | Backend.LC -> "east"
-      | Backend.LB -> "north east"
-      | Backend.CT -> "south"
-      | Backend.CC -> "center"
-      | Backend.CB -> "north"
-      | Backend.RT -> "south west"
-      | Backend.RC -> "west"
-      | Backend.RB -> "north west"
+      | Archimedes.LT -> "south east"
+      | Archimedes.LC -> "east"
+      | Archimedes.LB -> "north east"
+      | Archimedes.CT -> "south"
+      | Archimedes.CC -> "center"
+      | Archimedes.CB -> "north"
+      | Archimedes.RT -> "south west"
+      | Archimedes.RC -> "west"
+      | Archimedes.RB -> "north west"
     in
     (*let txt = Printf.sprintf (format_of_string st.slant_weight_family) txt in*)
     write t (Printf.sprintf

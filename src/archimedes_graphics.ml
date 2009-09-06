@@ -403,13 +403,13 @@ struct
       let wx = float w and wy = 0. in
       let hx = 0. and hy = float h in
       let x'' =  match pos with
-        | Backend.CC | Backend.CT | Backend.CB -> x' -. (wx +. hx) *. 0.5
-        | Backend.RC | Backend.RT | Backend.RB -> x'
-        | Backend.LC | Backend.LT | Backend.LB -> x' -. wx -. hx
+        | Archimedes.CC | Archimedes.CT | Archimedes.CB -> x' -. (wx +. hx) *. 0.5
+        | Archimedes.RC | Archimedes.RT | Archimedes.RB -> x'
+        | Archimedes.LC | Archimedes.LT | Archimedes.LB -> x' -. wx -. hx
       and y'' = match pos with
-        | Backend.CC | Backend.RC | Backend.LC -> y' -. (hy +. wy) *. 0.5
-        | Backend.CT | Backend.RT | Backend.LT -> y'
-        | Backend.CB | Backend.RB | Backend.LB -> y' -. hy -. wy
+        | Archimedes.CC | Archimedes.RC | Archimedes.LC -> y' -. (hy +. wy) *. 0.5
+        | Archimedes.CT | Archimedes.RT | Archimedes.LT -> y'
+        | Archimedes.CB | Archimedes.RB | Archimedes.LB -> y' -. hy -. wy
       in
       Graphics.moveto (round x'') (round y'');
       Graphics.draw_string txt
