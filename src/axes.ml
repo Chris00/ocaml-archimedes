@@ -136,8 +136,8 @@ let tic_extents tic =
   | _ -> raise Not_available
 
 type label =
-    {action: float -> float -> Backend.text_position -> Backend.t -> unit;
-     box: float ->float ->Backend.text_position ->Backend.t ->Backend.rectangle;
+    {action: float -> float -> text_position -> Backend.t -> unit;
+     box:float ->float -> text_position ->Backend.t ->Backend.rectangle;
      rotation:float}
 
 let tic_label_extents tic_extents label x y pos b =
@@ -173,13 +173,13 @@ let make_box_from_text txt x y pos b =
     rect.Backend.x +. x, rect.Backend.y +. y, rect.Backend.w, rect.Backend.h
   in
   let x = match pos with
-    | Backend.CC | Backend.CT | Backend.CB -> rx -. 0.5 *. w
-    | Backend.RC | Backend.RT | Backend.RB -> rx
-    | Backend.LC | Backend.LT | Backend.LB -> rx -. w
+    | CC | CT | CB -> rx -. 0.5 *. w
+    | RC | RT | RB -> rx
+    | LC | LT | LB -> rx -. w
   and y = match pos with
-    | Backend.CC | Backend.RC | Backend.LC -> ry -. 0.5 *. h
-    | Backend.CT | Backend.RT | Backend.LT -> ry -. h
-    | Backend.CB | Backend.RB | Backend.LB -> ry
+    | CC | RC | LC -> ry -. 0.5 *. h
+    | CT | RT | LT -> ry -. h
+    | CB | RB | LB -> ry
   in
   {Backend.x = x; y = y; w = w; h = h}
 
@@ -450,7 +450,7 @@ type 'a axis = (*'a for tic type*)
     {x_axis:bool;
      major:'a; minor:'a;
      positions:tic_position;
-     label_position:Backend.text_position}
+     label_position:text_position}
 
 type ('a,'b) t = (*'a for axes type, 'b for tic types*)
     {axes:'a; x:'b axis; y:'b axis}

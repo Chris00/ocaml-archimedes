@@ -18,10 +18,10 @@ let () =
       H.plotfx handle parabola (-3.) 3.;
       H.stroke handle;
       (*let xaxis =
-        A.make_axis (`P "|") `Abscissa B.CB (`P "tic_up") (`Linear(7,0))
+        A.make_xaxis (`P "|") `Number B.CB (`P "tic_up") (`Linear(7,0))
       in*)
      let yaxis =
-        A.make_axis (`P "-") `Ordinate B.LC (`P "tic_left") (`Linear(7,2))
+        A.make_yaxis (`P "-") `Number B.LC (`P "tic_left") (`Linear(7,2))
       in
      (* let axes = A.make (`Rectangle(true,true)) xaxis yaxis in
       H.use (vps.(1).(0));

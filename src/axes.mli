@@ -78,12 +78,7 @@ type label
        only to determine the extents ([box]) of the label.*)*)
 
 type label_collection
-(* =
-    Fixed of label array
-      (**One (different) label per major tic. (eg: text data)*)
-  | Variable of label
-      (**A unique label is OK for all major tics. (eg: abscissa)*)*)
-      (**Storing several labels*)
+  (**Storing several labels*)
 
 
 type data =
@@ -155,12 +150,12 @@ val make_axis : bool ->
   'c -> 'a axis*)
 
 val make_xaxis :
-  ([> tic] as 'a) -> ([>data] as 'b) -> Backend.text_position -> 'a ->
+  ([> tic] as 'a) -> ([>data] as 'b) -> text_position -> 'a ->
   ?get_labels:(bool -> 'b -> label_collection) ->
   ?get_position:(([>loc_tics] as 'c) -> label_collection -> tic_position) ->
   'c -> 'a axis
 val make_yaxis :
-  ([> tic] as 'a) -> ([>data] as 'b) -> Backend.text_position -> 'a ->
+  ([> tic] as 'a) -> ([>data] as 'b) -> text_position -> 'a ->
   ?get_labels:(bool -> 'b -> label_collection) ->
   ?get_position:(([>loc_tics] as 'c) -> label_collection -> tic_position) ->
   'c -> 'a axis

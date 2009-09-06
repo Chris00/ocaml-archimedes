@@ -49,6 +49,17 @@ type slant = Upright | Italic
 
 type weight = Normal | Bold
 
+type text_position =
+  | CC
+  | LC
+  | RC
+  | CT
+  | CB
+  | LT
+  | LB
+  | RT
+  | RB
+
 module Backend =
 struct
   INCLUDE "backend.ml"

@@ -29,18 +29,6 @@ external for_linking_1__ : unit -> unit = "caml_hash_variant"
 
 type rectangle = {x:float; y:float; w:float; h:float}
 
-type text_position =
-  | CC
-  | LC
-  | RC
-  | CT
-  | CB
-  | LT
-  | LB
-  | RT
-  | RB
-
-
 module type T =
 sig
   type t

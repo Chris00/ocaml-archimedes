@@ -666,4 +666,21 @@ let plotxy t ?axes ?(f = f) ?(mark = "X") iter =
   iterate update;
   add_order f t
 
+let make_xaxis = Axes.make_xaxis
+let make_yaxis = Axes.make_yaxis
+let make_axes = Axes.make
+let print_axes axes ~ranges ?axes_print ?axes_meeting ?print_tic t =
+  let scale = Sizes.get_ts t.current_vp.scalings in
+  let lines = Coordinate.make_scale t.normalized scale scale in
+  let print_axes =
+    match axes_print with
+      None -> Axes.print_axes
+    | Some f -> fun axes ranges _ -> f axes ranges t
+  and print_tic =
+    match print_tic with
+      None -> Axes.print_tic
+    | Some f -> fun _ -> f t
+  in
+  Axes.print axes ~ranges ~lines
+    ~print_axes ?axes_meeting ~print_tic t.backend
 

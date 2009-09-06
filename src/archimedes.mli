@@ -30,6 +30,17 @@ type line_join =
   | JOIN_BEVEL (** use a cut-off join, the join is cut off at half the line
                      width from the joint point *)
 
+type text_position =
+    | CC  (** centrer horizontally and vertically *)
+    | LC  (** align left horizontally and center vertically *)
+    | RC  (** align right horizontally and center vertically *)
+    | CT  (** center horizontally and align top vertically *)
+    | CB  (** center horizontally and align bottom vertically *)
+    | LT  (** align left horizontally and top vertically *)
+    | LB  (** align left horizontally and bottom vertically *)
+    | RT  (** align right horizontally and top vertically *)
+    | RB  (** align right horizontally and bottom vertically *)
+
 type slant = Upright | Italic
     (** Specifies variants of a font face based on their slant. *)
 
@@ -166,10 +177,43 @@ module Axes: sig
              *. (ymax -. ymin) )].*)
       ]
 
+  type data = [`Text_label of string array * float
+        (**Labels will be text labels, rotated by the second argument*)
+    | `Number
+        (**Use abscissas or ordinates as labels*)
+    | `Expnumber
+        (**Labels of the form [10^x] with [x] abscissa or ordinate*)
+    ]
+
   type tic = [ `P of string ]
       (**Type for tics.*)
 
+  type label_collection
 
+  type loc_tics =
+      [ `Fixed_rel of (float * bool) list
+        (**List of pairs [(x, major)] with [x] a number between 0 and
+           1, specifying the relative position of the tic and [major]
+           indicating whether the tic is major.*)
+    | `Fixed_abs of ((float * bool) list)
+    | `Linear_variable of int array
+        (**The [i]th element of the array specifies the number of
+           minor tics between the [i]th major tic and the [i+1]th
+           one (starting count at 0). All tics are placed linearly;
+           that is, if the length of the axis is [len], then the
+           [i]th tic (among all tics, starting to count at 0) is
+           placed at distance [i /. len].*)
+    | `Linear of int * int
+        (**[`Linear(majors, minors)]: Fixed number of major tics,
+           and number of minor tics between two consecutive major
+           tics. They are all placed linearly.*)
+    | `Logarithmic of int * int
+        (**Same as [`Linear] except that the minor tics are placed
+           in a logarithmic scale.*)
+    | `Auto_linear
+    ]
+
+  type tic_position
 end
 
 
@@ -291,6 +335,30 @@ module Handle: sig
     ?axes:([> Axes.axes ],[> Axes.tic]) Axes.t ->
     ?f:(t -> string -> float -> float -> unit) ->
     ?mark:string -> Iterator.t -> unit
+
+  val make_xaxis :
+    ([> Axes.tic] as 'a) -> ([> Axes.data] as 'b) -> text_position -> 'a ->
+    ?get_labels:(bool -> 'b -> Axes.label_collection) ->
+    ?get_position:(([> Axes.loc_tics] as 'c) ->
+                     Axes.label_collection -> Axes.tic_position) ->
+    'c -> 'a Axes.axis
+  val make_yaxis :
+    ([> Axes.tic] as 'a) -> ([>Axes.data] as 'b) -> text_position -> 'a ->
+    ?get_labels:(bool -> 'b -> Axes.label_collection) ->
+    ?get_position:(([>Axes.loc_tics] as 'c) ->
+                     Axes.label_collection -> Axes.tic_position) ->
+    'c -> 'a Axes.axis
+  val make_axes : ([>Axes.axes] as 'a) ->
+    'b Axes.axis -> 'b Axes.axis -> ('a,'b) Axes.t
+  val print_axes :
+    ([> Axes.axes] as 'a, [> Axes.tic] as 'b) Axes.t ->
+    ranges:Axes.ranges ->
+    ?axes_print:('a -> Axes.ranges -> t -> unit) ->
+    ?axes_meeting:('a -> Axes.ranges -> float * float) ->
+    ?print_tic:(t -> 'b -> unit) -> t -> unit
+    (**Prints axes, following the parameters stored in [t] and the
+       optional arguments, if given.*)
+
 end
 
 
@@ -320,17 +388,6 @@ sig
     w:float;   (** width of the rectangle *)
     h:float;   (** height of the rectangle  *)
   }
-
-  type text_position =
-    | CC  (** centrer horizontally and vertically *)
-    | LC  (** align left horizontally and center vertically *)
-    | RC  (** align right horizontally and center vertically *)
-    | CT  (** center horizontally and align top vertically *)
-    | CB  (** center horizontally and align bottom vertically *)
-    | LT  (** align left horizontally and top vertically *)
-    | LB  (** align left horizontally and bottom vertically *)
-    | RT  (** align right horizontally and top vertically *)
-    | RB  (** align right horizontally and bottom vertically *)
 
 
   module type T =
