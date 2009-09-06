@@ -104,11 +104,12 @@ type data =
 
 exception Too_few_labels
 
-val get_labels: [> data] -> label_collection
+val get_labels: bool -> [> data] -> label_collection
     (**Converts a [data] into a [label_collection], which will be used
        by [get_position] (see below).*)
 
-type tic_position = ranges -> (float * float * label option) list
+type tic_position = ranges -> bool ->  Backend.t ->
+  (float * float * label option) list
   (**Shortcut. The output [list] contains tuples of the form
      [(x,y,labelopt)], with [(x,y)] a point where we want a tic and
      [labelopt] indicates the (optional) label wanted (it is [None]
@@ -119,7 +120,7 @@ type loc_tics =
         (**List of pairs [(x, major)] with [x] a number between 0 and
            1, specifying the relative position of the tic and [major]
            indicating whether the tic is major.*)
-    | `Fixed_abs of bool * (float -> float) * ((float * bool) list)
+    | `Fixed_abs of ((float * bool) list)
     | `Linear_variable of int array
         (**The [i]th element of the array specifies the number of
            minor tics between the [i]th major tic and the [i+1]th
@@ -140,7 +141,7 @@ type loc_tics =
 
 (**Convenient ways to specify where we want tics.*)
 
-val get_position : [>loc_tics] -> label_collection -> tic_position
+val get_position : bool -> [>loc_tics] -> label_collection -> tic_position
     (**[get_position loc labels] transforms the [loc] to obtain a
        [position]. When a label is required, it is picked in the [labels]
        argument; if there's too few labels, no label is provided (so the
@@ -150,13 +151,27 @@ val get_position : [>loc_tics] -> label_collection -> tic_position
 type 'a axis
 type ('a, 'b) t
 
-val make_axis :
+
+val make_axis : bool -> 
   ([> tic] as 'a) -> ([>data] as 'b) -> Backend.text_position -> 'a ->
-  ?get_labels:('b -> label_collection) ->
-  ?get_position:(([>loc_tics] as 'c) -> label_collection -> tic_position) ->
+  ?get_labels:(bool -> 'b -> label_collection) ->
+  ?get_position:(bool -> ([>loc_tics] as 'c) ->
+                   label_collection -> tic_position) ->
   'c -> 'a axis
 
-(**[make_axis major data pos minor loc] makes an axis whose major
+val make_xaxis :
+  ([> tic] as 'a) -> ([>data] as 'b) -> Backend.text_position -> 'a ->
+  ?get_labels:(bool -> 'b -> label_collection) ->
+  ?get_position:(bool -> ([>loc_tics] as 'c) ->
+                   label_collection -> tic_position) ->
+  'c -> 'a axis
+val make_yaxis :
+  ([> tic] as 'a) -> ([>data] as 'b) -> Backend.text_position -> 'a ->
+  ?get_labels:(bool -> 'b -> label_collection) ->
+  ?get_position:(bool -> ([>loc_tics] as 'c) ->
+                   label_collection -> tic_position) ->
+  'c -> 'a axis
+(**[make_*axis major data pos minor loc] makes an axis whose major
    tics will be [major], minor tics [minor], positioned using [loc]
    and labels will be positioned using [pos]. The optional arguments are used
    to define the positionment of tics (see the corresponding default functions).*)
