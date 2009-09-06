@@ -102,6 +102,8 @@ type data =
     ]
       (**This type informs on which type of data we want as labels.*)
 
+exception Too_few_labels
+
 val get_labels: [> data] -> label_collection
     (**Converts a [data] into a [label_collection], which will be used
        by [get_position] (see below).*)
@@ -117,6 +119,7 @@ type loc_tics =
         (**List of pairs [(x, major)] with [x] a number between 0 and
            1, specifying the relative position of the tic and [major]
            indicating whether the tic is major.*)
+    | `Fixed_abs of bool * (float -> float) * ((float * bool) list)
     | `Linear_variable of int array
         (**The [i]th element of the array specifies the number of
            minor tics between the [i]th major tic and the [i+1]th
@@ -131,6 +134,7 @@ type loc_tics =
     | `Logarithmic of int * int
         (**Same as [`Linear] except that the minor tics are placed
            in a logarithmic scale.*)
+    | `Auto_linear
     ]
 
 

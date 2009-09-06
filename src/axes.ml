@@ -235,10 +235,11 @@ let get_labels data =
 
 type loc_tics =
     [ `Fixed_rel of (float * bool) list
-   (* | `Fixed_abs of (float * bool) list*)
+    | `Fixed_abs of bool * (float -> float) * ((float * bool) list)
     | `Linear_variable of int array
     | `Linear of int * int
     | `Logarithmic of int * int
+    | `Auto_linear
     ]
 
 let get_position loc labels =
@@ -263,23 +264,29 @@ let get_position loc labels =
       in
       (fun ranges ->
          List.map (g ranges) t_list)
-        (*| `Fixed_abs t_list ->
-          let m = ref 0 in (*Used in case of Fixed labels*)
-          let g ranges (t,b) =
-          let labelopt =
+  | `Fixed_abs (x_axis, other_rep, t_list) ->
+      let m = ref 0 in (*Used in case of Fixed labels*)
+      let g ranges (t,b) =
+        let labelopt =
           if b then (*major tic => add a label*)
-          try
-          let label = labels !m in
-          m := !m + 1;
-          Some label
-          with Too_few_labels -> None
+            try
+              let label = labels !m in
+              m := !m + 1;
+              Some label
+            with Too_few_labels -> None
           else (*Minor tic => no label*)
-          None
-          in
-          t, _, labelopt
-          in
-          (fun ranges ->
-          List.map (g ranges) t_list)*)
+            None
+        in
+        if x_axis then t, other_rep t, labelopt
+        else other_rep t,t,labelopt
+      in
+      (fun ranges ->
+         let fun_filter =
+           let between a b x = a <= x && x<= b in
+           if x_axis then between ranges.xmin ranges.xmax
+           else between ranges.ymin ranges.ymax
+         in
+         List.map (g ranges) (List.filter fun_filter t_list))
   | `Linear_variable numbers ->
       let major_number = ref 0 in
       let f (list, len) m =
@@ -429,11 +436,22 @@ let axis_margins axis ranges tic_extents backend =
 
 
 let get_margins t ?(axes_meeting = axes_meeting) ?(tic_extents = tic_extents)
-    ranges backend=
+    ranges backend =
   let x,y = axes_meeting t.axes ranges in
   Ranges.update ranges x y;
-  axis_margins t.x ranges tic_extents backend,
-  axis_margins t.y ranges tic_extents backend
+
+  let coord = Matrix.make_translate ranges.xmin ranges.ymin in
+  Matrix.scale coord
+    (ranges.xmax -. ranges.xmin) (ranges.ymax -. ranges.ymin);
+  let initial = Backend.get_matrix backend in
+  Backend.save backend;
+  Backend.set_matrix (Matrix.mul coord initial)
+  let margins =
+    axis_margins t.x ranges tic_extents backend,
+    axis_margins t.y ranges tic_extents backend
+  in
+  Backend.restore backend;
+  margins
 
 let print t ~lines ~ranges
     ?(print_axes = print_axes) ?(axes_meeting = axes_meeting)
