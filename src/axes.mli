@@ -91,14 +91,10 @@ type data =
         (**Labels already known*)*)
     | `Text_label of string array * float
         (**Labels will be text labels, rotated by the second argument*)
-    | `Abscissa
-        (**Use abscissas as labels*)
-    | `Ordinate
-        (**Use ordinates as labels*)
-    | `Expabscissa
-        (**Labels of the form [10^x] with [x] abscissa*)
-    | `Expordinate
-        (**Labels of the form [10^y] with [y] ordinate*)
+    | `Number
+        (**Use abscissas or ordinates as labels*)
+    | `Expnumber
+        (**Labels of the form [10^x] with [x] abscissa or ordinate*)
     ]
       (**This type informs on which type of data we want as labels.*)
 
@@ -141,7 +137,7 @@ type loc_tics =
 
 (**Convenient ways to specify where we want tics.*)
 
-val get_position : bool -> [>loc_tics] -> label_collection -> tic_position
+val get_position : [>loc_tics] -> label_collection -> tic_position
     (**[get_position loc labels] transforms the [loc] to obtain a
        [position]. When a label is required, it is picked in the [labels]
        argument; if there's too few labels, no label is provided (so the
@@ -151,25 +147,22 @@ val get_position : bool -> [>loc_tics] -> label_collection -> tic_position
 type 'a axis
 type ('a, 'b) t
 
-
-val make_axis : bool -> 
+(*
+val make_axis : bool ->
   ([> tic] as 'a) -> ([>data] as 'b) -> Backend.text_position -> 'a ->
   ?get_labels:(bool -> 'b -> label_collection) ->
-  ?get_position:(bool -> ([>loc_tics] as 'c) ->
-                   label_collection -> tic_position) ->
-  'c -> 'a axis
+  ?get_position:(([>loc_tics] as 'c) -> label_collection -> tic_position) ->
+  'c -> 'a axis*)
 
 val make_xaxis :
   ([> tic] as 'a) -> ([>data] as 'b) -> Backend.text_position -> 'a ->
   ?get_labels:(bool -> 'b -> label_collection) ->
-  ?get_position:(bool -> ([>loc_tics] as 'c) ->
-                   label_collection -> tic_position) ->
+  ?get_position:(([>loc_tics] as 'c) -> label_collection -> tic_position) ->
   'c -> 'a axis
 val make_yaxis :
   ([> tic] as 'a) -> ([>data] as 'b) -> Backend.text_position -> 'a ->
   ?get_labels:(bool -> 'b -> label_collection) ->
-  ?get_position:(bool -> ([>loc_tics] as 'c) ->
-                   label_collection -> tic_position) ->
+  ?get_position:(([>loc_tics] as 'c) -> label_collection -> tic_position) ->
   'c -> 'a axis
 (**[make_*axis major data pos minor loc] makes an axis whose major
    tics will be [major], minor tics [minor], positioned using [loc]

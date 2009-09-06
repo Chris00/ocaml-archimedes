@@ -164,10 +164,8 @@ exception Too_few_labels
 
 type data =
     [ `Text_label of string array * float
-    | `Abscissa
-    | `Ordinate
-    | `Expabscissa
-    | `Expordinate]
+    | `Number
+    | `Expnumber]
 
 let make_box_from_text txt x y pos b =
   let rect = Backend.text_extents b txt in
@@ -195,42 +193,21 @@ let get_labels x_axis data =
       in
       let array = Array.map f txts in
       (fun i -> try array.(i) with Invalid_argument _ -> raise Too_few_labels)
-  | `Abscissa ->
+
+  | `Number ->
+      let txt x y = Printf.sprintf "%g" (if x_axis then x else y) in
       (fun _ ->
-         {action = (fun x y ->
-                      let txt = Printf.sprintf "%g" x in
-                      fun pos b -> Backend.show_text b x y 0. pos txt);
-          box = (fun x y ->
-                   let txt = Printf.sprintf "%g" x in
-                   make_box_from_text txt x y);
+         {action = (fun x y pos b -> Backend.show_text b x y 0. pos (txt x y));
+          box = (fun x y -> make_box_from_text (txt x y) x y);
           rotation = 0.})
-  | `Ordinate ->
+
+  | `Expnumber ->
+      let txt x y = Printf.sprintf "%g" (if x_axis then 10.**x else 10.**y) in
       (fun _ ->
-         {action = (fun x y ->
-                      let txt = Printf.sprintf "%g" y in
-                      fun pos b -> Backend.show_text b x y 0. pos txt);
-          box = (fun x y ->
-                   let txt = Printf.sprintf "%g" y in
-                   make_box_from_text txt x y);
+         {action = (fun x y pos b -> Backend.show_text b x y 0. pos (txt x y));
+          box = (fun x y -> make_box_from_text (txt x y) x y);
           rotation = 0.})
-  | `Expabscissa ->
-      (fun _ ->
-         {action = (fun x y ->
-                      let txt = Printf.sprintf "%g" (10.**x) in
-                      fun pos b -> Backend.show_text b x y 0. pos txt);
-          box = (fun x y ->
-                   let txt = Printf.sprintf "%g" (10.**x) in
-                   make_box_from_text txt x y);
-          rotation = 0.})
-  | `Expordinate ->
-      (fun _ ->
-         {action = (fun x y ->
-                      let txt = Printf.sprintf "%g" (10.**y) in
-                      fun pos b -> Backend.show_text b x y 0. pos txt);
-          box = (fun x y ->
-                   let txt = Printf.sprintf "%g" (10.**y) in
-                   make_box_from_text txt x y);
-          rotation = 0.})
+
   | _ -> raise Not_available
 
 
@@ -243,7 +220,7 @@ type loc_tics =
     | `Auto_linear
     ]
 
-let get_position x_axis loc labels =
+let get_position loc labels =
   match loc with
     `Fixed_rel t_list ->
       let f x x' t = x +. t *. (x' -. x) in
@@ -482,7 +459,7 @@ type ('a,'b) t = (*'a for axes type, 'b for tic types*)
 let make_axis x major data label_position minor ?(get_labels = get_labels)
     ?(get_position = get_position) loc =
   let labels = get_labels x data in
-  let positions = get_position x loc labels in
+  let positions = get_position loc labels in
   {x_axis = x; major = major; minor = minor; positions = positions;
    label_position = label_position}
 
