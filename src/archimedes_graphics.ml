@@ -323,7 +323,7 @@ struct
 
   let rec beginning_of_subpath list =
     match list with
-    | [] -> failwith "No subpath"
+    | [] -> failwith "Archimedes_graphics: No subpath"
     | MOVE_TO(x,y):: _ -> x,y
     | CLOSE_PATH(x,y):: _ -> x,y
     | RECTANGLE(x,y,_,_):: _ -> x,y

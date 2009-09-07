@@ -171,7 +171,14 @@ type viewport =
 type t =
     {backend: Backend.t;
      rawcoords: Coordinate.t;
+     (*Raw coordinates: those which initially affect the backend*)
      normalized: Coordinate.t;
+     (*Normalized coords: the biggest square included in the surface,
+       whose upper left corner coincide with the upper left corner of
+       the surface, is the unit square in these coordinates.*)
+     square_side: float;
+     (*The quantity used to define normalized by scaling. This is
+       needed for text size handling.*)
      initial_coord : Coordinate.t;(*Initial coordinate system --
                                     the one which makes the surface as a unit square*)
      initial_vp: viewport;(*Initial viewport --
@@ -189,14 +196,16 @@ type t =
   width, then height is by default equal to:
 
   * 500 superposed lines, or
-  * 15 lines of text, or
+  * 10 lines of text, or
   * 100 boxes of 1x1 marks.
 *)
-let def_lw, def_ts, def_marks = 0.002, (1./.15.), 0.01
+let def_lw, def_ts, def_marks = 0.002, 0.1, 0.01
 
 (*User transformations. To get the previous defaults, the user will
-  enter resp. 1, 10, 1 (which are the "usual" defaults in a drawing). *)
-let usr_lw, usr_ts, usr_marks = 500., 150., 100.
+  enter resp. 1, 12, 1. (12 is determined experimentally using cairo:
+  a 100 x 100 pixels output can contain 10 lines of text, putting font
+  size as 12.*)
+let usr_lw, usr_ts, usr_marks = 500., 120., 100.
 
 
 (*Easy update Axes.ranges options*)
@@ -209,10 +218,8 @@ let make ~dirs name w h =
   let backend = Backend.make ~dirs name w h in
   let init = Coordinate.make_identity () in
   let coord = Coordinate.make_scale init w h in
-  let norm =
-    let z = min w h in
-    Coordinate.make_scale init z z
-  in
+  let square_side = min w h in
+  let norm = Coordinate.make_scale init square_side square_side in
   let initial =
     {scalings = Sizes.make_root def_lw def_ts def_marks;
      (*No drawings yet*)
@@ -228,6 +235,7 @@ let make ~dirs name w h =
   {backend=backend;
    rawcoords = init;
    normalized = norm;
+   square_side = square_side;
    initial_coord = coord;
    initial_vp = initial;
    current_coord = coord;
@@ -397,6 +405,7 @@ let set_global_font_size t s =
 (*Getters*)
 let get_line_width t = (Sizes.get_lw t.current_vp.scalings) *. usr_lw
 let get_mark_size t = (Sizes.get_marks t.current_vp.scalings) *. usr_marks
+let get_font_size t = (Sizes.get_marks t.current_vp.scalings) *. usr_ts
 
 
 (* Backend primitives (not overriden by viewport system)
@@ -545,14 +554,17 @@ let select_font_face t slant weight family =
 (*FIXME: when [Backend.show_text], the backend temporarily returns to
   raw coordinates -- but converts its input.*)
 let show_text t ~rotate ~x ~y pos txt=
+  let ts = Sizes.get_ts t.current_vp.scalings in
+  let text_coord = Coordinate.make_scale t.normalized ts ts in
+  let font_size = ts *. t.square_side /. 100. in
   let f () =
-    let ctm = Coordinate.use t.backend t.normalized in
-    Backend.set_font_size t.backend (Sizes.get_ts t.current_vp.scalings);
+    let ctm' = Coordinate.use t.backend text_coord in
+    Backend.set_font_size t.backend font_size;
     Backend.show_text t.backend ~rotate ~x ~y pos txt;
-    Coordinate.restore t.backend ctm
+    Coordinate.restore t.backend ctm'
   in
-  let ctm = Coordinate.use t.backend t.normalized in
-  Backend.set_font_size t.backend (Sizes.get_ts t.current_vp.scalings);
+  let ctm = Coordinate.use t.backend text_coord in
+  Backend.set_font_size t.backend font_size;
   let rect = Backend.text_extents t.backend txt in
   Coordinate.restore t.backend ctm;
   update_ranges t rect.Backend.x rect.Backend.y;
@@ -562,8 +574,10 @@ let show_text t ~rotate ~x ~y pos txt=
   add_order f t
 
 let text_extents t txt =
-  let ctm = Coordinate.use t.backend t.normalized in
-  Backend.set_font_size t.backend (Sizes.get_ts t.current_vp.scalings);
+  let text_coord = Coordinate.make_scale t.normalized ts ts in
+  let font_size = ts *. t.square_side /. 100. in
+  let ctm = Coordinate.use t.backend text_coord in
+  Backend.set_font_size t.backend font_size;
   let rect = Backend.text_extents t.backend txt in
   Coordinate.restore t.backend ctm;
   rect
