@@ -422,30 +422,43 @@ struct
     st.curr_pt <- true
 
 
-  (*FIXME: to be reworked, to take the coordinate transformation into
-    account.*)
+
   let arc t ~x ~y ~r ~a1 ~a2 =
     let st = get_state t in
+    (*Coordinate transformations*)
     let x', y' = Archimedes.Matrix.transform_point st.ctm x y
     in
     move_to t x y;
-    let rec arc a1 a2 = (*Note: angles expressed in degrees here*)
-      if abs_float (a2 -. a1) >= 360. +. 1.E-16 then
-        (t.curr_path <- t.curr_path^" circle("^(string_of_float r)^")";
-         let a2 =
-           if a2 -. a1 >= 360. +. 1.E-16 then a2 -. 360.
-           else a2 +. 360.
-         in
-         arc a1 a2)
-      else
-        let endarc = " arc("^(string_of_float a1)^
-          ":"^(string_of_float a2)^":"^
-          (string_of_float r)^")"
-        in
-        let x' = r *. cos a1
-        and y' = r *. sin a1 in
-        t.curr_path <- t.curr_path^" -- ++"^(point_string x' y')^endarc
-    in arc (180. *. a1 /. pi) (180.*. a2 /. pi)
+    let rcos t = r *. cos t
+    and rsin t = r *. sin t in
+    let x1, y1 = Archimedes.Matrix.transform_distance st.ctm (rcos a1) (rsin a1)
+    and x2, y2 = Archimedes.Matrix.transform_distance st.ctm (rcos a2) (rsin a2)
+    in
+    let loops = truncate (abs_float(a2 -. a1) /. (2.*.pi)) in
+    let a1' = atan2 y1 x1
+    and a2' = atan2 y2 x2 in
+    Printf.printf "%g : %g now are %g : %g with %d loops\n%!" a1 a2 a1' a2' loops;
+    (*FIXME: to be reworked, to take the coordinate transformation into
+      account (eg. different scalings along the axes).*)
+    let r',_ = Archimedes.Matrix.transform_distance st.ctm r 0. in
+    (*Note: without the following, angles are taken "mod 360", so
+      circles could not be made using 0 -- 2 pi as (original) argument.*)
+    for i = 1 to loops do
+      t.curr_path <- t.curr_path^" circle("^(string_of_float r')^")"
+    done;
+    (*"Real" arc*)
+    let endarc =
+      if abs_float (a2' -. a1') >= 1E-9 then
+        " arc("^(string_of_float (180. *. a1' /. pi))^
+          ":"^(string_of_float (180. *. a2' /. pi))^":"^
+          (string_of_float r')^")"
+      else ""
+    in
+    (*TikZ uses the current point as starting point for the arc.*)
+    let x' = r' *. cos a1'
+    and y' = r' *. sin a1' in
+    t.curr_path <- t.curr_path^" -- ++"^(point_string x' y')^endarc
+
 
   let close_path t =
     let st = get_state t in
@@ -498,7 +511,7 @@ struct
       match slant with
         Archimedes.Upright -> "",""
       | Archimedes.Italic -> "\textit{","}"
-      (*| Archimedes.Oblique -> "\textsl{","}"(*Slanted*)*)
+          (*| Archimedes.Oblique -> "\textsl{","}"(*Slanted*)*)
     in
     let begin_weight, end_weight =
       match weight with

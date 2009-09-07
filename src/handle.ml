@@ -243,15 +243,15 @@ let close t =
         None -> (*No ranges, so no drawings *)
           make_viewports ()
       | Some ranges ->
-          let diffx = max (ranges.Axes.xmax -. ranges.Axes.xmin) (1E-15)
-          and diffy = min (ranges.Axes.ymax -. ranges.Axes.ymin) (1E-15)
+          let diffx =  ranges.Axes.xmax -. ranges.Axes.xmin
+          and diffy =  ranges.Axes.ymax -. ranges.Axes.ymin
           in
-          let user_device =
-            Coordinate.make_scale coord (1. /. diffx) (1. /. diffy)
-          in
-          Coordinate.translate user_device
+          let scalx = min (1./.diffx) 1E15
+          and scaly = min (1./.diffy) 1E15 in
+          let coord_user_device = Coordinate.make_scale coord scalx scaly in
+          Coordinate.translate coord_user_device
             (-.ranges.Axes.xmin) (-.ranges.Axes.ymin);
-          ignore (Coordinate.use t.backend user_device);
+          ignore (Coordinate.use t.backend coord_user_device);
           let rec make_orders orders =
             if not (Queue.is_empty orders) then (
               Queue.pop orders ();

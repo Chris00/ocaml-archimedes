@@ -15,13 +15,13 @@ let () =
       let w' = 2.*.w and h' = 2.*.h in
       let plot_text (x,y,pos,r,g,b) =
         let dx =  match pos with
-          | B.CC | B.CT | B.CB -> x -. rect.B.w *. 0.5
-          | B.RC | B.RT | B.RB -> x
-          | B.LC | B.LT | B.LB -> x -. rect.B.w
+          | CC | CT | CB -> x -. rect.B.w *. 0.5
+          | RC | RT | RB -> x
+          | LC | LT | LB -> x -. rect.B.w
         and dy = match pos with
-          | B.CC | B.RC | B.LC -> y -. rect.B.h *. 0.5
-          | B.CT | B.RT | B.LT -> y
-          | B.CB | B.RB | B.LB -> y -. rect.B.h
+          | CC | RC | LC -> y -. rect.B.h *. 0.5
+          | CT | RT | LT -> y
+          | CB | RB | LB -> y -. rect.B.h
         in
         (*let wx,wy = Matrix.inv_transform_distance matrix rect.B.w 0.
         and hx,hy = Matrix.inv_transform_distance matrix 0. rect.B.h in*)
@@ -40,17 +40,17 @@ let () =
       let x,y = 10.,20. in
       List.iter plot_text
         [
-          x,     y,     B.RT, 1.,  0.,  0.;
-          x,     y+.h,  B.RC, 0.8, 0.5, 0.;
-          x,     y+.h', B.RB, 0.8, 0.,  0.5;
+          x,     y,     RT, 1.,  0.,  0.;
+          x,     y+.h,  RC, 0.8, 0.5, 0.;
+          x,     y+.h', RB, 0.8, 0.,  0.5;
 
-          x+.w,  y,     B.CT, 0.5, 0.8, 0.;
-          x+.w,  y+.h,  B.CC, 0.,  1.,  0.;
-          x+.w,  y+.h', B.CB, 0.,  0.8, 0.5;
+          x+.w,  y,     CT, 0.5, 0.8, 0.;
+          x+.w,  y+.h,  CC, 0.,  1.,  0.;
+          x+.w,  y+.h', CB, 0.,  0.8, 0.5;
 
-          x+.w', y,     B.LT, 0.5, 0.,  0.8;
-          x+.w', y+.h,  B.LC, 0.,  0.5, 0.8;
-          x+.w', y+.h', B.LB, 0.,  0.,  1.
+          x+.w', y,     LT, 0.5, 0.,  0.8;
+          x+.w', y+.h,  LC, 0.,  0.5, 0.8;
+          x+.w', y+.h', LB, 0.,  0.,  1.
         ];
       B.close cr
     with

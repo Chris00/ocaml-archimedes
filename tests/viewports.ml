@@ -10,8 +10,6 @@ let () =
       let vps = H.Viewport.matrix handle 2 2 in
       H.use (vps.(0).(0));
       H.set_color handle Color.blue;
-      let parabola x = x *. x in
-      (*H.plotfx handle parabola (-3.) 3.;*)
       H.move_to handle 0. 0.;
       H.line_to handle 1. 0.;
       H.line_to handle 1. 1.;
@@ -26,18 +24,23 @@ let () =
       H.line_to handle 0. 1.;
       H.close_path handle;
       H.stroke handle;
-      (*let xaxis =
-        H.make_xaxis (`P "|") `Number CB (`P "tic_up") (`Linear(7,0))
-      in*)
-     let yaxis =
-        H.make_yaxis (`P "-") `Number LC (`P "tic_left") (`Linear(7,2))
-      in
-     (* let axes = H.make_axes (`Rectangle(true,true)) xaxis yaxis in
-      H.use (vps.(1).(0));
-      H.set_color handle Color.red;
-      H.plotfx handle (*~axes*) parabola (-3.) 3.;*)
+      H.use (vps.(0).(1));
+      H.set_color handle Color.green;
+      let two_pi = 8. *. atan 1. in
+      H.arc handle 0. 0. 1. 0. two_pi;
+      H.fill handle;
+      H.set_line_width handle 5.;
+      H.move_to handle (-0.8) 0.;
+      H.line_to handle 0.8 0.;
+      H.set_color handle Color.white;
       H.stroke handle;
-
+      H.use vps.(1).(1);
+      H.set_color handle Color.yellow;
+      H.move_to handle 0. 0.;
+      H.line_to handle 0. 1.;
+      H.line_to handle 1. 0.5;
+      H.close_path handle;
+      H.fill handle;
       H.close handle
     with
       B.Error e ->
@@ -45,10 +48,10 @@ let () =
         exit 1
   in List.iter f
        ["graphics";
-        "tikz functions.tex";
-        "cairo PDF functions.pdf";
-        "cairo PNG functions.png"]
+        "tikz viewports.tex";
+        "cairo PDF viewports.pdf";
+        "cairo PNG viewports.png"]
 
 (*Local Variables:*)
-(*compile-command: "ocamlopt -o test_function.com -I ../src dynlink.cmxa bigarray.cmxa archimedes.cmxa test_function.ml && ocamlc -o test_function.exe -I ../src dynlink.cma bigarray.cma archimedes.cma test_function.ml"*)
+(*compile-command: "ocamlopt -o viewports.com -I ../src dynlink.cmxa bigarray.cmxa archimedes.cmxa viewports.ml && ocamlc -o viewports.exe -I ../src dynlink.cma bigarray.cma archimedes.cma viewports.ml"*)
 (*End:*)

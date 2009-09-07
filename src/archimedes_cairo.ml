@@ -63,7 +63,7 @@ struct
                     x0 = m.Archimedes.x0; y0 = m.Archimedes.y0;}
       (*(Obj.magic m : Cairo.matrix)*)
     in
-    let matrix = Cairo.Matrix.multiply t.m m' in
+    let matrix = Cairo.Matrix.multiply m' t.m in
     set_matrix t.cr matrix
 
   let get_matrix t =
