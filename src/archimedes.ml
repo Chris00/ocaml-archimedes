@@ -45,6 +45,8 @@ type line_join =
   | JOIN_ROUND
   | JOIN_BEVEL
 
+type rectangle = {x:float; y:float; w:float; h:float;  }
+
 type slant = Upright | Italic
 
 type weight = Normal | Bold

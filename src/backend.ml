@@ -27,8 +27,6 @@ module ForLinking_1__ = Callback
    symbol: caml_hash_variant" when loading Cairo. *)
 external for_linking_1__ : unit -> unit = "caml_hash_variant"
 
-type rectangle = {x:float; y:float; w:float; h:float}
-
 module type T =
 sig
   type t

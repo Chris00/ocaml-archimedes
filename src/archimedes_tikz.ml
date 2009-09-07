@@ -38,11 +38,11 @@ let round x =
 (** Return the smaller rectangle including the rectangle [r] and the
     segment joining [(x0,y0)] and [(x1,y1)]. *)
 let update_rectangle r x0 y0 x1 y1 =
-  let x = min r.Backend.x (min x0 x1)
-  and y = min r.Backend.y (min y0 y1)
-  and x' = max (r.Backend.x +. r.Backend.w) (max x0 x1)
-  and y' = max (r.Backend.y +. r.Backend.h) (max y0 y1) in
-  { Backend.x = x;  y = y;  w = x' -. x;  h = y' -. y }
+  let x = min r.Archimedes.x (min x0 x1)
+  and y = min r.Archimedes.y (min y0 y1)
+  and x' = max (r.Archimedes.x +. r.Archimedes.w) (max x0 x1)
+  and y' = max (r.Archimedes.y +. r.Archimedes.h) (max y0 y1) in
+  { Archimedes.x = x;  y = y;  w = x' -. x;  h = y' -. y }
 
 (** Returns the range of the function f = t -> (1-t)**3 x0 + 3
     (1-t)**2 t x1 + 3 (1-t) t**2 x2 + t**3 x3, 0 <= t <= 1, under the
@@ -92,12 +92,12 @@ let range_bezier x0 x1 x2 x3 =
     given by the control points. *)
 let update_curve r x0 y0 x1 y1 x2 y2 x3 y3 =
   let xmin, xmax = range_bezier x0 x1 x2 x3 in
-  let xmin = min xmin r.Backend.x in
-  let w = max xmax (r.Backend.x +. r.Backend.w) -. xmin in
+  let xmin = min xmin r.Archimedes.x in
+  let w = max xmax (r.Archimedes.x +. r.Archimedes.w) -. xmin in
   let ymin, ymax = range_bezier y0 y1 y2 y3 in
-  let ymin = min ymin r.Backend.y in
-  let h = max ymax (r.Backend.y +. r.Backend.h) -. ymin in
-  { Backend.x = xmin;  y = ymin; w = w; h = h }
+  let ymin = min ymin r.Archimedes.y in
+  let h = max ymax (r.Archimedes.y +. r.Archimedes.h) -. ymin in
+  { Archimedes.x = xmin;  y = ymin; w = w; h = h }
 
 
 let point_string x y = "("^(string_of_float x)^", "^(string_of_float y)^")"
@@ -125,7 +125,7 @@ struct
     (*Coordinates of the current point (if any)*)
     mutable fsize:float;
     mutable slant_weight_family:string;
-    mutable path_extents: Backend.rectangle;
+    mutable path_extents: Archimedes.rectangle;
     (* The extent of the current path, in device coordinates. *)
     mutable ctm : matrix; (* current transformation matrix from the
                              user coordinates to the device ones. *)
@@ -229,7 +229,7 @@ struct
           curr_pt = false; x=0.;y=0.; (*No current point*)
           fsize=10.;
           slant_weight_family = "%s";
-          path_extents = { Backend.x=0.; y=0.; w=0.; h=0. };
+          path_extents = { Archimedes.x=0.; y=0.; w=0.; h=0. };
           (* Identity transformation matrix *)
           ctm = Archimedes.Matrix.make_identity();
         } in
@@ -468,7 +468,7 @@ struct
     check_valid_handle t;
     t.curr_path <- "";
     t.state.curr_pt <- false;
-    t.state.path_extents <- { Backend.x=0.; y=0.; w=0.; h=0. }
+    t.state.path_extents <- { Archimedes.x=0.; y=0.; w=0.; h=0. }
 
   let path_extents t = (get_state t).path_extents
 
@@ -565,7 +565,7 @@ struct
       h *. len
     in
     let w', h' = Matrix.inv_transform_distance (get_state t).ctm w h in
-    { Backend.x = 0.; y = 0.; w = w' ; h = h' }
+    { Archimedes.x = 0.; y = 0.; w = w' ; h = h' }
 
   let show_text t ~rotate ~x ~y pos txt =
     let st = get_state t in

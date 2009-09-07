@@ -35,12 +35,12 @@ struct
     if rg.ymax < y then rg.ymax <- y
 
   let of_rect rect =
-    {xmin = rect.Backend.x; ymin = rect.Backend.y;
-     xmax = rect.Backend.x +. rect.Backend.w;
-     ymax = rect.Backend.x +. rect.Backend.h}
+    {xmin = rect.x; ymin = rect.y;
+     xmax = rect.x +. rect.w;
+     ymax = rect.x +. rect.h}
 
   let to_rect rg =
-    {Backend.x = rg.xmin; y = rg.ymin;
+    {x = rg.xmin; y = rg.ymin;
      w = rg.xmax -. rg.xmin;
      h = rg.ymax -. rg.ymin}
 end
@@ -55,15 +55,15 @@ exception Not_available
 
 let rectangle_extents rect xmin xmax ymin ymax =
     let xmin, xmax =
-        let x0 = rect.Backend.x in
-        let x1 = x0 +. rect.Backend.w in
+        let x0 = rect.x in
+        let x1 = x0 +. rect.w in
         min x0 xmin, max x1 xmax
       and ymin, ymax =
-        let y0 = rect.Backend.y in
-        let y1 = y0 +. rect.Backend.h in
+        let y0 = rect.y in
+        let y1 = y0 +. rect.h in
         min y0 ymin, max y1 ymax
       in
-      {Backend.x = xmin; y = ymin; w = xmax -. xmin; h = ymax -. ymin}
+      {x = xmin; y = ymin; w = xmax -. xmin; h = ymax -. ymin}
 
 
 type axes =
@@ -83,7 +83,7 @@ let print_axes axes ranges backend =
   | `Rectangle(_, _) ->
       let rect = Ranges.to_rect ranges in
       Backend.rectangle backend
-        rect.Backend.x rect.Backend.y rect.Backend.w rect.Backend.h
+        rect.x rect.y rect.w rect.h
   | `Two_lines(x,y) ->
       (*Need to update -before- so that mins/maxs are correctly
         initialized for making the axes lines.*)
@@ -131,26 +131,32 @@ let tic_extents tic =
   (*FIXME: coordinate transformation for tics?*)
   match tic with `P name ->
     let rect = Pointstyle.extents name in
-    {Backend.x = rect.Backend.x /. 100.; y = rect.Backend.y/. 100.;
-     w = rect.Backend.w/. 100.; h = rect.Backend.h/. 100.}
+    {x = rect.x /. 100.; y = rect.y/. 100.;
+     w = rect.w/. 100.; h = rect.h/. 100.}
   | _ -> raise Not_available
 
 type label =
     {action: float -> float -> text_position -> Backend.t -> unit;
-     box:float ->float -> text_position ->Backend.t ->Backend.rectangle;
+     box:float ->float -> text_position ->Backend.t -> rectangle;
      rotation:float}
 
-let tic_label_extents tic_extents label x y pos b =
+let tic_label_extents tic_extents marks label x y pos b =
+  let tic_extents =
+    {x = tic_extents.x +. x;
+     y = tic_extents.y +. y;
+     w = tic_extents.w *. marks;
+     h = tic_extents.h *. marks;}
+  in
   match label with
     None -> tic_extents
   | Some label ->
       let box = label.box x y pos b in
       let matrix = Matrix.make_rotate label.rotation in
-      let wx, wy = Matrix.transform_distance matrix box.Backend.w 0.
-      and hx, hy = Matrix.transform_distance matrix 0. box.Backend.h in
-      let xmin = box.Backend.x +. (min 0. wx) +. (min 0. hx) in
+      let wx, wy = Matrix.transform_distance matrix box.w 0.
+      and hx, hy = Matrix.transform_distance matrix 0. box.h in
+      let xmin = box.x +. (min 0. wx) +. (min 0. hx) in
       let xmax = xmin +. (abs_float wx) +. (abs_float hx) in
-      let ymin = box.Backend.y +. (min 0. wy) +. (min 0. hy) in
+      let ymin = box.y +. (min 0. wy) +. (min 0. hy) in
       let ymax = ymin +. (abs_float wy) +. (abs_float hy) in
       rectangle_extents tic_extents xmin xmax ymin ymax
 
@@ -170,7 +176,7 @@ type data =
 let make_box_from_text txt x y pos b =
   let rect = Backend.text_extents b txt in
   let rx, ry, w, h =
-    rect.Backend.x +. x, rect.Backend.y +. y, rect.Backend.w, rect.Backend.h
+    rect.x +. x, rect.y +. y, rect.w, rect.h
   in
   let x = match pos with
     | CC | CT | CB -> rx -. 0.5 *. w
@@ -181,7 +187,7 @@ let make_box_from_text txt x y pos b =
     | CT | RT | LT -> ry -. h
     | CB | RB | LB -> ry
   in
-  {Backend.x = x; y = y; w = w; h = h}
+  {x = x; y = y; w = w; h = h}
 
 let get_labels x_axis data =
   match data with
@@ -382,7 +388,7 @@ let get_position loc labels =
       (fun ranges x_axis backend ->
          let get_dist v =
            let rect = Backend.text_extents backend (string_of_float v) in
-           fun x_axis -> if x_axis then rect.Backend.w else rect.Backend.h
+           fun x_axis -> if x_axis then rect.w else rect.h
          in
          let vmin, vmax =
            if x_axis then ranges.xmin, ranges.xmax
@@ -449,62 +455,80 @@ let get_position loc labels =
 type 'a axis = (*'a for tic type*)
     {x_axis:bool;
      major:'a; minor:'a;
+     major_extents: rectangle; minor_extents: rectangle;
      positions:tic_position;
      label_position:text_position}
 
 type ('a,'b) t = (*'a for axes type, 'b for tic types*)
-    {axes:'a; x:'b axis; y:'b axis}
+    {axes:'a; xaxis:'b axis; yaxis:'b axis}
 
 
 let make_axis x major data label_position minor ?(get_labels = get_labels)
-    ?(get_position = get_position) loc =
+    ?(get_position = get_position) ?(tic_extents = tic_extents) loc =
   let labels = get_labels x data in
   let positions = get_position loc labels in
-  {x_axis = x; major = major; minor = minor; positions = positions;
-   label_position = label_position}
+  {x_axis = x; major = major; minor = minor;
+   major_extents = tic_extents major; minor_extents = tic_extents minor;
+   positions = positions; label_position = label_position}
 
 let make_xaxis m = make_axis true m
 let make_yaxis m = make_axis false m
 
 let make axes x y =
   if y.x_axis || not x.x_axis then invalid_arg "Axes.make";
-  {axes = axes; x = x; y = y}
+  {axes = axes; xaxis = x; yaxis = y}
 
 (*FIXME: need of a range??*)
-let print_tics axis ranges print_tic backend =
+let print_tics axis ranges print_tic marks font_size backend =
   let rec print = function
       [] -> ()
     | (x,y,label)::l ->
         Backend.move_to backend x y;
         match label with
-          None -> print_tic backend axis.minor
+          None ->
+            Backend.save backend;
+            Backend.scale backend marks marks;
+            print_tic backend axis.minor;
+            Backend.restore backend
         | Some label ->
+            Backend.save backend;
+            Backend.scale backend marks marks;
             print_tic backend axis.major;
+            Backend.restore backend;
             label.action x y axis.label_position backend;
             print l
-  in print (axis.positions ranges axis.x_axis backend)
+  in
+  Backend.set_font_size backend font_size;
+  print (axis.positions ranges axis.x_axis backend)
 
-let axis_margins axis ranges tic_extents backend =
+let axis_margins axis marks font_size ranges tic_extents backend =
+  Backend.set_font_size backend font_size;
   let list = axis.positions ranges axis.x_axis backend in
   let rec make_rect list rect =
     match list with
       [] -> rect
     | (x,y,label)::l ->
-        let tic = match label with None -> axis.minor | Some _ -> axis.major in
-        let extents = tic_label_extents
-          (tic_extents tic) label x y axis.label_position backend
+        let box =
+          match label with
+            None -> axis.minor_extents
+          | Some _ -> axis.major_extents
         in
-        let xmin,ymin = extents.Backend.x, extents.Backend.y in
-        let xmax,ymax = xmin +. extents.Backend.w, ymin +. extents.Backend.h in
+        let extents =
+          tic_label_extents box marks label x y axis.label_position backend
+        in
+        let xmin = extents.x
+        and ymin = extents.y in
+        let xmax = xmin +. extents.w
+        and ymax = ymin +. extents.h in
         let newrect = rectangle_extents rect
           (xmin +. x) (xmax +. x) (ymin +. y) (ymax +. y)
         in
         make_rect l newrect
-  in make_rect list {Backend.x=ranges.xmin; y=ranges.ymin; w=0.;h=0.}
+  in make_rect list {x=ranges.xmin; y=ranges.ymin; w=0.;h=0.}
 
 
 let get_margins t ?(axes_meeting = axes_meeting) ?(tic_extents = tic_extents)
-    ranges backend =
+    ~normalization ~lines ~marks ~font_size ranges backend =
   let x,y = axes_meeting t.axes ranges in
   Ranges.update ranges x y;
 
@@ -515,24 +539,25 @@ let get_margins t ?(axes_meeting = axes_meeting) ?(tic_extents = tic_extents)
   Backend.save backend;
   Backend.set_matrix backend (Matrix.mul coord initial);
   let margins =
-    axis_margins t.x ranges tic_extents backend,
-    axis_margins t.y ranges tic_extents backend
+    axis_margins t.xaxis marks font_size ranges tic_extents backend,
+    axis_margins t.yaxis marks font_size ranges tic_extents backend
   in
   Backend.restore backend;
   margins
 
-let print t ~lines ~ranges
+let print t ~normalization ~lines ~marks ~font_size ~ranges
     ?(print_axes = print_axes) ?(axes_meeting = axes_meeting)
     ?(print_tic = print_tic) backend =
   (*let xxx = backend and yyy = Backend.get_handle backend in*)
   let x,y = axes_meeting t.axes ranges in
   print_axes t.axes ranges backend;
-  let ctm = Coordinate.use backend lines in
+  let ctm = Coordinate.use backend normalization in
+  Backend.set_line_width backend lines;
   Backend.stroke backend;
-  Coordinate.restore backend ctm;
   let xrange = Ranges.make ranges.xmin y in
   Ranges.update xrange ranges.xmax y;
   let yrange = Ranges.make x ranges.ymin in
   Ranges.update yrange x ranges.ymax;
-  print_tics t.x xrange print_tic backend; (*X axis*)
-  print_tics t.y yrange print_tic backend  (*Y axis*)
+  print_tics t.xaxis xrange print_tic marks font_size backend; (*X axis*)
+  print_tics t.yaxis yrange print_tic marks font_size backend; (*Y axis*)
+  Coordinate.restore backend ctm

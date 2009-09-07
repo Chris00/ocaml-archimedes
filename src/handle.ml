@@ -567,13 +567,14 @@ let show_text t ~rotate ~x ~y pos txt=
   Backend.set_font_size t.backend font_size;
   let rect = Backend.text_extents t.backend txt in
   Coordinate.restore t.backend ctm;
-  update_ranges t rect.Backend.x rect.Backend.y;
+  update_ranges t rect.x rect.y;
   update_ranges t
-    (rect.Backend.x +. rect.Backend.w)
-    (rect.Backend.y +. rect.Backend.h);
+    (rect.x +. rect.w)
+    (rect.y +. rect.h);
   add_order f t
 
 let text_extents t txt =
+  let ts = Sizes.get_ts t.current_vp.scalings in
   let text_coord = Coordinate.make_scale t.normalized ts ts in
   let font_size = ts *. t.square_side /. 100. in
   let ctm = Coordinate.use t.backend text_coord in
@@ -600,11 +601,11 @@ let render_extents t name =
   let rect = Pointstyle.render_extents name t.backend in
   Coordinate.restore t.backend ctm;
   (*Now express [rect] in device coords*)
-  (*let x', y' = Coordinate.to_device marks rect.Backend.x rect.Backend.y in
+  (*let x', y' = Coordinate.to_device marks rect.x rect.y in
   let w', h' =
-    Coordinate.to_device_distance marks rect.Backend.w rect.Backend.h
+    Coordinate.to_device_distance marks rect.w rect.h
   in
-  {Backend.x = x'; y = y'; w = w'; h = h'}*)
+  {x = x'; y = y'; w = w'; h = h'}*)
   rect*)
 
 let mark_extents t name =
@@ -615,10 +616,10 @@ let mark_extents t name =
   Coordinate.restore t.backend ctm;
   (*Now working with [marks], which is the transformation matrix of marks.*)
   let x',y' =
-    Backend.Matrix.transform_point marks rect.Backend.x rect.Backend.y
+    Backend.Matrix.transform_point marks rect.x rect.y
   in
-  let wx, wy = Backend.Matrix.transform_distance marks rect.Backend.w 0.
-  and hx, hy = Backend.Matrix.transform_distance marks 0. rect.Backend.h in
+  let wx, wy = Backend.Matrix.transform_distance marks rect.w 0.
+  and hx, hy = Backend.Matrix.transform_distance marks 0. rect.h in
   assert (wx > 0. && wy = 0.);
   assert (hx = 0. && hy > 0.);*)
   (*i.e. assert no rotation.*)
@@ -631,8 +632,8 @@ let mark_extents t name =
     (*Extents: xmin,ymin,wnew,hnew*)
   *)
   let marks = Sizes.get_marks t.current_vp.scalings in
-  {Backend.x = rect.Backend.x *. marks; y = rect.Backend.y *. marks;
-   w = rect.Backend.w *. marks; h = rect.Backend.h *. marks}
+  {x = rect.x *. marks; y = rect.y *. marks;
+   w = rect.w *. marks; h = rect.h *. marks}
 
 
 let plotfx t ?axes ?nsamples ?min_step f a b =
@@ -644,9 +645,13 @@ let plotfx t ?axes ?nsamples ?min_step f a b =
     match axes with
       None -> ()
     | Some axes ->
-        let lw = Sizes.get_lw t.current_vp.scalings in
-        let lines = Coordinate.make_scale t.normalized lw lw in
-        Axes.print axes ~lines ~ranges t.backend
+        let lines = Sizes.get_lw t.current_vp.scalings
+        and ts = Sizes.get_ts t.current_vp.scalings
+        and marks = Sizes.get_marks t.current_vp.scalings
+        in
+        let font_size = ts *. t.square_side /. 100. in
+        Axes.print axes ~normalization: t.normalized
+          ~lines ~marks ~font_size ~ranges t.backend
   in
   update_ranges t ranges.Axes.xmin ranges.Axes.ymin;
   update_ranges t ranges.Axes.xmax ranges.Axes.ymax;
@@ -672,10 +677,15 @@ let plotxy t ?axes ?(f = f) ?(mark = "X") iter =
     match axes with
       None -> ()
     | Some axes ->
-        let lw = Sizes.get_lw t.current_vp.scalings in
-        let lines = Coordinate.make_scale t.normalized lw lw in
         let ranges = Iterator.extents iter in
-        Axes.print axes ~lines ~ranges t.backend
+        let lines = Sizes.get_lw t.current_vp.scalings
+        and ts = Sizes.get_ts t.current_vp.scalings
+        and marks = Sizes.get_marks t.current_vp.scalings
+        in
+        let font_size = ts *. t.square_side /. 100. in
+        Axes.print axes ~normalization: t.normalized
+          ~lines ~marks ~font_size ~ranges t.backend
+
   in
   iterate update;
   add_order f t
@@ -684,8 +694,6 @@ let make_xaxis = Axes.make_xaxis
 let make_yaxis = Axes.make_yaxis
 let make_axes = Axes.make
 let print_axes axes ~ranges ?axes_print ?axes_meeting ?print_tic t =
-  let scale = Sizes.get_ts t.current_vp.scalings in
-  let lines = Coordinate.make_scale t.normalized scale scale in
   let print_axes =
     match axes_print with
       None -> Axes.print_axes
@@ -695,6 +703,34 @@ let print_axes axes ~ranges ?axes_print ?axes_meeting ?print_tic t =
       None -> Axes.print_tic
     | Some f -> fun _ -> f t
   in
-  Axes.print axes ~ranges ~lines
-    ~print_axes ?axes_meeting ~print_tic t.backend
+  let scalings = t.current_vp.scalings in
+  let ts = Sizes.get_ts scalings in
+  let font_size = ts *. t.square_side /. 100. in
+  let lines = Sizes.get_lw scalings
+  and marks = Sizes.get_marks scalings in
+  let f () =
+    Axes.print axes ~normalization:t.normalized
+      ~lines ~marks ~font_size ~ranges
+      ~print_axes ?axes_meeting ~print_tic t.backend
+  in
+  let xmargin, ymargin =
+    Axes.get_margins axes ?axes_meeting ~normalization:t.normalized
+      ~lines ~marks ~font_size ranges t.backend
+  in
+  let xx1 = xmargin.x
+  and xx2 = xmargin.w +. xmargin.x
+  and yx1 = ymargin.x
+  and yx2 = ymargin.w +. ymargin.x
+  and xy1 = xmargin.y
+  and xy2 = xmargin.h +. xmargin.y
+  and yy1 = ymargin.y
+  and yy2 = ymargin.h +. ymargin.y
+  in
+  update_ranges t xx1 xy1;
+  update_ranges t xx2 xy2;
+  update_ranges t yx1 yy1;
+  update_ranges t yx2 yy2;
+  add_order f t
+
+
 

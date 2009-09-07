@@ -46,7 +46,7 @@ struct
   let get_line_join t = (Obj.magic(get_line_join t.cr) : Archimedes.line_join)
 
   (*Get needed functions which are in submodule Path*)
-  let path_extents t = (Obj.magic (Cairo.Path.extents t.cr) : Backend.rectangle)
+  let path_extents t = (Obj.magic(Cairo.Path.extents t.cr): Archimedes.rectangle)
   let close_path t = Cairo.Path.close t.cr
   let clear_path t = Cairo.Path.clear t.cr
 
@@ -191,7 +191,7 @@ struct
       are orthogonal.*)
     let x,y = Cairo.device_to_user_distance t.cr te.x_bearing te.y_bearing in
     let w,h = Cairo.device_to_user_distance t.cr te.width te.height in
-    { Backend.x = x; y = -.y; w = w; h = -.h}
+    { Archimedes.x = x; y = -.y; w = w; h = -.h}
 end
 
 let () =

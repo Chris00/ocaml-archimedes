@@ -29,6 +29,13 @@ type line_join =
                    joint point *)
   | JOIN_BEVEL (** use a cut-off join, the join is cut off at half the line
                      width from the joint point *)
+  (** A data structure for holding a rectangle. *)
+type rectangle = {
+  x:float;   (** X coordinate of the left side of the rectangle *)
+  y:float;   (** Y coordinate of the the top side of the rectangle  *)
+  w:float;   (** width of the rectangle *)
+  h:float;   (** height of the rectangle  *)
+}
 
 type text_position =
     | CC  (** centrer horizontally and vertically *)
@@ -306,7 +313,7 @@ module Handle: sig
   val arc : t -> x:float -> y:float -> r:float -> a1:float -> a2:float -> unit
   val close_path : t -> unit
   val clear_path : t -> unit
-  (*val path_extents : t -> Backend.rectangle*)
+  (*val path_extents : t -> rectangle*)
   val stroke_current : t -> unit
   val stroke_current_preserve : t -> unit
   val stroke : t -> unit
@@ -341,12 +348,14 @@ module Handle: sig
     ?get_labels:(bool -> 'b -> Axes.label_collection) ->
     ?get_position:(([> Axes.loc_tics] as 'c) ->
                      Axes.label_collection -> Axes.tic_position) ->
+    ?tic_extents:('a -> rectangle) ->
     'c -> 'a Axes.axis
   val make_yaxis :
     ([> Axes.tic] as 'a) -> ([>Axes.data] as 'b) -> text_position -> 'a ->
     ?get_labels:(bool -> 'b -> Axes.label_collection) ->
     ?get_position:(([>Axes.loc_tics] as 'c) ->
                      Axes.label_collection -> Axes.tic_position) ->
+    ?tic_extents:('a -> rectangle) ->
     'c -> 'a Axes.axis
   val make_axes : ([>Axes.axes] as 'a) ->
     'b Axes.axis -> 'b Axes.axis -> ('a,'b) Axes.t
@@ -380,16 +389,6 @@ type matrix = { mutable xx: float; mutable yx: float;
     plotting data. *)
 module Backend:
 sig
-
-  (** A data structure for holding a rectangle. *)
-  type rectangle = {
-    x:float;   (** X coordinate of the left side of the rectangle *)
-    y:float;   (** Y coordinate of the the top side of the rectangle  *)
-    w:float;   (** width of the rectangle *)
-    h:float;   (** height of the rectangle  *)
-  }
-
-
   module type T =
   sig
     (**To be able to register a given backend, it must provide an
@@ -571,7 +570,7 @@ sig
   type name = string
     (** Point styles are identified by strings. *)
 
-  val add : name:name -> (Backend.t -> unit) -> Backend.rectangle -> unit
+  val add : name:name -> (Backend.t -> unit) -> rectangle -> unit
     (**[add name f extents] adds to the existing point styles, a new
        point style, referenced under the name [name]. This point style is
        made using the function [f]; the extents it takes is given by
@@ -579,20 +578,20 @@ sig
        already used by another is the same as the core [Map.S.add] (that
        is, the previous binding disappears).*)
 
-  val render : name -> Backend.t -> unit
+(*  val render : name -> Backend.t -> unit
     (**This function renders the point style referenced by the name on
        the specified backend. Raises [Error name] if name does not
        refer to a point style.*)
 
-  val extents : name -> Backend.rectangle
+  val extents : name -> rectangle
     (**Returns the extents of a point style. Raises [Error name] if
        name does not refer to a point style.*)
 
-  val render_extents : name -> Backend.t -> Backend.rectangle
+  val render_extents : name -> Backend.t -> rectangle
     (**[render_extents name backend] is equivalent to [render name
        backend; extents name], but is more efficient (access only once
        to the registered point style).  Raises [Error name] if name
-       does not refer to a point style.*)
+       does not refer to a point style.*)*)
 end
 
 
@@ -820,403 +819,3 @@ sig
         it (transitively) depends on was mofidied) since the last
         [reset]. *)
 end
-
-(*
-(**Axes maker and convenient ways to create axes.*)
-module Axes: sig
-
-  exception Not_available
-    (**Raised when some polymorphic variant has no definition of the
-       ways to work with (this is especially raised when you define a new
-       variant without providing how to manage with it). *)
-
-  type axes =
-      [ `None of bool * bool
-          (**No axis will be printed. The bools have to be interpreted
-             this way:
-
-             -for the first one, [true] means: minimal abscissa;
-             [false]: maximal abscissa.
-
-             -for the second one, same meaning, but on ordinates.*)
-      | `Rectangle of bool * bool
-          (**A rectangle, whose corners are taken so that it fits the
-             zone. The bools have the same meaning as for [`None].*)
-      | `Two_lines of float * float
-          (**Abscissas axes are represented in a horizontal line,
-             ordinates in a vertical line. The pair of floats is
-             precisely the intersection of these two lines.*)
-      | `Two_lines_rel of float * float
-          (**Same as [Two_lines] except that the two floats are
-             relative; that is, if [(t,u)] is an argument pair, and
-             [xmin, ..., ymax] are the bounds, then the intersection
-             is computed as [(xmin +. t *.(xmax -. xmin), ymin +. u
-             *. (ymax -. ymin) )].*)
-      ]
-
-  (**Different axes modes. They all specify which point has to
-     be taken into account for the intersection of the
-     axes. This point determine the position of tics.*)
-
-  val print_axes :
-    [> axes] -> Backend.ranges -> Backend.t -> unit
-    (**Given the axes mode, the bounds and a backend to draw on,
-       prints the corresponding axes on the backend.*)
-
-  val axes_meeting :
-    [> axes] -> Backend.ranges -> float * float
-    (**Returns the point where the axes meet.*)
-
-
-  type tic = [ `P of Pointstyle.name ]
-      (**Type for tics.*)
-
-  val print_tic : Backend.t -> [> tic] -> unit
-    (**Given a backend and a tic, prints the tic.*)
-
-  val tic_extents : [> tic] -> Backend.rectangle
-    (**Returns the extents for the given tic. (This is needed to place
-       the labels correctly.)*)
-
-  type label =
-      {action:float -> float -> Backend.text_position -> Backend.t -> unit;
-       (**Action to perform as a label. Takes as arguments: [x y pos backend],
-          where [(x,y)] is the point where the major tic has
-          been made, [pos] a text position (to be used to correctly
-          put the label relative to the tic), and [backend] the
-          backend on which the operation will be made. *)
-       box:float -> float ->
-                    Backend.text_position -> Backend.t -> Backend.rectangle;
-       (**Place needed to do it; it is the smallest rectangle
-          containing the action. Takes as arguments: [x y pos backend] (no
-          rotation is used; the box is understood as if the action has
-          been made without it.)*)
-       rotation:float(**Rotation to be applied to all labels. *)
-      }
-        (**The type which manages with labels on axes.*)
-
-(*  val tic_label_extents : Backend.rectangle -> label option ->
-    float -> float -> Backend.text_position -> Backend.t -> Backend.rectangle
-    (**[tic_label_extents tic_extents label x y pos b] returns the global
-       extents of a (major or minor) tic, with its (eventual) label,
-       as if all is done at the point [(x,y)]. The backend [b] is used
-       only to determine the extents ([box]) of the label.*)*)
-
-  type label_collection =
-      Fixed of label array
-        (**One (different) label per major tic. (eg: text data)*)
-    | Variable of label
-      (**A unique label is OK for all major tics. (eg: abscissa)*)
-        (**Storing several labels*)
-
-
-  type data =
-      [ `Label of label array
-          (**Labels already known*)
-      | `Text_label of string array * float
-          (**Labels will be text labels, rotated by the second argument*)
-      | `Abscissa
-          (**Use abscissas as labels*)
-      | `Ordinate
-          (**Use ordinates as labels*)
-      | `Expabscissa
-          (**Labels of the form [10^x] with [x] abscissa*)
-      | `Expordinate
-          (**Labels of the form [10^y] with [y] ordinate*)
-      ]
-        (**This type informs on which type of data we want as labels.*)
-
-  val get_labels: [> data] -> label_collection
-    (**Converts a [data] into a [label_collection], which will be used
-       by [get_position] (see below).*)
-
-  type tic_position =
-      Backend.ranges -> (float * float * label option) list
-    (**Shortcut. The output [list] contains tuples of the form
-       [(x,y,labelopt)], with [(x,y)] a point where we want a tic and
-       [labelopt] indicates the (optional) label wanted (it is [None]
-       for the minor tics).*)
-
-  type loc_tics =
-      [ `Fixed_rel of (float * bool) list
-          (**List of pairs [(x, major)] with [x] a number between 0 and
-             1, specifying the relative position of the tic and [major]
-             indicating whether the tic is major.*)
-      | `Linear_variable of int array
-          (**The [i]th element of the array specifies the number of
-             minor tics between the [i]th major tic and the [i+1]th
-             one (starting count at 0). All tics are placed linearly;
-             that is, if the length of the axis is [len], then the
-             [i]th tic (among all tics, starting to count at 0) is
-             placed at distance [i /. len].*)
-      | `Linear of int * int
-          (**[`Linear(majors, minors)]: Fixed number of major tics,
-             and number of minor tics between two consecutive major
-             tics. They are all placed linearly.*)
-      | `Logarithmic of int * int
-          (**Same as [`Linear] except that the minor tics are placed
-             in a logarithmic scale.*)
-      ]
-
-
-  (**Convenient ways to specify where we want tics.*)
-
-  val get_position : [>loc_tics] -> label_collection -> tic_position
-    (**[get_position loc labels] transforms the [loc] to obtain a
-       [position]. When a label is required, it is picked in the [labels]
-       argument; if there's too few labels, no label is provided (so the
-       last major tics can be without label in this case).
-    *)
-
-  type 'a axis
-    (**This type stores all information about an axis: major, minor
-       tics, their positioning and how to position labels relative to
-       tics.*)
-  type ('a, 'b) t
-    (**This type stores information about a pair of axes.*)
-
-  val make_axis :
-    ([> tic] as 'a) -> ([>data] as 'b) -> Backend.text_position -> 'a ->
-    ?get_labels:('b -> label_collection) ->
-    ?get_position:(([>loc_tics] as 'c) -> label_collection -> tic_position) ->
-    'c -> 'a axis
-
-  (**[make_axis major data pos minor loc] makes an axis whose major
-     tics will be [major], minor tics [minor], positioned using [loc]
-     and labels will be positioned using [pos]. The optional arguments are used
-     to define the positionment of tics (see the corresponding default functions).*)
-
-  val make : ([>axes] as 'a) -> 'b axis -> 'b axis -> ('a, 'b) t
-    (**Given two axes and a way to render them, makes a [t].*)
-
-
-  val get_margins :
-    ([> axes ] as 'a, [> tic] as 'b) t ->
-    ?axes_meeting:('a -> Backend.ranges -> float * float) ->
-    ?tic_extents:('b -> Backend.rectangle) ->
-    Backend.ranges -> Backend.t -> Backend.rectangle * Backend.rectangle
-    (**Returns the margins needed to print the axes. Returns a pair of
-       [Backend.rectangle], the first one represents the extents for the X
-       axis, and the second one the extents for the Y axis.*)
-
-  val print :
-    ([> axes] as 'a, [> tic] as 'b) t ->
-    lines:Coordinate.t ->
-    ranges:Backend.ranges ->
-    ?print_axes:('a -> Backend.ranges -> Backend.t -> unit) ->
-    ?axes_meeting:('a -> Backend.ranges -> float * float) ->
-    ?print_tic:(Backend.t -> 'b -> unit) -> Backend.t -> unit
-
-(**Prints axes, following the parameters stored in [t] and the
-   optional arguments, if given.*)
-end
-
-
-module Functions: sig
-  val samplefxy :
-    (float -> float * float) ->
-    ?min_step:float ->
-    ?nsamples:int -> float -> float ->
-    int * Backend.ranges * (('a -> float * float -> 'a) -> 'a -> 'a)
-
-  val samplefx :
-    (float -> float) ->
-    ?min_step:float ->
-    ?nsamples:int -> float -> float ->
-    int * (float * float) * (('a -> float -> 'a) -> 'a -> 'a)
-
-  val fxy_list :
-    (float -> float * float) ->
-    ?min_step:float -> ?nsamples:int -> float -> float -> (float * float) list
-
-  val fx_list :
-    (float -> float) ->
-    ?min_step:float -> ?nsamples:int -> float -> float -> float list
-
-  val plotfxy :
-    Backend.t ->
-    (float -> float * float) -> ?nsamples:int -> float -> float -> unit
-
-  val plotfx :
-    Backend.t -> (float -> float) -> ?nsamples:int -> float -> float -> unit
-
-  val stroke_plot :
-    ?init:bool ->
-    Backend.t -> (float -> float) -> ?nsamples:int -> float -> float -> unit
-
-  val stroke_plot_param :
-    ?init:bool ->
-    Backend.t ->
-    (float -> float * float) -> ?nsamples:int -> float -> float -> unit
-
-  type extend =
-      NONE (**No extends, transparent color*)
-    | PAD(**Takes the nearest color available*)
-    | REPEAT(**Repeats the colors*)
-    | REFLECT(**Reflects the colors*)
-
-  val color_level :
-    (float -> float -> float) ->
-    ?extend:extend ->
-    xmin:float ->
-    xmax:float ->
-    ymin:float ->
-    ymax:float ->
-    float -> Color.t -> float -> Color.t -> float -> float -> Color.t
-    (**[color_level f ~xmin ~xmax ~ymin ~ymax fmin cmin fmax cmax] makes a
-       function whose domain is [0,1]^2 and image is colors, constructed
-       upon f as follows:
-
-       -Let [(t,u)] a point of [0,1]^2. We find [x], resp.  [y] as a
-       convex combination of [xmin] and [xmax], resp. [ymin] and [ymax].
-
-       -We then compute [f x y] and set [v] the number for which [f x y =
-       v *. fmax +. (1.-.v) *. fmin].
-
-       -If [v] is in the interval [0,1], then the function gives the
-       convex combination of the colors [cmin] and [cmax] (formally, each
-       component of the new color is computed as [v*.a +. (1.-.v)*.b],
-       where [a] and [b] are respectively the components of [cmin] and
-       [cmax]).
-
-       -If not, the optional extent gives which color must be returned:
-       *PAD (default) makes the function return [cmin] if [v < 0.] and
-       [cmax] otherwise.
-       *NONE makes the function return a transparent color.
-       *REPEAT takes [v] "modulo 1" and finds the corresponding
-       color as if [v] was actually in [0,1].
-       *REFLECT  takes [v] "modulo 2" and finds the corresponding
-       color, taking [v] or [2.-.v]; this corresponds to "reflecting the color"
-       beyond the bounds [fmin] and [fmax].
-    *)
-end
-
-module Iterator : sig
-  type t
-
-  val of_list: (float * float) list -> t
-
-  val of_array: (float * float) array -> t
-
-  val of_bigarray2: ?clayout:bool -> (float, 'b, 'c)  Bigarray.Array2.t -> t
-
-  val of_lists: float list -> float list -> t
-
-  val of_arrays: float array -> float array -> t
-
-  val of_bigarrays:
-    ?xclayout:bool -> (float, 'b, 'c)Bigarray.Array1.t ->
-    ?yclayout:bool -> (float, 'b, 'c)Bigarray.Array1.t -> t
-
-  val from_sampling :
-    (float -> float * float) ->
-    ?min_step:float -> ?nsamples:int ->
-    float -> float -> t
-
-  val next: t -> (float * float) option
-
-  val reset : t -> unit
-
-  val nb_data : t -> int
-
-  val extents : t -> Backend.rectangle
-end
-
-module Handle: sig
-  (*type coordinate = {
-    mutable linewidth : Coordinate.t;
-    mutable drawings : Coordinate.t;
-    mutable normalized : Coordinate.t;
-    mutable xmin : float;
-    mutable xmax : float;
-    mutable ymin : float;
-    mutable ymax : float;
-  }*)
-  type t
-  val make : dirs:string list -> string -> float -> float -> t
-  val close : t -> unit
-  module Viewport :
-  sig
-    type vp
-    val make :
-      t -> xmin:float -> xmax:float -> ymin:float -> ymax:float -> vp
-    val sub :
-      vp -> xmin:float -> xmax:float -> ymin:float -> ymax:float -> vp
-    val make_rect :
-      t -> x:float -> y:float -> w:float -> h:float -> vp
-    val sub_rect :
-      vp -> x:float -> y:float -> w:float -> h:float -> vp
-    val use : vp -> unit
-
-    (**{2 Convenience functions to create viewports}*)
-    val rows : t -> int -> vp array
-    val columns : t -> int -> vp array
-    val matrix : t -> int -> int -> vp array array
-    val sub_rows : vp -> int -> vp array
-    val sub_columns : vp -> int -> vp array
-    val sub_matrix : vp -> int -> int -> vp array array
-  end
-  val use : Viewport.vp -> unit
-  val use_initial : t -> unit
-  val set_line_width : t -> float -> unit
-  val set_mark_size : t -> float -> unit
-  val set_font_size : t -> float -> unit
-  val set_global_line_width : t -> float -> unit
-  val set_global_mark_size : t -> float -> unit
-  val set_global_font_size : t -> float -> unit
-  val get_line_width : t -> float
-  val get_mark_size : t -> float
-  val width : t -> float
-  val height : t -> float
-  val set_color : t -> Color.t -> unit
-  val set_line_width : t -> float -> unit
-  val set_line_cap : t -> Backend.line_cap -> unit
-  val set_dash : t -> float -> float array -> unit
-  val set_line_join : t -> Backend.line_join -> unit
-  val get_line_width : t -> float
-  val get_line_cap : t -> Backend.line_cap
-  val get_dash : t -> float array * float
-  val get_line_join : t -> Backend.line_join
-  val move_to : t -> x:float -> y:float -> unit
-  val line_to : t -> x:float -> y:float -> unit
-  val rel_move_to : t -> x:float -> y:float -> unit
-  val rel_line_to : t -> x:float -> y:float -> unit
-  val curve_to :
-    t ->
-    x1:float ->
-    y1:float -> x2:float -> y2:float -> x3:float -> y3:float -> unit
-  val rectangle : t -> x:float -> y:float -> w:float -> h:float -> unit
-  val arc : t -> x:float -> y:float -> r:float -> a1:float -> a2:float -> unit
-  val close_path : t -> unit
-  val clear_path : t -> unit
-  (*val path_extents : t -> Backend.rectangle*)
-  val stroke_current : t -> unit
-  val stroke_current_preserve : t -> unit
-  val stroke : t -> unit
-  val stroke_preserve : t -> unit
-  val fill : t -> unit
-  val fill_preserve : t -> unit
-  val clip_rectangle : t -> x:float -> y:float -> w:float -> h:float -> unit
-  val save_vp : t -> unit
-  val restore_vp : t -> unit
-  val select_font_face : t -> Backend.slant -> Backend.weight -> string -> unit
-  val show_text :
-    t ->
-    rotate:float ->
-    x:float -> y:float -> Backend.text_position -> string -> unit
-  val text_extents : t -> string -> Backend.rectangle
-  val render : t -> Pointstyle.name -> unit
-  val mark_extents : t -> Pointstyle.name -> Backend.rectangle
-  val plotfx :
-    t ->
-    ?axes:([> Axes.axes ],[> Axes.tic]) Axes.t ->
-    ?nsamples:int ->
-    ?min_step:float ->
-    (float -> float) -> float -> float -> unit
-  val plotxy :
-    t ->
-    ?axes:([> Axes.axes ],[> Axes.tic]) Axes.t ->
-    ?f:(t -> Pointstyle.name -> float -> float -> unit) ->
-    ?mark:Pointstyle.name -> Iterator.t -> unit
-end
-*)
