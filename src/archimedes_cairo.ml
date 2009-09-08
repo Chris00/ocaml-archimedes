@@ -67,11 +67,14 @@ struct
     set_matrix t.cr matrix
 
   let get_matrix t =
-    let m = Cairo.Matrix.multiply t.m (get_matrix t.cr) in
+    let m = Cairo.Matrix.multiply (get_matrix t.cr) t.m in
     { Archimedes.xx = m.Cairo.xx;  xy = m.Cairo.xy;
       yx = m.Cairo.yx; yy = m.Cairo.yy;
       x0 = m.Cairo.x0; y0 = m.Cairo.y0;}
     (*(Obj.magic (get_matrix cr) : Backend.matrix)*)
+  let translate t = translate t.cr
+  let scale t = scale t.cr
+  let rotate t = rotate t.cr
 
   let set_color t c =
     let r,g,b,a = Archimedes.Color.get_rgba c in
@@ -97,10 +100,6 @@ struct
 
   let save t = save t.cr
   let restore t = restore t.cr
-  let translate t = translate t.cr
-  let scale t = scale t.cr
-  let rotate t = rotate t.cr
-
 
 (*
   (* FIXME: must be reworked *)

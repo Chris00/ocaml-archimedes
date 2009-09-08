@@ -170,6 +170,14 @@ val make : ([>axes] as 'a) -> 'b axis -> 'b axis -> ('a, 'b) t
   (**Given two axes and a way to render them, makes a [t].*)
 
 
+type margins =
+    {left: float; (**Margin to reserve on the left*)
+     right: float; (**Margin to reserve on the right*)
+     top: float; (**Margin to reserve on the top*)
+     bottom: float (**Margin to reserve on the bottom*)
+    }
+      (**The return type for margins. *)
+
 val get_margins :
   ([> axes ] as 'a, [> tic] as 'b) t ->
   ?axes_meeting:('a -> ranges -> float * float) ->
@@ -178,10 +186,10 @@ val get_margins :
   lines:float ->
   marks:float ->
   font_size:float ->
-  ranges -> Backend.t -> rectangle * rectangle
+  ranges -> Backend.t -> margins * margins
   (**Returns the margins needed to print the axes. Returns a pair of
-     [rectangle], the first one represents the extents for the X
-     axis, and the second one the extents for the Y axis.*)
+     [margins], the first one gives the margins needed for the X
+     axis, and the second one the margins needed for the Y axis.*)
 
 val print :
   ([> axes] as 'a, [> tic] as 'b) t ->

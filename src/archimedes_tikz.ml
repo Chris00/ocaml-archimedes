@@ -270,8 +270,8 @@ struct
     let st = get_state t in
     (*Note: Line width is coordinate-dependent: need to adapt it to
       device coords.*)
-    let m = Matrix.copy st.ctm in
-    Matrix.invert m;
+    let m = (*Matrix.copy*) st.ctm in
+    (*Matrix.invert m;*)
     let x1,x2 = Matrix.transform_distance m w 0.
     and x3,x4 = Matrix.transform_distance m 0. w in
     (*FIXME: is there a better choice for width?*)

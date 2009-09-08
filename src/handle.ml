@@ -610,30 +610,9 @@ let render_extents t name =
 
 let mark_extents t name =
   let rect = Pointstyle.extents name in
-  (*(*Trick to get the transformation matrix*)
-  let ctm = Coordinate.use t.backend t.coords.marks in
-  let marks = Backend.get_matrix t.backend in
-  Coordinate.restore t.backend ctm;
-  (*Now working with [marks], which is the transformation matrix of marks.*)
-  let x',y' =
-    Backend.Matrix.transform_point marks rect.x rect.y
-  in
-  let wx, wy = Backend.Matrix.transform_distance marks rect.w 0.
-  and hx, hy = Backend.Matrix.transform_distance marks 0. rect.h in
-  assert (wx > 0. && wy = 0.);
-  assert (hx = 0. && hy > 0.);*)
-  (*i.e. assert no rotation.*)
-  (*
-  (*These are the general formulae*)
-    let neg x = min x 0. and absf = abs_float in
-    let xmin = x' +. (neg wx) +. (neg hx)
-    and ymin = y' +. (neg wy) +. (neg hy) in
-    let wnew = (absf wx) +. (absf hx) and hnew = (absf hy) +. (absf wy) in
-    (*Extents: xmin,ymin,wnew,hnew*)
-  *)
   let marks = Sizes.get_marks t.current_vp.scalings in
-  {x = rect.x *. marks; y = rect.y *. marks;
-   w = rect.w *. marks; h = rect.h *. marks}
+  {x = rect.x *. marks *. t.square_side; y = rect.y *. marks *. t.square_side;
+   w = rect.w *. marks *. t.square_side; h = rect.h *. marks *. t.square_side}
 
 
 let plotfx t ?axes ?nsamples ?min_step f a b =
@@ -707,30 +686,46 @@ let print_axes axes ~ranges ?axes_print ?axes_meeting ?print_tic t =
   let font_size = ts *. t.square_side /. 100. in
   let lines = Sizes.get_lw scalings
   and marks = Sizes.get_marks scalings in
-  let f () =
-    Axes.print axes ~normalization:t.normalized
-      ~lines ~marks ~font_size ~ranges
-      ~print_axes ?axes_meeting ~print_tic t.backend
-  in
   let xmargin, ymargin =
     Axes.get_margins axes ?axes_meeting ~normalization:t.normalized
       ~lines ~marks ~font_size ranges t.backend
   in
-  let xx1 = xmargin.x
-  and xx2 = xmargin.w +. xmargin.x
-  and yx1 = ymargin.x
-  and yx2 = ymargin.w +. ymargin.x
-  and xy1 = xmargin.y
-  and xy2 = xmargin.h +. xmargin.y
-  and yy1 = ymargin.y
-  and yy2 = ymargin.h +. ymargin.y
+  let xx1 = xmargin.Axes.left
+  and xx2 = xmargin.Axes.right
+  and yx1 = ymargin.Axes.left
+  and yx2 = ymargin.Axes.right
+  and xy1 = xmargin.Axes.bottom
+  and xy2 = xmargin.Axes.top
+  and yy1 = ymargin.Axes.bottom
+  and yy2 = ymargin.Axes.top
   in
   Printf.printf "Margins 1: %f %f %f %f\nMargins 2: %f %f %f %f\n%!"
     xx1 xy1 xx2 xy2 yx1 yy1 yx2 yy2;
-  update_ranges t xx1 xy1;
-  update_ranges t xx2 xy2;
-  update_ranges t yx1 yy1;
-  update_ranges t yx2 yy2;
+  let left = max xx1 yx1
+  and right = max xx2 yx2
+  and top = max xy2 yy2
+  and bottom = max xy1 yy1 in
+  let margin_x = left +. right
+  and margin_y = top +. bottom in
+  let f () =
+    let margins_ok = margin_x < 1. && margin_y < 1. in
+    if margins_ok then
+      let coord =
+        Coordinate.make_translate t.current_coord left bottom
+      in
+      let scalx = 1./.(1.-.margin_x)
+      and scaly = 1./.(1.-.margin_y) in
+      Coordinate.scale coord scalx scaly;
+      let ctm = Coordinate.use t.backend coord in
+      Axes.print axes ~normalization:t.normalized
+        ~lines ~marks ~font_size ~ranges
+        ~print_axes ?axes_meeting ~print_tic t.backend;
+      Coordinate.restore t.backend ctm
+    else (*Labels take too big margins to plot correctly => no scaling.*)
+      Axes.print axes ~normalization:t.normalized
+        ~lines ~marks ~font_size ~ranges
+        ~print_axes ?axes_meeting ~print_tic t.backend;
+  in
   add_order f t
 
 
