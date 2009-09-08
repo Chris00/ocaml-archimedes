@@ -199,13 +199,13 @@ type t =
   * 10 lines of text, or
   * 100 boxes of 1x1 marks.
 *)
-let def_lw, def_ts, def_marks = 0.002, 0.1, 0.01
+let def_lw, def_ts, def_marks = 0.002, 0.12, 0.01
 
 (*User transformations. To get the previous defaults, the user will
   enter resp. 1, 12, 1. (12 is determined experimentally using cairo:
   a 100 x 100 pixels output can contain 10 lines of text, putting font
   size as 12.*)
-let usr_lw, usr_ts, usr_marks = 500., 120., 100.
+let usr_lw, usr_ts, usr_marks = 500., 100., 100.
 
 
 (*Easy update Axes.ranges options*)
@@ -556,7 +556,7 @@ let select_font_face t slant weight family =
 let show_text t ~rotate ~x ~y pos txt=
   let ts = Sizes.get_ts t.current_vp.scalings in
   let text_coord = Coordinate.make_scale t.normalized ts ts in
-  let font_size = ts *. t.square_side /. 100. in
+  let font_size = ts *. t.square_side in
   let f () =
     let ctm' = Coordinate.use t.backend text_coord in
     Backend.set_font_size t.backend font_size;
@@ -576,7 +576,7 @@ let show_text t ~rotate ~x ~y pos txt=
 let text_extents t txt =
   let ts = Sizes.get_ts t.current_vp.scalings in
   let text_coord = Coordinate.make_scale t.normalized ts ts in
-  let font_size = ts *. t.square_side /. 100. in
+  let font_size = ts *. t.square_side in
   let ctm = Coordinate.use t.backend text_coord in
   Backend.set_font_size t.backend font_size;
   let rect = Backend.text_extents t.backend txt in
@@ -628,7 +628,7 @@ let plotfx t ?axes ?nsamples ?min_step f a b =
         and ts = Sizes.get_ts t.current_vp.scalings
         and marks = Sizes.get_marks t.current_vp.scalings
         in
-        let font_size = ts *. t.square_side /. 100. in
+        let font_size = ts *. t.square_side in
         Axes.print axes ~normalization: t.normalized
           ~lines ~marks ~font_size ~ranges t.backend
   in
@@ -661,7 +661,7 @@ let plotxy t ?axes ?(f = f) ?(mark = "X") iter =
         and ts = Sizes.get_ts t.current_vp.scalings
         and marks = Sizes.get_marks t.current_vp.scalings
         in
-        let font_size = ts *. t.square_side /. 100. in
+        let font_size = ts *. t.square_side in
         Axes.print axes ~normalization: t.normalized
           ~lines ~marks ~font_size ~ranges t.backend
   in
@@ -683,7 +683,7 @@ let print_axes axes ~ranges ?axes_print ?axes_meeting ?print_tic t =
   in
   let scalings = t.current_vp.scalings in
   let ts = Sizes.get_ts scalings in
-  let font_size = ts *. t.square_side /. 100. in
+  let font_size = ts *. t.square_side in
   let lines = Sizes.get_lw scalings
   and marks = Sizes.get_marks scalings in
   let xmargin, ymargin =

@@ -550,12 +550,19 @@ struct
 
   let set_font_size t size =
     let st = get_state t in
-    let prev_size = st.fsize in
     st.fsize <- size;
-    let ratio = prev_size /. size in
     write t (Printf.sprintf
-               "\\fontsize{%.2f}{%.2f\\f@baselineskip}\\selectfont"
-               size ratio)
+               "\\fontsize{%.2f}{%.2f}\\selectfont"
+               size (1.2 *. size))
+(*Following
+http://www.tac.dk/cgi-bin/info2www?%28latex%29Low-level%20font%20commands:
+"`\fontsize{size}{skip}'
+     Set font size. The first parameter is the font size to switch to;
+     the second is the `\baselineskip' to use. The unit of both
+     parameters defaults to pt. A rule of thumb is that the
+     baselineskip should be 1.2 times the font size.
+"
+*)
 
 
 

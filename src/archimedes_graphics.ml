@@ -199,7 +199,8 @@ struct
   let clear_path t =
     let st = get_state t in
     st.current_path <- [];
-    st.path_extents <- { Archimedes.x=0.; y=0.; w=0.; h=0. }
+    st.path_extents <- { Archimedes.x=0.; y=0.; w=0.; h=0. };
+    st.curr_pt <- false
 
   let set_color t c =
     let st = get_state t in
@@ -253,9 +254,10 @@ struct
       let x0', y0' = Matrix.transform_point st.ctm st.x st.y in
       st.path_extents <- update_rectangle st.path_extents x0' y0' x' y';
     )
-    else
-      st.current_path <- MOVE_TO(x',y') :: st.current_path;
-    st.curr_pt <- true;
+    else (
+      st.curr_pt <- true;
+      st.current_path <- MOVE_TO(x',y') :: st.current_path
+    );
     st.x <- x;
     st.y <- y
 
@@ -275,6 +277,7 @@ struct
     let x0', y0' =
       if not st.curr_pt then (
         st.current_path <- MOVE_TO(x1', y1') :: st.current_path;
+        st.curr_pt <- true;
         x1', y1'
       )
       else  Matrix.transform_point st.ctm st.x st.y in
@@ -282,7 +285,6 @@ struct
     (* Update the current point and extents *)
     st.path_extents <-
       update_curve st.path_extents x0' y0' x1' y1' x2' y2' x3' y3';
-    st.curr_pt <- true;
     st.x <- x3;
     st.y <- y3
 

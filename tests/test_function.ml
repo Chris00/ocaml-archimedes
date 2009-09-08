@@ -46,8 +46,9 @@ let () =
   in List.iter f
        ["tikz functions.tex";
         "cairo PDF functions.pdf";
+        "graphics";
         "cairo PNG functions.png";
-        "graphics";]
+        ]
 
 (*Local Variables:*)
 (*compile-command: "ocamlopt -o test_function.com -I ../src dynlink.cmxa bigarray.cmxa archimedes.cmxa test_function.ml && ocamlc -o test_function.exe -I ../src dynlink.cma bigarray.cma archimedes.cma test_function.ml"*)

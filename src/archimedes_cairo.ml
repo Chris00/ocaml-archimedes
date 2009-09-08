@@ -123,7 +123,7 @@ struct
           failwith("Archimedes_cairo.make: options [" ^ opt
                    ^ "] not understood") in
     let cr = Cairo.create surface in
-    let matrix = initial_matrix height in
+    let matrix = initial_matrix height (*Cairo.Matrix.init_identity ()*) in
     Cairo.set_matrix cr matrix;
     {cr = cr; m = matrix}
 
