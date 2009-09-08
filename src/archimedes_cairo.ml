@@ -29,14 +29,15 @@ struct
     {Cairo.xx = 1.; xy = 0.; yx = 0.; yy = -1.; x0 = 0.; y0 = h}
   let name = "cairo"
 
-  type t = { cr:Cairo.context; m:Cairo.matrix}
-      (*The m field contains the correct transformation for this
-        context, which makes the origin at the bottom left corner of the
-        device.*)
+  type t = { cr:Cairo.context; m:Cairo.matrix; mutable lw:Cairo.matrix}
+      (*The [m] field contains the correct transformation for this
+        context, which makes the origin at the bottom left corner of
+        the device. The [lw] field stores tne coordinate system in
+        which the line width is specified.*)
 
- (* let path_extents cr = Cairo.Path.extents cr
-  let close_path cr = Cairo.Path.close cr
-  let clear_path cr = Cairo.Path.clear cr*)
+  (* let path_extents cr = Cairo.Path.extents cr
+     let close_path cr = Cairo.Path.close cr
+     let clear_path cr = Cairo.Path.clear cr*)
 
   (* Same type (same internal representation), just in different modules *)
   let set_line_cap t c = set_line_cap t.cr (Obj.magic c : Cairo.line_cap)
@@ -51,7 +52,10 @@ struct
   let clear_path t = Cairo.Path.clear t.cr
 
 
-  let set_line_width t = set_line_width t.cr
+  let set_line_width t w =
+    t.lw <- Cairo.get_matrix t.cr;
+    set_line_width t.cr w
+
   let get_line_width t = get_line_width t.cr
 
   let set_dash t ofs arr = set_dash t.cr ~ofs arr
@@ -88,8 +92,18 @@ struct
   let rectangle t = rectangle t.cr
   let arc t = arc t.cr
 
-  let stroke t = stroke t.cr
-  let stroke_preserve t = stroke_preserve t.cr
+  let stroke t = 
+    Cairo.save t.cr;
+    Cairo.set_matrix t.cr t.lw;
+    stroke t.cr;
+    Cairo.restore t.cr
+
+  let stroke_preserve t =
+    Cairo.save t.cr;
+    Cairo.set_matrix t.cr t.lw;
+    stroke_preserve t.cr;
+    Cairo.restore t.cr
+
   let fill t = fill t.cr
   let fill_preserve t = fill_preserve t.cr
 
@@ -125,7 +139,7 @@ struct
     let cr = Cairo.create surface in
     let matrix = initial_matrix height (*Cairo.Matrix.init_identity ()*) in
     Cairo.set_matrix cr matrix;
-    {cr = cr; m = matrix}
+    {cr = cr; m = matrix; lw = matrix}
 
   let close ~options t =
     let surface = Cairo.get_target t.cr in

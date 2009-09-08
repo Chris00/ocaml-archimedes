@@ -181,7 +181,6 @@ type margins =
 val get_margins :
   ([> axes ] as 'a, [> tic] as 'b) t ->
   ?axes_meeting:('a -> ranges -> float * float) ->
-  ?tic_extents:('b -> rectangle) ->
   normalization:Coordinate.t ->
   lines:float ->
   marks:float ->

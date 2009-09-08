@@ -628,7 +628,7 @@ let plotfx t ?axes ?nsamples ?min_step f a b =
         and ts = Sizes.get_ts t.current_vp.scalings
         and marks = Sizes.get_marks t.current_vp.scalings
         in
-        let font_size = ts *. t.square_side in
+        let font_size = ts *. t.square_side/.3. in
         Axes.print axes ~normalization: t.normalized
           ~lines ~marks ~font_size ~ranges t.backend
   in
@@ -661,7 +661,7 @@ let plotxy t ?axes ?(f = f) ?(mark = "X") iter =
         and ts = Sizes.get_ts t.current_vp.scalings
         and marks = Sizes.get_marks t.current_vp.scalings
         in
-        let font_size = ts *. t.square_side in
+        let font_size = ts *. t.square_side /.3. in
         Axes.print axes ~normalization: t.normalized
           ~lines ~marks ~font_size ~ranges t.backend
   in
@@ -683,13 +683,15 @@ let print_axes axes ~ranges ?axes_print ?axes_meeting ?print_tic t =
   in
   let scalings = t.current_vp.scalings in
   let ts = Sizes.get_ts scalings in
-  let font_size = ts *. t.square_side in
+  let font_size = ts *. t.square_side /. 3. in
   let lines = Sizes.get_lw scalings
   and marks = Sizes.get_marks scalings in
+  let ctm = Coordinate.use t.backend t.current_coord in
   let xmargin, ymargin =
     Axes.get_margins axes ?axes_meeting ~normalization:t.normalized
       ~lines ~marks ~font_size ranges t.backend
   in
+  Coordinate.restore t.backend ctm;
   let xx1 = xmargin.Axes.left
   and xx2 = xmargin.Axes.right
   and yx1 = ymargin.Axes.left
@@ -700,7 +702,7 @@ let print_axes axes ~ranges ?axes_print ?axes_meeting ?print_tic t =
   and yy2 = ymargin.Axes.top
   in
   Printf.printf "Margins 1: %f %f %f %f\nMargins 2: %f %f %f %f\n%!"
-    xx1 xy1 xx2 xy2 yx1 yy1 yx2 yy2;
+    xx1 xx2 xy1 xy2 yx1 yx2 yy1 yy2;
   let left = max xx1 yx1
   and right = max xx2 yx2
   and top = max xy2 yy2

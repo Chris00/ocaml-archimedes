@@ -198,7 +198,7 @@ let make_action_from txt rotate x y tic_ext pos t =
 let make_box_from_text txt x y pos b =
   let rect = Backend.text_extents b txt in
   let rx, ry, w, h =
-    rect.x +. x, rect.y +. y, rect.w, rect.h
+    rect.x, rect.y, rect.w, rect.h
   in
   let x = match pos with
     | CC | CT | CB -> rx -. 0.5 *. w
@@ -510,9 +510,9 @@ let print_tics axis ranges print_tic normalization marks font_size backend =
       [] -> ()
     | (x,y,label)::l ->
         Backend.move_to backend x y;
-        let m = Backend.get_matrix backend in
-        Printf.printf "Axes -- matrix %f %f %f %f %f %f\n%!"
-          m.xx m.xy m.yx m.yy m.x0 m.y0;
+       (* let m = Backend.get_matrix backend in
+          Printf.printf "Axes -- matrix %f %f %f %f %f %f\n%!"
+          m.xx m.xy m.yx m.yy m.x0 m.y0;*)
         let user_coords = Coordinate.use backend normalization in
         let square_side = (Backend.get_matrix backend).xx in
         (
@@ -525,57 +525,62 @@ let print_tics axis ranges print_tic normalization marks font_size backend =
           | Some label ->
               Backend.scale backend marks marks;
               print_tic backend axis.major;
-              let m = Backend.get_matrix backend in
+              (*let m = Backend.get_matrix backend in
               Printf.printf "Axes -- matrix tic %f %f %f %f %f %f\n%!"
-                m.xx m.xy m.yx m.yy m.x0 m.y0;
+                m.xx m.xy m.yx m.yy m.x0 m.y0;*)
               Backend.scale backend inv_marks inv_marks;
               Coordinate.restore backend user_coords;
-              let m = Backend.get_matrix backend in
+              (*let m = Backend.get_matrix backend in
               Printf.printf "Axes -- matrix act1 %f %f %f %f %f %f\n%!"
-                m.xx m.xy m.yx m.yy m.x0 m.y0;
+                m.xx m.xy m.yx m.yy m.x0 m.y0;*)
               let box =
                 {x = axis.major_extents.x *. marks *. square_side;
                  y = axis.major_extents.y *. marks *. square_side;
                  w = axis.major_extents.w *. marks *. square_side;
                  h = axis.major_extents.h *. marks *. square_side}
               in
-              label.action x y box axis.label_position backend;
-              let m = Backend.get_matrix backend in
+              label.action x y box axis.label_position backend);
+              (*let m = Backend.get_matrix backend in
               Printf.printf "Axes -- matrix act2 %f %f %f %f %f %f\n%!"
-                m.xx m.xy m.yx m.yy m.x0 m.y0);
+                m.xx m.xy m.yx m.yy m.x0 m.y0);*)
           print l
-  in
+        in
   Backend.set_font_size backend font_size;
   print (axis.positions ranges axis.x_axis backend)
 
 type margins =
     {left: float; right: float; top: float; bottom: float}
 
-let axis_margins marks font_size ranges tic_extents backend axis =
+let axis_margins normalization marks font_size ranges backend axis =
   Backend.set_font_size backend font_size;
   let list = axis.positions ranges axis.x_axis backend in
   let rec make_margins list left right top bottom =
+    Printf.printf "M %f %f %f %f\n%!" left right top bottom;
     match list with
-      [] -> {left = left; right = right; top = top; bottom = bottom}
+      [] -> Printf.printf "ok\n%!";
+        {left = left; right = right; top = top; bottom = bottom}
     | (x,y,label)::l ->
         let tic_ext =
           match label with
             None -> axis.minor_extents
           | Some _ -> axis.major_extents
         in
+        let ctm = Coordinate.use backend normalization in
         let extents =
           tic_label_extents tic_ext marks label x y axis.label_position backend
         in
+        Coordinate.restore backend ctm;
+        Printf.printf "data: %f %f %f %f\n%!" extents.x extents.y extents.w extents.h;
         let xmin = min left extents.x
         and ymin = min bottom extents.y in
         let xmax = max (xmin +. extents.w) right
         and ymax = max (ymin +. extents.h) top in
-        make_margins l xmin xmax ymin ymax
+        make_margins l xmin xmax ymax ymin
   in make_margins list 0. 0. 0. 0.
 
 
-let get_margins t ?(axes_meeting = axes_meeting) ?(tic_extents = tic_extents)
-    ~normalization ~lines ~marks ~font_size ranges backend =
+let get_margins t ?(axes_meeting = axes_meeting) ~normalization
+    ~lines ~marks ~font_size ranges backend =
   let x,y = axes_meeting t.axes ranges in
   let axes_ranges = Ranges.make x y in
   Ranges.update axes_ranges ranges.xmin ranges.ymin;
@@ -587,12 +592,10 @@ let get_margins t ?(axes_meeting = axes_meeting) ?(tic_extents = tic_extents)
   Backend.save backend;
   (*Put backend into graph coordinates.*)
   Backend.set_matrix backend (Matrix.mul initial coord);*)
-  let ctm = Coordinate.use backend normalization in
   let margins =
-    axis_margins marks font_size axes_ranges tic_extents backend
+    axis_margins normalization marks font_size axes_ranges backend
   in
   let margins = margins t.xaxis, margins t.yaxis in
-  Coordinate.restore backend ctm;
   margins
 
 let print t ~normalization ~lines ~marks ~font_size ~ranges

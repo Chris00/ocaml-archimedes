@@ -37,7 +37,9 @@ let () =
       H.stroke handle;
       H.use (vps.(1).(1));
       H.set_color handle Color.black;
-      H.plotfx handle ~axes parabola (-3.) 3.;
+      H.plotfx handle parabola (-3.) 3.;
+      H.print_axes axes ~ranges:{A.xmin = -3.;xmax = 3.;ymin=0.;ymax = 9.}
+        handle;
       H.close handle
     with
       B.Error e ->
