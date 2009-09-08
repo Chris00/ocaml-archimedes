@@ -158,7 +158,8 @@ struct
       (* Re-enable previous settings in case they were changed *)
       Graphics.set_color st.color;
       Graphics.set_line_width (round st.line_width)
-    with Stack.Empty -> ()
+    with Stack.Empty ->  Printf.printf
+      "archimedes_graphics : warning - restore without saving\n%!"
 
   (* FIXME: options "x=" and "y=" for the position *)
   let make ~options:_ width height =
@@ -313,7 +314,8 @@ struct
         (*This coefficient makes the middle point of a Bezier curve
           coïncide with the arc.*)
         let f z a = coeff *. (z -. a) in
-        curve_to t (f x sin1) (f y cos1) (f x sin2) (f y cos2) (x+.cos2) (y+.sin2)
+        curve_to t (f x sin1) (f y cos1) (f x sin2) (f y cos2)
+          (x+.cos2) (y+.sin2)
       (* )
       else (
         let a3 = (a1 +. a2) /.2. in
@@ -403,13 +405,19 @@ struct
       let wx = float w and wy = 0. in
       let hx = 0. and hy = float h in
       let x'' =  match pos with
-        | Archimedes.CC | Archimedes.CT | Archimedes.CB -> x' -. (wx +. hx) *. 0.5
-        | Archimedes.RC | Archimedes.RT | Archimedes.RB -> x'
-        | Archimedes.LC | Archimedes.LT | Archimedes.LB -> x' -. wx -. hx
+        | Archimedes.CC | Archimedes.CT | Archimedes.CB ->
+            x' -. (wx +. hx) *. 0.5
+        | Archimedes.RC | Archimedes.RT | Archimedes.RB ->
+            x'
+        | Archimedes.LC | Archimedes.LT | Archimedes.LB ->
+            x' -. wx -. hx
       and y'' = match pos with
-        | Archimedes.CC | Archimedes.RC | Archimedes.LC -> y' -. (hy +. wy) *. 0.5
-        | Archimedes.CT | Archimedes.RT | Archimedes.LT -> y'
-        | Archimedes.CB | Archimedes.RB | Archimedes.LB -> y' -. hy -. wy
+        | Archimedes.CC | Archimedes.RC | Archimedes.LC ->
+            y' -. (hy +. wy) *. 0.5
+        | Archimedes.CT | Archimedes.RT | Archimedes.LT ->
+            y'
+        | Archimedes.CB | Archimedes.RB | Archimedes.LB ->
+            y' -. hy -. wy
       in
       Graphics.moveto (round x'') (round y'');
       Graphics.draw_string txt

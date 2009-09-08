@@ -15,18 +15,18 @@ let () =
       let w' = 2.*.w and h' = 2.*.h in
       let plot_text (x,y,pos,r,g,b) =
         let dx =  match pos with
-          | CC | CT | CB -> x -. rect.B.w *. 0.5
+          | CC | CT | CB -> x -. rect.w *. 0.5
           | RC | RT | RB -> x
-          | LC | LT | LB -> x -. rect.B.w
+          | LC | LT | LB -> x -. rect.w
         and dy = match pos with
-          | CC | RC | LC -> y -. rect.B.h *. 0.5
+          | CC | RC | LC -> y -. rect.h *. 0.5
           | CT | RT | LT -> y
-          | CB | RB | LB -> y -. rect.B.h
+          | CB | RB | LB -> y -. rect.h
         in
         (*let wx,wy = Matrix.inv_transform_distance matrix rect.B.w 0.
         and hx,hy = Matrix.inv_transform_distance matrix 0. rect.B.h in*)
-        let wx = rect.B.w
-        and hy = rect.B.h in
+        let wx = rect.w
+        and hy = rect.h in
         B.arc cr dx dy 1. 0. 7.;
         B.set_color cr (Color.make r g b);
         B.stroke cr;

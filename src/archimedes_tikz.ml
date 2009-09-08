@@ -177,9 +177,10 @@ struct
       let st = Stack.pop t.history in
       t.state <- st;
       (* Re-enable previous settings in case they were changed *)
+      t.indent <- t.indent - 2;
       write t "\\end{scope}";
-      t.indent <- t.indent - 2
-    with Stack.Empty -> ()
+    with Stack.Empty -> Printf.printf
+      "archimedes_tikz : warning - restore without saving\n%!"
 
   (*To avoid typos:*)
   let preamble = "preamble"
@@ -267,7 +268,15 @@ struct
 
   let set_line_width t w =
     let st = get_state t in
-    st.linewidth <- sprintf "line width=%f" w
+    (*Note: Line width is coordinate-dependent: need to adapt it to
+      device coords.*)
+    let m = Matrix.copy st.ctm in
+    Matrix.invert m;
+    let x1,x2 = Matrix.transform_distance m w 0.
+    and x3,x4 = Matrix.transform_distance m 0. w in
+    (*FIXME: is there a better choice for width?*)
+    let w' = sqrt(x1*.x1 +. x2*.x2 +. x3*.x3 +. x4*.x4) in
+    st.linewidth <- sprintf "line width=%f" w'
 
   let get_line_width t =
     let s = (get_state t).linewidth in

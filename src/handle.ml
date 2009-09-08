@@ -685,7 +685,6 @@ let plotxy t ?axes ?(f = f) ?(mark = "X") iter =
         let font_size = ts *. t.square_side /. 100. in
         Axes.print axes ~normalization: t.normalized
           ~lines ~marks ~font_size ~ranges t.backend
-
   in
   iterate update;
   add_order f t
@@ -726,6 +725,8 @@ let print_axes axes ~ranges ?axes_print ?axes_meeting ?print_tic t =
   and yy1 = ymargin.y
   and yy2 = ymargin.h +. ymargin.y
   in
+  Printf.printf "Margins 1: %f %f %f %f\nMargins 2: %f %f %f %f\n%!"
+    xx1 xy1 xx2 xy2 yx1 yy1 yx2 yy2;
   update_ranges t xx1 xy1;
   update_ranges t xx2 xy2;
   update_ranges t yx1 yy1;

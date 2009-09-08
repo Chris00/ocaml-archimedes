@@ -5,6 +5,7 @@ module H = Handle
 
 let () =
   let f s =
+    Printf.printf "%s\n***************************\n%!" s;
     try
       let handle = H.make ~dirs:[ "../src"; "./src"] s 600. 600. in
       let vps = H.Viewport.matrix handle 2 2 in

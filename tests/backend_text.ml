@@ -11,13 +11,8 @@ let () =
       let dirs = [ "./src"; "../src" ] in
       let b = Backend.make s 200. 100. ~dirs in
 
-      (* Change the cairo coordinate system.  This will not affect the text. *)
-      if String.sub s 0 5 = "cairo" then
-        (Backend.translate b 0. 100.;
-         Backend.scale b 1. (-1.));
-
       Backend.select_font_face b A.Upright A.Normal "times";
-      Backend.show_text b ~x:50. ~y:20. ~rotate:half_pi Archimedes.CC "Joy";
+      Backend.show_text b ~x:50. ~y:20. ~rotate:half_pi A.CC "Joy";
 
       let pos = [(100., 60., Archimedes.LT);
                  (140., 60., Archimedes.CT);
