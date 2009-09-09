@@ -331,13 +331,15 @@ module Handle: sig
   (* val text_extents : t -> string -> rectangle *)
   val render : t -> string -> unit
   (* val mark_extents : t -> string -> rectangle *)
-  val plotfx :
+  val f :
     t ->
-    ?axes:([> Axes.axes ],[> Axes.tic]) Axes.t ->
+    ?color: Color.t ->
     ?nsamples:int ->
     ?min_step:float ->
+    ?do_with:(t -> float * float -> unit) ->
+    ?finish:(t -> unit) ->
     (float -> float) -> float -> float -> unit
-  val plotxy :
+  val xy :
     t ->
     ?axes:([> Axes.axes ],[> Axes.tic]) Axes.t ->
     ?f:(t -> string -> float -> float -> unit) ->

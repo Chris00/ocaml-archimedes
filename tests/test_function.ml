@@ -7,16 +7,15 @@ let () =
   let f s =
     Printf.printf "%s\n***************************\n%!" s;
     try
-      let handle = H.make ~dirs:[ "../src"; "./src"] s 600. 600. in
+      let handle = H.make ~dirs:[ "../src"; "./src"] s 400. 400. in
       let vps = H.Viewport.matrix handle 2 2 in
       H.use (vps.(0).(0));
-      H.set_color handle Color.blue;
       let parabola x = x *. x in
-      H.plotfx handle parabola (-3.) 3.;
+      H.f handle ~color:Color.blue parabola (-3.) 3.;
       H.stroke handle;
       H.use (vps.(1).(0));
       H.set_color handle Color.red;
-      H.plotfx handle parabola (-3.) 3.;
+      H.f handle ~finish:(fun _ -> ()) parabola (-3.) 3.;
       H.line_to handle 3. 10.;
       H.line_to handle (-3.) 10.;
       H.close_path handle;
@@ -29,8 +28,7 @@ let () =
       in
       let axes = H.make_axes (`Rectangle(true,true)) xaxis yaxis in
       H.use (vps.(0).(1));
-      H.set_color handle Color.green;
-      H.plotfx handle parabola (-3.) 3.;
+      H.f handle ~color:Color.green ~finish:(fun _ -> ()) parabola (-3.) 3.;
       H.line_to handle 3. (-1.);
       H.line_to handle (-3.) (-1.);
       H.close_path handle;
@@ -38,7 +36,8 @@ let () =
       H.use (vps.(1).(1));
       ignore
         (H.print_axes handle axes {A.xmin = -3.;xmax = 3.;ymin=0.;ymax = 9.});
-      H.plotfx handle parabola (-3.) 3.;
+      H.f handle parabola (-3.) 3.;
+      H.stroke handle;
       H.close handle
     with
       B.Error e ->

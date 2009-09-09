@@ -568,20 +568,21 @@ http://www.tac.dk/cgi-bin/info2www?%28latex%29Low-level%20font%20commands:
 
 (*FIXME: raw way to find the extents; must be reworked.*)
   let text_extents t txt =
-    let h = (get_state t).fsize in
+    let size = (get_state t).fsize in
+    let h = size *. 1.2 in
     let w =
       let rec add_lengths res i =
         if i < 0 then res
         else match txt.[i] with
-        |'i'|'j'|'l' -> add_lengths (res +. 0.3) (i-1)
-        |'m'|'w'|'A'..'Z'|'0'..'9' -> add_lengths (res +. 0.8) (i-1)
-        | _ -> add_lengths (res +. 0.5) (i-1)
+        |'i'|'j'|'l' -> add_lengths (res +. 0.2) (i-1)
+        |'m'|'w'|'A'..'Z'|'0'..'9' -> add_lengths (res +. 0.6) (i-1)
+        | _ -> add_lengths (res +. 0.3) (i-1)
       in
       let len = add_lengths 0. ((String.length txt) - 1) in
       h *. len
     in
     let w', h' = Matrix.inv_transform_distance (get_state t).ctm w h in
-    { Archimedes.x = 0.; y = 0.; w = w' ; h = h' }
+    { Archimedes.x = 0.; y = -.h'/.6.; w = w' ; h = h' }
 
   let show_text t ~rotate ~x ~y pos txt =
     let st = get_state t in

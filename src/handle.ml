@@ -246,12 +246,14 @@ let make ~dirs name w h =
 
 let close t =
   let rec make_viewports () =
-    if not (Queue.is_empty t.used_vp) then
+    if not (Queue.is_empty t.used_vp) then (
+      Printf.printf "\nPop a vp%!";
       let coord, vp = Queue.pop t.used_vp in
       match vp.ranges with
         None -> (*No ranges, so no drawings *)
           make_viewports ()
       | Some ranges ->
+          Printf.printf ">%!";
           let diffx =  ranges.Axes.xmax -. ranges.Axes.xmin
           and diffy =  ranges.Axes.ymax -. ranges.Axes.ymin
           in
@@ -263,11 +265,12 @@ let close t =
           ignore (Coordinate.use t.backend coord_user_device);
           let rec make_orders orders =
             if not (Queue.is_empty orders) then (
+              Printf.printf "*%!";
               Queue.pop orders ();
               make_orders orders
             ) in
           make_orders vp.orders;
-          make_viewports ()
+          make_viewports ())
   in
   make_viewports ();
   Backend.close t.backend
@@ -618,32 +621,33 @@ let mark_extents t name =
    w = rect.w *. marks *. t.square_side; h = rect.h *. marks *. t.square_side}
 
 
-let plotfx t ?axes ?nsamples ?min_step f a b =
+
+let f_line_to t (x,y) = Backend.line_to t.backend x y
+let f_finish t = Backend.stroke t.backend
+
+let f t ?color ?nsamples ?min_step
+    ?(do_with = f_line_to) ?(finish = f_finish) f a b =
   let _, ranges , fct =
     Functions.samplefxy (fun t -> (t,f t)) ?nsamples ?min_step b a
   in
   let f () =
-    fct (fun () (x,y) -> Backend.line_to t.backend x y) ();
-    match axes with
-      None -> ()
-    | Some axes ->
-        let lines = Sizes.get_lw t.current_vp.scalings
-        and ts = Sizes.get_ts t.current_vp.scalings
-        and marks = Sizes.get_marks t.current_vp.scalings
-        in
-        let font_size = ts *. t.square_side/.3. in
-        Axes.print axes ~normalization: t.normalized
-          ~lines ~marks ~font_size ~ranges t.backend
+    Backend.save t.backend;
+    (match color with
+      Some color -> Backend.set_color t.backend color
+    | None -> ());
+    fct (fun () -> do_with t) ();
+    finish t;
+    Backend.restore t.backend;
   in
   update_ranges t ranges.Axes.xmin ranges.Axes.ymin;
   update_ranges t ranges.Axes.xmax ranges.Axes.ymax;
   add_order f t
 
-let f t mark x y =
+let mark t mark x y =
   move_to t x y;
   render t mark
 
-let plotxy t ?axes ?(f = f) ?(mark = "X") iter =
+let xy t ?axes ?(f = mark) ?(mark = "X") iter =
   let marker = f t mark
   and update = update_ranges t in
   let rec iterate do_with =
@@ -656,17 +660,6 @@ let plotxy t ?axes ?(f = f) ?(mark = "X") iter =
   let f () =
     Iterator.reset iter;
     iterate marker;
-    match axes with
-      None -> ()
-    | Some axes ->
-        let ranges = Iterator.extents iter in
-        let lines = Sizes.get_lw t.current_vp.scalings
-        and ts = Sizes.get_ts t.current_vp.scalings
-        and marks = Sizes.get_marks t.current_vp.scalings
-        in
-        let font_size = ts *. t.square_side /.3. in
-        Axes.print axes ~normalization: t.normalized
-          ~lines ~marks ~font_size ~ranges t.backend
   in
   iterate update;
   add_order f t
@@ -739,8 +732,8 @@ let print_axes t axes ?(color = Color.black)
   Backend.arc t.backend 0.9 0.9 0.1 0. 7.;
   Backend.set_color t.backend (Color.make ~a:0.2 0. 0. 1.);
   Backend.fill t.backend;
-  Backend.restore t.backend;
-  Coordinate.restore t.backend ctm;*)
+  Backend.restore t.backend;*)
+  Coordinate.restore t.backend ctm;
   (*else, Labels take too big margins to plot correctly => no scaling.*)
   let f () =
     Backend.set_color t.backend color;
