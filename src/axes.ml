@@ -206,8 +206,8 @@ let make_box_from_text txt x y pos b =
     | LC | LT | LB -> rx -. w
   and y = match pos with
     | CC | RC | LC -> ry -. 0.5 *. h
-    | CT | RT | LT -> ry -. h
-    | CB | RB | LB -> ry
+    | CT | RT | LT -> ry
+    | CB | RB | LB -> ry -. h
   in
   {x = x; y = y; w = w; h = h}
 
@@ -387,7 +387,8 @@ let get_position loc labels =
         element of the list.*)
       (fun ranges _ _ ->
          let xmajorstep = (ranges.xmax -. ranges.xmin) /. (float (majors - 1))
-         and ymajorstep = (ranges.ymax -. ranges.ymin) /. (float (majors - 1)) in
+         and ymajorstep = (ranges.ymax -. ranges.ymin) /. (float (majors - 1))
+         in
          List.rev_map
            (fun (j,k,label) ->
               let t = float j in
@@ -565,12 +566,12 @@ let axis_margins normalization marks font_size ranges backend axis =
             None -> axis.minor_extents
           | Some _ -> axis.major_extents
         in
-        let ctm = Coordinate.use backend normalization in
+        (*let ctm = Coordinate.use backend normalization in*)
         let extents =
           tic_label_extents tic_ext marks label x y axis.label_position backend
         in
-        Coordinate.restore backend ctm;
-        (*Printf.printf "data: %f %f %f %f\n%!" 
+        (*Coordinate.restore backend ctm;*)
+        (*Printf.printf "data: %f %f %f %f\n%!"
           extents.x extents.y extents.w extents.h;*)
         let xmin = min left extents.x
         and ymin = min bottom extents.y in

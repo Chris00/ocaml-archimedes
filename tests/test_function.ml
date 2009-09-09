@@ -36,16 +36,9 @@ let () =
       H.close_path handle;
       H.stroke handle;
       H.use (vps.(1).(1));
-      let vp' =
-        H.print_axes axes ~ranges:{A.xmin = -3.;xmax = 3.;ymin=0.;ymax = 9.}
-        handle
-      in
-      (match vp' with
-         None -> Printf.printf "No axes%!"
-       | Some vp' ->
-           H.set_color handle Color.black;
-           (*H.use vp';*)
-           H.plotfx handle parabola (-3.) 3.);
+      ignore
+        (H.print_axes handle axes {A.xmin = -3.;xmax = 3.;ymin=0.;ymax = 9.});
+      H.plotfx handle parabola (-3.) 3.;
       H.close handle
     with
       B.Error e ->
@@ -53,9 +46,9 @@ let () =
         exit 1
   in List.iter f
        ["tikz functions.tex";
-        "cairo PDF functions.pdf";
         "graphics";
         "cairo PNG functions.png";
+        "cairo PDF functions.pdf";
        ]
 
 (*Local Variables:*)

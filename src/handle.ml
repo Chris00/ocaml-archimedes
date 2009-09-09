@@ -674,7 +674,8 @@ let plotxy t ?axes ?(f = f) ?(mark = "X") iter =
 let make_xaxis = Axes.make_xaxis
 let make_yaxis = Axes.make_yaxis
 let make_axes = Axes.make
-let print_axes axes ~ranges ?axes_print ?axes_meeting ?print_tic t =
+let print_axes t axes ?(color = Color.black)
+    ?axes_print ?axes_meeting ?print_tic ranges=
   let print_axes =
     match axes_print with
       None -> Axes.print_axes
@@ -697,14 +698,14 @@ let print_axes axes ~ranges ?axes_print ?axes_meeting ?print_tic t =
   Coordinate.restore t.backend ctm;
   let xx1 = xmargin.Axes.left
   and xx2 = xmargin.Axes.right
-  and yx1 = ymargin.Axes.left
-  and yx2 = ymargin.Axes.right
   and xy1 = xmargin.Axes.bottom
   and xy2 = xmargin.Axes.top
+  and yx1 = ymargin.Axes.left
+  and yx2 = ymargin.Axes.right
   and yy1 = ymargin.Axes.bottom
   and yy2 = ymargin.Axes.top
   in
-  Printf.printf "Margins 1: %f %f %f %f\nMargins 2: %f %f %f %f\n%!"
+  Printf.printf "Margins 1: L%f R%f B%f T%f\nMargins 2: L%f R%f B%f T%f\n%!"
     xx1 xx2 xy1 xy2 yx1 yx2 yy1 yy2;
   let left = max xx1 yx1
   and right = max xx2 yx2
@@ -742,6 +743,7 @@ let print_axes axes ~ranges ?axes_print ?axes_meeting ?print_tic t =
   Coordinate.restore t.backend ctm;*)
   (*else, Labels take too big margins to plot correctly => no scaling.*)
   let f () =
+    Backend.set_color t.backend color;
     Axes.print axes ~normalization:t.normalized
       ~lines ~marks ~font_size ~ranges
       ~print_axes ?axes_meeting ~print_tic t.backend;

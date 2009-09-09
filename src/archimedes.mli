@@ -360,11 +360,12 @@ module Handle: sig
   val make_axes : ([>Axes.axes] as 'a) ->
     'b Axes.axis -> 'b Axes.axis -> ('a,'b) Axes.t
   val print_axes :
-    ([> Axes.axes] as 'a, [> Axes.tic] as 'b) Axes.t ->
-    ranges:Axes.ranges ->
+    t -> ([> Axes.axes] as 'a, [> Axes.tic] as 'b) Axes.t ->
+    ?color:Color.t ->
     ?axes_print:('a -> Axes.ranges -> t -> unit) ->
     ?axes_meeting:('a -> Axes.ranges -> float * float) ->
-    ?print_tic:(t -> 'b -> unit) -> t -> Viewport.vp option
+    ?print_tic:(t -> 'b -> unit) -> Axes.ranges ->
+    Viewport.vp option
     (**Prints axes, following the parameters stored in [t] and the
        optional arguments, if given. Returns a [Viewport.vp] in which
        the graph will take place, or [None] if the axes take too big
