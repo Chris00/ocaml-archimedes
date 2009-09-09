@@ -36,10 +36,16 @@ let () =
       H.close_path handle;
       H.stroke handle;
       H.use (vps.(1).(1));
-      H.set_color handle Color.black;
-      H.plotfx handle parabola (-3.) 3.;
-      H.print_axes axes ~ranges:{A.xmin = -3.;xmax = 3.;ymin=0.;ymax = 9.}
-        handle;
+      let vp' =
+        H.print_axes axes ~ranges:{A.xmin = -3.;xmax = 3.;ymin=0.;ymax = 9.}
+        handle
+      in
+      (match vp' with
+         None -> Printf.printf "No axes%!"
+       | Some vp' ->
+           H.set_color handle Color.black;
+           (*H.use vp';*)
+           H.plotfx handle parabola (-3.) 3.);
       H.close handle
     with
       B.Error e ->
@@ -50,7 +56,7 @@ let () =
         "cairo PDF functions.pdf";
         "graphics";
         "cairo PNG functions.png";
-        ]
+       ]
 
 (*Local Variables:*)
 (*compile-command: "ocamlopt -o test_function.com -I ../src dynlink.cmxa bigarray.cmxa archimedes.cmxa test_function.ml && ocamlc -o test_function.exe -I ../src dynlink.cma bigarray.cma archimedes.cma test_function.ml"*)

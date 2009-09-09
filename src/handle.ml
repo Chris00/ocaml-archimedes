@@ -156,7 +156,8 @@ exception No_current_point
 
 (*Context-independent viewport data*)
 type viewport =
-    { (*For text, line width, marks size*)
+    {
+      (*For text, line width, marks size*)
       scalings: Sizes.t;
       (*Bounds (only mutable so set it to Some... when starting to draw.*)
       mutable ranges: Axes.ranges option;
@@ -300,12 +301,14 @@ struct
     { context = context; coord = coord; data = data;used = false;}
 
   let make arch ~xmin ~xmax ~ymin ~ymax =
+    Printf.printf "New viewport:%f %f to %f %f\n%!" xmin ymin xmax ymax;
     let ndrawings = Coordinate.make_translate arch.current_coord xmin ymin in
     Coordinate.scale ndrawings (xmax -. xmin) (ymax -. ymin);
     inner_make arch ndrawings
 
 
   let sub vp ~xmin ~xmax ~ymin ~ymax =
+    Printf.printf "Sub viewport:%f %f to %f %f\n%!" xmin ymin xmax ymax;
     let ndrawings = Coordinate.make_translate vp.coord xmin ymin in
     Coordinate.scale ndrawings (xmax -. xmin) (ymax -. ymin);
     inner_make vp.context ndrawings
@@ -346,28 +349,28 @@ struct
     Array.init n f
 
   let matrix arch n m =
-    let stepx = 1./.(float n)
-    and stepy = 1./.(float m) in
+    let stepx = 1. /. (float n)
+    and stepy = 1. /. (float m) in
     let f i j = make_rect arch
-      ((float i)*. stepx) ((float j)*. stepy) stepx stepy in
+      ((float i)*. stepx) ((float j) *. stepy) stepx stepy in
     let make_row i = Array.init m (f i) in
     Array.init n make_row
 
   let sub_rows vp n =
-    let step = 1./.(float n) in
-    let f i = sub_rect vp 0. ((float i)*. step) 1. step in
+    let step = 1. /. (float n) in
+    let f i = sub_rect vp 0. ((float i) *. step) 1. step in
     Array.init n f
 
   let sub_columns vp n =
-    let step = 1./.(float n) in
-    let f i = sub_rect vp ((float i)*. step) 0. step 1. in
+    let step = 1. /. (float n) in
+    let f i = sub_rect vp ((float i) *. step) 0. step 1. in
     Array.init n f
 
   let sub_matrix vp n m =
-    let stepx = 1./.(float n)
-    and stepy = 1./.(float m) in
+    let stepx = 1. /. (float n)
+    and stepy = 1. /. (float m) in
     let f i j = sub_rect vp
-      ((float i)*. stepx) ((float j)*. stepy) stepx stepy in
+      ((float i) *. stepx) ((float j) *. stepy) stepx stepy in
     let make_row i = Array.init m (f i) in
     Array.init n make_row
 end
@@ -709,26 +712,42 @@ let print_axes axes ~ranges ?axes_print ?axes_meeting ?print_tic t =
   and bottom = max xy1 yy1 in
   let margin_x = left +. right
   and margin_y = top +. bottom in
-  let f () =
-    let margins_ok = margin_x < 1. && margin_y < 1. in
+  let margins_ok = margin_x < 1. && margin_y < 1. in
+  let ctm = Coordinate.use t.backend t.current_coord in
+  (*let m = Backend.get_matrix t.backend in
+  Printf.printf "Initial coord: %f %f %f %f %f %f \n%!"
+    m.xx m.xy m.yx m.yy m.x0 m.y0;
+  Coordinate.restore t.backend ctm;
+  Printf.printf "Margins: %f %f %f %f \n%!"
+    left right bottom top;*)
+  let new_vp =
     if margins_ok then
-      let coord =
-        Coordinate.make_translate t.current_coord left bottom
-      in
-      let scalx = 1./.(1.-.margin_x)
-      and scaly = 1./.(1.-.margin_y) in
-      Coordinate.scale coord scalx scaly;
-      let ctm = Coordinate.use t.backend coord in
-      Axes.print axes ~normalization:t.normalized
-        ~lines ~marks ~font_size ~ranges
-        ~print_axes ?axes_meeting ~print_tic t.backend;
-      Coordinate.restore t.backend ctm
-    else (*Labels take too big margins to plot correctly => no scaling.*)
-      Axes.print axes ~normalization:t.normalized
-        ~lines ~marks ~font_size ~ranges
-        ~print_axes ?axes_meeting ~print_tic t.backend;
+      (let vp = Viewport.make t left (1. -.right) bottom (1. -.top) in
+       Viewport.use vp;
+       Some vp)
+    else (
+      Printf.printf "Handle -- warning: too big axes labels margins.\n%!";
+      None)
   in
-  add_order f t
+  (*let ctm = Coordinate.use t.backend t.current_coord in
+  let m = Backend.get_matrix t.backend in
+  Printf.printf "Initial coord: %f %f %f %f %f %f \n%!"
+    m.xx m.xy m.yx m.yy m.x0 m.y0;
+  Backend.save t.backend;
+  Backend.rectangle t.backend 0. 0. 0.8 0.8;
+  Backend.arc t.backend 0.9 0.9 0.1 0. 7.;
+  Backend.set_color t.backend (Color.make ~a:0.2 0. 0. 1.);
+  Backend.fill t.backend;
+  Backend.restore t.backend;
+  Coordinate.restore t.backend ctm;*)
+  (*else, Labels take too big margins to plot correctly => no scaling.*)
+  let f () =
+    Axes.print axes ~normalization:t.normalized
+      ~lines ~marks ~font_size ~ranges
+      ~print_axes ?axes_meeting ~print_tic t.backend;
+  in
+  add_order f t; (*if margins_ok, axes should stay in the initial viewport.*)
+  new_vp
 
 
 

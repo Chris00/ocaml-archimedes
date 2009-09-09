@@ -364,9 +364,11 @@ module Handle: sig
     ranges:Axes.ranges ->
     ?axes_print:('a -> Axes.ranges -> t -> unit) ->
     ?axes_meeting:('a -> Axes.ranges -> float * float) ->
-    ?print_tic:(t -> 'b -> unit) -> t -> unit
+    ?print_tic:(t -> 'b -> unit) -> t -> Viewport.vp option
     (**Prints axes, following the parameters stored in [t] and the
-       optional arguments, if given.*)
+       optional arguments, if given. Returns a [Viewport.vp] in which
+       the graph will take place, or [None] if the axes take too big
+       margins (reducing the graph to nothing)*)
 
 end
 

@@ -555,10 +555,10 @@ let axis_margins normalization marks font_size ranges backend axis =
   Backend.set_font_size backend font_size;
   let list = axis.positions ranges axis.x_axis backend in
   let rec make_margins list left right top bottom =
-    Printf.printf "M %f %f %f %f\n%!" left right top bottom;
+    (*Printf.printf "M %f %f %f %f\n%!" left right top bottom;*)
     match list with
-      [] -> Printf.printf "ok\n%!";
-        {left = left; right = right; top = top; bottom = bottom}
+      [] -> (*Printf.printf "ok\n%!";*)
+        {left = -.left; right = right; top = top; bottom = -.bottom}
     | (x,y,label)::l ->
         let tic_ext =
           match label with
@@ -570,7 +570,8 @@ let axis_margins normalization marks font_size ranges backend axis =
           tic_label_extents tic_ext marks label x y axis.label_position backend
         in
         Coordinate.restore backend ctm;
-        Printf.printf "data: %f %f %f %f\n%!" extents.x extents.y extents.w extents.h;
+        (*Printf.printf "data: %f %f %f %f\n%!" 
+          extents.x extents.y extents.w extents.h;*)
         let xmin = min left extents.x
         and ymin = min bottom extents.y in
         let xmax = max (xmin +. extents.w) right
