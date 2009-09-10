@@ -434,18 +434,15 @@ struct
 
 
 
-  let arc t ~x ~y ~r ~a1 ~a2 =
+  let arc t ~r ~a1 ~a2 =
     let st = get_state t in
     (*Coordinate transformations*)
-    let x', y' = Archimedes.Matrix.transform_point st.ctm x y
-    in
-    move_to t x y;
     let rcos t = r *. cos t
     and rsin t = r *. sin t in
     let x1, y1 = Archimedes.Matrix.transform_distance st.ctm (rcos a1) (rsin a1)
     and x2, y2 = Archimedes.Matrix.transform_distance st.ctm (rcos a2) (rsin a2)
     in
-    let loops = truncate (abs_float(a2 -. a1) /. (2.*.pi)) in
+    let loops = truncate (abs_float(a2 -. a1) /. (2. *.pi)) in
     let a1' = atan2 y1 x1
     and a2' = atan2 y2 x2 in
     Printf.printf "%g : %g now are %g : %g with %d loops\n%!" a1 a2 a1' a2' loops;
@@ -468,7 +465,11 @@ struct
     (*TikZ uses the current point as starting point for the arc.*)
     let x' = r' *. cos a1'
     and y' = r' *. sin a1' in
-    t.curr_path <- t.curr_path^" -- ++"^(point_string x' y')^endarc
+    t.curr_path <- t.curr_path^" -- ++"^(point_string x' y')^endarc;
+    st.curr_pt <- true;
+    st.x <- st.x +. r' *. cos a2';
+    st.y <- st.y +. r' *. sin a2'
+
 
 
   let close_path t =

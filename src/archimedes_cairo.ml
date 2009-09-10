@@ -90,9 +90,12 @@ struct
   let rel_line_to t = rel_line_to t.cr
   let curve_to t = curve_to t.cr
   let rectangle t = rectangle t.cr
-  let arc t = arc t.cr
 
-  let stroke t = 
+  let arc t ~r =
+    let x,y = Cairo.Path.get_current_point t.cr in
+    arc t.cr ~x ~y ~r
+
+  let stroke t =
     Cairo.save t.cr;
     Cairo.set_matrix t.cr t.lw;
     stroke t.cr;

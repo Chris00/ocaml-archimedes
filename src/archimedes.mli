@@ -310,7 +310,7 @@ module Handle: sig
     x1:float ->
     y1:float -> x2:float -> y2:float -> x3:float -> y3:float -> unit
   val rectangle : t -> x:float -> y:float -> w:float -> h:float -> unit
-  val arc : t -> x:float -> y:float -> r:float -> a1:float -> a2:float -> unit
+  val arc : t -> r:float -> a1:float -> a2:float -> unit
   val close_path : t -> unit
   val clear_path : t -> unit
   (*val path_extents : t -> rectangle*)
@@ -424,7 +424,7 @@ sig
 
     val rectangle : t -> x:float -> y:float -> w:float -> h:float -> unit
 
-    val arc : t -> x:float -> y:float -> r:float -> a1:float -> a2:float -> unit
+    val arc : t -> r:float -> a1:float -> a2:float -> unit
 
     val close_path : t -> unit
       (** Adds a line segment to the path from the current point to

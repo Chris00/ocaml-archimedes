@@ -35,13 +35,11 @@ let () =
               B.stroke handle)
     {x=0.; y=(-0.5); w=0.;h=1.};
   add "o" (fun handle ->
-             let x,y = 0., 0. (*B.get_point handle*) in
-             B.arc handle x y 1. 0. (2. *. pi);
+             B.arc handle 1. 0. (2. *. pi);
              B.stroke handle)
     {x=(-0.5); y=(-0.5); w=1.;h=1.};
   add "O" (fun handle ->
-             let x,y =  0., 0. (*B.get_point handle*) in
-             B.arc handle x y 1. 0. (2. *. pi);
+             B.arc handle 1. 0. (2. *. pi);
              B.fill handle)
     {x=(-0.5); y=(-0.5); w=1.;h=1.};
   add "+" (fun handle ->

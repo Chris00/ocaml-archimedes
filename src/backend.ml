@@ -52,7 +52,7 @@ sig
 
   val rectangle : t -> x:float -> y:float -> w:float -> h:float -> unit
 
-  val arc : t -> x:float -> y:float -> r:float -> a1:float -> a2:float -> unit
+  val arc : t -> r:float -> a1:float -> a2:float -> unit
     (* Do we need arc_negative (path orientation)? *)
 
   (* (* Is this really needed? *)
@@ -116,7 +116,7 @@ type t = {
   curve_to: x1:float -> y1:float -> x2:float -> y2:float ->
                                             x3:float -> y3:float -> unit;
   rectangle : x:float -> y:float -> w:float -> h:float -> unit;
-  arc : x:float -> y:float -> r:float -> a1:float -> a2:float -> unit;
+  arc : r:float -> a1:float -> a2:float -> unit;
   close_path : unit -> unit;
   clear_path : unit -> unit;
   path_extents : unit -> rectangle;

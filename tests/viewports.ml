@@ -27,7 +27,8 @@ let () =
       H.use (vps.(0).(1));
       H.set_color handle Color.green;
       let two_pi = 8. *. atan 1. in
-      H.arc handle 0. 0. 1. 0. two_pi;
+      H.move_to handle 0. 0.;
+      H.arc handle 1. 0. two_pi;
       H.fill handle;
       H.set_line_width handle 5.;
       H.move_to handle (-0.8) 0.;

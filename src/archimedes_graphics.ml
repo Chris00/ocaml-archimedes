@@ -305,26 +305,27 @@ struct
     st.x <- x;
     st.y <- y
 
-  let arc t ~x ~y ~r ~a1 ~a2 =
+  let arc t ~r ~a1 ~a2 =
+    let st = get_state t in
     let rec arcin a1 a2 =
       let curvelen = r *. abs_float (a2 -. a1) in
       (*if curvelen < 1. then ( *)
-        move_to t x y;
-        let cos1 = r *. cos a1 and sin1 = r *. sin a1 in
-        let cos2 = r *. cos a2 and sin2 = r *. sin a2 in
-        rel_move_to t cos1 sin1;
-        (*let coeff = (2. *. (sqrt 5.) -. 4.) /. 3. in*)
-        let coeff = 1. in
-        (*This coefficient makes the middle point of a Bezier curve
-          coïncide with the arc.*)
-        let f z a = coeff *. (z -. a) in
-        curve_to t (f x sin1) (f y cos1) (f x sin2) (f y cos2)
-          (x+.cos2) (y+.sin2)
-      (* )
-      else (
-        let a3 = (a1 +. a2) /.2. in
-        arcin a1 a3;
-        arcin a3 a2)*)
+      let rcos1 = r *. cos a1 and rsin1 = r *. sin a1 in
+      let rcos2 = r *. cos a2 and rsin2 = r *. sin a2 in
+      (*let coeff = (2. *. (sqrt 5.) -. 4.) /. 3. in*)
+      let coeff = 1. in
+      (*This coefficient makes the middle point of a Bezier curve
+        coïncide with the arc.*)
+      let f z a = coeff *. (z +. a) in
+      let x = st.x and y = st.y in
+      rel_move_to t rcos1 rsin1;
+      curve_to t (f x rsin1) (f y rcos1) (f x rsin2) (f y rcos2)
+        (x+.rcos2) (y+.rsin2)
+        (* )
+           else (
+           let a3 = (a1 +. a2) /.2. in
+           arcin a1 a3;
+           arcin a3 a2)*)
     in arcin a1 a2
 
   let rec beginning_of_subpath list =

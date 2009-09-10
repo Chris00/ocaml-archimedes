@@ -480,11 +480,12 @@ let rectangle t ~x ~y ~w ~h =
   update_ranges t (x+.w) (y+.h);
   add_order (fun () -> Backend.rectangle t.backend x y w h) t
 
-let arc t ~x ~y ~r ~a1 ~a2 =
+let arc t ~r ~a1 ~a2 =
   (*FIXME: better bounds for the arc can be found.*)
-  update_ranges t (x+.r) (y+.r);
-  update_ranges t (x-.r) (y-.r);
-  add_order (fun () -> Backend.arc t.backend x y r a1 a2) t
+  let x', y' = get_current_pt t in
+  update_ranges t (x'+.r) (y'+.r);
+  update_ranges t (x'-.r) (y'-.r);
+  add_order (fun () -> Backend.arc t.backend r a1 a2) t
 
 let close_path t =
  add_order (fun () -> Backend.close_path t.backend) t

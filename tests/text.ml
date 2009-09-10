@@ -27,13 +27,15 @@ let () =
         and hx,hy = Matrix.inv_transform_distance matrix 0. rect.B.h in*)
         let wx = rect.w
         and hy = rect.h in
-        B.arc cr dx dy 1. 0. 7.;
+        B.move_to cr dx dy;
+        B.arc cr 1. 0. 7.;
         B.set_color cr (Color.make r g b);
         B.stroke cr;
         B.rectangle cr dx dy wx hy;
         (*B.line_to cr x y;*)
         B.stroke cr;
-        B.arc cr x y 2. 0. 7.;
+        B.move_to cr x y;
+        B.arc cr 2. 0. 7.;
         B.stroke cr;
         B.show_text cr 0. x y pos text
       in
