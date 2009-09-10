@@ -129,6 +129,7 @@ struct
     (* The extent of the current path, in device coordinates. *)
     mutable ctm : matrix; (* current transformation matrix from the
                              user coordinates to the device ones. *)
+    mutable font_size : float;
   }
 
   type t = {
@@ -179,6 +180,7 @@ struct
       path_extents = { Archimedes.x=0.; y=0.; w=0.; h=0. };
       (* Identity transformation matrix *)
       ctm = Matrix.make_identity();
+      font_size = 10.;
     } in
     { closed = false;
       history = Stack.create();
@@ -386,12 +388,18 @@ struct
     Graphics.set_font family
 
   let set_font_size t size =
-    (* FIXME: must be saved in the state ? *)
+    (get_state t).font_size <- size;
     Graphics.set_text_size (round size)
 
   let text_extents t txt =
+    let st = get_state t in
     let w, h = Graphics.text_size txt in
-    { Archimedes.x = 0.; y = 0.; w = float w; h = float h }
+    (*FIXME: suppose orthonormal coordinates.*)
+    let w', h' = Matrix.inv_transform_distance st.ctm (float w) (float h) in
+    (*Note: in Graphics, default size is 10*)
+    let w'' = w' *. st.font_size /.10.
+    and h'' = h' *. st.font_size /.10. in
+    { Archimedes.x = 0.; y = 0.; w = w'' ; h = h'' }
 
   let show_text t ~rotate ~x ~y pos txt =
     let st = get_state t in

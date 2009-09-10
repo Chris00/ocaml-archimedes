@@ -88,7 +88,7 @@ let range_bezier x0 x1 x2 x3 =
         else min x0 x3, max x0 x3
 ;;
 
-(** Return the smaller reactangle containing [r] and the Bézier curve
+(** Return the smaller rectangle containing [r] and the Bézier curve
     given by the control points. *)
 let update_curve r x0 y0 x1 y1 x2 y2 x3 y3 =
   let xmin, xmax = range_bezier x0 x1 x2 x3 in
@@ -100,7 +100,9 @@ let update_curve r x0 y0 x1 y1 x2 y2 x3 y3 =
   { Archimedes.x = xmin;  y = ymin; w = w; h = h }
 
 
-let point_string x y = "("^(string_of_float x)^", "^(string_of_float y)^")"
+let point_string x y =
+  let sf x = Printf.sprintf "%g" x in
+  "("^(sf x)^", "^(sf y)^")"
 
 module B =
 struct

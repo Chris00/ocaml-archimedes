@@ -590,13 +590,17 @@ let text_extents t txt =
   rect
 
 let render t name =
+  let marks = Sizes.get_marks t.current_vp.scalings in
   let f () =
     let ctm = Coordinate.use t.backend t.normalized in
-    let marks = Sizes.get_marks t.current_vp.scalings in
     Backend.scale t.backend marks marks;
     Pointstyle.render name t.backend;
     Coordinate.restore t.backend ctm
   in
+  let extents = Pointstyle.extents name in
+  update_ranges t (extents.x *. marks) (extents.y *. marks);
+  update_ranges t ((extents.x +. extents.w) *. marks)
+    ((extents.y +.extents.h) *. marks);
   add_order f t
 
 (*

@@ -459,8 +459,8 @@ let get_position loc labels =
            let v = new_vmax -. (float i) *. step *. order in
            if v >= vmin then
              let label =
-               { action = make_action_from (string_of_float v) 0.;
-                 box = make_box_from_text (string_of_float v);
+               { action = make_action_from (Printf.sprintf "%g" v) 0.;
+                 box = make_box_from_text (Printf.sprintf "%g" v);
                  rotation = 0.}
              in
              let data =
@@ -506,7 +506,7 @@ let make axes x y =
 
 (*FIXME: need of a range??*)
 let print_tics axis ranges print_tic normalization marks font_size backend =
-  let inv_marks = 1./.marks in
+  let inv_marks = 1. /.marks in
   let rec print = function
       [] -> ()
     | (x,y,label)::l ->
@@ -514,17 +514,20 @@ let print_tics axis ranges print_tic normalization marks font_size backend =
        (* let m = Backend.get_matrix backend in
           Printf.printf "Axes -- matrix %f %f %f %f %f %f\n%!"
           m.xx m.xy m.yx m.yy m.x0 m.y0;*)
+        Printf.printf "*%!";
         let user_coords = Coordinate.use backend normalization in
         let square_side = (Backend.get_matrix backend).xx in
         (
           match label with
             None ->
               Backend.scale backend marks marks;
+              Printf.printf "m%!";
               print_tic backend axis.minor;
               Backend.scale backend inv_marks inv_marks;
               Coordinate.restore backend user_coords
           | Some label ->
               Backend.scale backend marks marks;
+              Printf.printf "M%!";
               print_tic backend axis.major;
               (*let m = Backend.get_matrix backend in
               Printf.printf "Axes -- matrix tic %f %f %f %f %f %f\n%!"
@@ -540,13 +543,16 @@ let print_tics axis ranges print_tic normalization marks font_size backend =
                  w = axis.major_extents.w *. marks *. square_side;
                  h = axis.major_extents.h *. marks *. square_side}
               in
+              Printf.printf "l%!";
               label.action x y box axis.label_position backend);
               (*let m = Backend.get_matrix backend in
               Printf.printf "Axes -- matrix act2 %f %f %f %f %f %f\n%!"
                 m.xx m.xy m.yx m.yy m.x0 m.y0);*)
-          print l
-        in
+        Printf.printf "-%!";
+        print l
+  in
   Backend.set_font_size backend font_size;
+  Printf.printf ">%!";
   print (axis.positions ranges axis.x_axis backend)
 
 type margins =
@@ -613,7 +619,9 @@ let print t ~normalization ~lines ~marks ~font_size ~ranges
   Ranges.update xrange ranges.xmax y;
   let yrange = Ranges.make x ranges.ymin in
   Ranges.update yrange x ranges.ymax;
+  Printf.printf "X%!";
   print_tics t.xaxis xrange print_tic normalization marks font_size backend;
   (*X axis*)
+  Printf.printf "Y%!";
   print_tics t.yaxis yrange print_tic normalization marks font_size backend;
   (*Y axis*)

@@ -20,6 +20,14 @@ let () =
       H.line_to handle (-3.) 10.;
       H.close_path handle;
       H.fill handle;
+      H.use (vps.(0).(1));
+      H.set_color handle Color.green;
+      H.f handle ~finish:(fun _ -> ()) parabola (-3.) 3.;
+      H.line_to handle 3. (-1.);
+      H.line_to handle (-3.) (-1.);
+      H.close_path handle;
+      H.stroke handle;
+      H.use (vps.(1).(1));
       let xaxis =
         H.make_xaxis (`P "|") `Number CB (`P "tic_up") (`Linear(7,0))
       in
@@ -27,13 +35,6 @@ let () =
         H.make_yaxis (`P "-") `Number LC (`P "tic_left") (`Linear(7,2))
       in
       let axes = H.make_axes (`Rectangle(true,true)) xaxis yaxis in
-      H.use (vps.(0).(1));
-      H.f handle ~color:Color.green ~finish:(fun _ -> ()) parabola (-3.) 3.;
-      H.line_to handle 3. (-1.);
-      H.line_to handle (-3.) (-1.);
-      H.close_path handle;
-      H.stroke handle;
-      H.use (vps.(1).(1));
       ignore
         (H.print_axes handle axes {A.xmin = -3.;xmax = 3.;ymin=0.;ymax = 9.});
       H.f handle parabola (-3.) 3.;
