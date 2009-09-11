@@ -147,8 +147,11 @@ struct
 
   let save t =
     let st = get_state t in
-    (* Make a copy of the record so that further actions do not modify it *)
-    let state_copy = { st with color = st.color } in
+    (* Make a copy of the record so that further actions do not modify
+       it. We need to store a *copy* of the ctm, because
+       scaling/translation/rotation mustn't modify this stored
+       matrix.*)
+    let state_copy = { st with ctm = Archimedes.Matrix.copy st.ctm} in
     Stack.push state_copy t.history
 
   let restore t =
@@ -380,7 +383,10 @@ struct
 
   let rotate t ~angle = Matrix.rotate (get_state t).ctm ~angle
 
-  let set_matrix t m = (get_state t).ctm <- m
+  let set_matrix t m =
+    (*Replaces the ctm with a *copy* of m so that modifying m does not
+      change the (newly set) coordinate system.*)
+    (get_state t).ctm <- Matrix.copy m
 
   let get_matrix t = Matrix.copy (get_state t).ctm
 

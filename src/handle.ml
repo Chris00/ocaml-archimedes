@@ -414,6 +414,9 @@ let get_mark_size t = (Sizes.get_marks t.current_vp.scalings) *. usr_marks
 let get_font_size t = (Sizes.get_marks t.current_vp.scalings) *. usr_ts
 
 
+
+let from_backend f t = f t.backend
+
 (* Backend primitives (not overriden by viewport system)
  **********************************************************************)
 let add_order f t = Queue.add f t.current_vp.orders
@@ -593,10 +596,22 @@ let text_extents t txt =
 let render t name =
   let marks = Sizes.get_marks t.current_vp.scalings in
   let f () =
+    let m = Backend.get_matrix t.backend in
+    Printf.printf "Handle.render before %f %f %f %f %f %f\n%!"
+      m.xx m.xy m.yx m.yy m.x0 m.y0;
     let ctm = Coordinate.use t.backend t.normalized in
+    let m = Backend.get_matrix t.backend in
+    Printf.printf "Handle.render* %f %f %f %f %f %f\n%!"
+      m.xx m.xy m.yx m.yy m.x0 m.y0;
     Backend.scale t.backend marks marks;
+    let m = Backend.get_matrix t.backend in
+    Printf.printf "Handle.render %f %f %f %f %f %f\n%!"
+      m.xx m.xy m.yx m.yy m.x0 m.y0;
     Pointstyle.render name t.backend;
-    Coordinate.restore t.backend ctm
+    Coordinate.restore t.backend ctm;
+    let m = Backend.get_matrix t.backend in
+    Printf.printf "Handle.render after %f %f %f %f %f %f\n%!"
+      m.xx m.xy m.yx m.yy m.x0 m.y0
   in
   let extents = Pointstyle.extents name in
   update_ranges t (extents.x *. marks) (extents.y *. marks);

@@ -167,8 +167,10 @@ struct
 
   let save t =
     let st = get_state t in
-    (* Make a copy of the record so that further actions do not modify it *)
-    let state_copy = { st with color = st.color } in
+    (* Make a copy of the record so that further actions do not modify
+       it. We need to store a *copy* of the ctm, because
+       scaling/translation/rotation mustn't modify this stored matrix.*)
+    let state_copy = { st with ctm = Archimedes.Matrix.copy st.ctm} in
     Stack.push state_copy t.history;
     write t "\\begin{scope}";
     t.indent <- t.indent + 2
@@ -283,7 +285,7 @@ struct
   let get_line_width t =
     let s = (get_state t).linewidth in
     let len = String.length s in
-    let s' = String.sub s 11 (len - 13) in (*removes 'line width=' and 'cm'*)
+    let s' = String.sub s 11 (len - 11) in (*removes 'line width='*)
     float_of_string s'
 
 
@@ -513,7 +515,10 @@ struct
 
   let rotate t ~angle = Archimedes.Matrix.rotate (get_state t).ctm ~angle
 
-  let set_matrix t m = (get_state t).ctm <- m
+  let set_matrix t m =
+    (*Sets a copy to avoid that modifications of matrix influence
+      the backend's coordinate system.*)
+    (get_state t).ctm <- Archimedes.Matrix.copy m
 
   let get_matrix t = Archimedes.Matrix.copy (get_state t).ctm
 

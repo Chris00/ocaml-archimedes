@@ -22,6 +22,7 @@ open Printf
    loadable dynamically so must be referenced here so that pluging
    linking succeeds. *)
 module ForLinking_1__ = Callback
+(*module ForLinking_2__ = Hashtbl*)
 
 (* Without the following, the native version reports "undefined
    symbol: caml_hash_variant" when loading Cairo. *)
@@ -268,7 +269,7 @@ let string_of_error = function
   | Corrupted_dependency fname ->
       sprintf "The dependency file %s is corrupted." fname
   | Non_loadable_dependency fname ->
-      sprintf "The libray %s (occurring as a plugin dependency) cannot \
+      sprintf "The library %s (occurring as a plugin dependency) cannot \
         be loaded" fname
   | Nonexistent bk -> sprintf "The backend %S is not found" bk
   | Not_loadable(bk, e) ->

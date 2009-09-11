@@ -159,7 +159,7 @@ let () =
                B.rel_line_to handle 1. 0.5;
                B.rel_line_to handle (-1.) 0.5;
                B.rel_line_to handle 0. (-1.);
-            B.fill handle)
+               B.fill handle)
     {x=(-0.5); y=(-0.5); w=1.;h=1.};
   add "<||" (fun handle ->
                B.rel_move_to handle 0.5 (-0.5);
@@ -182,50 +182,66 @@ let () =
     {x=(-0.5); y=(-0.5); w=1.;h=1.};
   add "p" (fun handle ->
              B.rel_move_to handle 0. 1.;
-             for i = 1 to 5 do
-               let angle = (float (2*i)) *. pi /. 5. in
-               let cosa = cos angle
-               and sina = sin angle in
-               (*We want (0,1) and other points uniformly. It is
-                 equivalent to get the axes rotated.*)
-               B.rel_line_to handle (-.sina) cosa;
-             done;
+             let rec next_vertex i x y=
+               if i <= 5 then
+                 (let angle = (float (2*i)) *. pi /. 5. in
+                  let cosa = cos angle
+                  and sina = sin angle in
+                  (*We want (0,1) as vertex, then all the others
+                    uniformly. We have to make a rotation of pi/2; or
+                    equivalently, switching sin and cos, and take the
+                    opposite sign for sin.*)
+                  B.rel_line_to handle ( -.sina -.x) (cosa -.y);
+                  next_vertex (i+1) ( -.sina) cosa)
+             in next_vertex 0 0. 1.;
              B.stroke handle)
     {x=(-0.5); y=(-0.5); w=1.;h=1.};
   add "P" (fun handle ->
              B.rel_move_to handle 0. 1.;
-             for i = 1 to 5 do
-               let angle = (float (2*i)) *. pi /. 5. in
-               let cosa = cos angle
-               and sina = sin angle in
-               (*We want (0,1) and other points uniformly. It is
-                 equivalent to get the axes rotated.*)
-               B.rel_line_to handle (-.sina) cosa;
-             done;
+             let rec next_vertex i x y =
+               if i <= 5 then
+                 (let angle = (float (2*i)) *. pi /. 5. in
+                  let cosa = cos angle
+                  and sina = sin angle in
+                  (*We want (0,1) as vertex, then all the others
+                    uniformly. We have to make a rotation of pi/2; or
+                    equivalently, switching sin and cos, and take the
+                    opposite sign for sin.*)
+                  B.rel_line_to handle ( -.sina -.x) (cosa -.y);
+                  next_vertex (i+1) ( -.sina) cosa)
+             in next_vertex 0 0. 1.;
              B.fill handle)
     {x=(-0.5); y=(-0.5); w=1.;h=1.};
   add "h" (fun handle ->
              B.rel_move_to handle 0. 1.;
-             for i = 1 to 6 do
-               let angle = (float (2*i)) *. pi /. 6. in
-               let cosa = cos angle
-               and sina = sin angle in
-               (*We want (0,1) and other points uniformly. It is
-                 equivalent to get the axes rotated.*)
-               B.rel_line_to handle (-.sina) cosa;
-             done;
+             let rec next_vertex i x y =
+               if i <= 6 then
+                 (let angle = (float i) *. pi /. 3. in
+                  let cosa = cos angle
+                  and sina = sin angle in
+                  (*We want (0,1) as vertex, then all the others
+                    uniformly. We have to make a rotation of pi/2; or
+                    equivalently, switching sin and cos, and take the
+                    opposite sign for sin.*)
+                  B.rel_line_to handle ( -.sina -.x) (cosa -.y);
+                  next_vertex (i+1) ( -.sina) cosa)
+             in next_vertex 0 0. 1.;
              B.stroke handle)
     {x=(-0.5); y=(-0.5); w=1.;h=1.};
   add "H" (fun handle ->
              B.rel_move_to handle 0. 1.;
-             for i = 1 to 6 do
-               let angle = (float (2*i)) *. pi /. 6. in
-               let cosa = cos angle
-               and sina = sin angle in
-               (*We want (0,1) and other points uniformly. It is
-                 equivalent to get the axes rotated.*)
-               B.rel_line_to handle (-.sina) cosa;
-             done;
+             let rec next_vertex i x y =
+               if i <= 6 then
+                 (let angle = (float i) *. pi /. 3. in
+                  let cosa = cos angle
+                  and sina = sin angle in
+                  (*We want (0,1) as vertex, then all the others
+                    uniformly. We have to make a rotation of pi/2; or
+                    equivalently, switching sin and cos, and take the
+                    opposite sign for sin.*)
+                  B.rel_line_to handle ( -.sina -.x) (cosa -.y);
+                  next_vertex (i+1) ( -.sina) cosa)
+             in next_vertex 0 0. 1.;
              B.fill handle)
     {x=(-0.5); y=(-0.5); w=1.;h=1.};
   add "tic_up" (fun handle ->
