@@ -29,10 +29,16 @@ struct
   let make x y = {xmin = x;ymin = y; xmax = x; ymax = y}
 
   let update rg x y =
+    let really_update =
+      rg.xmin > x || rg.xmax < x || rg.ymin > y || rg.ymax < y
+    in
     if rg.xmin > x then rg.xmin <- x;
     if rg.xmax < x then rg.xmax <- x;
     if rg.ymin > y then rg.ymin <- y;
-    if rg.ymax < y then rg.ymax <- y
+    if rg.ymax < y then rg.ymax <- y;
+    really_update
+
+  let copy ranges = {ranges with xmin = ranges.xmin}
 
   let of_rect rect =
     {xmin = rect.x; ymin = rect.y;
@@ -591,8 +597,8 @@ let get_margins t ?(axes_meeting = axes_meeting) ~normalization
     ~lines ~marks ~font_size ranges backend =
   let x,y = axes_meeting t.axes ranges in
   let axes_ranges = Ranges.make x y in
-  Ranges.update axes_ranges ranges.xmin ranges.ymin;
-  Ranges.update axes_ranges ranges.xmax ranges.ymax;
+  ignore (Ranges.update axes_ranges ranges.xmin ranges.ymin);
+  ignore (Ranges.update axes_ranges ranges.xmax ranges.ymax);
   (*let coord = Matrix.make_translate axes_ranges.xmin axes_ranges.ymin in
   Matrix.scale coord
     (axes_ranges.xmax -. axes_ranges.xmin) (axes_ranges.ymax -. axes_ranges.ymin);
@@ -616,9 +622,9 @@ let print t ~normalization ~lines ~marks ~font_size ~ranges
   Backend.stroke backend;
   Coordinate.restore backend ctm;
   let xrange = Ranges.make ranges.xmin y in
-  Ranges.update xrange ranges.xmax y;
+  ignore (Ranges.update xrange ranges.xmax y);
   let yrange = Ranges.make x ranges.ymin in
-  Ranges.update yrange x ranges.ymax;
+  ignore (Ranges.update yrange x ranges.ymax);
   Printf.printf "X%!";
   print_tics t.xaxis xrange print_tic normalization marks font_size backend;
   (*X axis*)

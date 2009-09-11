@@ -25,8 +25,10 @@ type ranges =
 module Ranges: sig
   val make : float -> float -> ranges
 
-  val update : ranges -> float -> float -> unit
+  val update : ranges -> float -> float -> bool
+    (**Returns [true] if the point really updated the ranges.*)
 
+  val copy: ranges -> ranges
   val to_rect: ranges -> rectangle
   val of_rect: rectangle -> ranges
 end

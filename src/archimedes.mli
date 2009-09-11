@@ -141,11 +141,7 @@ end
 (** Axes maker and convenient ways to create axes. *)
 module Axes: sig
   (** A data structure holding ranges. Note that, contrary to rectangle
-      fields, these ones are mutable. Note also that there's no
-      restriction on using the values. However, we make the convention
-      that the first value ([x0] or [y0]) is less than the second one,
-      and the subsequent usings of this record satisfy this
-      convention.*)
+      fields, these ones are mutable, but cannot be modified.*)
   type ranges =
       private {mutable xmin:float;
                mutable ymin:float;
@@ -183,6 +179,7 @@ module Axes: sig
              is computed as [(xmin +. t *.(xmax -. xmin), ymin +. u
              *. (ymax -. ymin) )].*)
       ]
+        (**Different ways of printing axes.*)
 
   type data = [`Text_label of string array * float
         (**Labels will be text labels, rotated by the second argument*)
@@ -191,11 +188,10 @@ module Axes: sig
     | `Expnumber
         (**Labels of the form [10^x] with [x] abscissa or ordinate*)
     ]
+      (**Type of data to put as labels on major tics.*)
 
   type tic = [ `P of string ]
       (**Type for tics.*)
-
-  type label_collection
 
   type loc_tics =
       [ `Fixed_rel of (float * bool) list
@@ -221,9 +217,14 @@ module Axes: sig
     ]
 
   type tic_position
+    (**The type on which a [loc_tics] converts to. It is a shortcut
+       for a functional which is stored in an axis. See also
+       [get_position] (FIXME: to be added later in this interface).*)
+
+  type label_collection
 end
 
-
+(**Iterations on points.*)
 module Iterator : sig
   type t
 
@@ -255,22 +256,38 @@ module Iterator : sig
   val extents : t -> Axes.ranges
 end
 
+
+(**The main module.*)
 module Handle: sig
   type t
   val make : dirs:string list -> string -> float -> float -> t
   val close : t -> unit
+  val immediate : t -> bool -> unit
+    (**[immediate handle b] makes the handle do immediately all the
+       orders if [b] is [true]; it makes the handle wait an [immediate
+       handle true] or a [close handle] to do the orders if [b] is
+       false. *)
+
+  (**Viewports creation.*)
   module Viewport :
   sig
     type vp
+      (**The type for viewports.*)
     val make :
       t -> xmin:float -> xmax:float -> ymin:float -> ymax:float -> vp
+      (**[make t ~xmin ~ymin ~ymin ~ymax] creates a new viewport,
+         whose coordinate system makes the rectangle delimited by the
+         given values (expressed in the current [t] coordinate system) as
+         the new unit square.*)
     val sub :
       vp -> xmin:float -> xmax:float -> ymin:float -> ymax:float -> vp
+      (**Same as [make] but the values are expressed in viewport's coordinates.*)
     val make_rect :
       t -> x:float -> y:float -> w:float -> h:float -> vp
+      (**[make_rect t x y w h] is equivalent to [make t x y (x+.w) (y+.h)].*)
     val sub_rect :
       vp -> x:float -> y:float -> w:float -> h:float -> vp
-    val use : vp -> unit
+      (**[sub_rect vp x y w h] is equivalent to [sub vp x y (x+.w) (y+.h)].*)
 
     (**{2 Convenience functions to create viewports}*)
     val rows : t -> int -> vp array
@@ -280,6 +297,7 @@ module Handle: sig
     val sub_columns : vp -> int -> vp array
     val sub_matrix : vp -> int -> int -> vp array array
   end
+  (**{2 Using viewports}*)
   val use : Viewport.vp -> unit
   val use_initial : t -> unit
   val set_line_width : t -> float -> unit
@@ -290,6 +308,8 @@ module Handle: sig
   val set_global_font_size : t -> float -> unit
   val get_line_width : t -> float
   val get_mark_size : t -> float
+
+  (**{2 Backend primitives}*)
   val width : t -> float
   val height : t -> float
   val set_color : t -> Color.t -> unit
@@ -324,13 +344,15 @@ module Handle: sig
   val save_vp : t -> unit
   val restore_vp : t -> unit
   val select_font_face : t -> slant -> weight -> string -> unit
-  (* val show_text : *)
-  (*   t -> *)
-  (*   rotate:float -> *)
-  (*   x:float -> y:float -> Backend.text_position -> string -> unit *)
-  (* val text_extents : t -> string -> rectangle *)
+  val show_text :
+    t ->
+    rotate:float ->
+    x:float -> y:float -> text_position -> string -> unit
+(*  val text_extents : t -> string -> rectangle*)
   val render : t -> string -> unit
   (* val mark_extents : t -> string -> rectangle *)
+
+  (**{2 Plotting}*)
   val f :
     t ->
     ?color: Color.t ->

@@ -16,8 +16,8 @@ let () =
     Printf.printf "%s\n***************************\n%!" s;
     try
       let handle = H.make ~dirs:[ "../src"; "./src"] s 250. 150. in
-      (*H.set_mark_size handle 10.;*)
-      (*H.set_line_width handle 2.;*)
+      H.set_mark_size handle 10.;
+      H.set_line_width handle 10.;
       H.rectangle handle (-1.) (-1.) 10. 6.;
       H.stroke handle;
       for i = 0 to 31 do

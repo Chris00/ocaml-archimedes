@@ -69,7 +69,7 @@ let () =
              B.fill handle)
     {x=(-0.5); y=(-0.5); w=1.;h=1.};
   add "d" (fun handle ->
-             B.rel_move_to handle (-1.) 0.;
+             B.rel_move_to handle (-0.5) 0.;
              B.rel_line_to handle 0.5 0.5;
              B.rel_line_to handle 0.5 (-0.5);
              B.rel_line_to handle (-0.5) (-0.5);
@@ -78,7 +78,7 @@ let () =
              B.stroke handle)
     {x=(-0.5); y=(-0.5); w=1.;h=1.};
   add "D" (fun handle ->
-             B.rel_move_to handle (-1.) 0.;
+             B.rel_move_to handle (-0.5) 0.;
              B.rel_line_to handle 0.5 0.5;
              B.rel_line_to handle 0.5 (-0.5);
              B.rel_line_to handle (-0.5) (-0.5);

@@ -163,8 +163,10 @@ type viewport =
       mutable ranges: Axes.ranges option;
       (*To update the ranges correctly, we need the current point.*)
       mutable current_pt: (float * float) option;
-      (*What has to be plotted in this viewport*)
-      orders: (unit -> unit) Queue.t;
+      (*What has to be plotted in this viewport. Mutable so that if we
+        want to do the orders but preserve the queue, we replace it by a
+        (created and updated) copy.*)
+      mutable orders: (unit -> unit) Queue.t;
       (*For saving and restoring states*)
       scalings_hist : (float * float * float) Stack.t;
     }
@@ -187,10 +189,17 @@ type t =
      mutable current_coord: Coordinate.t;(*Currently used coordinate
                                            transformation.*)
      mutable current_vp : viewport;(*Current viewport*)
-     used_vp: (Coordinate.t * viewport) Queue.t;
+     mutable used_vp: (Coordinate.t * viewport) Queue.t;
      (*Viewports that have been used. We can ensure that only one copy
        of each used viewport will be in this queue -- because of the
-       viewport flag.*)
+       viewport flag "used".
+
+       Note: mutability of this field is needed for efficiency reasons
+       -- immediate drawing needs to do the orders, but preserve them;
+       to avoid recopying the orders, we simply replace them by a
+       (created and updated) copy.*)
+     mutable immediate_drawing:bool;
+     (*Says whether we draw immediately or wait for closing.*)
     }
 
 (*Default line width, text size, mark size: if the height is less than
@@ -205,15 +214,18 @@ let def_lw, def_ts, def_marks = 0.002, 0.12, 0.01
 (*User transformations. To get the previous defaults, the user will
   enter resp. 1, 12, 1. (12 is determined experimentally using cairo:
   a 100 x 100 pixels output can contain 10 lines of text, putting font
-  size as 12.*)
+  size as 12.) *)
 let usr_lw, usr_ts, usr_marks = 500., 100., 100.
 
 
 (*Easy update Axes.ranges options*)
 let update_ranges t x y =
   match t.current_vp.ranges with
-    None -> (t.current_vp.ranges <- Some (Axes.Ranges.make x y))
-  | Some ranges -> Axes.Ranges.update ranges x y
+    None ->
+      t.current_vp.ranges <- Some (Axes.Ranges.make x y);
+      true
+  | Some ranges ->
+      Axes.Ranges.update ranges x y
 
 let make ~dirs name w h =
   let backend = Backend.make ~dirs name w h in
@@ -242,16 +254,22 @@ let make ~dirs name w h =
    current_coord = coord;
    current_vp = initial;
    used_vp = init_used_vp;
+   immediate_drawing = false;
   }
 
-let close t =
+let do_orders t preserve =
+  let vp_storing_queue = Queue.create () in
   let rec make_viewports () =
     if not (Queue.is_empty t.used_vp) then (
       Printf.printf "\nPop a vp%!";
       let coord, vp = Queue.pop t.used_vp in
+      let next_iter () =
+        if preserve then Queue.push (coord, vp) vp_storing_queue;
+        make_viewports ()
+      in
       match vp.ranges with
         None -> (*No ranges, so no drawings *)
-          make_viewports ()
+          next_iter ()
       | Some ranges ->
           Printf.printf ">%!";
           let diffx =  ranges.Axes.xmax -. ranges.Axes.xmin
@@ -263,19 +281,42 @@ let close t =
           Coordinate.translate coord_user_device
             (-.ranges.Axes.xmin) (-.ranges.Axes.ymin);
           ignore (Coordinate.use t.backend coord_user_device);
+          let orders_queue_opt =
+            if preserve then Some (Queue.create ())
+            else None
+          in
           let rec make_orders orders =
             if not (Queue.is_empty orders) then (
               Printf.printf "*%!";
-              Queue.pop orders ();
-              make_orders orders
-            ) in
+              let order = Queue.pop orders in
+              order ();
+              (match orders_queue_opt with None -> ()
+               | Some q -> Queue.push order q);
+              make_orders orders)
+            else match orders_queue_opt with
+              None -> ()
+            | Some q -> vp.orders <- q;
+          in
           make_orders vp.orders;
-          make_viewports ())
-  in
-  make_viewports ();
+          next_iter ())
+    else
+      (*Note: if preserve then vp_storing_queue contains all viewports; if
+        not, it is a (fresh) empty queue. In any cases, we can do the replacement.*)
+      t.used_vp <- vp_storing_queue;
+  in make_viewports ()
+
+let close t =
+  do_orders t false;
   Backend.close t.backend
 
+
+let immediate t b =
+  if b then do_orders t true;
+  t.immediate_drawing <- b
+
 let check t =
+  (*A handle is closed iff there's no stored viewports (initialization
+    contains the initial viewport).*)
   if Queue.is_empty t.used_vp then
     failwith "Archimedes.Handle: closed"
 
@@ -596,22 +637,10 @@ let text_extents t txt =
 let render t name =
   let marks = Sizes.get_marks t.current_vp.scalings in
   let f () =
-    let m = Backend.get_matrix t.backend in
-    Printf.printf "Handle.render before %f %f %f %f %f %f\n%!"
-      m.xx m.xy m.yx m.yy m.x0 m.y0;
     let ctm = Coordinate.use t.backend t.normalized in
-    let m = Backend.get_matrix t.backend in
-    Printf.printf "Handle.render* %f %f %f %f %f %f\n%!"
-      m.xx m.xy m.yx m.yy m.x0 m.y0;
     Backend.scale t.backend marks marks;
-    let m = Backend.get_matrix t.backend in
-    Printf.printf "Handle.render %f %f %f %f %f %f\n%!"
-      m.xx m.xy m.yx m.yy m.x0 m.y0;
     Pointstyle.render name t.backend;
     Coordinate.restore t.backend ctm;
-    let m = Backend.get_matrix t.backend in
-    Printf.printf "Handle.render after %f %f %f %f %f %f\n%!"
-      m.xx m.xy m.yx m.yy m.x0 m.y0
   in
   let extents = Pointstyle.extents name in
   update_ranges t (extents.x *. marks) (extents.y *. marks);
