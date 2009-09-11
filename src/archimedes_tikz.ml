@@ -124,7 +124,7 @@ struct
     (*Says whether a current point is active.*)
     mutable x:float;
     mutable y:float;
-    (*Coordinates of the current point (if any)*)
+    (*Coordinates of the current point (if any), in device coordinates.*)
     mutable fsize:float;
     mutable slant_weight_family:string;
     mutable path_extents: Archimedes.rectangle;

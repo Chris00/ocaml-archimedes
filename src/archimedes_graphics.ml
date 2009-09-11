@@ -120,7 +120,7 @@ struct
     mutable line_width: float;
     mutable dash_offset: float;
     mutable dash: float array;
-    (* (x,y): current point (when creating a path), in user coordinates. *)
+    (* (x,y): current point (when creating a path), in device coordinates. *)
     mutable curr_pt: bool;
     mutable x: float;
     mutable y: float;
@@ -246,8 +246,8 @@ struct
     st.current_path <- MOVE_TO(x',y') :: st.current_path;
     (* move only updates the current point but not the path extents *)
     st.curr_pt <- true;
-    st.x <- x;
-    st.y <- y
+    st.x <- x';
+    st.y <- y'
 
   let line_to t ~x ~y =
     let st = get_state t in
@@ -263,8 +263,8 @@ struct
       st.curr_pt <- true;
       st.current_path <- MOVE_TO(x',y') :: st.current_path
     );
-    st.x <- x;
-    st.y <- y
+    st.x <- x';
+    st.y <- y'
 
   let rel_move_to t ~x ~y =
     let st = get_state t in move_to t (st.x +. x) (st.y +. y)
@@ -290,8 +290,8 @@ struct
     (* Update the current point and extents *)
     st.path_extents <-
       update_curve st.path_extents x0' y0' x1' y1' x2' y2' x3' y3';
-    st.x <- x3;
-    st.y <- y3
+    st.x <- x3';
+    st.y <- y3'
 
 
   let rectangle t ~x ~y ~w ~h =
@@ -305,8 +305,8 @@ struct
     st.path_extents <-
       update_rectangle st.path_extents x' y' (x' +. w') (y' +. h');
     st.curr_pt <- true;
-    st.x <- x;
-    st.y <- y
+    st.x <- x';
+    st.y <- y'
 
   let arc t ~r ~a1 ~a2 =
     let st = get_state t in
@@ -320,10 +320,15 @@ struct
       (*This coefficient makes the middle point of a Bezier curve
         coïncide with the arc.*)
       let f z a = coeff *. (z +. a) in
-      let x = st.x and y = st.y in
-      rel_move_to t rcos1 rsin1;
-      curve_to t (f x rsin1) (f y rcos1) (f x rsin2) (f y rcos2)
-        (x+.rcos2) (y+.rsin2)
+      if st.curr_pt then
+        let x = st.x and y = st.y in
+        rel_move_to t rcos1 rsin1;
+        curve_to t (f x rsin1) (f y rcos1) (f x rsin2) (f y rcos2)
+          (x+.rcos2) (y+.rsin2);
+        st.curr_pt <- true;
+        st.x <- x-.rcos1+.rcos2;
+        st.y <- y-.rsin1+.rsin2
+      else failwith "Archimedes_graphics.arc: no current point"
         (* )
            else (
            let a3 = (a1 +. a2) /.2. in
