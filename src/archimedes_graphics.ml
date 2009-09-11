@@ -300,7 +300,7 @@ struct
     and w', h' = Matrix.transform_distance st.ctm w h in
     (*FIXME: this is not sufficient to make a rectangle ("rectangle on
       their corner"...)*)
-    st.current_path <- RECTANGLE(x, y, w, h) :: st.current_path;
+    st.current_path <- RECTANGLE(x', y', w', h') :: st.current_path;
     (* Update the current point and extents *)
     st.path_extents <-
       update_rectangle st.path_extents x' y' (x' +. w') (y' +. h');
@@ -326,8 +326,8 @@ struct
         curve_to t (f x rsin1) (f y rcos1) (f x rsin2) (f y rcos2)
           (x+.rcos2) (y+.rsin2);
         st.curr_pt <- true;
-        st.x <- x-.rcos1+.rcos2;
-        st.y <- y-.rsin1+.rsin2
+        st.x <- x+.rcos2;
+        st.y <- y+.rsin2
       else failwith "Archimedes_graphics.arc: no current point"
         (* )
            else (
@@ -419,13 +419,14 @@ struct
        in the device coord. system. *)
     let dx, dy = Matrix.transform_distance st.ctm (cos rotate) (sin rotate) in
     let angle = atan2 dy dx in
-    let x', y' = (*Matrix.transform_point st.ctm*) x, y in
+    let x', y' = Matrix.transform_point st.ctm x y in
     if abs_float angle <= 1e-6 then
-      let w, h = Graphics.text_size txt in
+      let w', h' = Graphics.text_size txt in
+      (* text_size returns size already in device coords.*)
       (*let wx, wy = Matrix.transform_distance st.ctm (float w) 0.
       and hx, hy = Matrix.transform_distance st.ctm 0. (float h) in*)
-      let wx = float w and wy = 0. in
-      let hx = 0. and hy = float h in
+      let wx = float w' and wy = 0. in
+      let hx = 0. and hy = float h' in
       let x'' =  match pos with
         | Archimedes.CC | Archimedes.CT | Archimedes.CB ->
             x' -. (wx +. hx) *. 0.5
