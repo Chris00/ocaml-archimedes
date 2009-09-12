@@ -364,8 +364,8 @@ module Handle: sig
   val xy :
     t ->
     ?axes:([> Axes.axes ],[> Axes.tic]) Axes.t ->
-    ?f:(t -> string -> float -> float -> unit) ->
-    ?mark:string -> Iterator.t -> unit
+    ?mark:string -> ?f:(t -> float -> float -> unit) ->
+    Iterator.t -> unit
 
   val make_xaxis :
     ([> Axes.tic] as 'a) -> ([> Axes.data] as 'b) -> text_position -> 'a ->
