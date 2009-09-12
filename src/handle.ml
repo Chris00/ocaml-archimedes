@@ -274,6 +274,15 @@ let do_viewport_orders ?orders_queue coords vp backend =
       ()
   | Some ranges ->
       let ctm = Coordinate.use backend coords.user_device in
+      let m1 = coords.vp_device.Coordinate.ctm in
+      let m2 = coords.user_device.Coordinate.ctm in
+      let m3 = coords.user_device.Coordinate.tm in
+      Printf.printf "vp_device: %f %f %f %f %f %f\n%!"
+        m1.xx m1.xy m1.yx m1.yy m1.x0 m1.y0;
+      Printf.printf "user_device: %f %f %f %f %f %f\n%!"
+        m2.xx m2.xy m2.yx m2.yy m2.x0 m2.y0;
+      Printf.printf "user_vp: %f %f %f %f %f %f\n%!"
+        m3.xx m3.xy m3.yx m3.yy m3.x0 m3.y0;
       let rec make_orders orders =
         if not (Queue.is_empty orders) then (
           Printf.printf "*%!";
@@ -328,50 +337,58 @@ let update_coords t x y =
       let xmin = ranges.Axes.xmin
       and xmax = ranges.Axes.xmax
       and ymin = ranges.Axes.ymin
-      and ymax = ranges.Axes.xmax in
+      and ymax = ranges.Axes.ymax in
       let one_point = xmin = xmax && ymin = ymax in
       let updated = Axes.Ranges.update ranges x y in
+      Printf.printf "Ranges: %f %f to %f %f, point %f %f\n%!"
+        xmin ymin xmax ymax x y;
       if updated then (
         (*Coordinate changement*)
-        if one_point then (
-          (*update to fit only the two points x,y and xmin,ymin -- same as xmax, ymax.*)
-          let xmin = min x xmin
-          and xmax = max x xmax
-          and ymin = min y ymin
-          and ymax = min y ymax in
-          let new_coord =
-            Coordinate.make_translate t.coords.vp_device xmin ymin
-          in
-          Coordinate.scale new_coord (xmax -. xmin) (ymax -. ymin);
-          t.coords.user_device <- new_coord
+        let xmin = min x xmin
+        and xmax = max x xmax
+        and ymin = min y ymin
+        and ymax = max y ymax in
+        let diffx = xmax -. xmin
+        and diffy = ymax -. ymin in
+        let new_matrix =
+          Matrix.make_scale (1. /.diffx) (1. /.diffy)
+        in
+        Matrix.translate new_matrix ( -.xmin) ( -.ymin);
+        Printf.printf "New user_vp: %f %f %f %f %f %f\n%!"
+          new_matrix.xx new_matrix.xy new_matrix.yx new_matrix.yy
+          new_matrix.x0 new_matrix.y0;
+        Coordinate.transform t.coords.user_device new_matrix;
+        (* 
+           (
+        (*Translate the current coordinate to the minimal values;
+           then make the scale so that "all is taken".*)
+           Coordinate.translate t.coords.user_device (min x xmin) (min y ymin);
+           let scal vmin vmax v =
+           let diff = vmax -. vmin
+           and diff0 = v -. vmin
+           and diff1 = vmax -. v in
+           let maxi = max (max diff0 diff1) diff in
+           maxi /. diff
+           in
+           Coordinate.scale t.coords.user_device
+           (scal xmin xmax x) (scal ymin ymax y)
+           ) *)
+        (*In case of immediate drawing, needs to replot everything for this viewport.*)
+        if t.immediate_drawing then (
+          (*Deletes the drawing by covering.*)
+          (*FIXME: how to manage with transparent backgrounds?*)
+          let ctm = Coordinate.use t.backend t.coords.vp_device in
+          Backend.save t.backend;
+          (*FIXME: viewport's background?*)
+          Backend.set_color t.backend Color.white;
+          Backend.rectangle t.backend 0. 0. 1. 1.;
+          Backend.fill t.backend;
+          Backend.restore t.backend;
+          Coordinate.restore t.backend ctm;
+          (*Now, replot in the new coordinates.*)
+          do_viewport_orders t.coords t.vp t.backend
         )
-        else (
-          (*Translate the current coordinate to the minimal values;
-            then make the scale so that "all is taken".*)
-          Coordinate.translate t.coords.user_device (min x xmin) (min y ymin);
-          let scal vmin vmax v =
-            let diff = vmax -. vmin
-            and diff0 = v -. vmin
-            and diff1 = vmax -. v in
-            let maxi = max (max diff0 diff1) diff in
-            maxi /. diff
-          in
-          Coordinate.scale t.coords.user_device
-            (scal xmin xmax x) (scal ymin ymax y)
-        );
-        (*In every case, needs to replot everything for this viewport.*)
-        (*Deletes the drawing by covering.*)
-        (*FIXME: how to manage with transparent backgrounds?*)
-        let ctm = Coordinate.use t.backend t.coords.vp_device in
-        Backend.save t.backend;
-        (*FIXME: viewport's background?*)
-        Backend.set_color t.backend Color.white;
-        Backend.rectangle t.backend 0. 0. 1. 1.;
-        Backend.fill t.backend;
-        Backend.restore t.backend;
-        Coordinate.restore t.backend ctm;
-        (*Now, replot in the new coordinates.*)
-        do_viewport_orders t.coords t.vp t.backend)
+      )
 
 
 
