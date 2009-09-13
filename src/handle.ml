@@ -208,6 +208,9 @@ type t =
        (created and updated) copy.*)
      mutable immediate_drawing:bool;
      (*Says whether we draw immediately or wait for closing.*)
+     mutable only_immediate : bool
+       (*Says whether an order has only to be made immediately, or
+         must be stored. This field is not modifiable by users.*)
     }
 
 (*Default line width, text size, mark size: if the height is less than
@@ -259,6 +262,7 @@ let make ~dirs name w h =
    vp = initial;
    used_vp = init_used_vp;
    immediate_drawing = false;
+   only_immediate = false;
   }
 
 
@@ -358,7 +362,7 @@ let update_coords t x y =
           new_matrix.xx new_matrix.xy new_matrix.yx new_matrix.yy
           new_matrix.x0 new_matrix.y0;
         Coordinate.transform t.coords.user_device new_matrix;
-        (* 
+        (*
            (
         (*Translate the current coordinate to the minimal values;
            then make the scale so that "all is taken".*)
@@ -437,12 +441,15 @@ struct
 
 
   let make_rect handle ~x ~y ~w ~h =
+    Printf.printf "new viewport:%f %f w:%f h:%f\n%!" x y w h;
+
     let ndrawings = Coordinate.make_translate handle.coords.vp_device x y in
     Coordinate.scale ndrawings w h;
     inner_make handle ndrawings
 
 
   let sub_rect vp ~x ~y ~w ~h =
+    Printf.printf "sub viewport:%f %f w:%f h:%f\n%!" x y w h;
     let ndrawings = Coordinate.make_translate vp.tcs.vp_device x y in
     Coordinate.scale ndrawings w h;
     inner_make vp.handle ndrawings
@@ -539,8 +546,9 @@ let from_backend f t = f t.backend
 (* Backend primitives (not overriden by viewport system)
  **********************************************************************)
 let add_order f t =
-  Queue.add f t.vp.orders;
-  if t.immediate_drawing then f ()
+  if t.only_immediate then f ()
+  else ( Queue.add f t.vp.orders;
+         if t.immediate_drawing then f ())
 
 let get_current_pt t = match t.vp.current_pt with
     None -> raise No_current_point
@@ -760,8 +768,10 @@ let f t ?color ?nsamples ?min_step
     (match color with
       Some color -> Backend.set_color t.backend color
     | None -> ());
+    t.only_immediate <- true;
     fct (fun () -> do_with t) ();
     finish t;
+    t.only_immediate <- false;
     Backend.restore t.backend;
   in
   update_coords t ranges.Axes.xmin ranges.Axes.ymin;
@@ -782,7 +792,11 @@ let xy t ?axes ?(mark = "X") ?(f = (xy_mark mark)) iter =
         do_with t x y;
         iterate do_with
   in
-  let f () = iterate f in
+  let f () =
+    t.only_immediate <- true;
+    iterate f;
+    t.only_immediate <- false;
+  in
   let extents = Iterator.extents iter in
   update_coords t extents.Axes.xmin extents.Axes.ymin;
   update_coords t extents.Axes.xmax extents.Axes.ymax;

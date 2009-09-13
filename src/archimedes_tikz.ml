@@ -101,7 +101,7 @@ let update_curve r x0 y0 x1 y1 x2 y2 x3 y3 =
 
 
 let point_string x y =
-  let sf x = Printf.sprintf "%g" x in
+  let sf x = Printf.sprintf "%.4f" x in
   "("^(sf x)^", "^(sf y)^")"
 
 module B =
@@ -137,7 +137,7 @@ struct
     mutable color_number: int; (*used to give colors a unique name*)
     mutable closed: bool;
     mutable state:state;
-    mutable curr_path:string;
+    mutable curr_path:string Queue.t;
     history: state Stack.t;
     writer: out_channel;(*writes on the file*)
     mutable indent:int;(*indentation of TikZ code*)
@@ -169,7 +169,9 @@ struct
     let st = get_state t in
     (* Make a copy of the record so that further actions do not modify
        it. We need to store a *copy* of the ctm, because
-       scaling/translation/rotation mustn't modify this stored matrix.*)
+       scaling/translation/rotation mustn't modify this stored
+       matrix. On the other hand, the path is common to the original
+       and the copy.*)
     let state_copy = { st with ctm = Archimedes.Matrix.copy st.ctm} in
     Stack.push state_copy t.history;
     write t "\\begin{scope}";
@@ -242,7 +244,7 @@ struct
           closed = false;
           history = Stack.create();
           state = state;
-          curr_path = "";
+          curr_path = Queue.create ();
           writer = writer;
           indent = indent;
         }
@@ -250,12 +252,16 @@ struct
 
   let close ~options t =
     if not(t.closed) then (
+      if not (Queue.is_empty t.curr_path) then
+        Printf.printf
+          "Archimedes_tikz -- warning : closing a backend which contains \
+ a non-empty path.\n%!";
       write t "\\end{tikzpicture}";
       (match options with
-        _::s::_ when s = preamble ->
-          t.indent <- t.indent - 2;
-          write t "\\end{document}"
-      | _ -> ());
+         _::s::_ when s = preamble ->
+           t.indent <- t.indent - 2;
+           write t "\\end{document}"
+       | _ -> ());
       close_out t.writer;
       t.closed <- true;
     )
@@ -324,13 +330,16 @@ struct
 
   let get_line_cap t =
     let st = get_state t in
-    match String.sub st.line_cap 9 (String.length st.line_cap - 9) with
-      (*Removes first characters: 'line cap='*)
+    let cap_string =
+      (*st.line_cap where first characters: 'line cap=' are removed.  *)
+      String.sub st.line_cap 9 (String.length st.line_cap - 9)
+    in
+    match cap_string with
       "butt" -> Archimedes.BUTT
     | "rect" -> Archimedes.SQUARE
     | "round" -> Archimedes.ROUND
     | _ -> failwith ("Archimedes TikZ.line_cap: error; cannot parse "
-                     ^( String.sub st.line_cap 9 (String.length st.line_cap - 9)))
+                     ^cap_string)
 
 
   let set_line_join t join =
@@ -343,14 +352,16 @@ struct
 
   let get_line_join t =
     let st = get_state t in
-    match String.sub st.line_join 10 (String.length st.line_join - 10) with
+    let join_string =
       (*Removes first characters: 'line join='*)
+      String.sub st.line_join 10 (String.length st.line_join - 10)
+    in
+    match join_string with
       "bevel" -> Archimedes.JOIN_BEVEL
     | "miter" -> Archimedes.JOIN_MITER
     | "round" -> Archimedes.JOIN_ROUND
     | _ -> failwith ("Archimedes TikZ.line_join: error; cannot parse "
-                     ^( String.sub st.line_join 10
-                          (String.length st.line_join - 10)))
+                     ^join_string)
 
 
   let set_miter_limit t lim =
@@ -365,20 +376,20 @@ struct
     st.curr_pt <- true;
     st.x <- x;
     st.y <- y;
-    t.curr_path <- t.curr_path^" "^(point_string x y)
+    Queue.add (point_string x y) t.curr_path
 
   let line_to t ~x ~y =
     let st = get_state t in
     let x',y' = Archimedes.Matrix.transform_point st.ctm x y in
     (*Note: if there's no current point then line_to behaves as move_to.*)
     if st.curr_pt then (
-      t.curr_path <- t.curr_path^" -- "^(point_string x' y');
+      Queue.push (" -- "^(point_string x' y')) t.curr_path;
       (* Update extents and current point *)
       let x0', y0' = Archimedes.Matrix.transform_point st.ctm st.x st.y in
       st.path_extents <- update_rectangle st.path_extents x0' y0' x' y';
     )
     else
-    t.curr_path <- t.curr_path^" "^(point_string x' y');
+    Queue.add (point_string x' y') t.curr_path;
     st.curr_pt <- true;
     st.x <- x';
     st.y <- y'
@@ -386,15 +397,24 @@ struct
   let rel_move_to t ~x ~y =
     let st = get_state t in
     let x,y = Archimedes.Matrix.transform_point st.ctm x y in
-    t.curr_path <- t.curr_path^" ++"^(point_string x y);
+    if st.curr_pt then
+      Queue.add (" ++"^(point_string x y)) t.curr_path
+    else failwith "Archimedes_tikz : no_current point";
     st.curr_pt <- true;
     st.x <- st.x +. x;
     st.y <- st.y +. y
 
   let rel_line_to t ~x ~y =
     let st = get_state t in
-    let x,y = Archimedes.Matrix.transform_point st.ctm x y in
-    t.curr_path <- t.curr_path^" -- ++"^(point_string x y);
+    let x,y = Archimedes.Matrix.transform_distance st.ctm x y in
+    let x' = st.x +. x
+    and y' = st.y +. y in
+    if st.curr_pt then (
+      Queue.add ("-- ++"^(point_string x y)) t.curr_path;
+      (* Update extents and current point *)
+      st.path_extents <- update_rectangle st.path_extents st.x st.y x' y'
+    )
+    else failwith "Archimedes_tikz : no_current point";
     st.curr_pt <- true;
     st.x <- st.x +. x;
     st.y <- st.y +. y
@@ -409,12 +429,14 @@ struct
     let x3', y3' = Archimedes.Matrix.transform_point st.ctm x3 y3 in
     let x0', y0' =
       if not st.curr_pt then
-        (t.curr_path <- t.curr_path^" "^(point_string x1' y1');
+        (Queue.add (point_string x1' y1') t.curr_path;
          x1', y1')
       else st.x, st.y
     in
-    t.curr_path <- t.curr_path^" ..controls "^(point_string x1' y1')^
-      " and "^(point_string x2' y2')^".. "^(point_string x3' y3');
+    let curve = " ..controls "^(point_string x1' y1')^
+      " and "^(point_string x2' y2')^".. "^(point_string x3' y3')
+    in
+    Queue.add curve t.curr_path;
     (* Update the current point and extents *)
     st.path_extents <-
       update_curve st.path_extents x0' y0' x1' y1' x2' y2' x3' y3';
@@ -427,8 +449,10 @@ struct
     let st = get_state t in
     let x', y' = Archimedes.Matrix.transform_point st.ctm x y
     and w', h' = Archimedes.Matrix.transform_distance st.ctm w h in
-    t.curr_path <-t.curr_path^" "^(point_string x' y')^" rectangle "^
-      (point_string (x'+.w') (y'+.h'));
+    let rect = (point_string x' y')^" rectangle "^
+      (point_string (x'+.w') (y'+.h'))
+    in
+    Queue.add rect t.curr_path;
     (* Update the current point and extents *)
     st.path_extents <-
       update_rectangle st.path_extents x' y' (x' +. w') (y' +. h');
@@ -447,14 +471,15 @@ struct
     let loops = truncate (abs_float(a2 -. a1) /. (2. *.pi)) in
     let a1' = atan2 y1 x1
     and a2' = atan2 y2 x2 in
-    Printf.printf "%g : %g now are %g : %g with %d loops\n%!" a1 a2 a1' a2' loops;
+   (* Printf.printf "%g : %g now are %g : %g with %d loops\n%!"
+      a1 a2 a1' a2' loops;*)
     (*FIXME: to be reworked, to take the coordinate transformation into
       account (eg. different scalings along the axes).*)
     let r',_ = Archimedes.Matrix.transform_distance st.ctm r 0. in
     (*Note: without the following, angles are taken "mod 360", so
       circles could not be made using 0 -- 2 pi as (original) argument.*)
     for i = 1 to loops do
-      t.curr_path <- t.curr_path^" circle("^(string_of_float r')^")"
+      Queue.add (" circle("^(string_of_float r')^")") t.curr_path
     done;
     (*"Real" arc*)
     let endarc =
@@ -467,7 +492,7 @@ struct
     (*TikZ uses the current point as starting point for the arc.*)
     let x' = r' *. cos a1'
     and y' = r' *. sin a1' in
-    t.curr_path <- t.curr_path^" -- ++"^(point_string x' y')^endarc;
+    Queue.add (" -- ++"^(point_string x' y')^endarc) t.curr_path;
     st.curr_pt <- true;
     st.x <- st.x +. r' *. cos a2';
     st.y <- st.y +. r' *. sin a2'
@@ -476,11 +501,11 @@ struct
 
   let close_path t =
     let st = get_state t in
-    if st.curr_pt then t.curr_path <- t.curr_path^" -- cycle"
+    if st.curr_pt then Queue.add " -- cycle" t.curr_path
 
   let clear_path t =
     check_valid_handle t;
-    t.curr_path <- "";
+    Queue.clear t.curr_path;
     t.state.curr_pt <- false;
     t.state.path_extents <- { Archimedes.x=0.; y=0.; w=0.; h=0. }
 
@@ -490,19 +515,50 @@ struct
     let opts = make_options t in
     write t ("\\draw["^opts^"] ");
     t.indent <- t.indent + 2;
-    write t (t.curr_path^";");
-    t.indent <- t.indent - 2
+    let path_data = Queue.create () in
+    while not (Queue.is_empty t.curr_path) do
+      let data = Queue.pop t.curr_path in
+      write t data;
+      Queue.push data path_data;
+    done;
+    write t ";";
+    t.indent <- t.indent - 2;
+    Queue.transfer path_data t.curr_path
 
-  let stroke t = stroke_preserve t; clear_path t
+  let stroke t =
+    let opts = make_options t in
+    write t ("\\draw["^opts^"] ");
+    t.indent <- t.indent + 2;
+    while not (Queue.is_empty t.curr_path) do
+      write t (Queue.pop t.curr_path)
+    done;
+    write t ";";
+    t.indent <- t.indent - 2
 
   let fill_preserve t =
     let opts = make_options t in
     write t ("\\fill["^opts^"] ");
     t.indent <- t.indent + 2;
-    write t (t.curr_path^";");
+   let path_data = Queue.create () in
+    while not (Queue.is_empty t.curr_path) do
+      let data = Queue.pop t.curr_path in
+      write t data;
+      Queue.push data path_data;
+    done;
+    write t ";";
+    t.indent <- t.indent - 2;
+    Queue.transfer path_data t.curr_path
+
+  let fill t =
+    let opts = make_options t in
+    write t ("\\fill["^opts^"] ");
+    t.indent <- t.indent + 2;
+    while not (Queue.is_empty t.curr_path) do
+      write t (Queue.pop t.curr_path)
+    done;
+    write t ";";
     t.indent <- t.indent - 2
 
-  let fill t = fill_preserve t; clear_path t
 
   let clip_rectangle t ~x ~y ~w ~h =
     write t ("\\clip "^(point_string x y)^

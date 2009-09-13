@@ -12,21 +12,24 @@ let () =
       H.use (vps.(0).(0));
       let parabola x = x *. x in
       H.f handle ~color:Color.blue parabola (-3.) 3.;
-      H.stroke handle;
       H.use (vps.(1).(0));
       H.set_color handle Color.red;
-      H.f handle ~finish:(fun _ -> ()) parabola (-3.) 3.;
-      H.line_to handle 3. 10.;
-      H.line_to handle (-3.) 10.;
-      H.close_path handle;
-      H.fill handle;
+      let finish handle =
+        H.line_to handle 3. 10.;
+        H.line_to handle (-3.) 10.;
+        H.close_path handle;
+        H.fill handle
+      in
+      H.f handle ~finish parabola (-3.) 3.;
       H.use (vps.(0).(1));
       H.set_color handle Color.green;
-      H.f handle ~finish:(fun _ -> ()) parabola (-3.) 3.;
-      H.line_to handle 3. (-1.);
-      H.line_to handle (-3.) (-1.);
-      H.close_path handle;
-      H.stroke handle;
+      let finish handle =
+        H.line_to handle 3. (-1.);
+        H.line_to handle (-3.) (-1.);
+        H.close_path handle;
+        H.stroke handle
+      in
+      H.f handle ~finish parabola (-3.) 3.;
       H.use (vps.(1).(1));
       let xaxis =
         H.make_xaxis (`P "|") `Number CB (`P "tic_up") (`Linear(7,0))
