@@ -22,7 +22,7 @@ open Printf
    loadable dynamically so must be referenced here so that pluging
    linking succeeds. *)
 module ForLinking_1__ = Callback
-(*module ForLinking_2__ = Hashtbl*)
+module ForLinking_2__ = Hashtbl
 
 (* Without the following, the native version reports "undefined
    symbol: caml_hash_variant" when loading Cairo. *)

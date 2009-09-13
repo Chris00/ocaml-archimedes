@@ -52,7 +52,7 @@ struct
 end
 
 type ranges = Ranges.t =
-    private {mutable xmin:float;
+    {mutable xmin:float;
              mutable ymin:float;
              mutable xmax:float;
              mutable ymax:float}
