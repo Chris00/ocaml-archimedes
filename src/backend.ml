@@ -22,48 +22,27 @@ open Printf
    loadable dynamically so must be referenced here so that pluging
    linking succeeds. *)
 module ForLinking_1__ = Callback
+(*module ForLinking_2__ = Hashtbl*)
 
 (* Without the following, the native version reports "undefined
    symbol: caml_hash_variant" when loading Cairo. *)
 external for_linking_1__ : unit -> unit = "caml_hash_variant"
 
-
-type rectangle = {x:float; y:float; w:float; h:float}
-
-type text_position =
-  | CC
-  | LC
-  | RC
-  | CT
-  | CB
-  | LT
-  | LB
-  | RT
-  | RB
-
-
 module type T =
 sig
   type t
 
-  (* val set_pointstyle : t -> pointstyle -> unit *)
-  (* val set_pattern : t -> pattern -> unit *)
   val set_color : t -> Color.t -> unit
   val set_line_width : t -> float -> unit
   val set_line_cap : t -> line_cap -> unit
   val set_dash : t -> float -> float array -> unit
   val set_line_join : t -> line_join -> unit
-  (* val set_miter_limit : t -> float -> unit *)
 
-  (* val get_pointstyle: t -> pointstyle *)
-  (* val get_pattern: t -> pattern *)
   val get_line_width: t -> float
   val get_line_cap: t -> line_cap
   val get_dash: t -> float array * float
   val get_line_join: t -> line_join
 
-  (* val string_of_error : t -> backend_error -> string *)
-    (*val point : t -> float -> float -> unit*)
   val move_to : t -> x:float -> y:float -> unit
   val line_to : t -> x:float -> y:float -> unit
   val rel_move_to : t -> x:float -> y:float -> unit
@@ -74,7 +53,7 @@ sig
 
   val rectangle : t -> x:float -> y:float -> w:float -> h:float -> unit
 
-  val arc : t -> x:float -> y:float -> r:float -> a1:float -> a2:float -> unit
+  val arc : t -> r:float -> a1:float -> a2:float -> unit
     (* Do we need arc_negative (path orientation)? *)
 
   (* (* Is this really needed? *)
@@ -119,8 +98,6 @@ type t = {
   height: float; (* height of the backend canvas in its original units *)
   close: unit -> unit;
 
-  (* set_pointstyle: 'a -> pointstyle -> unit; *)
-  (* set_pattern: 'a -> pattern -> unit; *)
   set_color : Color.t -> unit;
   set_line_width : float -> unit;
   set_line_cap : line_cap -> unit;
@@ -140,7 +117,7 @@ type t = {
   curve_to: x1:float -> y1:float -> x2:float -> y2:float ->
                                             x3:float -> y3:float -> unit;
   rectangle : x:float -> y:float -> w:float -> h:float -> unit;
-  arc : x:float -> y:float -> r:float -> a1:float -> a2:float -> unit;
+  arc : r:float -> a1:float -> a2:float -> unit;
   close_path : unit -> unit;
   clear_path : unit -> unit;
   path_extents : unit -> rectangle;
@@ -292,7 +269,7 @@ let string_of_error = function
   | Corrupted_dependency fname ->
       sprintf "The dependency file %s is corrupted." fname
   | Non_loadable_dependency fname ->
-      sprintf "The libray %s (occurring as a plugin dependency) cannot \
+      sprintf "The library %s (occurring as a plugin dependency) cannot \
         be loaded" fname
   | Nonexistent bk -> sprintf "The backend %S is not found" bk
   | Not_loadable(bk, e) ->

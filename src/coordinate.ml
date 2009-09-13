@@ -113,21 +113,10 @@ let rec update coord =
     (* First make sure its parent is up to date.  This recursion stops
        because the "device coordinates" are always up to date. *)
     update parent;
- (*   let a = parent.ctm and b = coord.ctm and c = coord.tm in
-    Printf.printf
-      "\nUpdate matrix %f %f %f %f %f %f\n with matrices \
- %f %f %f %f %f %f and %f %f %f %f %f %f\n"
-      b.B.xx b.B.xy b.B.yx b.B.yy b.B.x0 b.B.y0
-      a.B.xx a.B.xy a.B.yx a.B.yy a.B.x0 a.B.y0
-      c.B.xx c.B.xy c.B.yx c.B.yy c.B.x0 c.B.y0;*)
     Matrix.mul_in coord.ctm parent.ctm coord.tm;
     coord.up_to_date <- true;
   )
- (* else
-    let b = coord.ctm in
-    Printf.printf
-      "\nMatrix %f %f %f %f %f %f up to date\n"
-      b.B.xx b.B.xy b.B.yx b.B.yy b.B.x0 b.B.y0*)
+
 
 
 (* Just replace the current CTM with the one of the transformation *)
@@ -247,7 +236,7 @@ let rotate coord ~angle =
   put_children_not_up_to_date coord
 
 let transform coord tm =
-  Matrix.blit coord.tm tm;
+  Matrix.blit tm coord.tm;
   put_children_not_up_to_date coord
 
 

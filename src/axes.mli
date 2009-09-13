@@ -16,17 +16,22 @@
    LICENSE for more details. *)
 
 
-type xyranges = {
-  mutable x1:float;
-  mutable y1:float;
-  mutable x2:float;
-  mutable y2:float;
-  mutable fresh: bool
-}
+type ranges =
+    private {mutable xmin:float;
+             mutable ymin:float;
+             mutable xmax:float;
+             mutable ymax:float}
 
-val make_ranges : unit -> xyranges
+module Ranges: sig
+  val make : float -> float -> ranges
 
-val update_ranges : xyranges -> float -> float -> unit
+  val update : ranges -> float -> float -> bool
+    (**Returns [true] if the point really updated the ranges.*)
+
+  val copy: ranges -> ranges
+  val to_rect: ranges -> rectangle
+  val of_rect: rectangle -> ranges
+end
 
 exception Not_available
   (**Raised when some polymorphic variant has no definition of the
@@ -45,12 +50,12 @@ type axes =
    axes. This point determine the position of tics.*)
 
 val print_axes :
-  [> axes] -> xyranges -> Backend.t -> unit
+  [> axes] -> ranges -> Backend.t -> unit
   (**Given the axes mode, the bounds and a backend to draw on,
      prints the corresponding axes on the backend.*)
 
 val axes_meeting :
-  [> axes] -> xyranges -> float * float
+  [> axes] -> ranges -> float * float
     (**Returns the point where the axes meet.*)
 
 
@@ -60,72 +65,55 @@ type tic = [ `P of Pointstyle.name ]
 val print_tic : Backend.t -> [> tic] -> unit
   (**Given a backend and a tic, prints the tic.*)
 
-val tic_extents : [> tic] -> Backend.rectangle
+val tic_extents : [> tic] -> rectangle
     (**Returns the extents for the given tic. (This is needed to place
        the labels correctly.)*)
 
-type label =
-    {action:float -> float -> Backend.text_position -> Backend.t -> unit;
-     (**Action to perform as a label. Takes as arguments: [x y pos backend],
-        where [(x,y)] is the point where the major tic has
-        been made, [pos] a text position (to be used to correctly
-        put the label relative to the tic), and [backend] the
-        backend on which the operation will be made. *)
-     box:float -> float -> Backend.text_position -> Backend.t -> Backend.rectangle;
-     (**Place needed to do it; it is the smallest rectangle
-        containing the action. Takes as arguments: [x y pos backend] (no
-        rotation is used; the box is understood as if the action has
-        been made without it.)*)
-     rotation:float(**Rotation to be applied to all labels. *)
-    }
-        (**The type which manages with labels on axes.*)
+type label
+  (**The type which manages with labels on axes.*)
 
-(*  val tic_label_extents : Backend.rectangle -> label option ->
-    float -> float -> Backend.text_position -> Backend.t -> Backend.rectangle
+(*  val tic_label_extents : rectangle -> label option ->
+    float -> float -> Backend.text_position -> Backend.t -> rectangle
     (**[tic_label_extents tic_extents label x y pos b] returns the global
        extents of a (major or minor) tic, with its (eventual) label,
        as if all is done at the point [(x,y)]. The backend [b] is used
        only to determine the extents ([box]) of the label.*)*)
 
-type label_collection =
-    Fixed of label array
-      (**One (different) label per major tic. (eg: text data)*)
-  | Variable of label
-      (**A unique label is OK for all major tics. (eg: abscissa)*)
-        (**Storing several labels*)
+type label_collection
+  (**Storing several labels*)
 
 
 type data =
-    [ `Label of label array
-        (**Labels already known*)
+    [ (*`Label of label array
+        (**Labels already known*)*)
     | `Text_label of string array * float
         (**Labels will be text labels, rotated by the second argument*)
-    | `Abscissa
-        (**Use abscissas as labels*)
-    | `Ordinate
-        (**Use ordinates as labels*)
-    | `Expabscissa
-        (**Labels of the form [10^x] with [x] abscissa*)
-    | `Expordinate
-        (**Labels of the form [10^y] with [y] ordinate*)
+    | `Number
+        (**Use abscissas or ordinates as labels*)
+    | `Expnumber
+        (**Labels of the form [10^x] with [x] abscissa or ordinate*)
     ]
       (**This type informs on which type of data we want as labels.*)
 
-val get_labels: [> data] -> label_collection
+exception Too_few_labels
+
+val get_labels: bool -> [> data] -> label_collection
     (**Converts a [data] into a [label_collection], which will be used
        by [get_position] (see below).*)
 
-type tic_position = xyranges -> (float * float * label option) list
+type tic_position = ranges -> bool ->  Backend.t ->
+  (float * float * label option) list
   (**Shortcut. The output [list] contains tuples of the form
      [(x,y,labelopt)], with [(x,y)] a point where we want a tic and
      [labelopt] indicates the (optional) label wanted (it is [None]
      for the minor tics).*)
 
 type loc_tics =
-    [ `Fixed_pos of (float * bool) list
+    [ `Fixed_rel of (float * bool) list
         (**List of pairs [(x, major)] with [x] a number between 0 and
            1, specifying the relative position of the tic and [major]
            indicating whether the tic is major.*)
+    | `Fixed_abs of ((float * bool) list)
     | `Linear_variable of int array
         (**The [i]th element of the array specifies the number of
            minor tics between the [i]th major tic and the [i+1]th
@@ -140,6 +128,7 @@ type loc_tics =
     | `Logarithmic of int * int
         (**Same as [`Linear] except that the minor tics are placed
            in a logarithmic scale.*)
+    | `Auto_linear
     ]
 
 
@@ -155,36 +144,63 @@ val get_position : [>loc_tics] -> label_collection -> tic_position
 type 'a axis
 type ('a, 'b) t
 
-val make_axis :
+(*
+  val make_axis : bool ->
   ([> tic] as 'a) -> ([>data] as 'b) -> Backend.text_position -> 'a ->
-  ?get_labels:('b -> label_collection) ->
+  ?get_labels:(bool -> 'b -> label_collection) ->
   ?get_position:(([>loc_tics] as 'c) -> label_collection -> tic_position) ->
-  'c -> 'a axis
+  'c -> 'a axis*)
 
-(**[make_axis major data pos minor loc] makes an axis whose major
-   tics will be [major], minor tics [minor], positioned using [loc]
-   and labels will be positioned using [pos]. The optional arguments are used
-   to define the positionment of tics (see the corresponding default functions).*)
+val make_xaxis :
+  ([> tic] as 'a) -> ([>data] as 'b) -> text_position -> 'a ->
+  ?get_labels:(bool -> 'b -> label_collection) ->
+  ?get_position:(([>loc_tics] as 'c) -> label_collection -> tic_position) ->
+  ?tic_extents:('a -> rectangle) ->
+  'c -> 'a axis
+val make_yaxis :
+  ([> tic] as 'a) -> ([>data] as 'b) -> text_position -> 'a ->
+  ?get_labels:(bool -> 'b -> label_collection) ->
+  ?get_position:(([>loc_tics] as 'c) -> label_collection -> tic_position) ->
+  ?tic_extents:('a -> rectangle) ->
+  'c -> 'a axis
+  (**[make_*axis major data pos minor loc] makes an axis whose major
+     tics will be [major], minor tics [minor], positioned using [loc]
+     and labels will be positioned using [pos]. The optional arguments are used
+     to define the positionment of tics (see the corresponding default functions).*)
 
 val make : ([>axes] as 'a) -> 'b axis -> 'b axis -> ('a, 'b) t
   (**Given two axes and a way to render them, makes a [t].*)
 
 
+type margins =
+    {left: float; (**Margin to reserve on the left*)
+     right: float; (**Margin to reserve on the right*)
+     top: float; (**Margin to reserve on the top*)
+     bottom: float (**Margin to reserve on the bottom*)
+    }
+      (**The return type for margins. *)
+
 val get_margins :
   ([> axes ] as 'a, [> tic] as 'b) t ->
-  ?axes_meeting:('a -> xyranges -> float * float) ->
-  ?tic_extents:('b -> Backend.rectangle) ->
-  xyranges -> Backend.t -> Backend.rectangle * Backend.rectangle
+  ?axes_meeting:('a -> ranges -> float * float) ->
+  normalization:Coordinate.t ->
+  lines:float ->
+  marks:float ->
+  font_size:float ->
+  ranges -> Backend.t -> margins * margins
   (**Returns the margins needed to print the axes. Returns a pair of
-     [Backend.rectangle], the first one represents the extents for the X
-     axis, and the second one the extents for the Y axis.*)
+     [margins], the first one gives the margins needed for the X
+     axis, and the second one the margins needed for the Y axis.*)
 
 val print :
   ([> axes] as 'a, [> tic] as 'b) t ->
-  lines:Coordinate.t ->
-  ranges:xyranges ->
-  ?print_axes:('a -> xyranges -> Backend.t -> unit) ->
-  ?axes_meeting:('a -> xyranges -> float * float) ->
+  normalization:Coordinate.t ->
+  lines:float ->
+  marks:float ->
+  font_size:float ->
+  ranges:ranges ->
+  ?print_axes:('a -> ranges -> Backend.t -> unit) ->
+  ?axes_meeting:('a -> ranges -> float * float) ->
   ?print_tic:(Backend.t -> 'b -> unit) -> Backend.t -> unit
     (**Prints axes, following the parameters stored in [t] and the
        optional arguments, if given.*)

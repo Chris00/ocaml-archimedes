@@ -20,7 +20,7 @@ let samplefxy f ?(min_step=1E-9) ?(nsamples = 100) a b =
            in
            if diffx *. diffx +. diffy *. diffy < rel_max
              || step < min_step then (
-               Axes.update_ranges extents x y;
+               ignore (Axes.Ranges.update extents x y);
                next_point (i+1) tmin x y bounds ((x,y)::listxy) (len+1) extents
              )
            else
@@ -36,8 +36,7 @@ let samplefxy f ?(min_step=1E-9) ?(nsamples = 100) a b =
           (*Plot with current step size finished; return to previous step size.*)
           next_point (prev_stop + 1) prev_tmin x0 y0 list listxy len extents
   in
-  let extents = Axes.make_ranges () in
-  Axes.update_ranges extents x y;
+  let extents = Axes.Ranges.make x y in
   next_point 1 a x y bounds_list [x,y] 1 extents
 
 let samplefx f ?(min_step=1E-9) ?(nsamples = 100) a b =

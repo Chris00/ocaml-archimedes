@@ -20,8 +20,8 @@
 
 open Printf
 module Backend = Archimedes.Backend
-
-(* Re-export the labels so we do not have to qualify them with [Backend]. *)
+module Matrix = Archimedes.Matrix
+(* Re-export the labels so we do not have to qualify them with [Archimedes]. *)
 type matrix = Archimedes.matrix = { mutable xx: float; mutable yx: float;
                                     mutable xy: float; mutable yy: float;
                                     mutable x0: float; mutable y0: float; }
@@ -38,11 +38,11 @@ let round x =
 (** Return the smaller rectangle including the rectangle [r] and the
     segment joining [(x0,y0)] and [(x1,y1)]. *)
 let update_rectangle r x0 y0 x1 y1 =
-  let x = min r.Backend.x (min x0 x1)
-  and y = min r.Backend.y (min y0 y1)
-  and x' = max (r.Backend.x +. r.Backend.w) (max x0 x1)
-  and y' = max (r.Backend.y +. r.Backend.h) (max y0 y1) in
-  { Backend.x = x;  y = y;  w = x' -. x;  h = y' -. y }
+  let x = min r.Archimedes.x (min x0 x1)
+  and y = min r.Archimedes.y (min y0 y1)
+  and x' = max (r.Archimedes.x +. r.Archimedes.w) (max x0 x1)
+  and y' = max (r.Archimedes.y +. r.Archimedes.h) (max y0 y1) in
+  { Archimedes.x = x;  y = y;  w = x' -. x;  h = y' -. y }
 
 (** Returns the range of the function f = t -> (1-t)**3 x0 + 3
     (1-t)**2 t x1 + 3 (1-t) t**2 x2 + t**3 x3, 0 <= t <= 1, under the
@@ -88,19 +88,21 @@ let range_bezier x0 x1 x2 x3 =
         else min x0 x3, max x0 x3
 ;;
 
-(** Return the smaller reactangle containing [r] and the Bézier curve
+(** Return the smaller rectangle containing [r] and the Bézier curve
     given by the control points. *)
 let update_curve r x0 y0 x1 y1 x2 y2 x3 y3 =
   let xmin, xmax = range_bezier x0 x1 x2 x3 in
-  let xmin = min xmin r.Backend.x in
-  let w = max xmax (r.Backend.x +. r.Backend.w) -. xmin in
+  let xmin = min xmin r.Archimedes.x in
+  let w = max xmax (r.Archimedes.x +. r.Archimedes.w) -. xmin in
   let ymin, ymax = range_bezier y0 y1 y2 y3 in
-  let ymin = min ymin r.Backend.y in
-  let h = max ymax (r.Backend.y +. r.Backend.h) -. ymin in
-  { Backend.x = xmin;  y = ymin; w = w; h = h }
+  let ymin = min ymin r.Archimedes.y in
+  let h = max ymax (r.Archimedes.y +. r.Archimedes.h) -. ymin in
+  { Archimedes.x = xmin;  y = ymin; w = w; h = h }
 
 
-let point_string x y = "("^(string_of_float x)^", "^(string_of_float y)^")"
+let point_string x y =
+  let sf x = Printf.sprintf "%g" x in
+  "("^(sf x)^", "^(sf y)^")"
 
 module B =
 struct
@@ -122,10 +124,10 @@ struct
     (*Says whether a current point is active.*)
     mutable x:float;
     mutable y:float;
-    (*Coordinates of the current point (if any)*)
+    (*Coordinates of the current point (if any), in device coordinates.*)
     mutable fsize:float;
     mutable slant_weight_family:string;
-    mutable path_extents: Backend.rectangle;
+    mutable path_extents: Archimedes.rectangle;
     (* The extent of the current path, in device coordinates. *)
     mutable ctm : matrix; (* current transformation matrix from the
                              user coordinates to the device ones. *)
@@ -151,10 +153,6 @@ struct
   let get_state t =
     check_valid_handle t; t.state
 
- (* let print_ctm st =
-    let m = st.ctm in
-    Printf.sprintf "{ %f, %f, %f, %f, (%f, %f)}" m.xx m.xy m.yx m.yy m.x0 m.y0*)
-
   let make_options t =
     let st = get_state t in
    (* "cm="^print_ctm st^","^*)
@@ -169,8 +167,10 @@ struct
 
   let save t =
     let st = get_state t in
-    (* Make a copy of the record so that further actions do not modify it *)
-    let state_copy = { st with color = st.color } in
+    (* Make a copy of the record so that further actions do not modify
+       it. We need to store a *copy* of the ctm, because
+       scaling/translation/rotation mustn't modify this stored matrix.*)
+    let state_copy = { st with ctm = Archimedes.Matrix.copy st.ctm} in
     Stack.push state_copy t.history;
     write t "\\begin{scope}";
     t.indent <- t.indent + 2
@@ -181,24 +181,46 @@ struct
       let st = Stack.pop t.history in
       t.state <- st;
       (* Re-enable previous settings in case they were changed *)
+      t.indent <- t.indent - 2;
       write t "\\end{scope}";
-      t.indent <- t.indent - 2
-    with Stack.Empty -> ()
+    with Stack.Empty -> Printf.printf
+      "archimedes_tikz : warning - restore without saving\n%!"
+
+  (*To avoid typos:*)
+  let preamble = "preamble"
 
   let make ~options width height =
+    let make_opts =
+      let w,h = string_of_float width, string_of_float height in
+      let device_rectangle =
+        "(0,0) rectangle ("^w^","^h^")"
+      in function
+      | [] -> "\\clip "^device_rectangle^";\n"
+      | ["bb"] -> "\\clip[use as bounding box] "^device_rectangle^";\n"
+      | ["draw"] -> "\\draw[black] "^device_rectangle^";\n"
+      | ["draw";"bb"] ->
+          "\\draw[black, use as bounding box] "^device_rectangle^";\n"
+      | _ -> failwith "Archimedes_tikz.make -- unknown options"
+    in
     match options with
-      [name] ->
+      name::opts ->
         let writer = open_out name in
         output_string writer "%%%Generated by Archimedes\r\n";
-        output_string writer "\\begin{tikzpicture}[x=1pt,y=1pt]\n";
-        (*FIXME: coherence with other backends.*)
-        let w,h = string_of_float width, string_of_float height in
-        let device_rectangle =
-          "(0,0) rectangle ("^w^","^h^")"
+        let doc = List.length opts >= 1 && List.hd opts = preamble in
+        let opts', indent =
+          if doc then (
+            output_string writer "\\documentclass{minimal}\n";
+            output_string writer "\\usepackage{tikz}\n";
+            output_string writer "\\begin{document}";
+            output_string writer "  \\begin{tikzpicture}[x=1pt,y=1pt]\n";
+            (*Note the indentation*)
+            List.tl opts, 2)
+          else (
+            output_string writer "\\begin{tikzpicture}[x=1pt,y=1pt]\n";
+            opts, 0)
         in
-        (*Forbids automatic scaling of TikZ (we do it in higher levels)*)
-        output_string writer
-          ("\\clip[use as bounding box] "^device_rectangle^";\n");
+        (*Automatic scaling of TikZ?*)
+        output_string writer (make_opts opts');
         let state = {
           color = "color=black";
           opacity = "opacity=1";
@@ -212,7 +234,7 @@ struct
           curr_pt = false; x=0.;y=0.; (*No current point*)
           fsize=10.;
           slant_weight_family = "%s";
-          path_extents = { Backend.x=0.; y=0.; w=0.; h=0. };
+          path_extents = { Archimedes.x=0.; y=0.; w=0.; h=0. };
           (* Identity transformation matrix *)
           ctm = Archimedes.Matrix.make_identity();
         } in
@@ -222,13 +244,18 @@ struct
           state = state;
           curr_path = "";
           writer = writer;
-          indent = 2;
+          indent = indent;
         }
     | _ -> invalid_arg "Archimedes_tikz.make"
 
-  let close ~options:_ t =
+  let close ~options t =
     if not(t.closed) then (
       write t "\\end{tikzpicture}";
+      (match options with
+        _::s::_ when s = preamble ->
+          t.indent <- t.indent - 2;
+          write t "\\end{document}"
+      | _ -> ());
       close_out t.writer;
       t.closed <- true;
     )
@@ -245,12 +272,20 @@ struct
 
   let set_line_width t w =
     let st = get_state t in
-    st.linewidth <- sprintf "line width=%f" w
+    (*Note: Line width is coordinate-dependent: need to adapt it to
+      device coords.*)
+    let m = (*Matrix.copy*) st.ctm in
+    (*Matrix.invert m;*)
+    let x1,x2 = Matrix.transform_distance m w 0.
+    and x3,x4 = Matrix.transform_distance m 0. w in
+    (*FIXME: is there a better choice for width?*)
+    let w' = sqrt(x1*.x1 +. x2*.x2 +. x3*.x3 +. x4*.x4) in
+    st.linewidth <- sprintf "line width=%f" w'
 
   let get_line_width t =
     let s = (get_state t).linewidth in
     let len = String.length s in
-    let s' = String.sub s 11 (len - 13) in (*removes 'line width=' and 'cm'*)
+    let s' = String.sub s 11 (len - 11) in (*removes 'line width='*)
     float_of_string s'
 
 
@@ -283,17 +318,17 @@ struct
     let st = get_state t in
     st.line_cap <- "line cap="^
       (match cap with
-         Backend.BUTT -> "butt"
-       | Backend.SQUARE -> "rect"
-       | Backend.ROUND -> "round")
+         Archimedes.BUTT -> "butt"
+       | Archimedes.SQUARE -> "rect"
+       | Archimedes.ROUND -> "round")
 
   let get_line_cap t =
     let st = get_state t in
     match String.sub st.line_cap 9 (String.length st.line_cap - 9) with
       (*Removes first characters: 'line cap='*)
-      "butt" -> Backend.BUTT
-    | "rect" -> Backend.SQUARE
-    | "round" -> Backend.ROUND
+      "butt" -> Archimedes.BUTT
+    | "rect" -> Archimedes.SQUARE
+    | "round" -> Archimedes.ROUND
     | _ -> failwith ("Archimedes TikZ.line_cap: error; cannot parse "
                      ^( String.sub st.line_cap 9 (String.length st.line_cap - 9)))
 
@@ -302,17 +337,17 @@ struct
     let st = get_state t in
     st.line_join <- "line join="^
       (match join with
-         Backend.JOIN_BEVEL -> "bevel"
-       | Backend.JOIN_MITER -> "miter"
-       | Backend.JOIN_ROUND -> "round")
+         Archimedes.JOIN_BEVEL -> "bevel"
+       | Archimedes.JOIN_MITER -> "miter"
+       | Archimedes.JOIN_ROUND -> "round")
 
   let get_line_join t =
     let st = get_state t in
     match String.sub st.line_join 10 (String.length st.line_join - 10) with
       (*Removes first characters: 'line join='*)
-      "bevel" -> Backend.JOIN_BEVEL
-    | "miter" -> Backend.JOIN_MITER
-    | "round" -> Backend.JOIN_ROUND
+      "bevel" -> Archimedes.JOIN_BEVEL
+    | "miter" -> Archimedes.JOIN_MITER
+    | "round" -> Archimedes.JOIN_ROUND
     | _ -> failwith ("Archimedes TikZ.line_join: error; cannot parse "
                      ^( String.sub st.line_join 10
                           (String.length st.line_join - 10)))
@@ -400,28 +435,44 @@ struct
     st.curr_pt <- true
 
 
-  (*FIXME: to be reworked, to take the coordinate transformation into
-    account.*)
-  let arc t ~x ~y ~r ~a1 ~a2 =
+
+  let arc t ~r ~a1 ~a2 =
     let st = get_state t in
-    let x', y' = Archimedes.Matrix.transform_point st.ctm x y
+    (*Coordinate transformations*)
+    let rcos t = r *. cos t
+    and rsin t = r *. sin t in
+    let x1, y1 = Archimedes.Matrix.transform_distance st.ctm (rcos a1) (rsin a1)
+    and x2, y2 = Archimedes.Matrix.transform_distance st.ctm (rcos a2) (rsin a2)
     in
-    move_to t x' y';
-    let rec arc a1 a2 = (*FIXME: angles expressed in degrees here*)
-      if abs_float (a2 -. a1) >= 360. +. 1.E-16 then
-        (t.curr_path <- t.curr_path^" circle("^(string_of_float r)^")";
-         let a2 =
-           if a2 -. a1 >= 360. +. 1.E-16 then a2 -. 360.
-           else a2 +. 360.
-         in
-         arc a1 a2)
-      else
-        let arcfin = " arc("^(string_of_float a1)^
-          ":"^(string_of_float a2)^":"^
-          (string_of_float r)^")"
-        in
-        t.curr_path <- t.curr_path^arcfin
-    in arc (180. *. a1 /. pi) (180.*. a2 /. pi)
+    let loops = truncate (abs_float(a2 -. a1) /. (2. *.pi)) in
+    let a1' = atan2 y1 x1
+    and a2' = atan2 y2 x2 in
+    Printf.printf "%g : %g now are %g : %g with %d loops\n%!" a1 a2 a1' a2' loops;
+    (*FIXME: to be reworked, to take the coordinate transformation into
+      account (eg. different scalings along the axes).*)
+    let r',_ = Archimedes.Matrix.transform_distance st.ctm r 0. in
+    (*Note: without the following, angles are taken "mod 360", so
+      circles could not be made using 0 -- 2 pi as (original) argument.*)
+    for i = 1 to loops do
+      t.curr_path <- t.curr_path^" circle("^(string_of_float r')^")"
+    done;
+    (*"Real" arc*)
+    let endarc =
+      if abs_float (a2' -. a1') >= 1E-9 then
+        " arc("^(string_of_float (180. *. a1' /. pi))^
+          ":"^(string_of_float (180. *. a2' /. pi))^":"^
+          (string_of_float r')^")"
+      else ""
+    in
+    (*TikZ uses the current point as starting point for the arc.*)
+    let x' = r' *. cos a1'
+    and y' = r' *. sin a1' in
+    t.curr_path <- t.curr_path^" -- ++"^(point_string x' y')^endarc;
+    st.curr_pt <- true;
+    st.x <- st.x +. r' *. cos a2';
+    st.y <- st.y +. r' *. sin a2'
+
+
 
   let close_path t =
     let st = get_state t in
@@ -431,7 +482,7 @@ struct
     check_valid_handle t;
     t.curr_path <- "";
     t.state.curr_pt <- false;
-    t.state.path_extents <- { Backend.x=0.; y=0.; w=0.; h=0. }
+    t.state.path_extents <- { Archimedes.x=0.; y=0.; w=0.; h=0. }
 
   let path_extents t = (get_state t).path_extents
 
@@ -464,22 +515,25 @@ struct
 
   let rotate t ~angle = Archimedes.Matrix.rotate (get_state t).ctm ~angle
 
-  let set_matrix t m = (get_state t).ctm <- m
+  let set_matrix t m =
+    (*Sets a copy to avoid that modifications of matrix influence
+      the backend's coordinate system.*)
+    (get_state t).ctm <- Archimedes.Matrix.copy m
 
   let get_matrix t = Archimedes.Matrix.copy (get_state t).ctm
-  
+
   let select_font_face t slant weight family =
     check_valid_handle t;
     let begin_slant, end_slant =
       match slant with
-        Backend.Upright -> "",""
-      | Backend.Italic -> "\textit{","}"
-      (*| Backend.Oblique -> "\textsl{","}"(*Slanted*)*)
+        Archimedes.Upright -> "",""
+      | Archimedes.Italic -> "\textit{","}"
+          (*| Archimedes.Oblique -> "\textsl{","}"(*Slanted*)*)
     in
     let begin_weight, end_weight =
       match weight with
-        Backend.Normal -> "",""
-      | Backend.Bold -> "\textbf{","}"
+        Archimedes.Normal -> "",""
+      | Archimedes.Bold -> "\textbf{","}"
     in
     let begin_family, end_family =
       match family with
@@ -491,32 +545,52 @@ struct
     t.state.slant_weight_family <- s;
     let series =
       match weight with
-        Backend.Normal -> "n"
-      | Backend.Bold -> "b"
+        Archimedes.Normal -> "n"
+      | Archimedes.Bold -> "b"
     and shape =
       match slant with
-        Backend.Upright -> "m"
-      | Backend.Italic -> "it"
-     (* | Backend.Oblique -> "sl" (*Slanted*)*)
+        Archimedes.Upright -> "m"
+      | Archimedes.Italic -> "it"
+     (* | Archimedes.Oblique -> "sl" (*Slanted*)*)
     in
     write t (Printf.sprintf "\\usefont{T1}{%s}{%s}{%s}"
                family series shape)
 
   let set_font_size t size =
     let st = get_state t in
-    let prev_size = st.fsize in
     st.fsize <- size;
-    let ratio = prev_size /. size in
     write t (Printf.sprintf
-               "\\fontsize{%.2f}{%.2f\\f@baselineskip}\\selectfont"
-               size ratio)
+               "\\fontsize{%.2f}{%.2f}\\selectfont"
+               size (1.2 *. size))
+(*Following
+http://www.tac.dk/cgi-bin/info2www?%28latex%29Low-level%20font%20commands:
+"`\fontsize{size}{skip}'
+     Set font size. The first parameter is the font size to switch to;
+     the second is the `\baselineskip' to use. The unit of both
+     parameters defaults to pt. A rule of thumb is that the
+     baselineskip should be 1.2 times the font size.
+"
+*)
+
 
 
 (*FIXME: raw way to find the extents; must be reworked.*)
   let text_extents t txt =
-    let h = (get_state t).fsize in
-    let w = (float (String.length txt)) *. h in
-    { Backend.x = 0.; y = 0.; w = w ; h = h }
+    let size = (get_state t).fsize in
+    let h = size *. 1.2 in
+    let w =
+      let rec add_lengths res i =
+        if i < 0 then res
+        else match txt.[i] with
+        |'i'|'j'|'l' -> add_lengths (res +. 0.2) (i-1)
+        |'m'|'w'|'A'..'Z'|'0'..'9' -> add_lengths (res +. 0.6) (i-1)
+        | _ -> add_lengths (res +. 0.3) (i-1)
+      in
+      let len = add_lengths 0. ((String.length txt) - 1) in
+      h *. len
+    in
+    let w', h' = Matrix.inv_transform_distance (get_state t).ctm w h in
+    { Archimedes.x = 0.; y = -.h'/.6.; w = w' ; h = h' }
 
   let show_text t ~rotate ~x ~y pos txt =
     let st = get_state t in
@@ -527,15 +601,15 @@ struct
     let angle = atan2 dy dx in
     let x', y' = Archimedes.Matrix.transform_point st.ctm x y in
     let pos = match pos with
-      | Backend.LT -> "south east"
-      | Backend.LC -> "east"
-      | Backend.LB -> "north east"
-      | Backend.CT -> "south"
-      | Backend.CC -> "center"
-      | Backend.CB -> "north"
-      | Backend.RT -> "south west"
-      | Backend.RC -> "west"
-      | Backend.RB -> "north west"
+      | Archimedes.LT -> "south east"
+      | Archimedes.LC -> "east"
+      | Archimedes.LB -> "north east"
+      | Archimedes.CT -> "south"
+      | Archimedes.CC -> "center"
+      | Archimedes.CB -> "north"
+      | Archimedes.RT -> "south west"
+      | Archimedes.RC -> "west"
+      | Archimedes.RB -> "north west"
     in
     (*let txt = Printf.sprintf (format_of_string st.slant_weight_family) txt in*)
     write t (Printf.sprintf
@@ -549,5 +623,5 @@ let () =
 
 
 (* Local Variables: *)
-(* compile-command: "make -k" *)
+(* compile-command: "make -k archimedes_tikz.cmo archimedes_tikz.cmxs" *)
 (* End: *)

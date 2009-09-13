@@ -32,7 +32,7 @@ let red = {r = 1.; g = 0.; b = 0.; a = 1.}
 let green = {r = 0.; g = 1.; b = 0.; a = 1.}
 let blue = {r = 0.; g = 0.; b = 1.; a = 1.}
 let yellow = {r = 1.; g = 1.; b = 0.; a = 1.}
-let purple = {r = 1.; g = 0.; b = 1.; a = 1.}
+let magenta = {r = 1.; g = 0.; b = 1.; a = 1.}
 let cyan = {r = 0.; g = 1.; b = 1.; a = 1.}
 let white = {r = 1.; g = 1.; b = 1.; a = 1.}
 

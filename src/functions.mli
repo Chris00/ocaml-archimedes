@@ -19,7 +19,7 @@ val samplefxy :
   (float -> float * float) ->
   ?min_step:float ->
   ?nsamples:int -> float -> float ->
-  int * Axes.xyranges * (('a -> float * float -> 'a) -> 'a -> 'a)
+  int * Axes.ranges * (('a -> float * float -> 'a) -> 'a -> 'a)
 
 val samplefx :
   (float -> float) ->

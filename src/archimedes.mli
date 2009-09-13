@@ -29,6 +29,24 @@ type line_join =
                    joint point *)
   | JOIN_BEVEL (** use a cut-off join, the join is cut off at half the line
                      width from the joint point *)
+  (** A data structure for holding a rectangle. *)
+type rectangle = {
+  x:float;   (** X coordinate of the left side of the rectangle *)
+  y:float;   (** Y coordinate of the the top side of the rectangle  *)
+  w:float;   (** width of the rectangle *)
+  h:float;   (** height of the rectangle  *)
+}
+
+type text_position =
+    | CC  (** centrer horizontally and vertically *)
+    | LC  (** align left horizontally and center vertically *)
+    | RC  (** align right horizontally and center vertically *)
+    | CT  (** center horizontally and align top vertically *)
+    | CB  (** center horizontally and align bottom vertically *)
+    | LT  (** align left horizontally and top vertically *)
+    | LB  (** align left horizontally and bottom vertically *)
+    | RT  (** align right horizontally and top vertically *)
+    | RB  (** align right horizontally and bottom vertically *)
 
 type slant = Upright | Italic
     (** Specifies variants of a font face based on their slant. *)
@@ -70,7 +88,7 @@ module Color: sig
   val green : t
   val blue : t
   val yellow : t
-  val purple : t
+  val magenta : t
   val cyan : t
   val white : t
     (**Predefined colors.*)
@@ -123,18 +141,12 @@ end
 (** Axes maker and convenient ways to create axes. *)
 module Axes: sig
   (** A data structure holding ranges. Note that, contrary to rectangle
-      fields, these ones are mutable. Note also that there's no
-      restriction on using the values. However, we make the convention
-      that the first value ([x0] or [y0]) is less than the second one,
-      and the subsequent usings of this record satisfy this
-      convention.*)
-  type xyranges = private {
-    mutable x1:float; (** First abscissa *)
-    mutable y1:float; (** First ordinate *)
-    mutable x2:float; (** Second abscissa *)
-    mutable y2:float; (** Second ordinate *)
-    mutable fresh: bool (** Range is a new one?*)
-  }
+      fields, these ones are mutable, but cannot be modified.*)
+  type ranges =
+      private {mutable xmin:float;
+               mutable ymin:float;
+               mutable xmax:float;
+               mutable ymax:float}
 
   type 'a axis
     (**This type stores all information about an axis: major, minor
@@ -167,14 +179,52 @@ module Axes: sig
              is computed as [(xmin +. t *.(xmax -. xmin), ymin +. u
              *. (ymax -. ymin) )].*)
       ]
+        (**Different ways of printing axes.*)
+
+  type data = [`Text_label of string array * float
+        (**Labels will be text labels, rotated by the second argument*)
+    | `Number
+        (**Use abscissas or ordinates as labels*)
+    | `Expnumber
+        (**Labels of the form [10^x] with [x] abscissa or ordinate*)
+    ]
+      (**Type of data to put as labels on major tics.*)
 
   type tic = [ `P of string ]
       (**Type for tics.*)
 
+  type loc_tics =
+      [ `Fixed_rel of (float * bool) list
+        (**List of pairs [(x, major)] with [x] a number between 0 and
+           1, specifying the relative position of the tic and [major]
+           indicating whether the tic is major.*)
+    | `Fixed_abs of ((float * bool) list)
+    | `Linear_variable of int array
+        (**The [i]th element of the array specifies the number of
+           minor tics between the [i]th major tic and the [i+1]th
+           one (starting count at 0). All tics are placed linearly;
+           that is, if the length of the axis is [len], then the
+           [i]th tic (among all tics, starting to count at 0) is
+           placed at distance [i /. len].*)
+    | `Linear of int * int
+        (**[`Linear(majors, minors)]: Fixed number of major tics,
+           and number of minor tics between two consecutive major
+           tics. They are all placed linearly.*)
+    | `Logarithmic of int * int
+        (**Same as [`Linear] except that the minor tics are placed
+           in a logarithmic scale.*)
+    | `Auto_linear
+    ]
 
+  type tic_position
+    (**The type on which a [loc_tics] converts to. It is a shortcut
+       for a functional which is stored in an axis. See also
+       [get_position] (FIXME: to be added later in this interface).*)
+
+  type label_collection
 end
 
-
+(**Iterations on points.*)
 module Iterator : sig
   type t
 
@@ -203,34 +253,41 @@ module Iterator : sig
 
   val nb_data : t -> int
 
-  val extents : t -> Axes.xyranges
+  val extents : t -> Axes.ranges
 end
 
+
+(**The main module.*)
 module Handle: sig
-  (*type coordinate = {
-    mutable linewidth : Coordinate.t;
-    mutable drawings : Coordinate.t;
-    mutable normalized : Coordinate.t;
-    mutable xmin : float;
-    mutable xmax : float;
-    mutable ymin : float;
-    mutable ymax : float;
-  }*)
   type t
   val make : dirs:string list -> string -> float -> float -> t
   val close : t -> unit
+  val immediate : t -> bool -> unit
+    (**[immediate handle b] makes the handle do immediately all the
+       orders if [b] is [true]; it makes the handle wait an [immediate
+       handle true] or a [close handle] to do the orders if [b] is
+       false. *)
+
+  (**Viewports creation.*)
   module Viewport :
   sig
     type vp
+      (**The type for viewports.*)
     val make :
       t -> xmin:float -> xmax:float -> ymin:float -> ymax:float -> vp
+      (**[make t ~xmin ~ymin ~ymin ~ymax] creates a new viewport,
+         whose coordinate system makes the rectangle delimited by the
+         given values (expressed in the current [t] coordinate system) as
+         the new unit square.*)
     val sub :
       vp -> xmin:float -> xmax:float -> ymin:float -> ymax:float -> vp
+      (**Same as [make] but the values are expressed in viewport's coordinates.*)
     val make_rect :
       t -> x:float -> y:float -> w:float -> h:float -> vp
+      (**[make_rect t x y w h] is equivalent to [make t x y (x+.w) (y+.h)].*)
     val sub_rect :
       vp -> x:float -> y:float -> w:float -> h:float -> vp
-    val use : vp -> unit
+      (**[sub_rect vp x y w h] is equivalent to [sub vp x y (x+.w) (y+.h)].*)
 
     (**{2 Convenience functions to create viewports}*)
     val rows : t -> int -> vp array
@@ -240,6 +297,7 @@ module Handle: sig
     val sub_columns : vp -> int -> vp array
     val sub_matrix : vp -> int -> int -> vp array array
   end
+  (**{2 Using viewports}*)
   val use : Viewport.vp -> unit
   val use_initial : t -> unit
   val set_line_width : t -> float -> unit
@@ -250,6 +308,8 @@ module Handle: sig
   val set_global_font_size : t -> float -> unit
   val get_line_width : t -> float
   val get_mark_size : t -> float
+
+  (**{2 Backend primitives}*)
   val width : t -> float
   val height : t -> float
   val set_color : t -> Color.t -> unit
@@ -270,10 +330,10 @@ module Handle: sig
     x1:float ->
     y1:float -> x2:float -> y2:float -> x3:float -> y3:float -> unit
   val rectangle : t -> x:float -> y:float -> w:float -> h:float -> unit
-  val arc : t -> x:float -> y:float -> r:float -> a1:float -> a2:float -> unit
+  val arc : t -> r:float -> a1:float -> a2:float -> unit
   val close_path : t -> unit
   val clear_path : t -> unit
-  (*val path_extents : t -> Backend.rectangle*)
+  (*val path_extents : t -> rectangle*)
   val stroke_current : t -> unit
   val stroke_current_preserve : t -> unit
   val stroke : t -> unit
@@ -284,24 +344,57 @@ module Handle: sig
   val save_vp : t -> unit
   val restore_vp : t -> unit
   val select_font_face : t -> slant -> weight -> string -> unit
-  (* val show_text : *)
-  (*   t -> *)
-  (*   rotate:float -> *)
-  (*   x:float -> y:float -> Backend.text_position -> string -> unit *)
-  (* val text_extents : t -> string -> rectangle *)
+  val show_text :
+    t ->
+    rotate:float ->
+    x:float -> y:float -> text_position -> string -> unit
+(*  val text_extents : t -> string -> rectangle*)
   val render : t -> string -> unit
   (* val mark_extents : t -> string -> rectangle *)
-  val plotfx :
+
+  (**{2 Plotting}*)
+  val f :
     t ->
-    ?axes:([> Axes.axes ],[> Axes.tic]) Axes.t ->
+    ?color: Color.t ->
     ?nsamples:int ->
     ?min_step:float ->
+    ?do_with:(t -> float * float -> unit) ->
+    ?finish:(t -> unit) ->
     (float -> float) -> float -> float -> unit
-  val plotxy :
+  val xy :
     t ->
     ?axes:([> Axes.axes ],[> Axes.tic]) Axes.t ->
-    ?f:(t -> string -> float -> float -> unit) ->
-    ?mark:string -> Iterator.t -> unit
+    ?mark:string -> ?f:(t -> float -> float -> unit) ->
+    Iterator.t -> unit
+
+  val make_xaxis :
+    ([> Axes.tic] as 'a) -> ([> Axes.data] as 'b) -> text_position -> 'a ->
+    ?get_labels:(bool -> 'b -> Axes.label_collection) ->
+    ?get_position:(([> Axes.loc_tics] as 'c) ->
+                     Axes.label_collection -> Axes.tic_position) ->
+    ?tic_extents:('a -> rectangle) ->
+    'c -> 'a Axes.axis
+  val make_yaxis :
+    ([> Axes.tic] as 'a) -> ([>Axes.data] as 'b) -> text_position -> 'a ->
+    ?get_labels:(bool -> 'b -> Axes.label_collection) ->
+    ?get_position:(([>Axes.loc_tics] as 'c) ->
+                     Axes.label_collection -> Axes.tic_position) ->
+    ?tic_extents:('a -> rectangle) ->
+    'c -> 'a Axes.axis
+  val make_axes : ([>Axes.axes] as 'a) ->
+    'b Axes.axis -> 'b Axes.axis -> ('a,'b) Axes.t
+  val print_axes :
+    t -> ([> Axes.axes] as 'a, [> Axes.tic] as 'b) Axes.t ->
+    ?color:Color.t ->
+    ?axes_print:('a -> Axes.ranges -> t -> unit) ->
+    ?axes_meeting:('a -> Axes.ranges -> float * float) ->
+    ?print_tic:(t -> 'b -> unit) -> Axes.ranges ->
+    Viewport.vp option
+    (**Prints axes, following the parameters stored in [t] and the
+       optional arguments, if given. Returns a [Viewport.vp] in which
+       the graph will take place, or [None] if the axes take too big
+       margins (reducing the graph to nothing)*)
+
 end
 
 
@@ -323,29 +416,10 @@ type matrix = { mutable xx: float; mutable yx: float;
     plotting data. *)
 module Backend:
 sig
-
-  (** A data structure for holding a rectangle. *)
-  type rectangle = {
-    x:float;   (** X coordinate of the left side of the rectangle *)
-    y:float;   (** Y coordinate of the the top side of the rectangle  *)
-    w:float;   (** width of the rectangle *)
-    h:float;   (** height of the rectangle  *)
-  }
-
-  type text_position =
-    | CC  (** centrer horizontally and vertically *)
-    | LC  (** align left horizontally and center vertically *)
-    | RC  (** align right horizontally and center vertically *)
-    | CT  (** center horizontally and align top vertically *)
-    | CB  (** center horizontally and align bottom vertically *)
-    | LT  (** align left horizontally and top vertically *)
-    | LB  (** align left horizontally and bottom vertically *)
-    | RT  (** align right horizontally and top vertically *)
-    | RB  (** align right horizontally and bottom vertically *)
-
-
   module type T =
   sig
+    (**To be able to register a given backend, it must provide an
+       implementation for all these functions.*)
     type t
       (** Handle of a backend or a coordinate system. *)
 
@@ -372,7 +446,7 @@ sig
 
     val rectangle : t -> x:float -> y:float -> w:float -> h:float -> unit
 
-    val arc : t -> x:float -> y:float -> r:float -> a1:float -> a2:float -> unit
+    val arc : t -> r:float -> a1:float -> a2:float -> unit
 
     val close_path : t -> unit
       (** Adds a line segment to the path from the current point to
@@ -438,8 +512,6 @@ sig
           any effect).  *)
   end
 
-  include T
-
   type error =
     | Corrupted_dependency of string
     | Non_loadable_dependency of string
@@ -452,6 +524,8 @@ sig
   val string_of_error : error -> string
 
   exception Error of error
+
+  include T
 
   val make : ?dirs:string list -> string -> float -> float -> t
     (** [make backend width height] creates a new backend of the given
@@ -471,6 +545,8 @@ sig
 
   val width : t -> float
     (** Returns the height of the backend canvas. *)
+
+
 
   val registered: unit -> string list
     (** Return the list of registered (i.e. loaded) backends. *)
@@ -521,7 +597,7 @@ sig
   type name = string
     (** Point styles are identified by strings. *)
 
-  val add : name:name -> (Backend.t -> unit) -> Backend.rectangle -> unit
+  val add : name:name -> (Backend.t -> unit) -> rectangle -> unit
     (**[add name f extents] adds to the existing point styles, a new
        point style, referenced under the name [name]. This point style is
        made using the function [f]; the extents it takes is given by
@@ -529,20 +605,20 @@ sig
        already used by another is the same as the core [Map.S.add] (that
        is, the previous binding disappears).*)
 
-  val render : name -> Backend.t -> unit
+(*  val render : name -> Backend.t -> unit
     (**This function renders the point style referenced by the name on
        the specified backend. Raises [Error name] if name does not
        refer to a point style.*)
 
-  val extents : name -> Backend.rectangle
+  val extents : name -> rectangle
     (**Returns the extents of a point style. Raises [Error name] if
        name does not refer to a point style.*)
 
-  val render_extents : name -> Backend.t -> Backend.rectangle
+  val render_extents : name -> Backend.t -> rectangle
     (**[render_extents name backend] is equivalent to [render name
        backend; extents name], but is more efficient (access only once
        to the registered point style).  Raises [Error name] if name
-       does not refer to a point style.*)
+       does not refer to a point style.*)*)
 end
 
 
@@ -766,7 +842,7 @@ sig
 
   val changed : monitor -> bool
     (** [changed m] tell whether the coordinate system [m] is attached
-        to was updated (possibly because of one of the coordinate sytems
+        to was updated (possibly because of one of the coordinate systems
         it (transitively) depends on was mofidied) since the last
         [reset]. *)
 end

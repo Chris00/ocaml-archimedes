@@ -45,9 +45,22 @@ type line_join =
   | JOIN_ROUND
   | JOIN_BEVEL
 
+type rectangle = {x:float; y:float; w:float; h:float;  }
+
 type slant = Upright | Italic
 
 type weight = Normal | Bold
+
+type text_position =
+  | CC
+  | LC
+  | RC
+  | CT
+  | CB
+  | LT
+  | LB
+  | RT
+  | RB
 
 module Backend =
 struct

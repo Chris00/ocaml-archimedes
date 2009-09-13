@@ -37,11 +37,11 @@ let round x =
 (** Return the smaller rectangle including the rectangle [r] and the
     segment joining [(x0,y0)] and [(x1,y1)]. *)
 let update_rectangle r x0 y0 x1 y1 =
-  let x = min r.Backend.x (min x0 x1)
-  and y = min r.Backend.y (min y0 y1)
-  and x' = max (r.Backend.x +. r.Backend.w) (max x0 x1)
-  and y' = max (r.Backend.y +. r.Backend.h) (max y0 y1) in
-  { Backend.x = x;  y = y;  w = x' -. x;  h = y' -. y }
+  let x = min r.Archimedes.x (min x0 x1)
+  and y = min r.Archimedes.y (min y0 y1)
+  and x' = max (r.Archimedes.x +. r.Archimedes.w) (max x0 x1)
+  and y' = max (r.Archimedes.y +. r.Archimedes.h) (max y0 y1) in
+  { Archimedes.x = x;  y = y;  w = x' -. x;  h = y' -. y }
 
 (** Returns the range of the function f = t -> (1-t)**3 x0 + 3
     (1-t)**2 t x1 + 3 (1-t) t**2 x2 + t**3 x3, 0 <= t <= 1, under the
@@ -91,12 +91,12 @@ let range_bezier x0 x1 x2 x3 =
     given by the control points. *)
 let update_curve r x0 y0 x1 y1 x2 y2 x3 y3 =
   let xmin, xmax = range_bezier x0 x1 x2 x3 in
-  let xmin = min xmin r.Backend.x in
-  let w = max xmax (r.Backend.x +. r.Backend.w) -. xmin in
+  let xmin = min xmin r.Archimedes.x in
+  let w = max xmax (r.Archimedes.x +. r.Archimedes.w) -. xmin in
   let ymin, ymax = range_bezier y0 y1 y2 y3 in
-  let ymin = min ymin r.Backend.y in
-  let h = max ymax (r.Backend.y +. r.Backend.h) -. ymin in
-  { Backend.x = xmin;  y = ymin; w = w; h = h }
+  let ymin = min ymin r.Archimedes.y in
+  let h = max ymax (r.Archimedes.y +. r.Archimedes.h) -. ymin in
+  { Archimedes.x = xmin;  y = ymin; w = w; h = h }
 
 
 module B =
@@ -120,15 +120,16 @@ struct
     mutable line_width: float;
     mutable dash_offset: float;
     mutable dash: float array;
-    (* (x,y): current point (when creating a path), in user coordinates. *)
+    (* (x,y): current point (when creating a path), in device coordinates. *)
     mutable curr_pt: bool;
     mutable x: float;
     mutable y: float;
     mutable current_path: path_data list; (* Path actions in reverse order *)
-    mutable path_extents: Backend.rectangle;
+    mutable path_extents: Archimedes.rectangle;
     (* The extent of the current path, in device coordinates. *)
     mutable ctm : matrix; (* current transformation matrix from the
                              user coordinates to the device ones. *)
+    mutable font_size : float;
   }
 
   type t = {
@@ -146,8 +147,11 @@ struct
 
   let save t =
     let st = get_state t in
-    (* Make a copy of the record so that further actions do not modify it *)
-    let state_copy = { st with color = st.color } in
+    (* Make a copy of the record so that further actions do not modify
+       it. We need to store a *copy* of the ctm, because
+       scaling/translation/rotation mustn't modify this stored
+       matrix.*)
+    let state_copy = { st with ctm = Archimedes.Matrix.copy st.ctm} in
     Stack.push state_copy t.history
 
   let restore t =
@@ -158,10 +162,11 @@ struct
       (* Re-enable previous settings in case they were changed *)
       Graphics.set_color st.color;
       Graphics.set_line_width (round st.line_width)
-    with Stack.Empty -> ()
+    with Stack.Empty ->  Printf.printf
+      "archimedes_graphics : warning - restore without saving\n%!"
 
   (* FIXME: options "x=" and "y=" for the position *)
-  let make ~options width height =
+  let make ~options:_ width height =
     if !in_use then failwith "Archimedes_graphics.make: in use";
     Graphics.open_graph(sprintf " %.0fx%.0f" width height);
     Graphics.set_window_title "Archimedes";
@@ -175,16 +180,17 @@ struct
       x = 0.;
       y = 0.;
       current_path = [];
-      path_extents = { Backend.x=0.; y=0.; w=0.; h=0. };
+      path_extents = { Archimedes.x=0.; y=0.; w=0.; h=0. };
       (* Identity transformation matrix *)
       ctm = Matrix.make_identity();
+      font_size = 10.;
     } in
     { closed = false;
       history = Stack.create();
       state = state;
     }
 
-  let close ~options t =
+  let close ~options:_ t =
     if Sys.os_type = "Win32" then (
       Printf.printf "Please press a key to continue...%!";
       ignore (Graphics.wait_next_event [Graphics.Key_pressed])
@@ -198,7 +204,8 @@ struct
   let clear_path t =
     let st = get_state t in
     st.current_path <- [];
-    st.path_extents <- { Backend.x=0.; y=0.; w=0.; h=0. }
+    st.path_extents <- { Archimedes.x=0.; y=0.; w=0.; h=0. };
+    st.curr_pt <- false
 
   let set_color t c =
     let st = get_state t in
@@ -227,9 +234,9 @@ struct
 
   (* Not supported, do nothing *)
   let set_line_cap t _ = check_valid_handle t
-  let get_line_cap t = check_valid_handle t; Backend.BUTT
+  let get_line_cap t = check_valid_handle t; Archimedes.BUTT
   let set_line_join t _ = check_valid_handle t
-  let get_line_join t = check_valid_handle t; Backend.JOIN_MITER
+  let get_line_join t = check_valid_handle t; Archimedes.JOIN_MITER
   let set_miter_limit t _ = check_valid_handle t
 
   (* Paths are not acted upon directly but wait for [stroke] or [fill]. *)
@@ -239,8 +246,8 @@ struct
     st.current_path <- MOVE_TO(x',y') :: st.current_path;
     (* move only updates the current point but not the path extents *)
     st.curr_pt <- true;
-    st.x <- x;
-    st.y <- y
+    st.x <- x';
+    st.y <- y'
 
   let line_to t ~x ~y =
     let st = get_state t in
@@ -252,11 +259,12 @@ struct
       let x0', y0' = Matrix.transform_point st.ctm st.x st.y in
       st.path_extents <- update_rectangle st.path_extents x0' y0' x' y';
     )
-    else
-      st.current_path <- MOVE_TO(x',y') :: st.current_path;
-    st.curr_pt <- true;
-    st.x <- x;
-    st.y <- y
+    else (
+      st.curr_pt <- true;
+      st.current_path <- MOVE_TO(x',y') :: st.current_path
+    );
+    st.x <- x';
+    st.y <- y'
 
   let rel_move_to t ~x ~y =
     let st = get_state t in move_to t (st.x +. x) (st.y +. y)
@@ -274,6 +282,7 @@ struct
     let x0', y0' =
       if not st.curr_pt then (
         st.current_path <- MOVE_TO(x1', y1') :: st.current_path;
+        st.curr_pt <- true;
         x1', y1'
       )
       else  Matrix.transform_point st.ctm st.x st.y in
@@ -281,9 +290,8 @@ struct
     (* Update the current point and extents *)
     st.path_extents <-
       update_curve st.path_extents x0' y0' x1' y1' x2' y2' x3' y3';
-    st.curr_pt <- true;
-    st.x <- x3;
-    st.y <- y3
+    st.x <- x3';
+    st.y <- y3'
 
 
   let rectangle t ~x ~y ~w ~h =
@@ -292,20 +300,45 @@ struct
     and w', h' = Matrix.transform_distance st.ctm w h in
     (*FIXME: this is not sufficient to make a rectangle ("rectangle on
       their corner"...)*)
-    st.current_path <- RECTANGLE(x, y, w, h) :: st.current_path;
+    st.current_path <- RECTANGLE(x', y', w', h') :: st.current_path;
     (* Update the current point and extents *)
     st.path_extents <-
       update_rectangle st.path_extents x' y' (x' +. w') (y' +. h');
     st.curr_pt <- true;
-    st.x <- x;
-    st.y <- y
+    st.x <- x';
+    st.y <- y'
 
-  let arc t ~x ~y ~r ~a1 ~a2 =
-    ()
+  let arc t ~r ~a1 ~a2 =
+    let st = get_state t in
+    let rec arcin a1 a2 =
+      let curvelen = r *. abs_float (a2 -. a1) in
+      (*if curvelen < 1. then ( *)
+      let rcos1 = r *. cos a1 and rsin1 = r *. sin a1 in
+      let rcos2 = r *. cos a2 and rsin2 = r *. sin a2 in
+      (*let coeff = (2. *. (sqrt 5.) -. 4.) /. 3. in*)
+      let coeff = 1. in
+      (*This coefficient makes the middle point of a Bezier curve
+        coïncide with the arc.*)
+      let f z a = coeff *. (z +. a) in
+      if st.curr_pt then
+        let x = st.x and y = st.y in
+        rel_move_to t rcos1 rsin1;
+        curve_to t (f x rsin1) (f y rcos1) (f x rsin2) (f y rcos2)
+          (x+.rcos2) (y+.rsin2);
+        st.curr_pt <- true;
+        st.x <- x+.rcos2;
+        st.y <- y+.rsin2
+      else failwith "Archimedes_graphics.arc: no current point"
+        (* )
+           else (
+           let a3 = (a1 +. a2) /.2. in
+           arcin a1 a3;
+           arcin a3 a2)*)
+    in arcin a1 a2
 
   let rec beginning_of_subpath list =
     match list with
-    | [] -> failwith "No subpath"
+    | [] -> failwith "Archimedes_graphics: No subpath"
     | MOVE_TO(x,y):: _ -> x,y
     | CLOSE_PATH(x,y):: _ -> x,y
     | RECTANGLE(x,y,_,_):: _ -> x,y
@@ -355,7 +388,10 @@ struct
 
   let rotate t ~angle = Matrix.rotate (get_state t).ctm ~angle
 
-  let set_matrix t m = (get_state t).ctm <- m
+  let set_matrix t m =
+    (*Replaces the ctm with a *copy* of m so that modifying m does not
+      change the (newly set) coordinate system.*)
+    (get_state t).ctm <- Matrix.copy m
 
   let get_matrix t = Matrix.copy (get_state t).ctm
 
@@ -364,12 +400,18 @@ struct
     Graphics.set_font family
 
   let set_font_size t size =
-    (* FIXME: must be saved in the state ? *)
+    (get_state t).font_size <- size;
     Graphics.set_text_size (round size)
 
   let text_extents t txt =
+    let st = get_state t in
     let w, h = Graphics.text_size txt in
-    { Backend.x = 0.; y = 0.; w = float w; h = float h }
+    (*FIXME: suppose orthonormal coordinates.*)
+    let w', h' = Matrix.inv_transform_distance st.ctm (float w) (float h) in
+    (*Note: in Graphics, default size is 10*)
+    let w'' = w' *. st.font_size /.10.
+    and h'' = h' *. st.font_size /.10. in
+    { Archimedes.x = 0.; y = 0.; w = w'' ; h = h'' }
 
   let show_text t ~rotate ~x ~y pos txt =
     let st = get_state t in
@@ -379,9 +421,28 @@ struct
     let angle = atan2 dy dx in
     let x', y' = Matrix.transform_point st.ctm x y in
     if abs_float angle <= 1e-6 then
-      let w, h = Graphics.text_size txt in
-
-      Graphics.moveto (round x') (round y');
+      let w', h' = Graphics.text_size txt in
+      (* text_size returns size already in device coords.*)
+      (*let wx, wy = Matrix.transform_distance st.ctm (float w) 0.
+      and hx, hy = Matrix.transform_distance st.ctm 0. (float h) in*)
+      let wx = float w' and wy = 0. in
+      let hx = 0. and hy = float h' in
+      let x'' =  match pos with
+        | Archimedes.CC | Archimedes.CT | Archimedes.CB ->
+            x' -. (wx +. hx) *. 0.5
+        | Archimedes.RC | Archimedes.RT | Archimedes.RB ->
+            x'
+        | Archimedes.LC | Archimedes.LT | Archimedes.LB ->
+            x' -. wx -. hx
+      and y'' = match pos with
+        | Archimedes.CC | Archimedes.RC | Archimedes.LC ->
+            y' -. (hy +. wy) *. 0.5
+        | Archimedes.CT | Archimedes.RT | Archimedes.LT ->
+            y'
+        | Archimedes.CB | Archimedes.RB | Archimedes.LB ->
+            y' -. hy -. wy
+      in
+      Graphics.moveto (round x'') (round y'');
       Graphics.draw_string txt
     else (
       (* Text rotation is not possible with graphics.  Just display
@@ -395,5 +456,5 @@ let () =
 
 
 (* Local Variables: *)
-(* compile-command: "make -k archimedes_graphics.cmo" *)
+(* compile-command: "make -k archimedes_graphics.cmo archimedes_graphics.cmxs" *)
 (* End: *)

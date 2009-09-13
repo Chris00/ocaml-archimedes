@@ -156,61 +156,90 @@ exception No_current_point
 
 (*Context-independent viewport data*)
 type viewport =
-    { (*For text, line width, marks size*)
+    {
+      (*For text, line width, marks size*)
       scalings: Sizes.t;
-      (*Bounds*)
-      ranges: Axes.xyranges;
+      (*Bounds (only mutable so set it to Some... when starting to draw.*)
+      mutable ranges: Axes.ranges option;
       (*To update the ranges correctly, we need the current point.*)
       mutable current_pt: (float * float) option;
-      (*What has to be plotted in this viewport*)
-      orders: (unit -> unit) Queue.t;
+      (*What has to be plotted in this viewport. Mutable so that if we
+        want to do the orders but preserve the queue, we replace it by a
+        (created and updated) copy.*)
+      mutable orders: (unit -> unit) Queue.t;
       (*For saving and restoring states*)
       scalings_hist : (float * float * float) Stack.t;
     }
 
+(*Used coordinate transformations*)
+type coords =
+    {vp_device:Coordinate.t;
+     mutable user_device:Coordinate.t
+       (*Note: only modified in case of adding a second point.*)}
+
 type t =
     {backend: Backend.t;
      rawcoords: Coordinate.t;
+     (*Raw coordinates: those which initially affect the backend*)
      normalized: Coordinate.t;
-     initial_coord : Coordinate.t;(*Initial coordinate system --
-                                    the one which makes the surface as a unit square*)
+     (*Normalized coords: the biggest square included in the surface,
+       whose upper left corner coincide with the upper left corner of
+       the surface, is the unit square in these coordinates.*)
+     square_side: float;
+     (*The quantity used to define normalized by scaling. This is
+       needed for text size handling.*)
+     initial_coords : coords;(*Initial coordinate system -- the
+                               vp_to_device field is the one
+                               which makes the surface as a unit
+                               square*)
      initial_vp: viewport;(*Initial viewport --
                             the one which is associated with the initial coordinates.*)
-     mutable current_coord: Coordinate.t;(*Currently used coordinate
-                                           transformation.*)
-     mutable current_vp : viewport;(*Current viewport*)
-     used_vp: (Coordinate.t * viewport) Queue.t;
+     mutable vp : viewport;(*Current viewport*)
+     mutable coords: coords; (*Currently used coordinate
+                                           transformations*)
+     mutable used_vp: (coords * viewport) Queue.t;
      (*Viewports that have been used. We can ensure that only one copy
        of each used viewport will be in this queue -- because of the
-       viewport flag.*)
+       viewport flag "used".
+
+       Note: mutability of this field is needed for efficiency reasons
+       -- immediate drawing needs to do the orders, but preserve them;
+       to avoid recopying the orders, we simply replace them by a
+       (created and updated) copy.*)
+     mutable immediate_drawing:bool;
+     (*Says whether we draw immediately or wait for closing.*)
     }
 
 (*Default line width, text size, mark size: if the height is less than
   width, then height is by default equal to:
 
   * 500 superposed lines, or
-  * 20 lines of text, or
+  * 10 lines of text, or
   * 100 boxes of 1x1 marks.
 *)
-let def_lw, def_ts, def_marks = 0.002, 0.05, 0.01
+let def_lw, def_ts, def_marks = 0.002, 0.12, 0.01
 
 (*User transformations. To get the previous defaults, the user will
-  enter resp. 1, 10, 1 (which are the "usual" defaults in a drawing). *)
-let usr_lw, usr_ts, usr_marks = 500., 200., 100.
+  enter resp. 1, 12, 1. (12 is determined experimentally using cairo:
+  a 100 x 100 pixels output can contain 10 lines of text, putting font
+  size as 12.) *)
+let usr_lw, usr_ts, usr_marks = 500., 100., 100.
 
+(*Initial scale of the user_to_viewport coordinates.*)
+let initial_scale = 1.
 
 let make ~dirs name w h =
   let backend = Backend.make ~dirs name w h in
   let init = Coordinate.make_identity () in
+  let init2 = Coordinate.make_scale init initial_scale initial_scale in
   let coord = Coordinate.make_scale init w h in
-  let norm =
-    let z = min w h in
-    Coordinate.make_scale init z z
-  in
+  let coord2 = Coordinate.make_scale coord initial_scale initial_scale in
+  let square_side = min w h in
+  let norm = Coordinate.make_scale init square_side square_side in
   let initial =
     {scalings = Sizes.make_root def_lw def_ts def_marks;
      (*No drawings yet*)
-     ranges = Axes.make_ranges ();
+     ranges = None;
      current_pt = None;
      orders = Queue.create ();
      scalings_hist = Stack.create ();
@@ -218,137 +247,252 @@ let make ~dirs name w h =
   in
   (*The initial viewport is in use, so must be in the [used_vp].*)
   let init_used_vp = Queue.create () in
-  Queue.push (coord, initial) init_used_vp;
+  let coords ={vp_device = coord; user_device = coord2} in
+  Queue.push (coords, initial) init_used_vp;
   {backend=backend;
    rawcoords = init;
    normalized = norm;
-   initial_coord = coord;
+   square_side = square_side;
+   initial_coords = {vp_device = init; user_device = init2};
    initial_vp = initial;
-   current_coord = coord;
-   current_vp = initial;
+   coords = coords;
+   vp = initial;
    used_vp = init_used_vp;
+   immediate_drawing = false;
   }
 
-let close t =
-  let rec make_viewports () =
-    if not (Queue.is_empty t.used_vp) then (
-      let rec make_orders orders =
-        if not (Queue.is_empty orders) then (
-          Queue.pop orders ();
-          make_orders orders
-        ) in
-      let coord, vp = Queue.pop t.used_vp in
-      let ranges = vp.ranges in
-      let diffx = ranges.Axes.x2 -. ranges.Axes.x1
-      and diffy = ranges.Axes.y2 -. ranges.Axes.y1 in
-      let real_transform =
-        Coordinate.make_scale coord (1. /. diffx) (1. /. diffy) in
-      Coordinate.translate real_transform
-        (-. ranges.Axes.x1) (-.ranges.Axes.y1);
-      ignore (Coordinate.use t.backend real_transform);
-      make_orders vp.orders;
-      make_viewports ()
-    ) in
-  make_viewports ();
-  Backend.close t.backend
 
 let check t =
+  (*A handle is closed iff there's no stored viewports (initialization
+    contains the initial viewport).*)
   if Queue.is_empty t.used_vp then
     failwith "Archimedes.Handle: closed"
+
+let do_viewport_orders ?orders_queue coords vp backend =
+  match vp.ranges with
+    None -> (*No ranges, so no drawings *)
+      ()
+  | Some ranges ->
+      let ctm = Coordinate.use backend coords.user_device in
+      let m1 = coords.vp_device.Coordinate.ctm in
+      let m2 = coords.user_device.Coordinate.ctm in
+      let m3 = coords.user_device.Coordinate.tm in
+      Printf.printf "vp_device: %f %f %f %f %f %f\n%!"
+        m1.xx m1.xy m1.yx m1.yy m1.x0 m1.y0;
+      Printf.printf "user_device: %f %f %f %f %f %f\n%!"
+        m2.xx m2.xy m2.yx m2.yy m2.x0 m2.y0;
+      Printf.printf "user_vp: %f %f %f %f %f %f\n%!"
+        m3.xx m3.xy m3.yx m3.yy m3.x0 m3.y0;
+      let rec make_orders orders =
+        if not (Queue.is_empty orders) then (
+          Printf.printf "*%!";
+          let order = Queue.pop orders in
+          order ();
+          (match orders_queue with None -> ()
+           | Some q -> Queue.push order q);
+          make_orders orders)
+        else match orders_queue with
+          None -> ()
+        | Some q -> vp.orders <- q;
+      in
+      make_orders vp.orders;
+      Coordinate.restore backend ctm
+
+
+let do_orders t preserve =
+  let vp_storing_queue = Queue.create () in
+  let rec do_viewports_orders () =
+    if not (Queue.is_empty t.used_vp) then (
+      Printf.printf "\nPop a vp%!";
+      let coords, vp = Queue.pop t.used_vp in
+      let orders_queue =
+        if preserve then Some (Queue.create ())
+        else None
+      in
+      do_viewport_orders ?orders_queue coords vp t.backend;
+      if preserve then Queue.push (coords, vp) vp_storing_queue;
+      do_viewports_orders ())
+    else
+      (*Note: if preserve then vp_storing_queue contains all viewports; if
+        not, it is a (fresh) empty queue. In any cases, we can do the replacement.*)
+      t.used_vp <- vp_storing_queue;
+  in do_viewports_orders ()
+
+let close t =
+  do_orders t false;
+  Backend.close t.backend
+
+let immediate t b =
+  if b then do_orders t true;
+  t.immediate_drawing <- b
+
+(*Easy update Axes.ranges options and coordinates*)
+let update_coords t x y =
+  match t.vp.ranges with
+    None ->
+      t.vp.ranges <- Some (Axes.Ranges.make x y);
+      Coordinate.translate t.coords.user_device
+        (x+.initial_scale/.2.) (y+.initial_scale/.2.)
+  | Some ranges ->
+      let xmin = ranges.Axes.xmin
+      and xmax = ranges.Axes.xmax
+      and ymin = ranges.Axes.ymin
+      and ymax = ranges.Axes.ymax in
+      let one_point = xmin = xmax && ymin = ymax in
+      let updated = Axes.Ranges.update ranges x y in
+      Printf.printf "Ranges: %f %f to %f %f, point %f %f\n%!"
+        xmin ymin xmax ymax x y;
+      if updated then (
+        (*Coordinate changement*)
+        let xmin = min x xmin
+        and xmax = max x xmax
+        and ymin = min y ymin
+        and ymax = max y ymax in
+        let diffx = xmax -. xmin
+        and diffy = ymax -. ymin in
+        let new_matrix =
+          Matrix.make_scale (1. /.diffx) (1. /.diffy)
+        in
+        Matrix.translate new_matrix ( -.xmin) ( -.ymin);
+        Printf.printf "New user_vp: %f %f %f %f %f %f\n%!"
+          new_matrix.xx new_matrix.xy new_matrix.yx new_matrix.yy
+          new_matrix.x0 new_matrix.y0;
+        Coordinate.transform t.coords.user_device new_matrix;
+        (* 
+           (
+        (*Translate the current coordinate to the minimal values;
+           then make the scale so that "all is taken".*)
+           Coordinate.translate t.coords.user_device (min x xmin) (min y ymin);
+           let scal vmin vmax v =
+           let diff = vmax -. vmin
+           and diff0 = v -. vmin
+           and diff1 = vmax -. v in
+           let maxi = max (max diff0 diff1) diff in
+           maxi /. diff
+           in
+           Coordinate.scale t.coords.user_device
+           (scal xmin xmax x) (scal ymin ymax y)
+           ) *)
+        (*In case of immediate drawing, needs to replot everything for this viewport.*)
+        if t.immediate_drawing then (
+          (*Deletes the drawing by covering.*)
+          (*FIXME: how to manage with transparent backgrounds?*)
+          let ctm = Coordinate.use t.backend t.coords.vp_device in
+          Backend.save t.backend;
+          (*FIXME: viewport's background?*)
+          Backend.set_color t.backend Color.white;
+          Backend.rectangle t.backend 0. 0. 1. 1.;
+          Backend.fill t.backend;
+          Backend.restore t.backend;
+          Coordinate.restore t.backend ctm;
+          (*Now, replot in the new coordinates.*)
+          do_viewport_orders t.coords t.vp t.backend
+        )
+      )
+
+
+
+
 
 module Viewport =
 struct
   type vp =
-      {context: t;
-       coord: Coordinate.t;
+      {handle: t;
+       tcs: coords;
        data:viewport;
        (*Flag indicating if this viewport has been used in an Archimedes context*)
        mutable used : bool;}
 
-  let inner_make context coord =
+  let inner_make handle coord =
     let data =
       { (*Line width and text and mark sizes are preserved, but are new ones,
           depending on the previous ones.*)
-        scalings = Sizes.child context.current_vp.scalings 1. 1. 1.;
+        scalings = Sizes.child handle.vp.scalings 1. 1. 1.;
         (*No drawings yet on this viewport.*)
-        ranges = Axes.make_ranges ();
+        ranges = None;
         current_pt = None;
         orders = Queue.create ();
         (*Not in use*)
         scalings_hist = Stack.create();
       }
     in
-    { context = context; coord = coord; data = data;used = false;}
+    let coord2 = Coordinate.make_scale coord initial_scale initial_scale in
+    { handle = handle;
+      tcs = {vp_device = coord; user_device = coord2};
+      data = data;
+      used = false;}
 
-  let make arch ~xmin ~xmax ~ymin ~ymax =
-    let ndrawings = Coordinate.make_translate arch.current_coord xmin ymin in
+  let make handle ~xmin ~xmax ~ymin ~ymax =
+    Printf.printf "New viewport:%f %f to %f %f\n%!" xmin ymin xmax ymax;
+    let ndrawings = Coordinate.make_translate handle.coords.vp_device xmin ymin in
     Coordinate.scale ndrawings (xmax -. xmin) (ymax -. ymin);
-    inner_make arch ndrawings
+    inner_make handle ndrawings
 
 
   let sub vp ~xmin ~xmax ~ymin ~ymax =
-    let ndrawings = Coordinate.make_translate vp.coord xmin ymin in
+    Printf.printf "Sub viewport:%f %f to %f %f\n%!" xmin ymin xmax ymax;
+    let ndrawings = Coordinate.make_translate vp.tcs.vp_device xmin ymin in
     Coordinate.scale ndrawings (xmax -. xmin) (ymax -. ymin);
-    inner_make vp.context ndrawings
+    inner_make vp.handle ndrawings
 
 
-  let make_rect arch ~x ~y ~w ~h =
-    let ndrawings = Coordinate.make_translate arch.current_coord x y in
+  let make_rect handle ~x ~y ~w ~h =
+    let ndrawings = Coordinate.make_translate handle.coords.vp_device x y in
     Coordinate.scale ndrawings w h;
-    inner_make arch ndrawings
+    inner_make handle ndrawings
 
 
   let sub_rect vp ~x ~y ~w ~h =
-    let ndrawings = Coordinate.make_translate vp.coord x y in
+    let ndrawings = Coordinate.make_translate vp.tcs.vp_device x y in
     Coordinate.scale ndrawings w h;
-    inner_make vp.context ndrawings
+    inner_make vp.handle ndrawings
 
 
   let use vp =
     (*Need to change the current viewport and coordinates of the
       context, but also flag the viewport, if it is not, and add it to
       the [used_vp] field of the context.*)
-    let arch = vp.context in
-    arch.current_coord <- vp.coord;
-    arch.current_vp <- vp.data;
+    let handle = vp.handle in
+    handle.coords <- vp.tcs;
+    handle.vp <- vp.data;
     if not vp.used then (
       vp.used <- true;
-      Queue.push (vp.coord, vp.data) arch.used_vp)
+      Queue.push (vp.tcs, vp.data) handle.used_vp)
 
   (*{2 Convenience functions to create viewports}*)
-  let rows arch n =
+  let rows handle n =
     let step = 1./.(float n) in
-    let f i = make_rect arch 0. ((float i)*. step)  1. step in
+    let f i = make_rect handle 0. ((float i)*. step)  1. step in
     Array.init n f
 
-  let columns arch n =
+  let columns handle n =
     let step = 1./.(float n) in
-    let f i = make_rect arch ((float i)*. step) 0. step 1. in
+    let f i = make_rect handle ((float i)*. step) 0. step 1. in
     Array.init n f
 
-  let matrix arch n m =
-    let stepx = 1./.(float n)
-    and stepy = 1./.(float m) in
-    let f i j = make_rect arch
-      ((float i)*. stepx) ((float j)*. stepy) stepx stepy in
+  let matrix handle n m =
+    let stepx = 1. /. (float n)
+    and stepy = 1. /. (float m) in
+    let f i j = make_rect handle
+      ((float i)*. stepx) ((float j) *. stepy) stepx stepy in
     let make_row i = Array.init m (f i) in
     Array.init n make_row
 
   let sub_rows vp n =
-    let step = 1./.(float n) in
-    let f i = sub_rect vp 0. ((float i)*. step) 1. step in
+    let step = 1. /. (float n) in
+    let f i = sub_rect vp 0. ((float i) *. step) 1. step in
     Array.init n f
 
   let sub_columns vp n =
-    let step = 1./.(float n) in
-    let f i = sub_rect vp ((float i)*. step) 0. step 1. in
+    let step = 1. /. (float n) in
+    let f i = sub_rect vp ((float i) *. step) 0. step 1. in
     Array.init n f
 
   let sub_matrix vp n m =
-    let stepx = 1./.(float n)
-    and stepy = 1./.(float m) in
+    let stepx = 1. /. (float n)
+    and stepy = 1. /. (float m) in
     let f i j = sub_rect vp
-      ((float i)*. stepx) ((float j)*. stepy) stepx stepy in
+      ((float i) *. stepx) ((float j) *. stepy) stepx stepy in
     let make_row i = Array.init m (f i) in
     Array.init n make_row
 end
@@ -358,18 +502,18 @@ end
 let use = Viewport.use
 
 let use_initial t =
-  t.current_coord <- t.initial_coord;
-  t.current_vp <- t.initial_vp
+  t.coords <- t.initial_coords;
+  t.vp <- t.initial_vp
 
 (*Local settings -- in a viewport*)
 let set_line_width t w =
-  Sizes.set_lw t.current_vp.scalings
+  Sizes.set_lw t.vp.scalings
     (if w <= 0. then def_lw else w /. usr_lw)
 let set_mark_size t m =
-  Sizes.set_marks t.current_vp.scalings
+  Sizes.set_marks t.vp.scalings
     (if m <= 0. then def_marks else m /. usr_marks)
 let set_font_size t s =
-  Sizes.set_ts t.current_vp.scalings
+  Sizes.set_ts t.vp.scalings
     (if s <= 0. then def_ts else s /. usr_ts)
 
 (*Global settings -- affect all viewports*)
@@ -384,17 +528,24 @@ let set_global_font_size t s =
     (if s <= 0. then def_ts else s /. usr_ts)
 
 (*Getters*)
-let get_line_width t = (Sizes.get_lw t.current_vp.scalings) *. usr_lw
-let get_mark_size t = (Sizes.get_marks t.current_vp.scalings) *. usr_marks
+let get_line_width t = (Sizes.get_lw t.vp.scalings) *. usr_lw
+let get_mark_size t = (Sizes.get_marks t.vp.scalings) *. usr_marks
+let get_font_size t = (Sizes.get_ts t.vp.scalings) *. usr_ts
 
+
+
+let from_backend f t = f t.backend
 
 (* Backend primitives (not overriden by viewport system)
  **********************************************************************)
-let add_order f t = Queue.add f t.current_vp.orders
-let get_current_pt t = match t.current_vp.current_pt with
+let add_order f t =
+  Queue.add f t.vp.orders;
+  if t.immediate_drawing then f ()
+
+let get_current_pt t = match t.vp.current_pt with
     None -> raise No_current_point
   | Some (x,y) -> x,y
-let set_current_pt t x y = t.current_vp.current_pt <- Some (x,y)
+let set_current_pt t x y = t.vp.current_pt <- Some (x,y)
 
 
 (*FIXME: needed?*)
@@ -422,43 +573,44 @@ let get_line_join t = Backend.get_line_join t.backend
 
 let move_to t ~x ~y =
   set_current_pt t x y;
-  Axes.update_ranges t.current_vp.ranges x y;
+  update_coords t x y;
   add_order (fun () -> Backend.move_to t.backend x y) t
 
 let line_to t ~x ~y =
   set_current_pt t x y;
-  Axes.update_ranges t.current_vp.ranges x y;
+  update_coords t x y;
   add_order (fun () -> Backend.line_to t.backend x y) t
 
 let rel_move_to t ~x ~y =
   let x', y' = get_current_pt t in
-  Axes.update_ranges t.current_vp.ranges (x +. x') (y +. y');
+  update_coords t (x +. x') (y +. y');
   set_current_pt t (x +. x') (y +. y');
   add_order (fun () -> Backend.rel_move_to t.backend x y) t
 
 let rel_line_to t ~x ~y =
   let x', y' = get_current_pt t in
-  Axes.update_ranges t.current_vp.ranges (x +. x') (y +. y');
+  update_coords t (x +. x') (y +. y');
   set_current_pt t (x +. x') (y +. y');
   add_order (fun () -> Backend.rel_line_to t.backend x y) t
 
 let curve_to t ~x1 ~y1 ~x2 ~y2 ~x3 ~y3 =
-  Axes.update_ranges t.current_vp.ranges x1 y1;
-  Axes.update_ranges t.current_vp.ranges x2 y2;
-  Axes.update_ranges t.current_vp.ranges x3 y3;
+  update_coords t x1 y1;
+  update_coords t x2 y2;
+  update_coords t x3 y3;
   set_current_pt t x3 y3;
   add_order (fun () -> Backend.curve_to t.backend x1 y1 x2 y2 x3 y3) t
 
 let rectangle t ~x ~y ~w ~h =
-  Axes.update_ranges t.current_vp.ranges x y;
-  Axes.update_ranges t.current_vp.ranges (x+.w) (y+.h);
+  update_coords t x y;
+  update_coords t (x+.w) (y+.h);
   add_order (fun () -> Backend.rectangle t.backend x y w h) t
 
-let arc t ~x ~y ~r ~a1 ~a2 =
+let arc t ~r ~a1 ~a2 =
   (*FIXME: better bounds for the arc can be found.*)
-  Axes.update_ranges t.current_vp.ranges (x+.r) (y+.r);
-  Axes.update_ranges t.current_vp.ranges (x-.r) (y-.r);
-  add_order (fun () -> Backend.arc t.backend x y r a1 a2) t
+  let x', y' = get_current_pt t in
+  update_coords t (x'+.r) (y'+.r);
+  update_coords t (x'-.r) (y'-.r);
+  add_order (fun () -> Backend.arc t.backend r a1 a2) t
 
 let close_path t =
  add_order (fun () -> Backend.close_path t.backend) t
@@ -476,7 +628,7 @@ let stroke_current_preserve t =
 let stroke t =
   let f () =
     let ctm = Coordinate.use t.backend t.normalized in
-    Backend.set_line_width t.backend (Sizes.get_lw t.current_vp.scalings);
+    Backend.set_line_width t.backend (Sizes.get_lw t.vp.scalings);
     Backend.stroke t.backend;
     Coordinate.restore t.backend ctm
   in
@@ -485,7 +637,7 @@ let stroke t =
 let stroke_preserve t =
   let f () =
     let ctm = Coordinate.use t.backend t.normalized in
-    Backend.set_line_width t.backend (Sizes.get_lw t.current_vp.scalings);
+    Backend.set_line_width t.backend (Sizes.get_lw t.vp.scalings);
     Backend.stroke_preserve t.backend;
     Coordinate.restore t.backend ctm
   in
@@ -496,33 +648,28 @@ let fill t =
 let fill_preserve t =
   add_order (fun () -> Backend.fill_preserve t.backend) t
 
-(*let clip t = Backend.clip t.backend
-let clip_preserve t = Backend.clip_preserve t.backend*)
-
 let clip_rectangle t ~x ~y ~w ~h =
   add_order (fun () -> Backend.clip_rectangle t.backend x y w h) t
 
 let save_vp t =
   let f () =
     Backend.save t.backend;
-    let vp = t.current_vp in
     let sizes =
-      Sizes.get_lw vp.scalings,
-      Sizes.get_ts vp.scalings,
-      Sizes.get_marks vp.scalings
+      Sizes.get_lw t.vp.scalings,
+      Sizes.get_ts t.vp.scalings,
+      Sizes.get_marks t.vp.scalings
     in
-    Stack.push sizes vp.scalings_hist
+    Stack.push sizes t.vp.scalings_hist
   in
   add_order f t
 
 let restore_vp t =
   let f () =
-    let vp = t.current_vp in
     try
-      let lw, ts, marks = Stack.pop vp.scalings_hist in
-      Sizes.set_lw vp.scalings lw;
-      Sizes.set_ts vp.scalings ts;
-      Sizes.set_marks vp.scalings marks;
+      let lw, ts, marks = Stack.pop t.vp.scalings_hist in
+      Sizes.set_lw t.vp.scalings lw;
+      Sizes.set_ts t.vp.scalings ts;
+      Sizes.set_marks t.vp.scalings marks;
       Backend.restore t.backend
     with Stack.Empty -> ()
   in
@@ -534,37 +681,47 @@ let select_font_face t slant weight family =
 (*FIXME: when [Backend.show_text], the backend temporarily returns to
   raw coordinates -- but converts its input.*)
 let show_text t ~rotate ~x ~y pos txt=
+  let ts = Sizes.get_ts t.vp.scalings in
+  let text_coord = Coordinate.make_scale t.normalized ts ts in
+  let font_size = ts *. t.square_side in
   let f () =
-    let ctm = Coordinate.use t.backend t.normalized in
-    Backend.set_font_size t.backend (Sizes.get_ts t.current_vp.scalings);
+    let ctm' = Coordinate.use t.backend text_coord in
+    Backend.set_font_size t.backend font_size;
     Backend.show_text t.backend ~rotate ~x ~y pos txt;
-    Coordinate.restore t.backend ctm
+    Coordinate.restore t.backend ctm'
   in
-  let ctm = Coordinate.use t.backend t.normalized in
-  Backend.set_font_size t.backend (Sizes.get_ts t.current_vp.scalings);
+  let ctm = Coordinate.use t.backend text_coord in
+  Backend.set_font_size t.backend font_size;
   let rect = Backend.text_extents t.backend txt in
   Coordinate.restore t.backend ctm;
-  Axes.update_ranges t.current_vp.ranges rect.Backend.x rect.Backend.y;
-  Axes.update_ranges t.current_vp.ranges
-    (rect.Backend.x +. rect.Backend.w)
-    (rect.Backend.y +. rect.Backend.h);
+  update_coords t rect.x rect.y;
+  update_coords t
+    (rect.x +. rect.w)
+    (rect.y +. rect.h);
   add_order f t
 
 let text_extents t txt =
-  let ctm = Coordinate.use t.backend t.normalized in
-  Backend.set_font_size t.backend (Sizes.get_ts t.current_vp.scalings);
+  let ts = Sizes.get_ts t.vp.scalings in
+  let text_coord = Coordinate.make_scale t.normalized ts ts in
+  let font_size = ts *. t.square_side in
+  let ctm = Coordinate.use t.backend text_coord in
+  Backend.set_font_size t.backend font_size;
   let rect = Backend.text_extents t.backend txt in
   Coordinate.restore t.backend ctm;
   rect
 
 let render t name =
+  let marks = Sizes.get_marks t.vp.scalings in
   let f () =
     let ctm = Coordinate.use t.backend t.normalized in
-    let marks = Sizes.get_marks t.current_vp.scalings in
     Backend.scale t.backend marks marks;
     Pointstyle.render name t.backend;
-    Coordinate.restore t.backend ctm
+    Coordinate.restore t.backend ctm;
   in
+  let extents = Pointstyle.extents name in
+  update_coords t (extents.x *. marks) (extents.y *. marks);
+  update_coords t ((extents.x +. extents.w) *. marks)
+    ((extents.y +.extents.h) *. marks);
   add_order f t
 
 (*
@@ -575,84 +732,141 @@ let render_extents t name =
   let rect = Pointstyle.render_extents name t.backend in
   Coordinate.restore t.backend ctm;
   (*Now express [rect] in device coords*)
-  (*let x', y' = Coordinate.to_device marks rect.Backend.x rect.Backend.y in
+  (*let x', y' = Coordinate.to_device marks rect.x rect.y in
   let w', h' =
-    Coordinate.to_device_distance marks rect.Backend.w rect.Backend.h
+    Coordinate.to_device_distance marks rect.w rect.h
   in
-  {Backend.x = x'; y = y'; w = w'; h = h'}*)
+  {x = x'; y = y'; w = w'; h = h'}*)
   rect*)
-
+(*
 let mark_extents t name =
   let rect = Pointstyle.extents name in
-  (*(*Trick to get the transformation matrix*)
-  let ctm = Coordinate.use t.backend t.coords.marks in
-  let marks = Backend.get_matrix t.backend in
-  Coordinate.restore t.backend ctm;
-  (*Now working with [marks], which is the transformation matrix of marks.*)
-  let x',y' =
-    Backend.Matrix.transform_point marks rect.Backend.x rect.Backend.y
-  in
-  let wx, wy = Backend.Matrix.transform_distance marks rect.Backend.w 0.
-  and hx, hy = Backend.Matrix.transform_distance marks 0. rect.Backend.h in
-  assert (wx > 0. && wy = 0.);
-  assert (hx = 0. && hy > 0.);*)
-  (*i.e. assert no rotation.*)
-  (*
-  (*These are the general formulae*)
-    let neg x = min x 0. and absf = abs_float in
-    let xmin = x' +. (neg wx) +. (neg hx)
-    and ymin = y' +. (neg wy) +. (neg hy) in
-    let wnew = (absf wx) +. (absf hx) and hnew = (absf hy) +. (absf wy) in
-    (*Extents: xmin,ymin,wnew,hnew*)
-  *)
-  let marks = Sizes.get_marks t.current_vp.scalings in
-  {Backend.x = rect.Backend.x *. marks; y = rect.Backend.y *. marks;
-   w = rect.Backend.w *. marks; h = rect.Backend.h *. marks}
+  let marks = Sizes.get_marks t.vp.scalings in
+  {x = rect.x *. marks *. t.square_side; y = rect.y *. marks *. t.square_side;
+   w = rect.w *. marks *. t.square_side; h = rect.h *. marks *. t.square_side}
+*)
 
 
-let plotfx t ?axes ?nsamples ?min_step f a b =
+let f_line_to t (x,y) = Backend.line_to t.backend x y
+let f_finish t = Backend.stroke t.backend
+
+let f t ?color ?nsamples ?min_step
+    ?(do_with = f_line_to) ?(finish = f_finish) f a b =
   let _, ranges , fct =
     Functions.samplefxy (fun t -> (t,f t)) ?nsamples ?min_step b a
   in
   let f () =
-    fct (fun () (x,y) -> Backend.line_to t.backend x y) ();
-    match axes with
-      None -> ()
-    | Some axes ->
-        let lw = Sizes.get_lw t.current_vp.scalings in
-        let lines = Coordinate.make_scale t.normalized lw lw in
-        Axes.print axes ~lines ~ranges t.backend
+    Backend.save t.backend;
+    (match color with
+      Some color -> Backend.set_color t.backend color
+    | None -> ());
+    fct (fun () -> do_with t) ();
+    finish t;
+    Backend.restore t.backend;
   in
-  Axes.update_ranges t.current_vp.ranges ranges.Axes.x1 ranges.Axes.y1;
-  Axes.update_ranges t.current_vp.ranges ranges.Axes.x2 ranges.Axes.y2;
+  update_coords t ranges.Axes.xmin ranges.Axes.ymin;
+  update_coords t ranges.Axes.xmax ranges.Axes.ymax;
   add_order f t
 
-let f t mark x y =
+let xy_mark mark t x y =
   move_to t x y;
   render t mark
 
-let plotxy t ?axes ?(f = f) ?(mark = "X") iter =
-  let marker = f t mark
-  and update = Axes.update_ranges t.current_vp.ranges in
+let xy_finish t = ()
+
+let xy t ?axes ?(mark = "X") ?(f = (xy_mark mark)) iter =
   let rec iterate do_with =
     match Iterator.next iter with
-      None -> ()
+      None -> xy_finish t
     | Some(x,y) ->
-        do_with x y;
+        do_with t x y;
         iterate do_with
   in
-  let f () =
-    Iterator.reset iter;
-    iterate marker;
-    match axes with
-      None -> ()
-    | Some axes ->
-        let lw = Sizes.get_lw t.current_vp.scalings in
-        let lines = Coordinate.make_scale t.normalized lw lw in
-        let ranges = Iterator.extents iter in
-        Axes.print axes ~lines ~ranges t.backend
-  in
-  iterate update;
+  let f () = iterate f in
+  let extents = Iterator.extents iter in
+  update_coords t extents.Axes.xmin extents.Axes.ymin;
+  update_coords t extents.Axes.xmax extents.Axes.ymax;
   add_order f t
+
+let make_xaxis = Axes.make_xaxis
+let make_yaxis = Axes.make_yaxis
+let make_axes = Axes.make
+let print_axes t axes ?(color = Color.black)
+    ?axes_print ?axes_meeting ?print_tic ranges=
+  let print_axes =
+    match axes_print with
+      None -> Axes.print_axes
+    | Some f -> fun axes ranges _ -> f axes ranges t
+  and print_tic =
+    match print_tic with
+      None -> Axes.print_tic
+    | Some f -> fun _ -> f t
+  in
+  let scalings = t.vp.scalings in
+  let ts = Sizes.get_ts scalings in
+  let font_size = ts *. t.square_side /. 3. in
+  let lines = Sizes.get_lw scalings
+  and marks = Sizes.get_marks scalings in
+  let ctm = Coordinate.use t.backend t.coords.vp_device in
+  let xmargin, ymargin =
+    Axes.get_margins axes ?axes_meeting ~normalization:t.normalized
+      ~lines ~marks ~font_size ranges t.backend
+  in
+  Coordinate.restore t.backend ctm;
+  let xx1 = xmargin.Axes.left
+  and xx2 = xmargin.Axes.right
+  and xy1 = xmargin.Axes.bottom
+  and xy2 = xmargin.Axes.top
+  and yx1 = ymargin.Axes.left
+  and yx2 = ymargin.Axes.right
+  and yy1 = ymargin.Axes.bottom
+  and yy2 = ymargin.Axes.top
+  in
+  Printf.printf "Margins 1: L%f R%f B%f T%f\nMargins 2: L%f R%f B%f T%f\n%!"
+    xx1 xx2 xy1 xy2 yx1 yx2 yy1 yy2;
+  let left = max xx1 yx1
+  and right = max xx2 yx2
+  and top = max xy2 yy2
+  and bottom = max xy1 yy1 in
+  let margin_x = left +. right
+  and margin_y = top +. bottom in
+  let margins_ok = margin_x < 1. && margin_y < 1. in
+  let ctm = Coordinate.use t.backend t.coords.vp_device in
+  (*let m = Backend.get_matrix t.backend in
+  Printf.printf "Initial coord: %f %f %f %f %f %f \n%!"
+    m.xx m.xy m.yx m.yy m.x0 m.y0;
+  Coordinate.restore t.backend ctm;
+  Printf.printf "Margins: %f %f %f %f \n%!"
+    left right bottom top;*)
+  let new_vp =
+    if margins_ok then
+      (let vp = Viewport.make t left (1. -.right) bottom (1. -.top) in
+       Viewport.use vp;
+       Some vp)
+    else (
+      Printf.printf "Handle -- warning: too big axes labels margins.\n%!";
+      None)
+  in
+  (*let ctm = Coordinate.use t.backend t.current_coord in
+  let m = Backend.get_matrix t.backend in
+  Printf.printf "Initial coord: %f %f %f %f %f %f \n%!"
+    m.xx m.xy m.yx m.yy m.x0 m.y0;
+  Backend.save t.backend;
+  Backend.rectangle t.backend 0. 0. 0.8 0.8;
+  Backend.arc t.backend 0.9 0.9 0.1 0. 7.;
+  Backend.set_color t.backend (Color.make ~a:0.2 0. 0. 1.);
+  Backend.fill t.backend;
+  Backend.restore t.backend;*)
+  Coordinate.restore t.backend ctm;
+  (*else, Labels take too big margins to plot correctly => no scaling.*)
+  let f () =
+    Backend.set_color t.backend color;
+    Axes.print axes ~normalization:t.normalized
+      ~lines ~marks ~font_size ~ranges
+      ~print_axes ?axes_meeting ~print_tic t.backend;
+  in
+  add_order f t; (*if margins_ok, axes should stay in the initial viewport.*)
+  new_vp
+
 
 

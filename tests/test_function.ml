@@ -5,40 +5,51 @@ module H = Handle
 
 let () =
   let f s =
+    Printf.printf "%s\n***************************\n%!" s;
     try
-      let handle = H.make ~dirs:[ "../src"; "./src"] s 600. 600. in
+      let handle = H.make ~dirs:[ "../src"; "./src"] s 400. 400. in
       let vps = H.Viewport.matrix handle 2 2 in
       H.use (vps.(0).(0));
-      H.set_color handle Color.blue;
       let parabola x = x *. x in
-      H.plotfx handle parabola (-3.) 3.;
+      H.f handle ~color:Color.blue parabola (-3.) 3.;
       H.stroke handle;
       H.use (vps.(1).(0));
       H.set_color handle Color.red;
-      H.plotfx handle parabola (-3.) 3.;
+      H.f handle ~finish:(fun _ -> ()) parabola (-3.) 3.;
+      H.line_to handle 3. 10.;
+      H.line_to handle (-3.) 10.;
+      H.close_path handle;
+      H.fill handle;
+      H.use (vps.(0).(1));
+      H.set_color handle Color.green;
+      H.f handle ~finish:(fun _ -> ()) parabola (-3.) 3.;
+      H.line_to handle 3. (-1.);
+      H.line_to handle (-3.) (-1.);
+      H.close_path handle;
       H.stroke handle;
-      (*let xaxis =
-        A.make_axis (`P "|") `Abscissa B.CB (`P "tic_up") (`Linear(7,0))
+      H.use (vps.(1).(1));
+      let xaxis =
+        H.make_xaxis (`P "|") `Number CB (`P "tic_up") (`Linear(7,0))
       in
       let yaxis =
-        A.make_axis (`P "-") `Ordinate B.LC (`P "tic_left") (`Linear(7,2))
+        H.make_yaxis (`P "-") `Number LC (`P "tic_left") (`Linear(7,2))
       in
-      let axes = A.make (`Rectangle(true,true)) xaxis yaxis in*)
-     (* H.use (vps.(1).(0));
-      H.set_color handle Color.red;
-      H.plotfx handle (*~axes*) parabola (-3.) 3.;
+      let axes = H.make_axes (`Rectangle(true,true)) xaxis yaxis in
+      ignore
+        (H.print_axes handle axes {A.xmin = -3.;xmax = 3.;ymin=0.;ymax = 9.});
+      H.f handle parabola (-3.) 3.;
       H.stroke handle;
-*)
       H.close handle
     with
       B.Error e ->
         print_string (B.string_of_error e);
         exit 1
   in List.iter f
-       ["graphics";
-        "tikz functions.tex";
+       ["tikz functions.tex";
+        "graphics";
+        "cairo PNG functions.png";
         "cairo PDF functions.pdf";
-        "cairo PNG functions.png"]
+       ]
 
 (*Local Variables:*)
 (*compile-command: "ocamlopt -o test_function.com -I ../src dynlink.cmxa bigarray.cmxa archimedes.cmxa test_function.ml && ocamlc -o test_function.exe -I ../src dynlink.cma bigarray.cma archimedes.cma test_function.ml"*)
