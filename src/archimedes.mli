@@ -143,10 +143,10 @@ module Axes: sig
   (** A data structure holding ranges. Note that, contrary to rectangle
       fields, these ones are mutable, but cannot be modified.*)
   type ranges =
-      private {mutable xmin:float;
-               mutable ymin:float;
-               mutable xmax:float;
-               mutable ymax:float}
+      {mutable xmin:float;
+       mutable ymin:float;
+       mutable xmax:float;
+       mutable ymax:float}
 
   type 'a axis
     (**This type stores all information about an axis: major, minor

@@ -191,11 +191,10 @@ struct
     }
 
   let close ~options:_ t =
-    if Sys.os_type = "Win32" then (
-      Printf.printf "Please press a key to continue...%!";
-      ignore (Graphics.wait_next_event [Graphics.Key_pressed])
-    );
     if not(t.closed) then (
+      (* FIXME: Temprary solution, the interactive module must handle this. *)
+      printf "Please press a key to continue...%!";
+      ignore (Graphics.wait_next_event [Graphics.Key_pressed]);
       Graphics.close_graph();
       t.closed <- true;
       in_use := false;
