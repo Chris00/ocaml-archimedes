@@ -41,7 +41,6 @@ let () =
       ignore
         (H.print_axes handle axes {A.xmin = -3.;xmax = 3.;ymin=0.;ymax = 9.});
       H.f handle parabola (-3.) 3.;
-      H.stroke handle;
       H.close handle
     with
       B.Error e ->

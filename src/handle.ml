@@ -189,7 +189,7 @@ type t =
      (*The quantity used to define normalized by scaling. This is
        needed for text size handling.*)
      initial_coords : coords;(*Initial coordinate system -- the
-                               vp_to_device field is the one
+                               vp_device field is the one
                                which makes the surface as a unit
                                square*)
      initial_vp: viewport;(*Initial viewport --
