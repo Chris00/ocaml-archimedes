@@ -208,9 +208,12 @@ type t =
        (created and updated) copy.*)
      mutable immediate_drawing:bool;
      (*Says whether we draw immediately or wait for closing.*)
-     mutable only_immediate : bool
+     mutable only_immediate : bool;
        (*Says whether an order has only to be made immediately, or
          must be stored. This field is not modifiable by users.*)
+     mutable only_extents: bool;
+     (*Says whether we draw or only compute the extents to update the
+       coordinate systems. This field is not modifiable by users.*)
     }
 
 (*Default line width, text size, mark size: if the height is less than
@@ -263,6 +266,7 @@ let make ~dirs name w h =
    used_vp = init_used_vp;
    immediate_drawing = false;
    only_immediate = false;
+   only_extents = false;
   }
 
 
@@ -546,14 +550,17 @@ let from_backend f t = f t.backend
 (* Backend primitives (not overriden by viewport system)
  **********************************************************************)
 let add_order f t =
-  if t.only_immediate then f ()
-  else ( Queue.add f t.vp.orders;
-         if t.immediate_drawing then f ())
+  if not t.only_extents then (
+    if t.only_immediate then f ()
+    else ( Queue.add f t.vp.orders;
+           if t.immediate_drawing then f ()))
 
 let get_current_pt t = match t.vp.current_pt with
     None -> raise No_current_point
   | Some (x,y) -> x,y
-let set_current_pt t x y = t.vp.current_pt <- Some (x,y)
+
+let set_current_pt t x y =
+  if not t.only_extents then t.vp.current_pt <- Some (x,y)
 
 
 (*FIXME: needed?*)
@@ -755,8 +762,8 @@ let mark_extents t name =
 *)
 
 
-let f_line_to t (x,y) = Backend.line_to t.backend x y
-let f_finish t = Backend.stroke t.backend
+let f_line_to t (x,y) = line_to t x y
+let f_finish = stroke
 
 let f t ?color ?nsamples ?min_step
     ?(do_with = f_line_to) ?(finish = f_finish) f a b =
@@ -766,8 +773,8 @@ let f t ?color ?nsamples ?min_step
   let f () =
     Backend.save t.backend;
     (match color with
-      Some color -> Backend.set_color t.backend color
-    | None -> ());
+       Some color -> Backend.set_color t.backend color
+     | None -> ());
     t.only_immediate <- true;
     fct (fun () -> do_with t) ();
     finish t;
@@ -776,6 +783,10 @@ let f t ?color ?nsamples ?min_step
   in
   update_coords t ranges.Axes.xmin ranges.Axes.ymin;
   update_coords t ranges.Axes.xmax ranges.Axes.ymax;
+  t.only_extents <- true;
+  fct (fun () -> do_with t) ();
+  finish t;
+  t.only_extents <- false;
   add_order f t
 
 let xy_mark mark t x y =
@@ -784,7 +795,7 @@ let xy_mark mark t x y =
 
 let xy_finish t = ()
 
-let xy t ?axes ?(mark = "X") ?(f = (xy_mark mark)) iter =
+let xy t ?axes ?(mark = "X") ?(do_with = (xy_mark mark)) iter =
   let rec iterate do_with =
     match Iterator.next iter with
       None -> xy_finish t
@@ -794,12 +805,16 @@ let xy t ?axes ?(mark = "X") ?(f = (xy_mark mark)) iter =
   in
   let f () =
     t.only_immediate <- true;
-    iterate f;
+    Iterator.reset iter;
+    iterate do_with;
     t.only_immediate <- false;
   in
   let extents = Iterator.extents iter in
   update_coords t extents.Axes.xmin extents.Axes.ymin;
   update_coords t extents.Axes.xmax extents.Axes.ymax;
+  t.only_extents <- true;
+  iterate do_with;
+  t.only_extents <- false;
   add_order f t
 
 let make_xaxis = Axes.make_xaxis
