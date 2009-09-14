@@ -532,6 +532,7 @@ struct
       write t (Queue.pop t.curr_path)
     done;
     write t ";";
+    t.state.curr_pt <- false;
     t.indent <- t.indent - 2
 
   let fill_preserve t =
@@ -556,6 +557,7 @@ struct
       write t (Queue.pop t.curr_path)
     done;
     write t ";";
+    t.state.curr_pt <- false;
     t.indent <- t.indent - 2
 
 
@@ -614,10 +616,10 @@ struct
   let set_font_size t size =
     let st = get_state t in
     st.fsize <- size;
-    (* FIXME: this does not work INSIDE a tikz environment. *)
-    (* write t (Printf.sprintf
+    (* FIXME: this does not work INSIDE a tikz environment (TeXLive?) *)
+   (* write t (Printf.sprintf
                "\\fontsize{%.2f}{%.2f}\\selectfont"
-               size (1.2 *. size)) *)
+               size (1.2 *. size))*)
 ;;
 (*Following
 http://www.tac.dk/cgi-bin/info2www?%28latex%29Low-level%20font%20commands:
