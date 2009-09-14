@@ -268,37 +268,36 @@ module Handle: sig
        handle true] or a [close handle] to do the orders if [b] is
        false. *)
 
+  type viewport
   (**Viewports creation.*)
   module Viewport :
   sig
-    type vp
-      (**The type for viewports.*)
     val make :
-      t -> xmin:float -> xmax:float -> ymin:float -> ymax:float -> vp
+      t -> xmin:float -> xmax:float -> ymin:float -> ymax:float -> viewport
       (**[make t ~xmin ~ymin ~ymin ~ymax] creates a new viewport,
          whose coordinate system makes the rectangle delimited by the
          given values (expressed in the current [t] coordinate system) as
          the new unit square.*)
     val sub :
-      vp -> xmin:float -> xmax:float -> ymin:float -> ymax:float -> vp
+      viewport -> xmin:float -> xmax:float -> ymin:float -> ymax:float -> viewport
       (**Same as [make] but the values are expressed in viewport's coordinates.*)
     val make_rect :
-      t -> x:float -> y:float -> w:float -> h:float -> vp
+      t -> x:float -> y:float -> w:float -> h:float -> viewport
       (**[make_rect t x y w h] is equivalent to [make t x y (x+.w) (y+.h)].*)
     val sub_rect :
-      vp -> x:float -> y:float -> w:float -> h:float -> vp
+      viewport -> x:float -> y:float -> w:float -> h:float -> viewport
       (**[sub_rect vp x y w h] is equivalent to [sub vp x y (x+.w) (y+.h)].*)
 
     (**{2 Convenience functions to create viewports}*)
-    val rows : t -> int -> vp array
-    val columns : t -> int -> vp array
-    val matrix : t -> int -> int -> vp array array
-    val sub_rows : vp -> int -> vp array
-    val sub_columns : vp -> int -> vp array
-    val sub_matrix : vp -> int -> int -> vp array array
+    val rows : t -> int -> viewport array
+    val columns : t -> int -> viewport array
+    val matrix : t -> int -> int -> viewport array array
+    val sub_rows : viewport -> int -> viewport array
+    val sub_columns : viewport -> int -> viewport array
+    val sub_matrix : viewport -> int -> int -> viewport array array
   end
   (**{2 Using viewports}*)
-  val use : Viewport.vp -> unit
+  val use : viewport -> unit
   val use_initial : t -> unit
   val set_line_width : t -> float -> unit
   val set_mark_size : t -> float -> unit
@@ -389,11 +388,12 @@ module Handle: sig
     ?axes_print:('a -> Axes.ranges -> t -> unit) ->
     ?axes_meeting:('a -> Axes.ranges -> float * float) ->
     ?print_tic:(t -> 'b -> unit) -> Axes.ranges ->
-    Viewport.vp option
-    (**Prints axes, following the parameters stored in [t] and the
-       optional arguments, if given. Returns a [Viewport.vp] in which
-       the graph will take place, or [None] if the axes take too big
-       margins (reducing the graph to nothing)*)
+    viewport option
+      (**Prints axes, following the parameters stored in [t] and the
+         optional arguments, if given. Returns a [viewport] in which the
+         graph will take place, or [None] if the axes take too big
+         margins (reducing the graph to nothing). In this latter case,
+         the axes are not guaranteed to fit the viewport.*)
 
 end
 
