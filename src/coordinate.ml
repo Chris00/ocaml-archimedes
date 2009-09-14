@@ -162,6 +162,19 @@ let make_identity() =
     } in
   dev
 
+let make_root_from matrix =
+  let rec dev =
+    { depends_on = dev; (* fake parent, never accessed *)
+      tm = matrix;
+      ctm = Matrix.copy matrix;
+      up_to_date = true; (* always must be *)
+      children = W.create 5;
+      monitors = WM.create 0;
+      id = new_id();
+    } in
+  dev
+
+
 let copy coord =
   { coord with
       (* One must copy the matrices to avoid that modifying [coord]

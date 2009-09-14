@@ -186,6 +186,8 @@ struct
     with Stack.Empty -> Printf.printf
       "archimedes_tikz : warning - restore without saving\n%!"
 
+  let backend_to_device t = Matrix.make_identity()
+
   (*To avoid typos:*)
   let preamble = "preamble"
 

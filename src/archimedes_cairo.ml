@@ -29,7 +29,7 @@ struct
     {Cairo.xx = 1.; xy = 0.; yx = 0.; yy = -1.; x0 = 0.; y0 = h}
   let name = "cairo"
 
-  type t = { cr:Cairo.context; m:Cairo.matrix; mutable lw:Cairo.matrix}
+  type t = { cr:Cairo.context; m:Cairo.matrix; mutable lw:Cairo.matrix; h:float}
       (*The [m] field contains the correct transformation for this
         context, which makes the origin at the bottom left corner of
         the device. The [lw] field stores tne coordinate system in
@@ -38,6 +38,10 @@ struct
   (* let path_extents cr = Cairo.Path.extents cr
      let close_path cr = Cairo.Path.close cr
      let clear_path cr = Cairo.Path.clear cr*)
+
+  let backend_to_device t =
+    {Archimedes.xx = 1.; xy = 0.; yx = 0.; yy = -1.; x0 = 0.; y0 = t.h}
+
 
   (* Same type (same internal representation), just in different modules *)
   let set_line_cap t c = set_line_cap t.cr (Obj.magic c : Cairo.line_cap)
@@ -67,11 +71,12 @@ struct
                     x0 = m.Archimedes.x0; y0 = m.Archimedes.y0;}
       (*(Obj.magic m : Cairo.matrix)*)
     in
-    let matrix = Cairo.Matrix.multiply m' t.m in
-    set_matrix t.cr matrix
+    (*let m' = Cairo.Matrix.multiply m' t.m in*)
+    set_matrix t.cr m'
 
   let get_matrix t =
-    let m = Cairo.Matrix.multiply (get_matrix t.cr) t.m in
+    let m = get_matrix t.cr in
+    (*let m = Cairo.Matrix.multiply (get_matrix t.cr) t.m in*)
     { Archimedes.xx = m.Cairo.xx;  xy = m.Cairo.xy;
       yx = m.Cairo.yx; yy = m.Cairo.yy;
       x0 = m.Cairo.x0; y0 = m.Cairo.y0;}
@@ -142,7 +147,7 @@ struct
     let cr = Cairo.create surface in
     let matrix = initial_matrix height (*Cairo.Matrix.init_identity ()*) in
     Cairo.set_matrix cr matrix;
-    {cr = cr; m = matrix; lw = matrix}
+    {cr = cr; m = matrix; lw = matrix; h=height}
 
   let close ~options t =
     let surface = Cairo.get_target t.cr in

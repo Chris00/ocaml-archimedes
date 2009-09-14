@@ -416,12 +416,18 @@ type matrix = { mutable xx: float; mutable yx: float;
     plotting data. *)
 module Backend:
 sig
+  (**To be able to register a given backend, it must provide an
+     implementation for all these functions.*)
   module type T =
   sig
-    (**To be able to register a given backend, it must provide an
-       implementation for all these functions.*)
     type t
       (** Handle of a backend or a coordinate system. *)
+    val backend_to_device : t -> matrix
+      (**The returned matrix is the one which transforms the backend
+         coordinates (those for which the origin is at the lower left
+         corner of the surface, with unit square 1px x 1px) to the
+         device coordinates (that is, the original coordinates which
+         naturally come with the surface).*)
 
     val set_color : t -> Color.t -> unit
     val set_line_width : t -> float -> unit

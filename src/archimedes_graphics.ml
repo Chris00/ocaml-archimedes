@@ -103,6 +103,8 @@ module B =
 struct
   let name = "graphics"
 
+  let backend_to_device t = Matrix.make_identity()
+    (*A Graphics handle has already the "good" coordinates.*)
   let in_use = ref false (* only one Graphics handle can be created *)
 
   (* Device coordinates and dimensions. *)

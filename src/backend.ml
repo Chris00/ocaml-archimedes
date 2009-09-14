@@ -31,6 +31,7 @@ external for_linking_1__ : unit -> unit = "caml_hash_variant"
 module type T =
 sig
   type t
+  val backend_to_device : t -> matrix
 
   val set_color : t -> Color.t -> unit
   val set_line_width : t -> float -> unit
@@ -97,6 +98,8 @@ type t = {
   width: float;  (* width of the backend canvas in its original units *)
   height: float; (* height of the backend canvas in its original units *)
   close: unit -> unit;
+  backend_to_device: matrix;
+  device_to_backend: matrix;
 
   set_color : Color.t -> unit;
   set_line_width : float -> unit;
@@ -167,7 +170,12 @@ struct
   if not(M.mem B.name !registry) then
     let make options w h =
       let handle = B.make options w h in
+      let backend_to_device = B.backend_to_device handle in
+      let device_to_backend = Matrix.copy backend_to_device in
+      Matrix.invert device_to_backend;
       { width = w;  height = h;
+        backend_to_device = backend_to_device;
+        device_to_backend = device_to_backend;
         close = (fun () -> B.close ~options handle);
         set_color = B.set_color handle;
         set_line_width = B.set_line_width handle;
@@ -222,6 +230,8 @@ end
 let width t = t.width
 let height t = t.height
 let close t = t.close()
+let backend_to_device t = Matrix.copy t.backend_to_device
+let device_to_backend t = Matrix.copy t.device_to_backend
 let set_color t = t.set_color
 let set_line_width t = t.set_line_width
 let set_line_cap t = t.set_line_cap
@@ -251,8 +261,8 @@ let restore t = t.restore()
 let translate t = t.translate
 let scale t = t.scale
 let rotate t = t.rotate
-let set_matrix t m = t.set_matrix m
-let get_matrix t = t.get_matrix()
+let set_matrix t m = t.set_matrix (Matrix.mul t.backend_to_device m)
+let get_matrix t = Matrix.mul t.device_to_backend (t.get_matrix())
 let select_font_face t = t.select_font_face
 let set_font_size t = t.set_font_size
 let text_extents t = t.text_extents
