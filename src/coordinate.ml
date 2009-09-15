@@ -73,10 +73,10 @@ end =
 struct
   type t = {
     depends_on : t; (* The other coordinate system this one depends
-                       upon.  All coordinate systems, except the device
-                       one, depends on another one. *)
+                       on.  All coordinate systems, except the first
+                       one (root), depend on another one. *)
     tm : Matrix.t; (* transformation matrix that transform these
-                      coordinates into the coordinates it depends upon.  *)
+                      coordinates into the coordinates it depends on.  *)
     ctm : Matrix.t;
     (* Transformation to device coordinates.  This is the composition of
        [tm] with the [ctm] of the coordinate system this one depends on.
@@ -200,7 +200,7 @@ let make_from_transform coord tm =
 
   let coord' = { depends_on = coord;
                  tm = tm;
-                 ctm = Matrix.mul tm coord.ctm;
+                 ctm = Matrix.mul coord.ctm tm;
                  up_to_date = coord.up_to_date; (* iff [coord] is up to date *)
                  children = W.create 5;
                  monitors = WM.create 2;

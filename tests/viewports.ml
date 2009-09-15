@@ -17,7 +17,6 @@ let () =
       H.stroke handle;
       H.use (vps.(1).(0));
       H.set_color handle Color.red;
-      (*H.plotfx handle parabola (-3.) 3.;*)
       H.move_to handle 0. 0.;
       H.line_to handle 1. 0.;
       H.line_to handle 1. 1.;
@@ -27,10 +26,12 @@ let () =
       H.use (vps.(0).(1));
       H.set_color handle Color.green;
       let two_pi = 8. *. atan 1. in
-      H.move_to handle 0. 0.;
+      H.move_to handle 1. 0.;
       H.arc handle 1. 0. two_pi;
-      H.fill handle;
-      H.set_line_width handle 5.;
+      H.fill_preserve handle;
+      H.set_color handle Color.magenta;
+      H.stroke handle;
+      H.set_rel_line_width handle 10.;
       H.move_to handle (-0.8) 0.;
       H.line_to handle 0.8 0.;
       H.set_color handle Color.white;
@@ -41,7 +42,10 @@ let () =
       H.line_to handle 0. 1.;
       H.line_to handle 1. 0.5;
       H.close_path handle;
-      H.fill handle;
+      H.set_line_width handle 5.;
+      H.fill_preserve handle;
+      H.set_color handle Color.magenta;
+       H.stroke handle;
       H.close handle
     with
       B.Error e ->

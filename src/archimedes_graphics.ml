@@ -311,31 +311,47 @@ struct
 
   let arc t ~r ~a1 ~a2 =
     let st = get_state t in
+    let rxx, rxy = Matrix.transform_distance st.ctm r 0.
+    and ryx, ryy = Matrix.transform_distance st.ctm 0. r in
+    (*FIXME: better radius*)
+    let r = sqrt(rxx *. rxx +. rxy *. rxy +. ryx *. ryx +. ryy *. ryy) in
+    let b1 = atan2 rxy rxx in
     let rec arcin a1 a2 =
-      let curvelen = r *. abs_float (a2 -. a1) in
-      (*if curvelen < 1. then ( *)
-      let rcos1 = r *. cos a1 and rsin1 = r *. sin a1 in
-      let rcos2 = r *. cos a2 and rsin2 = r *. sin a2 in
-      (*let coeff = (2. *. (sqrt 5.) -. 4.) /. 3. in*)
-      let coeff = 1. in
-      (*This coefficient makes the middle point of a Bezier curve
-        coïncide with the arc.*)
-      let f z a = coeff *. (z +. a) in
-      if st.curr_pt then
-        let x = st.x and y = st.y in
-        rel_move_to t rcos1 rsin1;
-        curve_to t (f x rsin1) (f y rcos1) (f x rsin2) (f y rcos2)
-          (x+.rcos2) (y+.rsin2);
-        st.curr_pt <- true;
-        st.x <- x+.rcos2;
-        st.y <- y+.rsin2
-      else failwith "Archimedes_graphics.arc: no current point"
-        (* )
-           else (
-           let a3 = (a1 +. a2) /.2. in
-           arcin a1 a3;
-           arcin a3 a2)*)
-    in arcin a1 a2
+      let diff_angle = abs_float (a2 -. a1) in
+      let curvelen = r *. diff_angle in
+      if diff_angle < 2. && curvelen < 100. then (
+        let rcos1 = r *. cos a1 and rsin1 = r *. sin a1 in
+        let rcos2 = r *. cos a2 and rsin2 = r *. sin a2 in
+        let coeff = (2. *. (sqrt 5.) -. 4.) /. 3. in
+        (*let coeff = 1. in*)
+        (*This coefficient makes the middle point of a Bezier curve
+          coïncide with the arc.*)
+        let f z a = z +.coeff *. a in
+        if st.curr_pt then
+          let x = st.x -. rcos1 and y = st.y -. rsin1 in
+          let x' = x +. rcos2 and y' = y +. rsin2 in
+          let cx = f st.x ( -.rsin1) and cy = f st.y rcos1 in
+          let cx' = f x' rsin2 and cy' = f y' ( -. rcos2) in
+          st.current_path <- CURVE_TO(cx,cy, cx',cy', x',y') :: st.current_path;
+          (* Update the current point and extents *)
+          st.path_extents <-
+            update_curve st.path_extents st.x st.y cx cy cx' cy' x' y';
+          Printf.printf
+            "arc %f %f %f %f %f -> curve_to %f %f %f %f %f %f %f %f\n%!"
+            x y r a1 a2
+            st.x st.y cx cy cx' cy' x' y';
+          st.curr_pt <- true;
+          st.x <- x';
+          st.y <- y'
+        else failwith "Archimedes_graphics.arc: no current point"
+      )
+      else (
+        let a3 = (a1 +. a2) /.2. in
+        arcin a1 a3;
+        arcin a3 a2)
+    in
+    Printf.printf "Current point: %f %f \n%!" st.x st.y;
+    arcin (b1 +. a1) (b1 +. a2)
 
   let rec beginning_of_subpath list =
     match list with

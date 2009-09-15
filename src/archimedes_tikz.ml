@@ -278,6 +278,7 @@ struct
 
   let set_line_width t w =
     let st = get_state t in
+    (*
     (*Note: Line width is coordinate-dependent: need to adapt it to
       device coords.*)
     let m = (*Matrix.copy*) st.ctm in
@@ -285,8 +286,8 @@ struct
     let x1,x2 = Matrix.transform_distance m w 0.
     and x3,x4 = Matrix.transform_distance m 0. w in
     (*FIXME: is there a better choice for width?*)
-    let w' = sqrt(x1*.x1 +. x2*.x2 +. x3*.x3 +. x4*.x4) in
-    st.linewidth <- sprintf "line width=%f" w'
+    let w = sqrt(x1*.x1 +. x2*.x2 +. x3*.x3 +. x4*.x4) in*)
+    st.linewidth <- sprintf "line width=%f" w
 
   let get_line_width t =
     let s = (get_state t).linewidth in
@@ -479,8 +480,13 @@ struct
     let r',_ = Archimedes.Matrix.transform_distance st.ctm r 0. in
     (*Note: without the following, angles are taken "mod 360", so
       circles could not be made using 0 -- 2 pi as (original) argument.*)
+    (*TikZ uses the current point as starting point for the arc, but
+      as center for circles.*)
+    let x' = r' *. cos a1'
+    and y' = r' *. sin a1' in
+    Queue.add ("++"^(point_string ( -.x') ( -.y'))) t.curr_path;
     for i = 1 to loops do
-      Queue.add (" circle("^(string_of_float r')^")") t.curr_path
+      Queue.add (" circle("^(string_of_float r')^")") t.curr_path;
     done;
     (*"Real" arc*)
     let endarc =
@@ -490,10 +496,7 @@ struct
           (string_of_float r')^")"
       else ""
     in
-    (*TikZ uses the current point as starting point for the arc.*)
-    let x' = r' *. cos a1'
-    and y' = r' *. sin a1' in
-    Queue.add (" -- ++"^(point_string x' y')^endarc) t.curr_path;
+    Queue.add ("++"^(point_string x' y')^endarc) t.curr_path;
     st.curr_pt <- true;
     st.x <- st.x +. r' *. cos a2';
     st.y <- st.y +. r' *. sin a2'

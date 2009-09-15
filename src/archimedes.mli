@@ -302,6 +302,9 @@ module Handle: sig
   val set_line_width : t -> float -> unit
   val set_mark_size : t -> float -> unit
   val set_font_size : t -> float -> unit
+  val set_rel_line_width : t -> float -> unit
+  val set_rel_mark_size : t -> float -> unit
+  val set_rel_font_size : t -> float -> unit
   val set_global_line_width : t -> float -> unit
   val set_global_mark_size : t -> float -> unit
   val set_global_font_size : t -> float -> unit

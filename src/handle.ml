@@ -1,24 +1,28 @@
 module Sizes:
 sig
   type t
-  val make_root: float -> float -> float -> t
+  val make_root: float -> float -> float -> float -> t
   val child: t -> float -> float -> float -> t
   val get_lw: t -> float
   val get_ts: t -> float
   val get_marks: t -> float
-  val set_lw: t -> float -> unit
-  val set_ts: t -> float -> unit
-  val set_marks: t -> float -> unit
+  val set_rel_lw: t -> float -> unit
+  val set_rel_ts: t -> float -> unit
+  val set_rel_marks: t -> float -> unit
+  val set_abs_lw: t -> float -> unit
+  val set_abs_ts: t -> float -> unit
+  val set_abs_marks: t -> float -> unit
 end
   =
 struct
   type u =
-      {mutable this: float;
-       mutable global: float option;}
+      ABSOLUTE of float
+    | REL_NOT_UPDATED of float
+    | REL_UPDATED of float * float
 
   type t =
       {parent: t;
-       lw: u; ts: u; marks:u;
+       mutable lw: u; mutable ts: u; mutable marks:u;
        mutable children: t list}
 
   (*A node is 'up to date' (concerning a style) if "style".global is of the form [Some _].
@@ -28,21 +32,21 @@ struct
     - if a node is up to date, then so is its parent; conversely, if a
     node is not up to date, then so are all its children.
 
-    - if a node is up_to_date, then we have the following facts:
-    *"style".global = Some x (for some float x);
-    *parent."style".global = Some y;
-    *The equality [x = this *. y] is true.
+    - if a node is up_to_date, then "style" is ABSOLUTE(x) or
+    REL_UPDATED(h,x); in this latter case, we have that:
+
+    *the parent of the current node is also ABSLOUTE(y) or REL_UPDATED(_,y);
+    *and x = h *. y.
   *)
 
-  let make_root lines text marks =
-    let make_uniform x =
-      {this = x; global = Some x}
-    in
+  let make_root init lines text marks =
     let rec real_root =
       {parent = real_root;
-       lw = make_uniform 1.;
-       ts = make_uniform 1.;
-       marks = make_uniform 1.;
+       lw = ABSOLUTE init;
+       ts = ABSOLUTE init;
+       marks = ABSOLUTE 1.;
+       (*Note: to make a mark we place ourselves in normalized
+         coords. There is thus no need to premultiply.*)
        children = []}
     in
     (*real_root is not accessible to the user, so there's no risk to
@@ -50,9 +54,9 @@ struct
       parent's data of a given node.*)
     let root =
       {parent = real_root;
-       lw = make_uniform lines;
-       ts = make_uniform text;
-       marks = make_uniform marks;
+       lw = REL_UPDATED (lines, init *. lines);
+       ts = REL_UPDATED (text, init *. text);
+       marks = REL_UPDATED (marks, init *. marks);
        children = []}
     in
     real_root.children <- [root];
@@ -62,93 +66,133 @@ struct
     parent.children <- child :: parent.children
 
   let prod x = function
-      None -> None
-    | Some y -> Some (x *. y)
+      ABSOLUTE(y)
+    | REL_UPDATED(_,y) -> REL_UPDATED (x, x*.y)
+    | REL_NOT_UPDATED _ -> REL_NOT_UPDATED x
 
   let child parent lines text marks =
     let child =
       {parent = parent;
-       lw = {this = lines; global = prod lines parent.lw.global};
-       ts = {this = text; global = prod text parent.ts.global};
-       marks = {this = marks; global = prod marks parent.marks.global};
+       lw = prod lines parent.lw;
+       ts = prod text parent.ts;
+       marks = prod marks parent.marks;
        children = []}
     in
     add_child parent child;
     child
 
   let rec update_lw node =
-    match node.lw.global with
-      Some _ -> ()
-    | None ->
+    match node.lw with
+      ABSOLUTE(_)
+    | REL_UPDATED(_,_) -> ()
+    | REL_NOT_UPDATED w ->
         let parent = node.parent in
         update_lw parent;(*ensures invariant 1 ok.*)
-        node.lw.global <- prod node.lw.this parent.lw.global
+        node.lw <- prod w parent.lw
           (*ensures invariant 2*)
 
   let rec update_ts node =
-    match node.ts.global with
-      Some _ -> ()
-    | None ->
+    match node.ts with
+      ABSOLUTE(_)
+    | REL_UPDATED(_,_) -> ()
+    | REL_NOT_UPDATED s ->
         let parent = node.parent in
         update_ts parent;(*ensures invariant 1 ok.*)
-        node.ts.global <- prod node.ts.this parent.ts.global
+        node.ts <- prod s parent.ts
           (*ensures invariant 2*)
 
   let rec update_marks node =
-    match node.marks.global with
-      Some _ -> ()
-    | None ->
+    match node.marks with
+      ABSOLUTE(_)
+    | REL_UPDATED(_,_) -> ()
+    | REL_NOT_UPDATED m ->
         let parent = node.parent in
         update_marks parent;(*ensures invariant 1 ok.*)
-        node.marks.global <- prod node.marks.this parent.marks.global
+        node.marks <- prod m parent.marks
           (*ensures invariant 2*)
 
   let rec set_none_lw node =
-    node.lw.global <- None;
-    (*Now un_update all children => invariant 1.*)
-    List.iter set_none_lw node.children
+    let need_iter =
+      match node.lw with
+        REL_UPDATED(this,_) ->
+          node.lw <- REL_NOT_UPDATED this;
+          true
+      | ABSOLUTE _ -> true
+      | REL_NOT_UPDATED _ -> false
+    in
+    (*Now un_update all children if needed => invariant 1.*)
+    if need_iter then List.iter set_none_lw node.children
 
   let rec set_none_ts node =
-    node.ts.global <- None;
-    (*Now un_update all children => invariant 1.*)
-    List.iter set_none_ts node.children
+    let need_iter =
+      match node.ts with
+        REL_UPDATED(this,_) ->
+          node.ts <- REL_NOT_UPDATED this;
+          true
+      | ABSOLUTE _ -> true
+      | REL_NOT_UPDATED _ -> false
+    in
+    (*Now un_update all children if needed => invariant 1.*)
+    if need_iter then List.iter set_none_ts node.children
 
   let rec set_none_marks node =
-    node.marks.global <- None;
-    (*Now un_update all children => invariant 1.*)
-    List.iter set_none_marks node.children
+    let need_iter =
+      match node.marks with
+        REL_UPDATED(this,_) ->
+          node.marks <- REL_NOT_UPDATED this;
+          true
+      | ABSOLUTE _ -> true
+      | REL_NOT_UPDATED _ -> false
+    in
+    (*Now un_update all children if needed => invariant 1.*)
+    if need_iter then List.iter set_none_marks node.children
 
   let get_lw node =
     update_lw node;
-    match node.lw.global with
-      None -> failwith "get_lw: internal error"
-    | Some x -> x
+    match node.lw with
+      REL_NOT_UPDATED _ -> failwith "get_lw: internal error"
+    | ABSOLUTE x
+    | REL_UPDATED(_,x) -> x
 
   let get_ts node =
     update_ts node;
-    match node.ts.global with
-      None -> failwith "get_ts: internal error"
-    | Some x -> x
+    match node.ts with
+      REL_NOT_UPDATED _ -> failwith "get_ts: internal error"
+    | ABSOLUTE x
+    | REL_UPDATED(_,x) -> x
 
   let get_marks node =
     update_marks node;
-    match node.marks.global with
-      None -> failwith "get_marks: internal error"
-    | Some x -> x
+    match node.marks with
+      REL_NOT_UPDATED _ -> failwith "get_marks: internal error"
+    | ABSOLUTE x
+    | REL_UPDATED(_,x) -> x
 
   (*Note: the Failures have a priori no way to happen, due to
     updates. If that is the case, then there is a bug.*)
 
-  let set_lw node size =
-    node.lw.this <- size;
+  let set_rel_lw node size =
+    node.lw <- REL_NOT_UPDATED size;
     set_none_lw node
 
-  let set_ts node size =
-    node.ts.this <- size;
+  let set_rel_ts node size =
+    node.ts <- REL_NOT_UPDATED size;
     set_none_ts node
 
-  let set_marks node size =
-    node.marks.this <- size;
+  let set_rel_marks node size =
+    node.marks <- REL_NOT_UPDATED size;
+    set_none_marks node
+
+  let set_abs_lw node size =
+    node.lw <- ABSOLUTE size;
+    set_none_lw node
+
+  let set_abs_ts node size =
+    node.ts <- ABSOLUTE size;
+    set_none_ts node
+
+  let set_abs_marks node size =
+    node.marks <- ABSOLUTE size;
     set_none_marks node
 end
 
@@ -231,14 +275,14 @@ let initial_scale = 1.
 
 let make ~dirs name w h =
   let backend = Backend.make ~dirs name w h in
-  let init = Coordinate.make_identity () in
+  let init = Coordinate.make_root_from (Backend.backend_to_device backend) in
   let coord = Coordinate.make_scale init w h in
   let coord2 = Coordinate.make_scale coord initial_scale initial_scale in
   let square_side = min w h in
   let norm = Coordinate.make_scale init square_side square_side in
   let rec initial_vp =
     {handle = handle;
-     scalings = Sizes.make_root def_lw def_ts def_marks;
+     scalings = Sizes.make_root square_side def_lw def_ts def_marks;
      (*No drawings yet*)
      ranges = None;
      current_pt = None;
@@ -349,12 +393,22 @@ let update_coords t x y =
         and xmax = max x xmax
         and ymin = min y ymin
         and ymax = max y ymax in
-        let diffx = xmax -. xmin
-        and diffy = ymax -. ymin in
-        let new_matrix =
-          Matrix.make_scale (1. /.diffx) (1. /.diffy)
+        let scalx, tr_x =
+          if xmin = xmax then
+            initial_scale, -.xmin -. initial_scale /. 2.
+          else
+            1. /. (xmax -. xmin), -.xmin;
+
+        and scaly, tr_y =
+          if ymin = ymax then
+            initial_scale, -.ymin -. initial_scale /. 2.
+          else
+            1. /. (ymax -. ymin), -.ymin
         in
-        Matrix.translate new_matrix ( -.xmin) ( -.ymin);
+        let new_matrix =
+          Matrix.make_scale scalx scaly
+        in
+        Matrix.translate new_matrix tr_x tr_y;
         Printf.printf "New user_vp: %f %f %f %f %f %f\n%!"
           new_matrix.xx new_matrix.xy new_matrix.yx new_matrix.yy
           new_matrix.x0 new_matrix.y0;
@@ -474,30 +528,39 @@ let use_initial t = t.vp <- t.initial_vp
 
 (*Local settings -- in a viewport*)
 let set_line_width t w =
-  Sizes.set_lw t.vp.scalings
-    (if w <= 0. then def_lw else w /. usr_lw)
+  Sizes.set_abs_lw t.vp.scalings
+    (if w <= 0. then def_lw *. t.square_side else w /. usr_lw*. t.square_side)
+
 let set_mark_size t m =
-  Sizes.set_marks t.vp.scalings
-    (if m <= 0. then def_marks else m /. usr_marks)
+  Sizes.set_abs_marks t.vp.scalings
+    (if m <= 0. then def_marks *. t.square_side else m /. usr_marks*. t.square_side)
 let set_font_size t s =
-  Sizes.set_ts t.vp.scalings
-    (if s <= 0. then def_ts else s /. usr_ts)
+  Sizes.set_abs_ts t.vp.scalings
+    (if s <= 0. then def_ts *. t.square_side else s /. usr_ts*. t.square_side)
+
+let set_rel_line_width t w =
+  Sizes.set_rel_lw t.vp.scalings (if w <= 0. then 1. else w)
+let set_rel_mark_size t m =
+  Sizes.set_rel_marks t.vp.scalings (if m <= 0. then 1. else m)
+let set_rel_font_size t s =
+  Sizes.set_rel_ts t.vp.scalings (if s <= 0. then 1. else s)
+
 
 (*Global settings -- affect all viewports*)
 let set_global_line_width t w =
-  Sizes.set_lw t.initial_vp.scalings
-    (if w <= 0. then def_lw else w /. usr_lw)
+  Sizes.set_abs_lw t.initial_vp.scalings
+    (if w <= 0. then def_lw else w /. usr_lw *. t.square_side)
 let set_global_mark_size t m =
-  Sizes.set_marks t.initial_vp.scalings
-    (if m <= 0. then def_marks else m /. usr_marks)
+  Sizes.set_abs_marks t.initial_vp.scalings
+    (if m <= 0. then def_marks else m /. usr_marks *. t.square_side)
 let set_global_font_size t s =
-  Sizes.set_ts t.initial_vp.scalings
-    (if s <= 0. then def_ts else s /. usr_ts)
+  Sizes.set_abs_ts t.initial_vp.scalings
+    (if s <= 0. then def_ts else s /. usr_ts  *. t.square_side)
 
 (*Getters*)
-let get_line_width t = (Sizes.get_lw t.vp.scalings) *. usr_lw
-let get_mark_size t = (Sizes.get_marks t.vp.scalings) *. usr_marks
-let get_font_size t = (Sizes.get_ts t.vp.scalings) *. usr_ts
+let get_line_width t = (Sizes.get_lw t.vp.scalings) *. usr_lw/.t.square_side
+let get_mark_size t = (Sizes.get_marks t.vp.scalings) *. usr_marks/.t.square_side
+let get_font_size t = (Sizes.get_ts t.vp.scalings) *. usr_ts/.t.square_side
 
 
 
@@ -596,19 +659,26 @@ let stroke_current t =
 let stroke_current_preserve t =
   add_order (fun () -> Backend.stroke_preserve t.backend) t
 
+
+let tempref = ref 0
+
 let stroke t =
+  let lw = Sizes.get_lw t.vp.scalings in
   let f () =
+    Printf.printf "\n \n ref %i\nLine width: %f\n%!" !tempref lw;
+    incr tempref;
     let ctm = Coordinate.use t.backend t.normalized in
-    Backend.set_line_width t.backend (Sizes.get_lw t.vp.scalings);
+    Backend.set_line_width t.backend lw;
     Backend.stroke t.backend;
     Coordinate.restore t.backend ctm
   in
   add_order f t
 
 let stroke_preserve t =
+  let lw = Sizes.get_lw t.vp.scalings in
   let f () =
     let ctm = Coordinate.use t.backend t.normalized in
-    Backend.set_line_width t.backend (Sizes.get_lw t.vp.scalings);
+    Backend.set_line_width t.backend lw;
     Backend.stroke_preserve t.backend;
     Coordinate.restore t.backend ctm
   in
@@ -638,9 +708,9 @@ let restore_vp t =
   let f () =
     try
       let lw, ts, marks = Stack.pop t.vp.scalings_hist in
-      Sizes.set_lw t.vp.scalings lw;
-      Sizes.set_ts t.vp.scalings ts;
-      Sizes.set_marks t.vp.scalings marks;
+      Sizes.set_abs_lw t.vp.scalings lw;
+      Sizes.set_abs_ts t.vp.scalings ts;
+      Sizes.set_abs_marks t.vp.scalings marks;
       Backend.restore t.backend
     with Stack.Empty -> ()
   in
@@ -652,16 +722,12 @@ let select_font_face t slant weight family =
 (*FIXME: when [Backend.show_text], the backend temporarily returns to
   raw coordinates -- but converts its input.*)
 let show_text t ~rotate ~x ~y pos txt=
-  let ts = Sizes.get_ts t.vp.scalings in
-  let text_coord = Coordinate.make_scale t.normalized ts ts in
-  let font_size = ts *. t.square_side in
+  let font_size = Sizes.get_ts t.vp.scalings in
   let f () =
-    let ctm' = Coordinate.use t.backend text_coord in
     Backend.set_font_size t.backend font_size;
     Backend.show_text t.backend ~rotate ~x ~y pos txt;
-    Coordinate.restore t.backend ctm'
   in
-  let ctm = Coordinate.use t.backend text_coord in
+  let ctm = Coordinate.use t.backend t.normalized in
   Backend.set_font_size t.backend font_size;
   let rect = Backend.text_extents t.backend txt in
   Coordinate.restore t.backend ctm;
@@ -672,10 +738,8 @@ let show_text t ~rotate ~x ~y pos txt=
   add_order f t
 
 let text_extents t txt =
-  let ts = Sizes.get_ts t.vp.scalings in
-  let text_coord = Coordinate.make_scale t.normalized ts ts in
-  let font_size = ts *. t.square_side in
-  let ctm = Coordinate.use t.backend text_coord in
+  let font_size = Sizes.get_ts t.vp.scalings in
+  let ctm = Coordinate.use t.backend t.normalized in
   Backend.set_font_size t.backend font_size;
   let rect = Backend.text_extents t.backend txt in
   Coordinate.restore t.backend ctm;
@@ -683,6 +747,7 @@ let text_extents t txt =
 
 let render t name =
   let marks = Sizes.get_marks t.vp.scalings in
+  let marks = marks /. t.square_side in
   let f () =
     let ctm = Coordinate.use t.backend t.normalized in
     Backend.scale t.backend marks marks;
@@ -789,7 +854,7 @@ let print_axes t axes ?(color = Color.black)
   in
   let scalings = t.vp.scalings in
   let ts = Sizes.get_ts scalings in
-  let font_size = ts *. t.square_side /. 3. in
+  let font_size = ts /. 3. in
   let lines = Sizes.get_lw scalings
   and marks = Sizes.get_marks scalings in
   let ctm = Coordinate.use t.backend t.vp.vp_device in

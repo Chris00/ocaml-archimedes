@@ -24,16 +24,15 @@ module B : Backend.Capabilities =
 struct
   include Cairo
 
-  (*Matrix used to make the origin at the bottom left corner of the context.*)
-  let initial_matrix h =
-    {Cairo.xx = 1.; xy = 0.; yx = 0.; yy = -1.; x0 = 0.; y0 = h}
   let name = "cairo"
 
-  type t = { cr:Cairo.context; m:Cairo.matrix; mutable lw:Cairo.matrix; h:float}
-      (*The [m] field contains the correct transformation for this
-        context, which makes the origin at the bottom left corner of
-        the device. The [lw] field stores tne coordinate system in
-        which the line width is specified.*)
+  (* identity CTM -- never modified *)
+  let id = { Cairo.xx = 1.; xy = 0.;  yx = 0.; yy = 1.;  x0 = 0.; y0 = 0. }
+
+  type t = { cr:Cairo.context; mutable lw:Cairo.matrix; h:float}
+      (*The [lw] field stores the coordinate system in which the line
+        width is specified. [h] is for height, to make the
+        backend_to_device matrix.*)
 
   (* let path_extents cr = Cairo.Path.extents cr
      let close_path cr = Cairo.Path.close cr
@@ -71,12 +70,10 @@ struct
                     x0 = m.Archimedes.x0; y0 = m.Archimedes.y0;}
       (*(Obj.magic m : Cairo.matrix)*)
     in
-    (*let m' = Cairo.Matrix.multiply m' t.m in*)
     set_matrix t.cr m'
 
   let get_matrix t =
     let m = get_matrix t.cr in
-    (*let m = Cairo.Matrix.multiply (get_matrix t.cr) t.m in*)
     { Archimedes.xx = m.Cairo.xx;  xy = m.Cairo.xy;
       yx = m.Cairo.yx; yy = m.Cairo.yy;
       x0 = m.Cairo.x0; y0 = m.Cairo.y0;}
@@ -96,19 +93,21 @@ struct
   let curve_to t = curve_to t.cr
   let rectangle t = rectangle t.cr
 
-  let arc t ~r =
+  let arc t ~r ~a1 =
     let x,y = Cairo.Path.get_current_point t.cr in
-    arc t.cr ~x ~y ~r
+    let x = x -. r *. cos a1
+    and y = y -. r *. sin a1 in
+    arc t.cr ~x ~y ~r ~a1
 
   let stroke t =
     Cairo.save t.cr;
-    Cairo.set_matrix t.cr t.lw;
+    Cairo.set_matrix t.cr id;
     stroke t.cr;
     Cairo.restore t.cr
 
   let stroke_preserve t =
     Cairo.save t.cr;
-    Cairo.set_matrix t.cr t.lw;
+    Cairo.set_matrix t.cr id;
     stroke_preserve t.cr;
     Cairo.restore t.cr
 
@@ -145,9 +144,8 @@ struct
           failwith("Archimedes_cairo.make: options [" ^ opt
                    ^ "] not understood") in
     let cr = Cairo.create surface in
-    let matrix = initial_matrix height (*Cairo.Matrix.init_identity ()*) in
-    Cairo.set_matrix cr matrix;
-    {cr = cr; m = matrix; lw = matrix; h=height}
+    let matrix = Cairo.Matrix.init_identity () in
+    {cr = cr; lw = matrix; h=height}
 
   let close ~options t =
     let surface = Cairo.get_target t.cr in
@@ -168,9 +166,6 @@ struct
     Cairo.select_font_face t.cr ~slant ~weight family
 
   let set_font_size t = set_font_size t.cr
-
-  (* identity CTM -- never modified *)
-  let id = { Cairo.xx = 1.; xy = 0.;  yx = 0.; yy = 1.;  x0 = 0.; y0 = 0. }
 
   let show_text t ~rotate ~x ~y pos text =
     (* Compute the angle between the desired direction and the X axis
