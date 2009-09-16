@@ -318,7 +318,7 @@ let check t =
 let do_viewport_orders ?orders_queue vp backend =
   match vp.ranges with
     None -> (*No ranges, so no drawings *)
-      ()
+       Printf.printf " > no ranges.\n%!"
   | Some ranges ->
       let ctm = Coordinate.use backend vp.user_device in
       let m1 = vp.vp_device.Coordinate.ctm in
@@ -379,13 +379,15 @@ let update_coords t x y =
     None ->
       t.vp.ranges <- Some (Axes.Ranges.make x y);
       Coordinate.translate t.vp.user_device
-        (x+.initial_scale/.2.) (y+.initial_scale/.2.)
+        (x+.initial_scale/.2.) (y+.initial_scale/.2.);
+      Printf.printf "Init_update %f %f\n%!" x y
   | Some ranges ->
       let xmin = ranges.Axes.xmin
       and xmax = ranges.Axes.xmax
       and ymin = ranges.Axes.ymin
       and ymax = ranges.Axes.ymax in
 (*      let one_point = xmin = xmax && ymin = ymax in*)
+      Printf.printf "update %f %f and %f %f; %f %f%!" xmin ymax ymin ymax x y;
       let updated = Axes.Ranges.update ranges x y in
       if updated then (
         (*Coordinate changement*)
@@ -394,22 +396,17 @@ let update_coords t x y =
         and ymin = min y ymin
         and ymax = max y ymax in
         let scalx, tr_x =
-          if xmin = xmax then
-            initial_scale, -.xmin -. initial_scale /. 2.
-          else
-            1. /. (xmax -. xmin), -.xmin;
-
+          if xmin = xmax then initial_scale, -.xmin -. initial_scale /. 2.
+          else 1. /. (xmax -. xmin), -.xmin
         and scaly, tr_y =
-          if ymin = ymax then
-            initial_scale, -.ymin -. initial_scale /. 2.
-          else
-            1. /. (ymax -. ymin), -.ymin
+          if ymin = ymax then initial_scale, -.ymin -. initial_scale /. 2.
+          else 1. /. (ymax -. ymin), -.ymin
         in
         let new_matrix =
           Matrix.make_scale scalx scaly
         in
         Matrix.translate new_matrix tr_x tr_y;
-        Printf.printf "New user_vp: %f %f %f %f %f %f\n%!"
+        Printf.printf ">New user_vp: %f %f %f %f %f %f\n%!"
           new_matrix.xx new_matrix.xy new_matrix.yx new_matrix.yy
           new_matrix.x0 new_matrix.y0;
         Coordinate.transform t.vp.user_device new_matrix;
@@ -476,11 +473,12 @@ struct
     (*Need to change the current viewport and coordinates of the
       context, but also flag the viewport, if it is not, and add it to
       the [used_vp] field of the context.*)
+    (Printf.printf "Use vp \n%!";
     let handle = vp.handle in
     handle.vp <- vp;
     if not vp.stored then (
       vp.stored <- true;
-      Queue.push vp handle.used_vp)
+      Queue.push vp handle.used_vp))
 
   (*{2 Convenience functions to create viewports}*)
   let rows handle n =
@@ -641,7 +639,9 @@ let rectangle t ~x ~y ~w ~h =
 
 let arc t ~r ~a1 ~a2 =
   (*FIXME: better bounds for the arc can be found.*)
-  let x', y' = get_current_pt t in
+  let x, y = get_current_pt t in
+  let x' = x -. r *. cos a1
+  and y' = y -. r *. sin a1 in
   update_coords t (x'+.r) (y'+.r);
   update_coords t (x'-.r) (y'-.r);
   add_order (fun () -> Backend.arc t.backend r a1 a2) t
