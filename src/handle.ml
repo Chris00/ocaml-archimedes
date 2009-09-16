@@ -321,7 +321,7 @@ let do_viewport_orders ?orders_queue vp backend =
        Printf.printf " > no ranges.\n%!"
   | Some ranges ->
       let ctm = Coordinate.use backend vp.user_device in
-      let m1 = vp.vp_device.Coordinate.ctm in
+      (*let m1 = vp.vp_device.Coordinate.ctm in
       let m2 = vp.user_device.Coordinate.ctm in
       let m3 = vp.user_device.Coordinate.tm in
       Printf.printf "vp_device: %f %f %f %f %f %f\n%!"
@@ -329,7 +329,7 @@ let do_viewport_orders ?orders_queue vp backend =
       Printf.printf "user_device: %f %f %f %f %f %f\n%!"
         m2.xx m2.xy m2.yx m2.yy m2.x0 m2.y0;
       Printf.printf "user_vp: %f %f %f %f %f %f\n%!"
-        m3.xx m3.xy m3.yx m3.yy m3.x0 m3.y0;
+        m3.xx m3.xy m3.yx m3.yy m3.x0 m3.y0;*)
       let rec make_orders orders =
         if not (Queue.is_empty orders) then (
           Printf.printf "*%!";
@@ -380,14 +380,14 @@ let update_coords t x y =
       t.vp.ranges <- Some (Axes.Ranges.make x y);
       Coordinate.translate t.vp.user_device
         (x+.initial_scale/.2.) (y+.initial_scale/.2.);
-      Printf.printf "Init_update %f %f\n%!" x y
+      (*Printf.printf "Init_update %f %f\n%!" x y*)
   | Some ranges ->
       let xmin = ranges.Axes.xmin
       and xmax = ranges.Axes.xmax
       and ymin = ranges.Axes.ymin
       and ymax = ranges.Axes.ymax in
 (*      let one_point = xmin = xmax && ymin = ymax in*)
-      Printf.printf "update %f %f and %f %f; %f %f%!" xmin ymax ymin ymax x y;
+      (*Printf.printf "update %f %f and %f %f; %f %f%!" xmin ymax ymin ymax x y;*)
       let updated = Axes.Ranges.update ranges x y in
       if updated then (
         (*Coordinate changement*)
@@ -406,9 +406,9 @@ let update_coords t x y =
           Matrix.make_scale scalx scaly
         in
         Matrix.translate new_matrix tr_x tr_y;
-        Printf.printf ">New user_vp: %f %f %f %f %f %f\n%!"
+        (*Printf.printf ">New user_vp: %f %f %f %f %f %f\n%!"
           new_matrix.xx new_matrix.xy new_matrix.yx new_matrix.yy
-          new_matrix.x0 new_matrix.y0;
+          new_matrix.x0 new_matrix.y0;*)
         Coordinate.transform t.vp.user_device new_matrix;
 
         (*In case of immediate drawing, needs to replot everything for this viewport.*)
@@ -660,13 +660,9 @@ let stroke_current_preserve t =
   add_order (fun () -> Backend.stroke_preserve t.backend) t
 
 
-let tempref = ref 0
-
 let stroke t =
   let lw = Sizes.get_lw t.vp.scalings in
   let f () =
-    Printf.printf "\n \n ref %i\nLine width: %f\n%!" !tempref lw;
-    incr tempref;
     let ctm = Coordinate.use t.backend t.normalized in
     Backend.set_line_width t.backend lw;
     Backend.stroke t.backend;

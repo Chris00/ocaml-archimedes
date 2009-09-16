@@ -314,7 +314,7 @@ struct
     let rxx, rxy = Matrix.transform_distance st.ctm r 0.
     and ryx, ryy = Matrix.transform_distance st.ctm 0. r in
     (*FIXME: better radius*)
-    let r = sqrt(rxx *. rxx +. rxy *. rxy +. ryx *. ryx +. ryy *. ryy) in
+    let r = (sqrt(rxx *. rxx +. rxy *. rxy) +. sqrt(ryx *. ryx +. ryy *. ryy)) /.2. in
     let b1 = atan2 rxy rxx in
     let rec arcin a1 a2 =
       let diff_angle = abs_float (a2 -. a1) in
@@ -336,10 +336,6 @@ struct
           (* Update the current point and extents *)
           st.path_extents <-
             update_curve st.path_extents st.x st.y cx cy cx' cy' x' y';
-          Printf.printf
-            "arc %f %f %f %f %f -> curve_to %f %f %f %f %f %f %f %f\n%!"
-            x y r a1 a2
-            st.x st.y cx cy cx' cy' x' y';
           st.curr_pt <- true;
           st.x <- x';
           st.y <- y'
@@ -350,7 +346,6 @@ struct
         arcin a1 a3;
         arcin a3 a2)
     in
-    Printf.printf "Current point: %f %f \n%!" st.x st.y;
     arcin (b1 +. a1) (b1 +. a2)
 
   let rec beginning_of_subpath list =
