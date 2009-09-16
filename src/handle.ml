@@ -206,7 +206,7 @@ type viewport =
       (*For text, line width, marks size*)
       scalings: Sizes.t;
       (*Bounds (only mutable so set it to Some... when starting to draw.*)
-      mutable ranges: Axes.ranges option;
+      mutable ranges: Axes.fixed_ranges option;
       (*To update the ranges correctly, we need the current point.*)
       mutable current_pt: (float * float) option;
       (*What has to be plotted in this viewport. Mutable so that if we
@@ -377,7 +377,7 @@ let immediate t b =
 let update_coords t x y =
   match t.vp.ranges with
     None ->
-      t.vp.ranges <- Some (Axes.Ranges.make x y);
+      t.vp.ranges <- Some (Axes.FixedRanges.make x y);
       Coordinate.translate t.vp.user_device
         (x+.initial_scale/.2.) (y+.initial_scale/.2.);
       (*Printf.printf "Init_update %f %f\n%!" x y*)
@@ -388,7 +388,7 @@ let update_coords t x y =
       and ymax = ranges.Axes.ymax in
 (*      let one_point = xmin = xmax && ymin = ymax in*)
       (*Printf.printf "update %f %f and %f %f; %f %f%!" xmin ymax ymin ymax x y;*)
-      let updated = Axes.Ranges.update ranges x y in
+      let updated = Axes.FixedRanges.update ranges x y in
       if updated then (
         (*Coordinate changement*)
         let xmin = min x xmin

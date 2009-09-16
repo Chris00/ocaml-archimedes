@@ -39,19 +39,21 @@ let () =
       in
       let axes = H.make_axes (`Rectangle(true,true)) xaxis yaxis in
       ignore
-        (H.print_axes handle axes {A.xmin = -3.;xmax = 3.;ymin=0.;ymax = 9.});
+        (H.print_axes handle axes {A.x1 = -3.;x2 = 3.;y1=0.;y2 = 9.});
       H.f handle parabola (-3.) 3.;
       H.close handle
     with
       B.Error e ->
         print_string (B.string_of_error e);
         exit 1
-  in List.iter f
-       ["tikz functions.tex";
-        "graphics";
-        "cairo PNG functions.png";
-        "cairo PDF functions.pdf";
-       ]
+  in
+  try f (Sys.argv.(1))
+  with _ -> List.iter f
+    ["tikz functions.tex";
+     "graphics";
+     "cairo PNG functions.png";
+     "cairo PDF functions.pdf";
+    ]
 
 (*Local Variables:*)
 (*compile-command: "ocamlopt -o test_function.com -I ../src dynlink.cmxa bigarray.cmxa archimedes.cmxa test_function.ml && ocamlc -o test_function.exe -I ../src dynlink.cma bigarray.cma archimedes.cma test_function.ml"*)

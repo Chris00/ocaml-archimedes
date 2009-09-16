@@ -15,23 +15,29 @@
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the file
    LICENSE for more details. *)
 
+type ranges =
+    {x1: float; x2: float; y1: float; y2: float}
 
-type ranges = {
-  mutable xmin:float;
-  mutable ymin:float;
-  mutable xmax:float;
-  mutable ymax:float
-}
+type fixed_ranges =
+    private
+      {
+        mutable xmin:float;
+        mutable ymin:float;
+        mutable xmax:float;
+        mutable ymax:float
+      }
 
-module Ranges: sig
-  val make : float -> float -> ranges
+module FixedRanges: sig
+  val make : float -> float -> fixed_ranges
 
-  val update : ranges -> float -> float -> bool
-    (**Returns [true] if the point really updated the ranges.*)
+  val update : fixed_ranges -> float -> float -> bool
+    (**Returns [true] if the point really updated the fixed_ranges.*)
 
-  val copy: ranges -> ranges
-  val to_rect: ranges -> rectangle
-  val of_rect: rectangle -> ranges
+  val copy: fixed_ranges -> fixed_ranges
+  val to_rect: fixed_ranges -> rectangle
+  val of_rect: rectangle -> fixed_ranges
+  val of_ranges: ranges -> fixed_ranges
+  val to_ranges: ?xswitch:bool -> ?yswitch:bool -> fixed_ranges -> ranges
 end
 
 exception Not_available

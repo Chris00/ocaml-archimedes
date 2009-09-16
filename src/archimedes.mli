@@ -140,13 +140,9 @@ end
 
 (** Axes maker and convenient ways to create axes. *)
 module Axes: sig
-  (** A data structure holding ranges. Note that, contrary to rectangle
-      fields, these ones are mutable, but cannot be modified.*)
+  (** A data structure holding ranges.*)
   type ranges =
-      {mutable xmin:float;
-       mutable ymin:float;
-       mutable xmax:float;
-       mutable ymax:float}
+      {x1:float;x2:float;y1:float;y2:float}
 
   type 'a axis
     (**This type stores all information about an axis: major, minor
@@ -253,7 +249,7 @@ module Iterator : sig
 
   val nb_data : t -> int
 
-  val extents : t -> Axes.ranges
+  (*val extents : t -> Axes.fixed_ranges*)
 end
 
 

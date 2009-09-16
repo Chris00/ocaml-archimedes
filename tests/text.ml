@@ -7,8 +7,9 @@ let () =
       let cr =
         B.make ~dirs:[ "../src"; "./src"] s 300. 300.
       in
+      B.set_matrix cr (B.backend_to_device cr);
       B.scale cr 1. 2.;
-      B.set_font_size cr 40.;
+      B.set_font_size cr 14.;
       let text = "Test with a y."  in
       let rect = B.text_extents cr text in
       let w = 140. and h = 40. in

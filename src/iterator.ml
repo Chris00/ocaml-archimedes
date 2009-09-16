@@ -2,13 +2,13 @@ open Bigarray
 
 type t = {
   data:(float,float64_elt,c_layout) Array2.t;
-  extents: Axes.ranges;
+  extents: Axes.fixed_ranges;
   mutable pos: int;len: int
 }
 
 let dummy =
   {data = Array2.create float64 c_layout 0 0;
-   extents = Axes.Ranges.make 0. 0.;
+   extents = Axes.FixedRanges.make 0. 0.;
    pos = 0; len = 0}
 
 
@@ -18,7 +18,7 @@ let of_list = function
       let n = List.length list in
       let array = Array2.create float64 c_layout n 2 in
       (*Initialization:*)
-      let extents = Axes.Ranges.make x y in
+      let extents = Axes.FixedRanges.make x y in
       array.{0,0} <- x;
       array.{0,1} <- y;
       (*Recursion*)
@@ -28,7 +28,7 @@ let of_list = function
              extents = extents;
              pos = 0; len = n}
         | (x,y)::l ->
-            ignore (Axes.Ranges.update extents x y);
+            ignore (Axes.FixedRanges.update extents x y);
             array.{i,0} <- x;
             array.{i,1} <- y;
             fill_array (i+1) l
@@ -42,7 +42,7 @@ let of_array array =
     let bigarray = Array2.create float64 c_layout n 2 in
     (*Initialisation*)
     let x,y = array.(0) in
-    let extents = Axes.Ranges.make x y in
+    let extents = Axes.FixedRanges.make x y in
     bigarray.{0,0} <- x;
     bigarray.{0,1} <- y;
     (*Recursion*)
@@ -53,7 +53,7 @@ let of_array array =
          pos = 0; len = n}
       else
         let x,y = array.(i) in
-        ignore (Axes.Ranges.update extents x y);
+        ignore (Axes.FixedRanges.update extents x y);
         bigarray.{i,0} <- x;
         bigarray.{i,1} <- y;
         fill_array (i+1)
@@ -71,7 +71,7 @@ let of_bigarray2 ?(clayout=true) array =
       let ofs = if clayout then 0 else 1 in
       let x = array.{ofs, ofs}
       and y = array.{ofs, ofs+1} in
-      let extents = Axes.Ranges.make x y in
+      let extents = Axes.FixedRanges.make x y in
       bigarray.{0,0} <- x;
       bigarray.{0,1} <- y;
       let rec fill_array i =
@@ -82,7 +82,7 @@ let of_bigarray2 ?(clayout=true) array =
         else
           let x = array.{i+ofs, ofs}
           and y = array.{i+ofs, ofs+1} in
-          ignore (Axes.Ranges.update extents x y);
+          ignore (Axes.FixedRanges.update extents x y);
           bigarray.{i,0} <- x;
           bigarray.{i,1} <- y;
           fill_array (i+1)
@@ -98,12 +98,12 @@ let of_lists listx listy =
       [], [] -> dummy
     | (x::listx),(y::listy) ->
         let array = Array2.create float64 c_layout n 2 in
-        let extents = Axes.Ranges.make x y in
+        let extents = Axes.FixedRanges.make x y in
         array.{0,0} <- x;
         array.{0,1} <- y;
         let rec fill_array i = function
           | (x::l),(y::l') ->
-              ignore (Axes.Ranges.update extents x y);
+              ignore (Axes.FixedRanges.update extents x y);
               array.{i,0} <- x;
               array.{i,1} <- y;
               fill_array (i+1) (l,l')
@@ -126,7 +126,7 @@ let of_arrays arrayx arrayy =
     let bigarray = Array2.create float64 c_layout n 2 in
     let x = arrayx.(0)
     and y = arrayy.(0) in
-    let extents = Axes.Ranges.make x y in
+    let extents = Axes.FixedRanges.make x y in
     bigarray.{0,0} <- x;
     bigarray.{0,1} <- y;
     let rec fill_array i=
@@ -137,7 +137,7 @@ let of_arrays arrayx arrayy =
       else
         let x = arrayx.(i)
         and y = arrayy.(i) in
-        ignore (Axes.Ranges.update extents x y);
+        ignore (Axes.FixedRanges.update extents x y);
         bigarray.{i,0} <- x;
         bigarray.{i,1} <- y;
         fill_array (i+1)
@@ -151,7 +151,7 @@ let of_bigarrays ?(xclayout=true) arrayx ?(yclayout=true) arrayy =
   and ofsy = if yclayout then 0 else 1 in
   let x = arrayx.{ofsx}
   and y = arrayy.{ofsy} in
-  let extents = Axes.Ranges.make x y in
+  let extents = Axes.FixedRanges.make x y in
   bigarray.{0,0} <- x;
   bigarray.{0,1} <- y;
   let rec fill_array i =
@@ -162,7 +162,7 @@ let of_bigarrays ?(xclayout=true) arrayx ?(yclayout=true) arrayy =
     else
       let x = arrayx.{i+ofsx}
       and y = arrayy.{i+ofsy} in
-      ignore (Axes.Ranges.update extents x y);
+      ignore (Axes.FixedRanges.update extents x y);
       bigarray.{i,0} <- x;
       bigarray.{i,1} <- y;
       fill_array (i+1)
@@ -198,4 +198,4 @@ let reset iter = iter.pos <- 0
 let nb_data iter = iter.len
 
 let extents iter = (*Make a copy*)
-  Axes.Ranges.copy iter.extents
+  Axes.FixedRanges.copy iter.extents
