@@ -491,7 +491,7 @@ struct
     let f i = make_rect handle ((float i)*. step) 0. step 1. in
     Array.init n f
 
-  let matrix handle n m =
+  let grid handle n m =
     let stepx = 1. /. (float n)
     and stepy = 1. /. (float m) in
     let f i j = make_rect handle

@@ -30,7 +30,7 @@ sig
   (**{2 Convenience functions to create viewports}*)
   val rows : t -> int -> viewport array
   val columns : t -> int -> viewport array
-  val matrix : t -> int -> int -> viewport array array
+  val grid : t -> int -> int -> viewport array array
   val sub_rows : viewport -> int -> viewport array
   val sub_columns : viewport -> int -> viewport array
   val sub_matrix : viewport -> int -> int -> viewport array array
