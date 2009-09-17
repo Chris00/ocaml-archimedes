@@ -1,62 +1,9 @@
-(* File: archimedes.mli
-
-   Copyright (C) 2009
-
-     Bertrand Desmons <Bertrand.Desmons@umons.ac.be>
-     Christophe Troestler <Christophe.Troestler@umons.ac.be>
-     WWW: http://math.umons.ac.be/an/software/
-
-   This library is free software; you can redistribute it and/or modify
-   it under the terms of the GNU Lesser General Public License version 3 or
-   later as published by the Free Software Foundation, with the special
-   exception on linking described in the file LICENSE.
-
-   This library is distributed in the hope that it will be useful, but
-   WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the file
-   LICENSE for more details. *)
-
 (** A 2D plotting library with various backends. *)
 
-type line_cap =
-  | BUTT  (** start(stop) the line exactly at the start(end) point *)
-  | ROUND (** use a round ending, the center of the circle is the end point *)
-  | SQUARE (** use squared ending, the center of the square is the end point *)
-
-type line_join =
-  | JOIN_MITER (** use a sharp (angled) corner *)
-  | JOIN_ROUND (** use a rounded join, the center of the circle is the
-                   joint point *)
-  | JOIN_BEVEL (** use a cut-off join, the join is cut off at half the line
-                     width from the joint point *)
-  (** A data structure for holding a rectangle. *)
-type rectangle = {
-  x:float;   (** X coordinate of the left side of the rectangle *)
-  y:float;   (** Y coordinate of the the top side of the rectangle  *)
-  w:float;   (** width of the rectangle *)
-  h:float;   (** height of the rectangle  *)
-}
-
-type text_position =
-    | CC  (** centrer horizontally and vertically *)
-    | LC  (** align left horizontally and center vertically *)
-    | RC  (** align right horizontally and center vertically *)
-    | CT  (** center horizontally and align top vertically *)
-    | CB  (** center horizontally and align bottom vertically *)
-    | LT  (** align left horizontally and top vertically *)
-    | LB  (** align left horizontally and bottom vertically *)
-    | RT  (** align right horizontally and top vertically *)
-    | RB  (** align right horizontally and bottom vertically *)
-
-type slant = Upright | Italic
-    (** Specifies variants of a font face based on their slant. *)
-
-type weight = Normal | Bold
-    (** Specifies variants of a font face based on their weight. *)
 
 (** Representation of colors.*)
-module Color: sig
-
+module Color :
+sig
   type t
     (**The type for colors*)
 
@@ -91,67 +38,74 @@ module Color: sig
   val magenta : t
   val cyan : t
   val white : t
-    (**Predefined colors.*)
+  (**Predefined colors.*)
 
-  (**{2 Merging colors}*)
+  (** {2 Merging colors} *)
+
+  (** Different ways of merging colors.  See
+      http://cairographics.org/operators/ for more explanations.*)
   type operator =
-      Over (**Transparency and color components are mixed in such a way
-             that it corresponds to putting the second color over the first*)
-    | Source(**First color completely ignored.*)
-    | Clear(**Inhibits all colors*)
-    | In(**RGB components as the second color, A component product of
-           the two A components. So, a transparent color result if the
-           first one was transparent.*)
-    | Out (**RGB components as the second color, A component product of
-             the second A component with (1 - A) first component. So, a
-             transparent color result if the first one was opaque.*)
-    | Atop (**Transparency of the first color is the final transparency;
-              mixes RGB components.*)
-    | Dest(**Second color completely ignored. (<-> SOURCE)*)
-    | Dest_Over(**Transparency and color components are mixed in such a
-                  way that it corresponds to putting the first color over the
-                  second. (<-> OVER)*)
-    | Dest_In(**RGB components as the first color, A component product of
-                the two A components. So, a transparent color result if the
-                second one was transparent. (<-> IN)*)
-    | Dest_Out(**RGB components as the first color, A component product of
-                 the first A component with (1 - A) second component. So, a
-                 transparent color result if the second one was opaque. (<-> OUT)*)
-    | Dest_Atop(**Transparency of the second color is the final transparency;
-                  mixes RGB components. (<-> ATOP)*)
-    | Xor (**Same mix of color than OVER, but transparency will be more important.*)
-    | Add (**RGB components: ponderated sum of RGB components, with
-             transparency. Resulting A is the sum of transparencies (bounded to
-             1. if necessary).*)
-    | Saturate (**Same as ADD, but the sum for RGB components shrinks
-                  the ponderation the first color components (coeff: min (first A, 1 -
-                  second A)) *)
-        (**Different ways of merging colors. See
-           http://cairographics.org/operators/ for more explanations.*)
+    | Over (** Transparency and color components are mixed in such a way
+               that it corresponds to putting the second color over the first*)
+    | Source (** First color completely ignored. *)
+    | Clear (** Inhibits all colors *)
+    | In (** RGB components as the second color, A component product of
+             the two A components. So, a transparent color result if the
+             first one was transparent.*)
+    | Out (** RGB components as the second color, A component product of
+              the second A component with (1 - A) first component. So, a
+              transparent color result if the first one was opaque.*)
+    | Atop (** Transparency of the first color is the final transparency;
+               mixes RGB components.*)
+    | Dest (** Second color completely ignored. (<-> SOURCE)*)
+    | Dest_Over (** Transparency and color components are mixed in such a
+                    way that it corresponds to putting the first color over the
+                    second. (<-> OVER)*)
+    | Dest_In (** RGB components as the first color, A component product of
+                  the two A components. So, a transparent color result if the
+                  second one was transparent. (<-> IN)*)
+    | Dest_Out (** RGB components as the first color, A component product
+                   of the first A component with (1 - A) second
+                   component. So, a transparent color result if the
+                   second one was opaque. (<-> OUT)*)
+    | Dest_Atop (** Transparency of the second color is the final transparency;
+                    mixes RGB components. (<-> ATOP)*)
+    | Xor (** Same mix of color than OVER, but transparency will be more
+              important.*)
+    | Add (** RGB components: ponderated sum of RGB components, with
+              transparency. Resulting A is the sum of transparencies
+              (bounded to 1. if necessary).*)
+    | Saturate (** Same as ADD, but the sum for RGB components shrinks
+                   the ponderation the first color components (coeff:
+                   min (first A, 1 - second A)) *)
 
 
   val add : ?op:operator -> t -> t -> t
-    (**Adds the first color to the second color, according to the operator
-       [op] (default : [Over]).*)
+    (**Adds the first color to the second color, according to the
+       operator [op] (default : [Over]).*)
 end
 
 (************************************************************************)
 (** {2 Plotting functions} *)
 
 (** Axes maker and convenient ways to create axes. *)
-module Axes: sig
+module Axes :
+sig
+
   (** A data structure holding ranges.*)
-  type ranges =
-      {x1:float;x2:float;y1:float;y2:float}
+  type ranges = { x1:float; x2:float; y1:float; y2:float}
 
   type 'a axis
-    (**This type stores all information about an axis: major, minor
-       tics, their positioning and how to position labels relative to
-       tics.*)
+    (** This type stores all information about an axis: major, minor
+        tics, their positioning and how to position labels relative to
+        tics. *)
 
   type ('a, 'b) t
-    (**This type stores information about a pair of axes.*)
+    (** This type stores information about a pair of axes. *)
 
+  (** Different axes modes. They all specify which point has to be
+      taken into account for the intersection of the axes. This point
+      determine the position of tics. *)
   type axes =
       [ `None of bool * bool
           (**No axis will be printed. The bools have to be interpreted
@@ -175,16 +129,16 @@ module Axes: sig
              is computed as [(xmin +. t *.(xmax -. xmin), ymin +. u
              *. (ymax -. ymin) )].*)
       ]
-        (**Different ways of printing axes.*)
 
-  type data = [`Text_label of string array * float
-        (**Labels will be text labels, rotated by the second argument*)
-    | `Number
-        (**Use abscissas or ordinates as labels*)
-    | `Expnumber
-        (**Labels of the form [10^x] with [x] abscissa or ordinate*)
-    ]
-      (**Type of data to put as labels on major tics.*)
+  (** Type of data to put as labels on major tics. *)
+  type data = [
+  | `Text_label of string array * float
+      (** Labels will be text labels, rotated by the second argument. *)
+  | `Number
+      (** Use abscissas or ordinates as labels. *)
+  | `Expnumber
+      (** Labels of the form [10^x] with [x] abscissa or ordinate. *)
+  ]
 
   type tic = [ `P of string ]
       (**Type for tics.*)
@@ -194,438 +148,26 @@ module Axes: sig
         (**List of pairs [(x, major)] with [x] a number between 0 and
            1, specifying the relative position of the tic and [major]
            indicating whether the tic is major.*)
-    | `Fixed_abs of ((float * bool) list)
-    | `Linear_variable of int array
+      | `Fixed_abs of ((float * bool) list)
+      | `Linear_variable of int array
         (**The [i]th element of the array specifies the number of
            minor tics between the [i]th major tic and the [i+1]th
            one (starting count at 0). All tics are placed linearly;
            that is, if the length of the axis is [len], then the
            [i]th tic (among all tics, starting to count at 0) is
            placed at distance [i /. len].*)
-    | `Linear of int * int
+      | `Linear of int * int
         (**[`Linear(majors, minors)]: Fixed number of major tics,
            and number of minor tics between two consecutive major
            tics. They are all placed linearly.*)
-    | `Logarithmic of int * int
+      | `Logarithmic of int * int
         (**Same as [`Linear] except that the minor tics are placed
            in a logarithmic scale.*)
-    | `Auto_linear
-    ]
+      | `Auto_linear
+      ]
 
-  type tic_position
-    (**The type on which a [loc_tics] converts to. It is a shortcut
-       for a functional which is stored in an axis. See also
-       [get_position] (FIXME: to be added later in this interface).*)
-
-  type label_collection
-end
-
-(**Iterations on points.*)
-module Iterator : sig
-  type t
-
-  val of_list: (float * float) list -> t
-
-  val of_array: (float * float) array -> t
-
-  val of_bigarray2: ?clayout:bool -> (float, 'b, 'c)  Bigarray.Array2.t -> t
-
-  val of_lists: float list -> float list -> t
-
-  val of_arrays: float array -> float array -> t
-
-  val of_bigarrays:
-    ?xclayout:bool -> (float, 'b, 'c)Bigarray.Array1.t ->
-    ?yclayout:bool -> (float, 'b, 'c)Bigarray.Array1.t -> t
-
-  val from_sampling :
-    (float -> float * float) ->
-    ?min_step:float -> ?nsamples:int ->
-    float -> float -> t
-
-  val next: t -> (float * float) option
-
-  val reset : t -> unit
-
-  val nb_data : t -> int
-
-  (*val extents : t -> Axes.fixed_ranges*)
-end
-
-
-(**The main module.*)
-module Handle: sig
-  type t
-  val make : dirs:string list -> string -> float -> float -> t
-  val close : t -> unit
-  val immediate : t -> bool -> unit
-    (**[immediate handle b] makes the handle do immediately all the
-       orders if [b] is [true]; it makes the handle wait an [immediate
-       handle true] or a [close handle] to do the orders if [b] is
-       false. *)
-
-  type viewport
-  (**Viewports creation.*)
-  module Viewport :
-  sig
-    val make :
-      t -> xmin:float -> xmax:float -> ymin:float -> ymax:float -> viewport
-      (**[make t ~xmin ~ymin ~ymin ~ymax] creates a new viewport,
-         whose coordinate system makes the rectangle delimited by the
-         given values (expressed in the current [t] coordinate system) as
-         the new unit square.*)
-    val sub :
-      viewport -> xmin:float -> xmax:float -> ymin:float -> ymax:float -> viewport
-      (**Same as [make] but the values are expressed in viewport's coordinates.*)
-    val make_rect :
-      t -> x:float -> y:float -> w:float -> h:float -> viewport
-      (**[make_rect t x y w h] is equivalent to [make t x y (x+.w) (y+.h)].*)
-    val sub_rect :
-      viewport -> x:float -> y:float -> w:float -> h:float -> viewport
-      (**[sub_rect vp x y w h] is equivalent to [sub vp x y (x+.w) (y+.h)].*)
-
-    (**{2 Convenience functions to create viewports}*)
-    val rows : t -> int -> viewport array
-    val columns : t -> int -> viewport array
-    val matrix : t -> int -> int -> viewport array array
-    val sub_rows : viewport -> int -> viewport array
-    val sub_columns : viewport -> int -> viewport array
-    val sub_matrix : viewport -> int -> int -> viewport array array
-  end
-  (**{2 Using viewports}*)
-  val use : viewport -> unit
-  val use_initial : t -> unit
-  val set_line_width : t -> float -> unit
-  val set_mark_size : t -> float -> unit
-  val set_font_size : t -> float -> unit
-  val set_rel_line_width : t -> float -> unit
-  val set_rel_mark_size : t -> float -> unit
-  val set_rel_font_size : t -> float -> unit
-  val set_global_line_width : t -> float -> unit
-  val set_global_mark_size : t -> float -> unit
-  val set_global_font_size : t -> float -> unit
-  val get_line_width : t -> float
-  val get_mark_size : t -> float
-
-  (**{2 Backend primitives}*)
-  val width : t -> float
-  val height : t -> float
-  val set_color : t -> Color.t -> unit
-  val set_line_width : t -> float -> unit
-  val set_line_cap : t -> line_cap -> unit
-  val set_dash : t -> float -> float array -> unit
-  val set_line_join : t -> line_join -> unit
-  val get_line_width : t -> float
-  val get_line_cap : t -> line_cap
-  val get_dash : t -> float array * float
-  val get_line_join : t -> line_join
-  val move_to : t -> x:float -> y:float -> unit
-  val line_to : t -> x:float -> y:float -> unit
-  val rel_move_to : t -> x:float -> y:float -> unit
-  val rel_line_to : t -> x:float -> y:float -> unit
-  val curve_to :
-    t ->
-    x1:float ->
-    y1:float -> x2:float -> y2:float -> x3:float -> y3:float -> unit
-  val rectangle : t -> x:float -> y:float -> w:float -> h:float -> unit
-  val arc : t -> r:float -> a1:float -> a2:float -> unit
-  val close_path : t -> unit
-  val clear_path : t -> unit
-  (*val path_extents : t -> rectangle*)
-  val stroke_current : t -> unit
-  val stroke_current_preserve : t -> unit
-  val stroke : t -> unit
-  val stroke_preserve : t -> unit
-  val fill : t -> unit
-  val fill_preserve : t -> unit
-  val clip_rectangle : t -> x:float -> y:float -> w:float -> h:float -> unit
-  val save_vp : t -> unit
-  val restore_vp : t -> unit
-  val select_font_face : t -> slant -> weight -> string -> unit
-  val show_text :
-    t ->
-    rotate:float ->
-    x:float -> y:float -> text_position -> string -> unit
-(*  val text_extents : t -> string -> rectangle*)
-  val render : t -> string -> unit
-  (* val mark_extents : t -> string -> rectangle *)
-
-  (**{2 Plotting}*)
-  val f :
-    t ->
-    ?color: Color.t ->
-    ?nsamples:int ->
-    ?min_step:float ->
-    ?do_with:(t -> float * float -> unit) ->
-    ?finish:(t -> unit) ->
-    (float -> float) -> float -> float -> unit
-  val xy :
-    t ->
-    ?axes:([> Axes.axes ],[> Axes.tic]) Axes.t ->
-    ?mark:string -> ?do_with:(t -> float -> float -> unit) ->
-    Iterator.t -> unit
-
-  val make_xaxis :
-    ([> Axes.tic] as 'a) -> ([> Axes.data] as 'b) -> text_position -> 'a ->
-    ?get_labels:(bool -> 'b -> Axes.label_collection) ->
-    ?get_position:(([> Axes.loc_tics] as 'c) ->
-                     Axes.label_collection -> Axes.tic_position) ->
-    ?tic_extents:('a -> rectangle) ->
-    'c -> 'a Axes.axis
-  val make_yaxis :
-    ([> Axes.tic] as 'a) -> ([>Axes.data] as 'b) -> text_position -> 'a ->
-    ?get_labels:(bool -> 'b -> Axes.label_collection) ->
-    ?get_position:(([>Axes.loc_tics] as 'c) ->
-                     Axes.label_collection -> Axes.tic_position) ->
-    ?tic_extents:('a -> rectangle) ->
-    'c -> 'a Axes.axis
-  val make_axes : ([>Axes.axes] as 'a) ->
-    'b Axes.axis -> 'b Axes.axis -> ('a,'b) Axes.t
-  val print_axes :
-    t -> ([> Axes.axes] as 'a, [> Axes.tic] as 'b) Axes.t ->
-    ?color:Color.t ->
-    ?axes_print:('a -> Axes.ranges -> t -> unit) ->
-    ?axes_meeting:('a -> Axes.ranges -> float * float) ->
-    ?print_tic:(t -> 'b -> unit) -> Axes.ranges ->
-    viewport option
-      (**Prints axes, following the parameters stored in [t] and the
-         optional arguments, if given. Returns a [viewport] in which the
-         graph will take place, or [None] if the axes take too big
-         margins (reducing the graph to nothing). In this latter case,
-         the axes are not guaranteed to fit the viewport.*)
 
 end
-
-
-(************************************************************************)
-(** {2 Registering backends and extending the library} *)
-
-(** Holds an affine transformation, such as a scale, rotation, shear,
-    or a combination of those. The transformation of a point (x, y) is
-    given by:
-    {[
-    x_new = xx *. x +. xy *. y +. x0;
-    y_new = yx *. x +. yy *. y +. y0;      ]} *)
-type matrix = { mutable xx: float; mutable yx: float;
-                mutable xy: float; mutable yy: float;
-                mutable x0: float; mutable y0: float; }
-
-(** Module managing the dynamic loading of the backends.  This modules
-    is only useful to create new backends and should not be used for
-    plotting data. *)
-module Backend:
-sig
-  (**To be able to register a given backend, it must provide an
-     implementation for all these functions.*)
-  module type T =
-  sig
-    type t
-      (** Handle of a backend or a coordinate system. *)
-    val backend_to_device : t -> matrix
-      (**The returned matrix is the one which transforms the backend
-         coordinates (those for which the origin is at the lower left
-         corner of the surface, with unit square 1px x 1px) to the
-         device coordinates (that is, the original coordinates which
-         naturally come with the surface).*)
-
-    val set_color : t -> Color.t -> unit
-    val set_line_width : t -> float -> unit
-    val set_line_cap : t -> line_cap -> unit
-    val set_dash : t -> float -> float array -> unit
-    val set_line_join : t -> line_join -> unit
-
-    val get_line_width: t -> float
-    val get_line_cap: t -> line_cap
-    val get_dash: t -> float array * float
-    val get_line_join: t -> line_join
-
-    val move_to : t -> x:float -> y:float -> unit
-    val line_to : t -> x:float -> y:float -> unit
-    val rel_move_to : t -> x:float -> y:float -> unit
-    val rel_line_to : t -> x:float -> y:float -> unit
-
-    val curve_to : t ->
-      x1:float -> y1:float ->
-      x2:float -> y2:float ->
-      x3:float -> y3:float -> unit
-
-    val rectangle : t -> x:float -> y:float -> w:float -> h:float -> unit
-
-    val arc : t -> r:float -> a1:float -> a2:float -> unit
-
-    val close_path : t -> unit
-      (** Adds a line segment to the path from the current point to
-          the beginning of the current sub-path (the most recent point
-          passed to {!Archimedes.Backend.T.move_to}) and closes this
-          sub-path. *)
-    val clear_path : t -> unit
-      (** Clears the current path. After this call there will be no path.
-          Nothing is guaranteed about the current point. *)
-    val path_extents : t -> rectangle
-
-    val stroke : t -> unit
-    val stroke_preserve : t -> unit
-    val fill : t -> unit
-    val fill_preserve : t -> unit
-
-    val clip_rectangle : t -> x:float -> y:float -> w:float -> h:float -> unit
-      (** Establishes a new clip rectangle by intersecting the current
-          clip rectangle.  This {i may clear} the current path. *)
-
-    val save : t -> unit
-    val restore : t -> unit
-
-    val translate : t -> x:float -> y:float -> unit
-      (** [translate cr tx ty] modifies the current transformation
-          matrix by translating the user-space origin by ([tx],[ty]). *)
-    val scale : t -> x:float -> y:float -> unit
-      (** [scale sx sy] modifies the current transformation matrix by
-          scaling the X and Y user-space axes by [sx] and [sy]
-          respectively. *)
-    val rotate : t -> angle:float -> unit
-      (** Modifies the current transformation matrix by rotating the
-          user-space axes by [angle] radians. *)
-    val set_matrix : t -> matrix -> unit
-      (** Set the current transformation matrix which is the matrix
-          transorming user to device coordinates. *)
-    val get_matrix : t -> matrix
-      (** Return the current transformation matrix.  Modifying this
-          matrix should not affect the matrix held in [t]. *)
-
-    val select_font_face : t -> slant -> weight -> string -> unit
-      (** [select_font_face t slant weight family] selects a family
-          and style of font from a simplified description as a family
-          name, slant and weight.  Family names are bakend dependent.  *)
-    val set_font_size : t -> float -> unit
-      (** Set the scaling of the font. *)
-    val text_extents : t -> string -> rectangle
-      (** Returns a rectangle whose width and height specify
-          respectively the length and the height of the text. The x and
-          y values give the lower bottom point of the rectangle as if
-          the text was placed at the origin.*)
-    val show_text : t -> rotate:float -> x:float -> y:float ->
-      text_position -> string -> unit
-      (** [show_text t angle x y pos txt] displays [txt] at the point
-          ([x],[y]) as indicated by [pos].  The point ([x],[y]) is in
-          the current coordinate system but the current transformation
-          matrix will NOT be applied to the text itself.  [angle]
-          indicates by how many radians the text must be rotated
-          w.r.t. the x-axis (in the current coordinate system, assuming
-          it is orthonormal) -- not all device support rotations of
-          angles [<> 0.] (in device coordinates).  This is an immediate
-          operation: no [stroke] nor [fill] are required (nor will have
-          any effect).  *)
-  end
-
-  type error =
-    | Corrupted_dependency of string
-    | Non_loadable_dependency of string
-    | Nonexistent of string  (** Cannot find the backend in the directories *)
-    | Not_loadable of string * Dynlink.error
-        (** Cannot load the backend because of the dynlink error. *)
-    | Not_registering of string (** Not applying the {!Backend.Register}
-                                    functor. *)
-
-  val string_of_error : error -> string
-
-  exception Error of error
-
-  include T
-
-  val make : ?dirs:string list -> string -> float -> float -> t
-    (** [make backend width height] creates a new backend of the given
-        dimensions.
-
-        [backend] is the name of the underlying engine, followed by one
-        or several options separated by spaces.  For example, "Graphics"
-        for the graphics backend or "Cairo PNG filename" for the Cairo
-        backend, using a PNG surface to be saved in [filename]. *)
-
-  val close : t -> unit
-    (** Close the handle.  For some backends, the output will not be
-        complete until this function is called. *)
-
-  val height : t -> float
-    (** Returns the width of the backend canvas. *)
-
-  val width : t -> float
-    (** Returns the height of the backend canvas. *)
-
-
-
-  val registered: unit -> string list
-    (** Return the list of registered (i.e. loaded) backends. *)
-
-  val available : dirs:string list -> string list
-    (** Return the list of available backends in the given directories. *)
-
-
-  (************************************************************************)
-  (** {2 Registering new modules} *)
-
-  module type Capabilities =
-  sig
-    include T
-
-    val name : string
-      (** Name under which to register the backend. *)
-
-    val make : options:string list -> float -> float -> t
-      (** [create options width height] must creates a new handle of
-          size [width]×[height] (in units proper to the module) on which
-          the subsequent drawing functions operate.  [options] allows to
-          pass options to the backend (this is backend specific). *)
-
-    val close : options:string list -> t -> unit
-      (** Close the handle.  This function will be given the options
-          specified at backend creation so it can react appropriately if
-          some final work need to be done for some of them. *)
-  end
-
-  module Register(B: Capabilities) : sig end
-    (** The {i side effect} of this functor application is to register
-        the functions of the backend [B] under the name [B.name].
-
-        A backend [B] must be declared in a file archimedes_[B.name]
-        (compiled to a .cmo and/or .cmxs library) and the functor
-        application must be executed as part of the initialisation code.
-        We recommend the use of [let module U = Register(B) in ()] to
-        perform the registration.  *)
-end
-
-(** Module handling point styles and marks. *)
-module Pointstyle:
-sig
-  exception Error of string
-    (**Raised for undefined point styles.*)
-
-  type name = string
-    (** Point styles are identified by strings. *)
-
-  val add : name:name -> (Backend.t -> unit) -> rectangle -> unit
-    (**[add name f extents] adds to the existing point styles, a new
-       point style, referenced under the name [name]. This point style is
-       made using the function [f]; the extents it takes is given by
-       [extents]. The behaviour of adding a new point style whose name is
-       already used by another is the same as the core [Map.S.add] (that
-       is, the previous binding disappears).*)
-
-(*  val render : name -> Backend.t -> unit
-    (**This function renders the point style referenced by the name on
-       the specified backend. Raises [Error name] if name does not
-       refer to a point style.*)
-
-  val extents : name -> rectangle
-    (**Returns the extents of a point style. Raises [Error name] if
-       name does not refer to a point style.*)
-
-  val render_extents : name -> Backend.t -> rectangle
-    (**[render_extents name backend] is equivalent to [render name
-       backend; extents name], but is more efficient (access only once
-       to the registered point style).  Raises [Error name] if name
-       does not refer to a point style.*)*)
-end
-
 
 (************************************************************************)
 (** {2 Affine transformations} *)
@@ -634,7 +176,16 @@ end
     on them. *)
 module Matrix :
 sig
-  type t = matrix
+
+  (** Holds an affine transformation, such as a scale, rotation, shear,
+      or a combination of those. The transformation of a point (x, y) is
+      given by:
+      {[
+      x_new = xx *. x +. xy *. y +. x0;
+      y_new = yx *. x +. yy *. y +. y0;      ]} *)
+  type t = { mutable xx: float; mutable yx: float;
+             mutable xy: float; mutable yy: float;
+             mutable x0: float; mutable y0: float; }
 
   exception Not_invertible
 
@@ -733,6 +284,14 @@ sig
     (** Tests whether the transformation has shears.  This is also the
         case if the transformation does a rotation.  *)
 
+  (** A data structure for holding a rectangle. *)
+  type rectangle = {
+    x:float;   (** X coordinate of the left side of the rectangle *)
+    y:float;   (** Y coordinate of the the top side of the rectangle  *)
+    w:float;   (** width of the rectangle *)
+    h:float;   (** height of the rectangle  *)
+  }
+
   val transform_rectangle: ?dist_basepoint:bool -> t -> rectangle -> rectangle
     (** Transformation of rectangles. This returns the smallest
         rectangle containing the transformation of the rectangle argument
@@ -744,9 +303,224 @@ sig
         - Specified as [false]: no transformation of the base point.*)
 end
 
+(************************************************************************)
+(** {2 Registering backends and extending the library} *)
+
+(** Module managing the dynamic loading of the backends.  This modules
+    is only useful to create new backends and should not be used for
+    plotting data. *)
+module Backend :
+sig
+  type line_cap =
+    | BUTT  (** start(stop) the line exactly at the start(end) point *)
+    | ROUND (** use a round ending, the center of the circle is the end point *)
+    | SQUARE (** use squared ending, the center of the square is the end point *)
+
+  type line_join =
+    | JOIN_MITER (** use a sharp (angled) corner *)
+    | JOIN_ROUND (** use a rounded join, the center of the circle is the
+                     joint point *)
+    | JOIN_BEVEL (** use a cut-off join, the join is cut off at half the line
+                     width from the joint point *)
+
+  type text_position =
+    | CC  (** centrer horizontally and vertically *)
+    | LC  (** align left horizontally and center vertically *)
+    | RC  (** align right horizontally and center vertically *)
+    | CT  (** center horizontally and align top vertically *)
+    | CB  (** center horizontally and align bottom vertically *)
+    | LT  (** align left horizontally and top vertically *)
+    | LB  (** align left horizontally and bottom vertically *)
+    | RT  (** align right horizontally and top vertically *)
+    | RB  (** align right horizontally and bottom vertically *)
+
+  type slant = Upright | Italic
+    (** Specifies variants of a font face based on their slant. *)
+
+  type weight = Normal | Bold
+    (** Specifies variants of a font face based on their weight. *)
+
+  (** To be able to register a given backend, it must provide an
+      implementation for all these functions. *)
+  module type T =
+  sig
+    type t
+      (** Handle to a backend. *)
+
+    val set_color : t -> Color.t -> unit
+    val set_line_width : t -> float -> unit
+    val set_line_cap : t -> line_cap -> unit
+    val set_dash : t -> float -> float array -> unit
+    val set_line_join : t -> line_join -> unit
+
+    val get_line_width: t -> float
+    val get_line_cap: t -> line_cap
+    val get_dash: t -> float array * float
+    val get_line_join: t -> line_join
+
+    val move_to : t -> x:float -> y:float -> unit
+    val line_to : t -> x:float -> y:float -> unit
+    val rel_move_to : t -> x:float -> y:float -> unit
+    val rel_line_to : t -> x:float -> y:float -> unit
+
+    val curve_to : t ->
+      x1:float -> y1:float ->
+      x2:float -> y2:float ->
+      x3:float -> y3:float -> unit
+
+    val rectangle : t -> x:float -> y:float -> w:float -> h:float -> unit
+
+    val arc : t -> r:float -> a1:float -> a2:float -> unit
+
+    val close_path : t -> unit
+      (** Adds a line segment to the path from the current point to
+          the beginning of the current sub-path (the most recent point
+          passed to {!Archimedes.Backend.T.move_to}) and closes this
+          sub-path. *)
+    val clear_path : t -> unit
+      (** Clears the current path. After this call there will be no path.
+          Nothing is guaranteed about the current point. *)
+    val path_extents : t -> Matrix.rectangle
+
+    val stroke : t -> unit
+    val stroke_preserve : t -> unit
+    val fill : t -> unit
+    val fill_preserve : t -> unit
+
+    val clip_rectangle : t -> x:float -> y:float -> w:float -> h:float -> unit
+      (** Establishes a new clip rectangle by intersecting the current
+          clip rectangle.  This {i may clear} the current path. *)
+
+    val save : t -> unit
+    val restore : t -> unit
+
+    val translate : t -> x:float -> y:float -> unit
+      (** [translate cr tx ty] modifies the current transformation
+          matrix by translating the user-space origin by ([tx],[ty]). *)
+    val scale : t -> x:float -> y:float -> unit
+      (** [scale sx sy] modifies the current transformation matrix by
+          scaling the X and Y user-space axes by [sx] and [sy]
+          respectively. *)
+    val rotate : t -> angle:float -> unit
+      (** Modifies the current transformation matrix by rotating the
+          user-space axes by [angle] radians. *)
+    val set_matrix : t -> Matrix.t -> unit
+      (** Set the current transformation matrix which is the matrix
+          transorming user to device coordinates. *)
+    val get_matrix : t -> Matrix.t
+      (** Return the current transformation matrix.  Modifying this
+          matrix should not affect the matrix held in [t]. *)
+    val backend_to_device : t -> Matrix.t
+      (** The returned matrix is the one which transforms the backend
+          coordinates (those for which the origin is at the lower left
+          corner of the surface, with unit square 1px x 1px) to the
+          device coordinates (that is, the original coordinates which
+          naturally come with the surface). *)
+
+    val select_font_face : t -> slant -> weight -> string -> unit
+      (** [select_font_face t slant weight family] selects a family
+          and style of font from a simplified description as a family
+          name, slant and weight.  Family names are bakend dependent.  *)
+    val set_font_size : t -> float -> unit
+      (** Set the scaling of the font. *)
+    val text_extents : t -> string -> Matrix.rectangle
+      (** Returns a rectangle whose width and height specify
+          respectively the length and the height of the text. The x and
+          y values give the lower bottom point of the rectangle as if
+          the text was placed at the origin.*)
+    val show_text : t -> rotate:float -> x:float -> y:float ->
+      text_position -> string -> unit
+      (** [show_text t angle x y pos txt] displays [txt] at the point
+          ([x],[y]) as indicated by [pos].  The point ([x],[y]) is in
+          the current coordinate system but the current transformation
+          matrix will NOT be applied to the text itself.  [angle]
+          indicates by how many radians the text must be rotated
+          w.r.t. the x-axis (in the current coordinate system, assuming
+          it is orthonormal) -- not all device support rotations of
+          angles [<> 0.] (in device coordinates).  This is an immediate
+          operation: no [stroke] nor [fill] are required (nor will have
+          any effect).  *)
+  end
+
+  type error =
+    | Corrupted_dependency of string
+    | Non_loadable_dependency of string
+    | Nonexistent of string  (** Cannot find the backend in the directories *)
+    | Not_loadable of string * Dynlink.error
+        (** Cannot load the backend because of the dynlink error. *)
+    | Not_registering of string (** Not applying the {!Backend.Register}
+                                    functor. *)
+
+  val string_of_error : error -> string
+
+  exception Error of error
+
+  include T
+
+  val make : ?dirs:string list -> string -> float -> float -> t
+    (** [make backend width height] creates a new backend of the given
+        dimensions.
+
+        [backend] is the name of the underlying engine, followed by one
+        or several options separated by spaces.  For example, "Graphics"
+        for the graphics backend or "Cairo PNG filename" for the Cairo
+        backend, using a PNG surface to be saved in [filename]. *)
+
+  val close : t -> unit
+    (** Close the handle.  For some backends, the output will not be
+        complete until this function is called. *)
+
+  val height : t -> float
+    (** Returns the width of the backend canvas. *)
+
+  val width : t -> float
+    (** Returns the height of the backend canvas. *)
+
+
+
+  val registered: unit -> string list
+    (** Return the list of registered (i.e. loaded) backends. *)
+
+  val available : dirs:string list -> string list
+    (** Return the list of available backends in the given directories. *)
+
+
+  (************************************************************************)
+  (** {2 Registering new modules} *)
+
+  module type Capabilities =
+  sig
+    include T
+
+    val name : string
+      (** Name under which to register the backend. *)
+
+    val make : options:string list -> float -> float -> t
+      (** [create options width height] must creates a new handle of
+          size [width]×[height] (in units proper to the module) on which
+          the subsequent drawing functions operate.  [options] allows to
+          pass options to the backend (this is backend specific). *)
+
+    val close : options:string list -> t -> unit
+      (** Close the handle.  This function will be given the options
+          specified at backend creation so it can react appropriately if
+          some final work need to be done for some of them. *)
+  end
+
+  module Register(B: Capabilities) : sig end
+    (** The {i side effect} of this functor application is to register
+        the functions of the backend [B] under the name [B.name].
+
+        A backend [B] must be declared in a file archimedes_[B.name]
+        (compiled to a .cmo and/or .cmxs library) and the functor
+        application must be executed as part of the initialisation code.
+        We recommend the use of [let module U = Register(B) in ()] to
+        perform the registration.  *)
+end
+
 (** Affine systems of coordinates relative to other coordinate systems
     with automatic updates. *)
-module Coordinate:
+module Coordinate :
 sig
   type t
     (** Mutable affine coordinate system. *)
@@ -861,3 +635,22 @@ sig
         it (transitively) depends on was mofidied) since the last
         [reset]. *)
 end
+
+(** Module handling point styles and marks. *)
+module Pointstyle :
+sig
+  exception Error of string
+    (**Raised for undefined point styles.*)
+
+  type name = string
+    (** Point styles are identified by strings. *)
+
+  val add : name:name -> (Backend.t -> unit) -> Matrix.rectangle -> unit
+    (**[add name f extents] adds to the existing point styles, a new
+       point style, referenced under the name [name]. This point style is
+       made using the function [f]; the extents it takes is given by
+       [extents]. The behaviour of adding a new point style whose name is
+       already used by another is the same as the core [Map.S.add] (that
+       is, the previous binding disappears).*)
+end
+

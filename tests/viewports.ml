@@ -1,6 +1,4 @@
 open Archimedes
-module B = Backend
-module A = Axes
 module H = Handle
 
 let () =
@@ -47,18 +45,12 @@ let () =
       H.set_color handle Color.magenta;
       H.stroke handle;
       H.close handle
-    with
-      B.Error e ->
-        print_string (B.string_of_error e);
-        exit 1
+    with Backend.Error e ->
+      print_endline (Backend.string_of_error e);
+      exit 1
   in
   try f (Sys.argv.(1))
-  with _ -> List.iter f
-    ["graphics";
-     "tikz viewports.tex";
-     "cairo PDF viewports.pdf";
-     "cairo PNG viewports.png"]
-
-(*Local Variables:*)
-(*compile-command: "ocamlopt -o viewports.com -I ../src dynlink.cmxa bigarray.cmxa archimedes.cmxa viewports.ml && ocamlc -o viewports.exe -I ../src dynlink.cma bigarray.cma archimedes.cma viewports.ml"*)
-(*End:*)
+  with _ -> List.iter f [ "graphics";
+                         "tikz viewports.tex";
+                         "cairo PDF viewports.pdf";
+                         "cairo PNG viewports.png"]

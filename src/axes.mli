@@ -15,8 +15,7 @@
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the file
    LICENSE for more details. *)
 
-type ranges =
-    {x1: float; x2: float; y1: float; y2: float}
+include Axes_public.T
 
 type fixed_ranges =
     private
@@ -34,8 +33,8 @@ module FixedRanges: sig
     (**Returns [true] if the point really updated the fixed_ranges.*)
 
   val copy: fixed_ranges -> fixed_ranges
-  val to_rect: fixed_ranges -> rectangle
-  val of_rect: rectangle -> fixed_ranges
+  val to_rect: fixed_ranges -> Matrix.rectangle
+  val of_rect: Matrix.rectangle -> fixed_ranges
   val of_ranges: ranges -> fixed_ranges
   val to_ranges: ?xswitch:bool -> ?yswitch:bool -> fixed_ranges -> ranges
 end
@@ -45,16 +44,7 @@ exception Not_available
      ways to work with (this is especially raised when you define a
      new variant without providing how to manage with it). *)
 
-type axes =
-    [ `None of bool * bool
-    | `Rectangle of bool * bool
-    | `Two_lines of float * float
-    | `Two_lines_rel of float * float
-    ]
 
-(**Different axes modes. They all specify which point has to
-   be taken into account for the intersection of the
-   axes. This point determine the position of tics.*)
 
 val print_axes :
   [> axes] -> ranges -> Backend.t -> unit
@@ -66,13 +56,10 @@ val axes_meeting :
     (**Returns the point where the axes meet.*)
 
 
-type tic = [ `P of Pointstyle.name ]
-    (**Type for tics.*)
-
 val print_tic : Backend.t -> [> tic] -> unit
   (**Given a backend and a tic, prints the tic.*)
 
-val tic_extents : [> tic] -> rectangle
+val tic_extents : [> tic] -> Matrix.rectangle
     (**Returns the extents for the given tic. (This is needed to place
        the labels correctly.)*)
 
@@ -90,17 +77,6 @@ type label_collection
   (**Storing several labels*)
 
 
-type data =
-    [ (*`Label of label array
-        (**Labels already known*)*)
-    | `Text_label of string array * float
-        (**Labels will be text labels, rotated by the second argument*)
-    | `Number
-        (**Use abscissas or ordinates as labels*)
-    | `Expnumber
-        (**Labels of the form [10^x] with [x] abscissa or ordinate*)
-    ]
-      (**This type informs on which type of data we want as labels.*)
 
 exception Too_few_labels
 
@@ -115,29 +91,6 @@ type tic_position = ranges -> bool ->  Backend.t ->
      [labelopt] indicates the (optional) label wanted (it is [None]
      for the minor tics).*)
 
-type loc_tics =
-    [ `Fixed_rel of (float * bool) list
-        (**List of pairs [(x, major)] with [x] a number between 0 and
-           1, specifying the relative position of the tic and [major]
-           indicating whether the tic is major.*)
-    | `Fixed_abs of ((float * bool) list)
-    | `Linear_variable of int array
-        (**The [i]th element of the array specifies the number of
-           minor tics between the [i]th major tic and the [i+1]th
-           one (starting count at 0). All tics are placed linearly;
-           that is, if the length of the axis is [len], then the
-           [i]th tic (among all tics, starting to count at 0) is
-           placed at distance [i /. len].*)
-    | `Linear of int * int
-        (**[`Linear(majors, minors)]: Fixed number of major tics,
-           and number of minor tics between two consecutive major
-           tics. They are all placed linearly.*)
-    | `Logarithmic of int * int
-        (**Same as [`Linear] except that the minor tics are placed
-           in a logarithmic scale.*)
-    | `Auto_linear
-    ]
-
 
 (**Convenient ways to specify where we want tics.*)
 
@@ -148,9 +101,6 @@ val get_position : [>loc_tics] -> label_collection -> tic_position
        last major tics can be without label in this case).
     *)
 
-type 'a axis
-type ('a, 'b) t
-
 (*
   val make_axis : bool ->
   ([> tic] as 'a) -> ([>data] as 'b) -> Backend.text_position -> 'a ->
@@ -159,16 +109,16 @@ type ('a, 'b) t
   'c -> 'a axis*)
 
 val make_xaxis :
-  ([> tic] as 'a) -> ([>data] as 'b) -> text_position -> 'a ->
+  ([> tic] as 'a) -> ([>data] as 'b) -> Backend.text_position -> 'a ->
   ?get_labels:(bool -> 'b -> label_collection) ->
   ?get_position:(([>loc_tics] as 'c) -> label_collection -> tic_position) ->
-  ?tic_extents:('a -> rectangle) ->
+  ?tic_extents:('a -> Matrix.rectangle) ->
   'c -> 'a axis
 val make_yaxis :
-  ([> tic] as 'a) -> ([>data] as 'b) -> text_position -> 'a ->
+  ([> tic] as 'a) -> ([>data] as 'b) -> Backend.text_position -> 'a ->
   ?get_labels:(bool -> 'b -> label_collection) ->
   ?get_position:(([>loc_tics] as 'c) -> label_collection -> tic_position) ->
-  ?tic_extents:('a -> rectangle) ->
+  ?tic_extents:('a -> Matrix.rectangle) ->
   'c -> 'a axis
   (**[make_*axis major data pos minor loc] makes an axis whose major
      tics will be [major], minor tics [minor], positioned using [loc]

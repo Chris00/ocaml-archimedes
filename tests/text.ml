@@ -1,5 +1,5 @@
 open Archimedes
-module B = Backend
+module B = Archimedes.Backend
 
 let () =
   let f s =
@@ -15,9 +15,9 @@ let () =
       B.set_font_size backend 14.;
       let text = "Test with a y."  in
       let extents = B.text_extents backend text in
-     (* let wx,wy = Matrix.inv_transform_distance matrix rect.w 0.
-      and hx,hy = Matrix.inv_transform_distance matrix 0. rect.h in
-      let x',y' = Matrix.inv_transform_distance matrix rect.x rect.y in*)
+      (* let wx,wy = Matrix.inv_transform_distance matrix rect.w 0.
+         and hx,hy = Matrix.inv_transform_distance matrix 0. rect.h in
+         let x',y' = Matrix.inv_transform_distance matrix rect.x rect.y in*)
       let rect =
         Matrix.transform_rectangle ~dist_basepoint:true inv_matrix extents
       in
@@ -25,19 +25,19 @@ let () =
       let w' = 2.*.w and h' = 2.*.h in
       let plot_text (x,y,pos,r,g,b) =
         let dx =  match pos with
-          | CC | CT | CB -> x -. rect.w *. 0.5
-          | RC | RT | RB -> x
-          | LC | LT | LB -> x -. rect.w
+          | B.CC | B.CT | B.CB -> x -. rect.Matrix.w *. 0.5
+          | B.RC | B.RT | B.RB -> x
+          | B.LC | B.LT | B.LB -> x -. rect.Matrix.w
         and dy = match pos with
-          | CC | RC | LC -> y -. rect.h *. 0.5
-          | CT | RT | LT -> y
-          | CB | RB | LB -> y -. rect.h
+          | B.CC | B.RC | B.LC -> y -. rect.Matrix.h *. 0.5
+          | B.CT | B.RT | B.LT -> y
+          | B.CB | B.RB | B.LB -> y -. rect.Matrix.h
         in
         B.move_to backend dx dy;
         B.arc backend 1. 0. 7.;
         B.set_color backend (Color.make r g b);
         B.stroke backend;
-        B.rectangle backend dx dy rect.w rect.h;
+        B.rectangle backend dx dy rect.Matrix.w rect.Matrix.h;
         (*B.line_to backend x y;*)
         B.stroke backend;
         B.move_to backend x y;
@@ -45,24 +45,23 @@ let () =
         B.stroke backend;
         B.show_text backend 0. x y pos text;
         B.set_color backend (Color.make ~a:0.4 r g b);
-        B.move_to backend (dx -. rect.x) (dy -. rect.y);
-        B.rel_line_to backend rect.w 0.;
+        B.move_to backend (dx -. rect.Matrix.x) (dy -. rect.Matrix.y);
+        B.rel_line_to backend rect.Matrix.w 0.;
         B.stroke backend
       in
       let x,y = 10.,20. in
       List.iter plot_text
-        [
-          x,     y,     RT, 1.,  0.,  0.;
-          x,     y+.h,  RC, 0.8, 0.5, 0.;
-          x,     y+.h', RB, 0.8, 0.,  0.5;
+        [ x,     y,     B.RT, 1.,  0.,  0.;
+          x,     y+.h,  B.RC, 0.8, 0.5, 0.;
+          x,     y+.h', B.RB, 0.8, 0.,  0.5;
 
-          x+.w,  y,     CT, 0.5, 0.8, 0.;
-          x+.w,  y+.h,  CC, 0.,  1.,  0.;
-          x+.w,  y+.h', CB, 0.,  0.8, 0.5;
+          x+.w,  y,     B.CT, 0.5, 0.8, 0.;
+          x+.w,  y+.h,  B.CC, 0.,  1.,  0.;
+          x+.w,  y+.h', B.CB, 0.,  0.8, 0.5;
 
-          x+.w', y,     LT, 0.5, 0.,  0.8;
-          x+.w', y+.h,  LC, 0.,  0.5, 0.8;
-          x+.w', y+.h', LB, 0.,  0.,  1.
+          x+.w', y,     B.LT, 0.5, 0.,  0.8;
+          x+.w', y+.h,  B.LC, 0.,  0.5, 0.8;
+          x+.w', y+.h', B.LB, 0.,  0.,  1.
         ];
       B.close backend
     with
@@ -74,7 +73,3 @@ let () =
         "cairo PNG text.png";
         "tikz text.tex draw";
         "graphics"]
-
-(*Local Variables:*)
-(*compile-command: "ocamlopt -o text.com -I ../src dynlink.cmxa bigarray.cmxa archimedes.cmxa text.ml && ocamlc -o text.exe -I ../src dynlink.cma bigarray.cma archimedes.cma text.ml"*)
-(*End:*)

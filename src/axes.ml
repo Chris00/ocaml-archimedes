@@ -18,8 +18,9 @@
 
 (**Styles definitions to make axes*)
 
-type ranges =
-    {x1:float;x2:float;y1:float;y2:float}
+type rectangle = Matrix.rectangle = { x:float; y:float; w:float; h:float }
+
+type ranges = {x1:float; x2:float; y1:float; y2:float}
 
 module FixedRanges =
 struct
@@ -171,8 +172,9 @@ let tic_extents tic =
   | _ -> raise Not_available
 
 type label =
-    {action: float -> float -> rectangle -> text_position -> Backend.t -> unit;
-     box: float ->float -> text_position -> Backend.t -> rectangle;
+    {action: float -> float -> rectangle -> Backend.text_position ->
+      Backend.t -> unit;
+     box: float ->float -> Backend.text_position -> Backend.t -> rectangle;
      rotation:float}
 
 (*Extents as if the tic has been made at (0,0). [tic_ext] is given in
@@ -226,30 +228,31 @@ let make_action_from txt rotate x y tic_ext pos t =
   and w2', h2' = Matrix.transform_distance matrix w2 h2 in
   let x' =
     match pos with
-    | LT | LC | LB -> x +. w1'
-    | CT | CC | CB -> x
-    | RT | RC | RB -> x +. w2'
+    | Backend.LT | Backend.LC | Backend.LB -> x +. w1'
+    | Backend.CT | Backend.CC | Backend.CB -> x
+    | Backend.RT | Backend.RC | Backend.RB -> x +. w2'
   and y' =
     match pos with
-    | LT | CT | RT -> y +. h2'
-    | LC | CC | RC -> y
-    | LB | CB | RB -> y +. h1'
+    | Backend.LT | Backend.CT | Backend.RT -> y +. h2'
+    | Backend.LC | Backend.CC | Backend.RC -> y
+    | Backend.LB | Backend.CB | Backend.RB -> y +. h1'
   in
   Backend.show_text t rotate x' y' pos txt
 
-let make_box_from_text txt x y pos b =
+(* FIXME: these unused aeguments are odd *)
+let make_box_from_text txt _ _ pos b =
   let rect = Backend.text_extents b txt in
   let rx, ry, w, h =
     rect.x, rect.y, rect.w, rect.h
   in
   let x = match pos with
-    | CC | CT | CB -> rx -. 0.5 *. w
-    | RC | RT | RB -> rx
-    | LC | LT | LB -> rx -. w
+    | Backend.CC | Backend.CT | Backend.CB -> rx -. 0.5 *. w
+    | Backend.RC | Backend.RT | Backend.RB -> rx
+    | Backend.LC | Backend.LT | Backend.LB -> rx -. w
   and y = match pos with
-    | CC | RC | LC -> ry -. 0.5 *. h
-    | CT | RT | LT -> ry
-    | CB | RB | LB -> ry -. h
+    | Backend.CC | Backend.RC | Backend.LC -> ry -. 0.5 *. h
+    | Backend.CT | Backend.RT | Backend.LT -> ry
+    | Backend.CB | Backend.RB | Backend.LB -> ry -. h
   in
   {x = x; y = y; w = w; h = h}
 
@@ -527,7 +530,7 @@ type 'a axis = (*'a for tic type*)
      major:'a; minor:'a;
      major_extents: rectangle; minor_extents: rectangle;
      positions:tic_position;
-     label_position:text_position}
+     label_position: Backend.text_position}
 
 type ('a,'b) t = (*'a for axes type, 'b for tic types*)
     {axes:'a; xaxis:'b axis; yaxis:'b axis}
@@ -560,7 +563,7 @@ let print_tics axis ranges print_tic normalization marks font_size backend =
           m.xx m.xy m.yx m.yy m.x0 m.y0;*)
         Printf.printf "*%!";
         let user_coords = Coordinate.use backend normalization in
-        let square_side = (Backend.get_matrix backend).xx in
+        let square_side = (Backend.get_matrix backend).Matrix.xx in
         (
           match label with
             None ->
