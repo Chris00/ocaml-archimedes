@@ -238,20 +238,23 @@ let make_action_from txt rotate x y tic_ext pos t =
   Backend.show_text t rotate x' y' pos txt
 
 let make_box_from_text txt x y pos b =
-  let rect = Backend.text_extents b txt in
-  let rx, ry, w, h =
-    rect.x, rect.y, rect.w, rect.h
+  let rect' = Backend.text_extents b txt in
+  let rect =
+    Matrix.inv_transform_rectangle ~dist_basepoint:true
+      (Backend.get_matrix b) rect'
   in
   let x = match pos with
-    | CC | CT | CB -> rx -. 0.5 *. w
-    | RC | RT | RB -> rx
-    | LC | LT | LB -> rx -. w
+    | CC | CT | CB -> rect.x -. 0.5 *. rect.w
+    | RC | RT | RB -> rect.x
+    | LC | LT | LB -> rect.x -. rect.w
   and y = match pos with
-    | CC | RC | LC -> ry -. 0.5 *. h
-    | CT | RT | LT -> ry
-    | CB | RB | LB -> ry -. h
+    | CC | RC | LC -> rect.y -. 0.5 *. rect.h
+    | CT | RT | LT -> rect.y
+    | CB | RB | LB -> rect.y -. rect.h
   in
-  {x = x; y = y; w = w; h = h}
+  Printf.printf "TE of %s : %f %f %f %f\nto %f %f %f %f -> base %f %f\n%!"
+    txt rect'.x rect'.y rect'.w rect'.h rect.x rect.y rect.w rect.h x y;
+  {x = x; y = y; w = rect.w; h = rect.h}
 
 let get_labels x_axis data =
   match data with

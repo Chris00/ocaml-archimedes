@@ -742,6 +742,12 @@ sig
         - Not specified: transform the base point as a point.
         - Specified as [true]: transform the base point as a distance.
         - Specified as [false]: no transformation of the base point.*)
+
+  val inv_transform_rectangle:
+    ?dist_basepoint:bool -> t -> rectangle -> rectangle
+    (**Inverse transformation of rectangles. If [m] admits [m'] as
+       inverse matrix, then [inv_transform_rectangle m] is the same as
+       [transform_rectangle m'].*)
 end
 
 (** Affine systems of coordinates relative to other coordinate systems

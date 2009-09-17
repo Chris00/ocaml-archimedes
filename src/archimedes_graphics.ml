@@ -241,37 +241,49 @@ struct
   let set_miter_limit t _ = check_valid_handle t
 
   (* Paths are not acted upon directly but wait for [stroke] or [fill]. *)
+  let device_move_to t x y =
+    let st = get_state t in
+    st.current_path <- MOVE_TO(x,y) :: st.current_path;
+    (* move only updates the current point but not the path extents *)
+    st.curr_pt <- true;
+    st.x <- x;
+    st.y <- y
+
+  let device_line_to t x y =
+    let st = get_state t in
+    (*Note: if there's no current point then line_to behaves as move_to.*)
+    if st.curr_pt then (
+      st.current_path <- LINE_TO(x,y) :: st.current_path;
+      (* Update extents*)
+      st.path_extents <- update_rectangle st.path_extents st.x st.y x y;
+    )
+    else (
+      st.curr_pt <- true;
+      st.current_path <- MOVE_TO(x,y) :: st.current_path
+    );
+    (* Update current point *)
+    st.x <- x;
+    st.y <- y
+
   let move_to t ~x ~y =
     let st = get_state t in
     let x', y' = Matrix.transform_point st.ctm x y in
-    st.current_path <- MOVE_TO(x',y') :: st.current_path;
-    (* move only updates the current point but not the path extents *)
-    st.curr_pt <- true;
-    st.x <- x';
-    st.y <- y'
+    device_move_to t x' y'
 
   let line_to t ~x ~y =
     let st = get_state t in
     let x', y' = Matrix.transform_point st.ctm x y in
-    (*Note: if there's no current point then line_to behaves as move_to.*)
-    if st.curr_pt then (
-      st.current_path <- LINE_TO(x',y') :: st.current_path;
-      (* Update extents and current point *)
-      let x0', y0' = Matrix.transform_point st.ctm st.x st.y in
-      st.path_extents <- update_rectangle st.path_extents x0' y0' x' y';
-    )
-    else (
-      st.curr_pt <- true;
-      st.current_path <- MOVE_TO(x',y') :: st.current_path
-    );
-    st.x <- x';
-    st.y <- y'
+    device_line_to t x' y'
 
   let rel_move_to t ~x ~y =
-    let st = get_state t in move_to t (st.x +. x) (st.y +. y)
+    let st = get_state t in
+    let x,y = Matrix.transform_distance st.ctm x y in
+    device_move_to t (st.x +. x) (st.y +. y)
 
   let rel_line_to t ~x ~y =
-    let st = get_state t in line_to t (st.x +. x) (st.y +. y)
+    let st = get_state t in
+    let x',y' = Matrix.transform_distance st.ctm x y in
+    device_line_to t (st.x +. x') (st.y +. y')
 
   let curve_to t ~x1 ~y1 ~x2 ~y2 ~x3 ~y3 =
     (* Suffices to transform the control point by the affine
@@ -319,7 +331,7 @@ struct
     let rec arcin a1 a2 =
       let diff_angle = abs_float (a2 -. a1) in
       let curvelen = r *. diff_angle in
-      if diff_angle < 2. && curvelen < 100. then (
+      if diff_angle < (atan 1.)  && curvelen < 100. then (
         let rcos1 = r *. cos a1 and rsin1 = r *. sin a1 in
         let rcos2 = r *. cos a2 and rsin2 = r *. sin a2 in
         let coeff = (2. *. (sqrt 5.) -. 4.) /. 3. in

@@ -8,10 +8,8 @@ let () =
         B.make ~dirs:[ "../src"; "./src"] s 300. 300.
       in
       B.set_matrix backend (B.backend_to_device backend);
-      (*B.scale backend 1. 2.;*)
+      B.scale backend 1. 2.;
       let matrix = B.get_matrix backend in
-      let inv_matrix = Matrix.copy matrix in
-      Matrix.invert inv_matrix;
       B.set_font_size backend 14.;
       let text = "Test with a y."  in
       let extents = B.text_extents backend text in
@@ -19,7 +17,7 @@ let () =
       and hx,hy = Matrix.inv_transform_distance matrix 0. rect.h in
       let x',y' = Matrix.inv_transform_distance matrix rect.x rect.y in*)
       let rect =
-        Matrix.transform_rectangle ~dist_basepoint:true inv_matrix extents
+        Matrix.inv_transform_rectangle ~dist_basepoint:true matrix extents
       in
       let w = 140. and h = 40. in
       let w' = 2.*.w and h' = 2.*.h in
@@ -43,8 +41,8 @@ let () =
         B.move_to backend x y;
         B.arc backend 2. 0. 7.;
         B.stroke backend;
-        B.show_text backend 0. x y pos text;
         B.set_color backend (Color.make ~a:0.4 r g b);
+        B.show_text backend 0. x y pos text;
         B.move_to backend (dx -. rect.x) (dy -. rect.y);
         B.rel_line_to backend rect.w 0.;
         B.stroke backend

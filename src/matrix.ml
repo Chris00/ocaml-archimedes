@@ -152,3 +152,8 @@ let transform_rectangle ?dist_basepoint t rect =
   let w = (abs_float wx) +. (abs_float hx) in
   let h = (abs_float wy) +. (abs_float hy) in
   {x = x; y = y; w = w; h = h}
+
+let inv_transform_rectangle ?dist_basepoint t =
+  let t' = copy t in
+  invert t';
+  transform_rectangle ?dist_basepoint t'
