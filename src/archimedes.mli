@@ -140,13 +140,9 @@ end
 
 (** Axes maker and convenient ways to create axes. *)
 module Axes: sig
-  (** A data structure holding ranges. Note that, contrary to rectangle
-      fields, these ones are mutable, but cannot be modified.*)
+  (** A data structure holding ranges.*)
   type ranges =
-      {mutable xmin:float;
-       mutable ymin:float;
-       mutable xmax:float;
-       mutable ymax:float}
+      {x1:float;x2:float;y1:float;y2:float}
 
   type 'a axis
     (**This type stores all information about an axis: major, minor
@@ -253,7 +249,7 @@ module Iterator : sig
 
   val nb_data : t -> int
 
-  val extents : t -> Axes.ranges
+  (*val extents : t -> Axes.fixed_ranges*)
 end
 
 
@@ -268,41 +264,43 @@ module Handle: sig
        handle true] or a [close handle] to do the orders if [b] is
        false. *)
 
+  type viewport
   (**Viewports creation.*)
   module Viewport :
   sig
-    type vp
-      (**The type for viewports.*)
     val make :
-      t -> xmin:float -> xmax:float -> ymin:float -> ymax:float -> vp
+      t -> xmin:float -> xmax:float -> ymin:float -> ymax:float -> viewport
       (**[make t ~xmin ~ymin ~ymin ~ymax] creates a new viewport,
          whose coordinate system makes the rectangle delimited by the
          given values (expressed in the current [t] coordinate system) as
          the new unit square.*)
     val sub :
-      vp -> xmin:float -> xmax:float -> ymin:float -> ymax:float -> vp
+      viewport -> xmin:float -> xmax:float -> ymin:float -> ymax:float -> viewport
       (**Same as [make] but the values are expressed in viewport's coordinates.*)
     val make_rect :
-      t -> x:float -> y:float -> w:float -> h:float -> vp
+      t -> x:float -> y:float -> w:float -> h:float -> viewport
       (**[make_rect t x y w h] is equivalent to [make t x y (x+.w) (y+.h)].*)
     val sub_rect :
-      vp -> x:float -> y:float -> w:float -> h:float -> vp
+      viewport -> x:float -> y:float -> w:float -> h:float -> viewport
       (**[sub_rect vp x y w h] is equivalent to [sub vp x y (x+.w) (y+.h)].*)
 
     (**{2 Convenience functions to create viewports}*)
-    val rows : t -> int -> vp array
-    val columns : t -> int -> vp array
-    val matrix : t -> int -> int -> vp array array
-    val sub_rows : vp -> int -> vp array
-    val sub_columns : vp -> int -> vp array
-    val sub_matrix : vp -> int -> int -> vp array array
+    val rows : t -> int -> viewport array
+    val columns : t -> int -> viewport array
+    val matrix : t -> int -> int -> viewport array array
+    val sub_rows : viewport -> int -> viewport array
+    val sub_columns : viewport -> int -> viewport array
+    val sub_matrix : viewport -> int -> int -> viewport array array
   end
   (**{2 Using viewports}*)
-  val use : Viewport.vp -> unit
+  val use : viewport -> unit
   val use_initial : t -> unit
   val set_line_width : t -> float -> unit
   val set_mark_size : t -> float -> unit
   val set_font_size : t -> float -> unit
+  val set_rel_line_width : t -> float -> unit
+  val set_rel_mark_size : t -> float -> unit
+  val set_rel_font_size : t -> float -> unit
   val set_global_line_width : t -> float -> unit
   val set_global_mark_size : t -> float -> unit
   val set_global_font_size : t -> float -> unit
@@ -364,7 +362,7 @@ module Handle: sig
   val xy :
     t ->
     ?axes:([> Axes.axes ],[> Axes.tic]) Axes.t ->
-    ?mark:string -> ?f:(t -> float -> float -> unit) ->
+    ?mark:string -> ?do_with:(t -> float -> float -> unit) ->
     Iterator.t -> unit
 
   val make_xaxis :
@@ -389,11 +387,12 @@ module Handle: sig
     ?axes_print:('a -> Axes.ranges -> t -> unit) ->
     ?axes_meeting:('a -> Axes.ranges -> float * float) ->
     ?print_tic:(t -> 'b -> unit) -> Axes.ranges ->
-    Viewport.vp option
-    (**Prints axes, following the parameters stored in [t] and the
-       optional arguments, if given. Returns a [Viewport.vp] in which
-       the graph will take place, or [None] if the axes take too big
-       margins (reducing the graph to nothing)*)
+    viewport option
+      (**Prints axes, following the parameters stored in [t] and the
+         optional arguments, if given. Returns a [viewport] in which the
+         graph will take place, or [None] if the axes take too big
+         margins (reducing the graph to nothing). In this latter case,
+         the axes are not guaranteed to fit the viewport.*)
 
 end
 
@@ -416,12 +415,18 @@ type matrix = { mutable xx: float; mutable yx: float;
     plotting data. *)
 module Backend:
 sig
+  (**To be able to register a given backend, it must provide an
+     implementation for all these functions.*)
   module type T =
   sig
-    (**To be able to register a given backend, it must provide an
-       implementation for all these functions.*)
     type t
       (** Handle of a backend or a coordinate system. *)
+    val backend_to_device : t -> matrix
+      (**The returned matrix is the one which transforms the backend
+         coordinates (those for which the origin is at the lower left
+         corner of the surface, with unit square 1px x 1px) to the
+         device coordinates (that is, the original coordinates which
+         naturally come with the surface).*)
 
     val set_color : t -> Color.t -> unit
     val set_line_width : t -> float -> unit
@@ -727,6 +732,16 @@ sig
   val has_shear: t -> bool
     (** Tests whether the transformation has shears.  This is also the
         case if the transformation does a rotation.  *)
+
+  val transform_rectangle: ?dist_basepoint:bool -> t -> rectangle -> rectangle
+    (** Transformation of rectangles. This returns the smallest
+        rectangle containing the transformation of the rectangle argument
+        by the matrix. The optional argument [dist_basepoint] has the
+        following meaning:
+
+        - Not specified: transform the base point as a point.
+        - Specified as [true]: transform the base point as a distance.
+        - Specified as [false]: no transformation of the base point.*)
 end
 
 (** Affine systems of coordinates relative to other coordinate systems

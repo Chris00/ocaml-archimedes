@@ -12,21 +12,24 @@ let () =
       H.use (vps.(0).(0));
       let parabola x = x *. x in
       H.f handle ~color:Color.blue parabola (-3.) 3.;
-      H.stroke handle;
       H.use (vps.(1).(0));
       H.set_color handle Color.red;
-      H.f handle ~finish:(fun _ -> ()) parabola (-3.) 3.;
-      H.line_to handle 3. 10.;
-      H.line_to handle (-3.) 10.;
-      H.close_path handle;
-      H.fill handle;
+      let finish handle =
+        H.line_to handle 3. 10.;
+        H.line_to handle (-3.) 10.;
+        H.close_path handle;
+        H.fill handle
+      in
+      H.f handle ~finish parabola (-3.) 3.;
       H.use (vps.(0).(1));
       H.set_color handle Color.green;
-      H.f handle ~finish:(fun _ -> ()) parabola (-3.) 3.;
-      H.line_to handle 3. (-1.);
-      H.line_to handle (-3.) (-1.);
-      H.close_path handle;
-      H.stroke handle;
+      let finish handle =
+        H.line_to handle 3. (-1.);
+        H.line_to handle (-3.) (-1.);
+        H.close_path handle;
+        H.stroke handle
+      in
+      H.f handle ~finish parabola (-3.) 3.;
       H.use (vps.(1).(1));
       let xaxis =
         H.make_xaxis (`P "|") `Number CB (`P "tic_up") (`Linear(7,0))
@@ -36,20 +39,21 @@ let () =
       in
       let axes = H.make_axes (`Rectangle(true,true)) xaxis yaxis in
       ignore
-        (H.print_axes handle axes {A.xmin = -3.;xmax = 3.;ymin=0.;ymax = 9.});
+        (H.print_axes handle axes {A.x1 = -3.;x2 = 3.;y1=0.;y2 = 9.});
       H.f handle parabola (-3.) 3.;
-      H.stroke handle;
       H.close handle
     with
       B.Error e ->
         print_string (B.string_of_error e);
         exit 1
-  in List.iter f
-       ["tikz functions.tex";
-        "graphics";
-        "cairo PNG functions.png";
-        "cairo PDF functions.pdf";
-       ]
+  in
+  try f (Sys.argv.(1))
+  with _ -> List.iter f
+    ["tikz functions.tex";
+     "graphics";
+     "cairo PNG functions.png";
+     "cairo PDF functions.pdf";
+    ]
 
 (*Local Variables:*)
 (*compile-command: "ocamlopt -o test_function.com -I ../src dynlink.cmxa bigarray.cmxa archimedes.cmxa test_function.ml && ocamlc -o test_function.exe -I ../src dynlink.cma bigarray.cma archimedes.cma test_function.ml"*)

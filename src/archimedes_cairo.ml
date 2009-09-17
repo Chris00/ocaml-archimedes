@@ -24,20 +24,21 @@ module B : Backend.Capabilities =
 struct
   include Cairo
 
-  (*Matrix used to make the origin at the bottom left corner of the context.*)
-  let initial_matrix h =
-    {Cairo.xx = 1.; xy = 0.; yx = 0.; yy = -1.; x0 = 0.; y0 = h}
   let name = "cairo"
 
-  type t = { cr:Cairo.context; m:Cairo.matrix; mutable lw:Cairo.matrix}
-      (*The [m] field contains the correct transformation for this
-        context, which makes the origin at the bottom left corner of
-        the device. The [lw] field stores tne coordinate system in
-        which the line width is specified.*)
+  (* identity CTM -- never modified *)
+  let id = { Cairo.xx = 1.; xy = 0.;  yx = 0.; yy = 1.;  x0 = 0.; y0 = 0. }
+
+  type t = { cr:Cairo.context; h:float}
+      (* [h] is for height, to make the backend_to_device matrix.*)
 
   (* let path_extents cr = Cairo.Path.extents cr
      let close_path cr = Cairo.Path.close cr
      let clear_path cr = Cairo.Path.clear cr*)
+
+  let backend_to_device t =
+    {Archimedes.xx = 1.; xy = 0.; yx = 0.; yy = -1.; x0 = 0.; y0 = t.h}
+
 
   (* Same type (same internal representation), just in different modules *)
   let set_line_cap t c = set_line_cap t.cr (Obj.magic c : Cairo.line_cap)
@@ -52,9 +53,7 @@ struct
   let clear_path t = Cairo.Path.clear t.cr
 
 
-  let set_line_width t w =
-    t.lw <- Cairo.get_matrix t.cr;
-    set_line_width t.cr w
+  let set_line_width t = set_line_width t.cr
 
   let get_line_width t = get_line_width t.cr
 
@@ -62,16 +61,18 @@ struct
   let get_dash t = get_dash t.cr
 
   let set_matrix t m =
+    Printf.printf "set_matrix%!";
+(*    Gc.compact ();*)
     let m' = { Cairo.xx = m.Archimedes.xx; xy = m.Archimedes.xy;
                     yx = m.Archimedes.yx; yy = m.Archimedes.yy;
                     x0 = m.Archimedes.x0; y0 = m.Archimedes.y0;}
       (*(Obj.magic m : Cairo.matrix)*)
     in
-    let matrix = Cairo.Matrix.multiply m' t.m in
-    set_matrix t.cr matrix
+    set_matrix t.cr m'
 
   let get_matrix t =
-    let m = Cairo.Matrix.multiply (get_matrix t.cr) t.m in
+    Printf.printf "get_matrix%!";
+    let m = get_matrix t.cr in
     { Archimedes.xx = m.Cairo.xx;  xy = m.Cairo.xy;
       yx = m.Cairo.yx; yy = m.Cairo.yy;
       x0 = m.Cairo.x0; y0 = m.Cairo.y0;}
@@ -91,19 +92,21 @@ struct
   let curve_to t = curve_to t.cr
   let rectangle t = rectangle t.cr
 
-  let arc t ~r =
+  let arc t ~r ~a1 =
     let x,y = Cairo.Path.get_current_point t.cr in
-    arc t.cr ~x ~y ~r
+    let x = x -. r *. cos a1
+    and y = y -. r *. sin a1 in
+    arc t.cr ~x ~y ~r ~a1
 
   let stroke t =
     Cairo.save t.cr;
-    Cairo.set_matrix t.cr t.lw;
+    Cairo.set_matrix t.cr id;
     stroke t.cr;
     Cairo.restore t.cr
 
   let stroke_preserve t =
     Cairo.save t.cr;
-    Cairo.set_matrix t.cr t.lw;
+    Cairo.set_matrix t.cr id;
     stroke_preserve t.cr;
     Cairo.restore t.cr
 
@@ -140,9 +143,7 @@ struct
           failwith("Archimedes_cairo.make: options [" ^ opt
                    ^ "] not understood") in
     let cr = Cairo.create surface in
-    let matrix = initial_matrix height (*Cairo.Matrix.init_identity ()*) in
-    Cairo.set_matrix cr matrix;
-    {cr = cr; m = matrix; lw = matrix}
+    {cr = cr; h=height}
 
   let close ~options t =
     let surface = Cairo.get_target t.cr in
@@ -163,9 +164,6 @@ struct
     Cairo.select_font_face t.cr ~slant ~weight family
 
   let set_font_size t = set_font_size t.cr
-
-  (* identity CTM -- never modified *)
-  let id = { Cairo.xx = 1.; xy = 0.;  yx = 0.; yy = 1.;  x0 = 0.; y0 = 0. }
 
   let show_text t ~rotate ~x ~y pos text =
     (* Compute the angle between the desired direction and the X axis
@@ -201,13 +199,16 @@ struct
 
   let text_extents t text =
     let te = Cairo.text_extents t.cr text in
-    (*An extents is always expressed in device coordinates; we need to
-      go to user coordinates.*)
+    (*An extents is always expressed in current coordinates; however,
+      show_text switches to device coordinates before "making the
+      text". So we need to go to user coordinates.*)
     (*Note: The following transformations assume that the coordinates
       are orthogonal.*)
-    let x,y = Cairo.device_to_user_distance t.cr te.x_bearing te.y_bearing in
+    (*let x,y = Cairo.device_to_user_distance t.cr te.x_bearing te.y_bearing in
     let w,h = Cairo.device_to_user_distance t.cr te.width te.height in
-    { Archimedes.x = x; y = -.y; w = w; h = -.h}
+    { Archimedes.x = x; y = -.y; w = w; h = -.h}*)
+    { Archimedes.x = te.x_bearing; y = te.y_bearing;
+      w = te.width; h = te.height}
 end
 
 let () =

@@ -10,7 +10,7 @@ let () =
     try
       let dirs = [ "./src"; "../src" ] in
       let b = Backend.make s 200. 100. ~dirs in
-
+      Backend.set_matrix b (Backend.backend_to_device b);
       Backend.select_font_face b A.Upright A.Normal "times";
       Backend.show_text b ~x:50. ~y:20. ~rotate:half_pi A.CC "Joy";
 
@@ -38,4 +38,7 @@ let () =
       Backend.close b
     with Backend.Error e ->
       eprintf "Backend.Error: %s\n" (Backend.string_of_error e)
-  in List.iter f ["cairo PDF backend_test.pdf"; "tikz backend_text.tex"]
+  in List.iter f ["cairo PDF backend_text.pdf"; "tikz backend_text.tex"]
+(*Local Variables:*)
+(*compile-command: "ocamlopt -o backend_text.com -I ../src dynlink.cmxa bigarray.cmxa archimedes.cmxa backend_text.ml && ocamlc -o backend_text.exe -I ../src dynlink.cma bigarray.cma archimedes.cma backend_text.ml"*)
+(*End:*)

@@ -36,10 +36,12 @@ let () =
               B.stroke handle)
     {x=0.; y=(-0.5); w=0.;h=1.};
   add "o" (fun handle ->
+             B.rel_move_to handle 0.5 0.;
              B.arc handle 0.5 0. two_pi;
              B.stroke handle)
     {x=(-0.5); y=(-0.5); w=1.;h=1.};
   add "O" (fun handle ->
+             B.rel_move_to handle 0.5 0.;
              B.arc handle 0.5 0. two_pi;
              B.fill handle)
     {x=(-0.5); y=(-0.5); w=1.;h=1.};
