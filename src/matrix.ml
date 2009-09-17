@@ -137,3 +137,18 @@ let mul_in c b a =
 
 let has_shear t =
   t.yx <> 0. || t.xy <> 0.
+
+let transform_rectangle ?dist_basepoint t rect =
+  let x',y' =
+    match dist_basepoint with
+      None -> transform_point t rect.x rect.y
+    | Some true -> transform_distance t rect.x rect.y
+    | Some false -> rect.x, rect.y
+  in
+  let wx, wy = transform_distance t rect.w 0.
+  and hx, hy = transform_distance t 0. rect.h in
+  let x = x' +. (min 0. wx) +. (min 0. hx) in
+  let y = y' +. (min 0. wy) +. (min 0. hy) in
+  let w = (abs_float wx) +. (abs_float hx) in
+  let h = (abs_float wy) +. (abs_float hy) in
+  {x = x; y = y; w = w; h = h}

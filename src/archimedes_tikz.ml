@@ -653,8 +653,7 @@ http://www.tac.dk/cgi-bin/info2www?%28latex%29Low-level%20font%20commands:
       let len = add_lengths 0. ((String.length txt) - 1) in
       h *. len
     in
-    let w', h' = Matrix.inv_transform_distance (get_state t).ctm w h in
-    { Archimedes.x = 0.; y = -.h'/.6.; w = w' ; h = h' }
+    { Archimedes.x = 0.; y = -.size/.5.; w = w ; h = h }
 
   let show_text t ~rotate ~x ~y pos txt =
     let st = get_state t in

@@ -732,6 +732,16 @@ sig
   val has_shear: t -> bool
     (** Tests whether the transformation has shears.  This is also the
         case if the transformation does a rotation.  *)
+
+  val transform_rectangle: ?dist_basepoint:bool -> t -> rectangle -> rectangle
+    (** Transformation of rectangles. This returns the smallest
+        rectangle containing the transformation of the rectangle argument
+        by the matrix. The optional argument [dist_basepoint] has the
+        following meaning:
+
+        - Not specified: transform the base point as a point.
+        - Specified as [true]: transform the base point as a distance.
+        - Specified as [false]: no transformation of the base point.*)
 end
 
 (** Affine systems of coordinates relative to other coordinate systems

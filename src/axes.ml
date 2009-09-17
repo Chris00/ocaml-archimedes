@@ -191,13 +191,16 @@ let tic_label_extents tic_ext marks label x y pos b =
       (*Assert [b] is in normalized coords.*)
       let box = label.box x y pos b in
       let matrix = Matrix.make_rotate label.rotation in
-      let wx, wy = Matrix.transform_distance matrix box.w 0.
-      and hx, hy = Matrix.transform_distance matrix 0. box.h in
-      let xmin = box.x +. (min 0. wx) +. (min 0. hx) in
+      let final_box =
+        Matrix.transform_rectangle ~dist_basepoint:false matrix box in
+      (*Note: the base point need not to be transformed.*)
+      (*let xmin = box.x +. (min 0. wx) +. (min 0. hx) in
       let xmax = xmin +. (abs_float wx) +. (abs_float hx) in
       let ymin = box.y +. (min 0. wy) +. (min 0. hy) in
-      let ymax = ymin +. (abs_float wy) +. (abs_float hy) in
-      rectangle_extents tic_ext xmin xmax ymin ymax
+        let ymax = ymin +. (abs_float wy) +. (abs_float hy) in*)
+      let x' = final_box.x +. final_box.w
+      and y' = final_box.h +. final_box.h in
+      rectangle_extents tic_ext final_box.x x' final_box.y y'
 
 (*FIXME: really need a range?*)
 type tic_position = ranges -> bool -> Backend.t ->

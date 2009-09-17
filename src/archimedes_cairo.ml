@@ -61,6 +61,8 @@ struct
   let get_dash t = get_dash t.cr
 
   let set_matrix t m =
+    Printf.printf "set_matrix%!";
+(*    Gc.compact ();*)
     let m' = { Cairo.xx = m.Archimedes.xx; xy = m.Archimedes.xy;
                     yx = m.Archimedes.yx; yy = m.Archimedes.yy;
                     x0 = m.Archimedes.x0; y0 = m.Archimedes.y0;}
@@ -69,6 +71,7 @@ struct
     set_matrix t.cr m'
 
   let get_matrix t =
+    Printf.printf "get_matrix%!";
     let m = get_matrix t.cr in
     { Archimedes.xx = m.Cairo.xx;  xy = m.Cairo.xy;
       yx = m.Cairo.yx; yy = m.Cairo.yy;
@@ -140,8 +143,7 @@ struct
           failwith("Archimedes_cairo.make: options [" ^ opt
                    ^ "] not understood") in
     let cr = Cairo.create surface in
-    let matrix = Cairo.Matrix.init_identity () in
-    {cr = cr; lw = matrix; h=height}
+    {cr = cr; h=height}
 
   let close ~options t =
     let surface = Cairo.get_target t.cr in
@@ -197,13 +199,16 @@ struct
 
   let text_extents t text =
     let te = Cairo.text_extents t.cr text in
-    (*An extents is always expressed in device coordinates; we need to
-      go to user coordinates.*)
+    (*An extents is always expressed in current coordinates; however,
+      show_text switches to device coordinates before "making the
+      text". So we need to go to user coordinates.*)
     (*Note: The following transformations assume that the coordinates
       are orthogonal.*)
-    let x,y = Cairo.device_to_user_distance t.cr te.x_bearing te.y_bearing in
+    (*let x,y = Cairo.device_to_user_distance t.cr te.x_bearing te.y_bearing in
     let w,h = Cairo.device_to_user_distance t.cr te.width te.height in
-    { Archimedes.x = x; y = -.y; w = w; h = -.h}
+    { Archimedes.x = x; y = -.y; w = w; h = -.h}*)
+    { Archimedes.x = te.x_bearing; y = te.y_bearing;
+      w = te.width; h = te.height}
 end
 
 let () =

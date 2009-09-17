@@ -416,14 +416,9 @@ struct
     Graphics.set_text_size (round size)
 
   let text_extents t txt =
-    let st = get_state t in
+    check_valid_handle t;
     let w, h = Graphics.text_size txt in
-    (*FIXME: suppose orthonormal coordinates.*)
-    let w', h' = Matrix.inv_transform_distance st.ctm (float w) (float h) in
-    (*Note: in Graphics, default size is 10*)
-    let w'' = w' *. st.font_size /.10.
-    and h'' = h' *. st.font_size /.10. in
-    { Archimedes.x = 0.; y = 0.; w = w'' ; h = h'' }
+    { Archimedes.x = 0.; y = 0.; w = float w ; h = float h }
 
   let show_text t ~rotate ~x ~y pos txt =
     let st = get_state t in

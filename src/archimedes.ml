@@ -26,6 +26,8 @@ struct
   INCLUDE "color.ml"
 end
 
+type rectangle = {x:float; y:float; w:float; h:float;  }
+
 type matrix = { mutable xx: float; mutable yx: float;
                 mutable xy: float; mutable yy: float;
                 mutable x0: float; mutable y0: float; }
@@ -44,8 +46,6 @@ type line_join =
   | JOIN_MITER
   | JOIN_ROUND
   | JOIN_BEVEL
-
-type rectangle = {x:float; y:float; w:float; h:float;  }
 
 type slant = Upright | Italic
 
