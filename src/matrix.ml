@@ -15,7 +15,9 @@
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the file
    LICENSE for more details. *)
 
-type t = matrix
+type t = { mutable xx: float; mutable yx: float;
+           mutable xy: float; mutable yy: float;
+           mutable x0: float; mutable y0: float; }
 
 exception Not_invertible
 
@@ -137,6 +139,13 @@ let mul_in c b a =
 
 let has_shear t =
   t.yx <> 0. || t.xy <> 0.
+
+type rectangle = {
+  x:float;
+  y:float;
+  w:float;
+  h:float;
+}
 
 let transform_rectangle ?dist_basepoint t rect =
   let x',y' =

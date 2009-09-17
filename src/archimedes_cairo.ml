@@ -18,6 +18,7 @@
 
 (** Cairo Archimedes plugin *)
 
+module M = Archimedes.Matrix
 module Backend = Archimedes.Backend
 
 module B : Backend.Capabilities =
@@ -37,18 +38,18 @@ struct
      let clear_path cr = Cairo.Path.clear cr*)
 
   let backend_to_device t =
-    {Archimedes.xx = 1.; xy = 0.; yx = 0.; yy = -1.; x0 = 0.; y0 = t.h}
+    { M.xx = 1.; xy = 0.; yx = 0.; yy = -1.; x0 = 0.; y0 = t.h }
 
 
   (* Same type (same internal representation), just in different modules *)
   let set_line_cap t c = set_line_cap t.cr (Obj.magic c : Cairo.line_cap)
-  let get_line_cap t = (Obj.magic(get_line_cap t.cr) : Archimedes.line_cap)
+  let get_line_cap t = (Obj.magic(get_line_cap t.cr) : Backend.line_cap)
 
   let set_line_join t j = set_line_join t.cr (Obj.magic j : Cairo.line_join)
-  let get_line_join t = (Obj.magic(get_line_join t.cr) : Archimedes.line_join)
+  let get_line_join t = (Obj.magic(get_line_join t.cr) : Backend.line_join)
 
   (*Get needed functions which are in submodule Path*)
-  let path_extents t = (Obj.magic(Cairo.Path.extents t.cr): Archimedes.rectangle)
+  let path_extents t = (Obj.magic(Cairo.Path.extents t.cr): M.rectangle)
   let close_path t = Cairo.Path.close t.cr
   let clear_path t = Cairo.Path.clear t.cr
 
@@ -63,9 +64,9 @@ struct
   let set_matrix t m =
     Printf.printf "set_matrix%!";
 (*    Gc.compact ();*)
-    let m' = { Cairo.xx = m.Archimedes.xx; xy = m.Archimedes.xy;
-                    yx = m.Archimedes.yx; yy = m.Archimedes.yy;
-                    x0 = m.Archimedes.x0; y0 = m.Archimedes.y0;}
+    let m' = { Cairo.xx = m.M.xx; xy = m.M.xy;
+                    yx = m.M.yx; yy = m.M.yy;
+                    x0 = m.M.x0; y0 = m.M.y0;}
       (*(Obj.magic m : Cairo.matrix)*)
     in
     set_matrix t.cr m'
@@ -73,7 +74,7 @@ struct
   let get_matrix t =
     Printf.printf "get_matrix%!";
     let m = get_matrix t.cr in
-    { Archimedes.xx = m.Cairo.xx;  xy = m.Cairo.xy;
+    { M.xx = m.Cairo.xx;  xy = m.Cairo.xy;
       yx = m.Cairo.yx; yy = m.Cairo.yy;
       x0 = m.Cairo.x0; y0 = m.Cairo.y0;}
     (*(Obj.magic (get_matrix cr) : Backend.matrix)*)
@@ -156,11 +157,11 @@ struct
   let select_font_face t slant weight family =
     (* Could be (unsafely) optimized *)
     let slant = match slant with
-      | Archimedes.Upright -> Cairo.Upright
-      | Archimedes.Italic -> Cairo.Italic
+      | Backend.Upright -> Cairo.Upright
+      | Backend.Italic -> Cairo.Italic
     and weight = match weight with
-      | Archimedes.Normal -> Cairo.Normal
-      | Archimedes.Bold -> Cairo.Bold in
+      | Backend.Normal -> Cairo.Normal
+      | Backend.Bold -> Cairo.Bold in
     Cairo.select_font_face t.cr ~slant ~weight family
 
   let set_font_size t = set_font_size t.cr
@@ -177,18 +178,18 @@ struct
     Cairo.rotate cr angle;
     let te = Cairo.text_extents cr text in
     let x0 = match pos with
-      | Archimedes.CC | Archimedes.CT | Archimedes.CB ->
+      | Backend.CC | Backend.CT | Backend.CB ->
           te.x_bearing +. 0.5 *. te.width
-      | Archimedes.RC | Archimedes.RT | Archimedes.RB ->
+      | Backend.RC | Backend.RT | Backend.RB ->
           te.x_bearing
-      | Archimedes.LC | Archimedes.LT | Archimedes.LB ->
+      | Backend.LC | Backend.LT | Backend.LB ->
           te.x_bearing +. te.width
     and y0 = match pos with
-      | Archimedes.CC | Archimedes.RC | Archimedes.LC ->
+      | Backend.CC | Backend.RC | Backend.LC ->
           te.y_bearing +. 0.5 *. te.height
-      | Archimedes.CT | Archimedes.RT | Archimedes.LT ->
+      | Backend.CT | Backend.RT | Backend.LT ->
           te.y_bearing +. te.height
-      | Archimedes.CB | Archimedes.RB | Archimedes.LB ->
+      | Backend.CB | Backend.RB | Backend.LB ->
           te.y_bearing
     in
     Cairo.rel_move_to cr (-. x0) (-. y0);
@@ -206,8 +207,8 @@ struct
       are orthogonal.*)
     (*let x,y = Cairo.device_to_user_distance t.cr te.x_bearing te.y_bearing in
     let w,h = Cairo.device_to_user_distance t.cr te.width te.height in
-    { Archimedes.x = x; y = -.y; w = w; h = -.h}*)
-    { Archimedes.x = te.x_bearing; y = te.y_bearing;
+    { M.x = x; y = -.y; w = w; h = -.h}*)
+    { M.x = te.x_bearing; y = te.y_bearing;
       w = te.width; h = te.height}
 end
 

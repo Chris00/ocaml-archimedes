@@ -728,10 +728,9 @@ let show_text t ~rotate ~x ~y pos txt=
   Backend.set_font_size t.backend font_size;
   let rect = Backend.text_extents t.backend txt in
   Coordinate.restore t.backend ctm;
-  update_coords t rect.x rect.y;
-  update_coords t
-    (rect.x +. rect.w)
-    (rect.y +. rect.h);
+  update_coords t rect.Matrix.x rect.Matrix.y;
+  update_coords t (rect.Matrix.x +. rect.Matrix.w)
+    (rect.Matrix.y +. rect.Matrix.h);
   add_order f t
 
 let text_extents t txt =
@@ -752,9 +751,9 @@ let render t name =
     Coordinate.restore t.backend ctm;
   in
   let extents = Pointstyle.extents name in
-  update_coords t (extents.x *. marks) (extents.y *. marks);
-  update_coords t ((extents.x +. extents.w) *. marks)
-    ((extents.y +.extents.h) *. marks);
+  update_coords t (extents.Matrix.x *. marks) (extents.Matrix.y *. marks);
+  update_coords t ((extents.Matrix.x +. extents.Matrix.w) *. marks)
+    ((extents.Matrix.y +.extents.Matrix.h) *. marks);
   add_order f t
 
 (*

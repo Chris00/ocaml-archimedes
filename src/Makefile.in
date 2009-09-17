@@ -36,14 +36,17 @@ ARCHIMEDES_FILES = string_utils.ml color.ml matrix.ml backend.ml coordinate.ml \
 archimedes.cma: archimedes.cmo
 archimedes.cmxa: archimedes.cmx
 
-# The library is created by inclusion of the various source files
-# which breaks separate compilation of those but is more flexible for
-# providing a nice interface and hiding submodules.
-archimedes.cmo: archimedes.ml $(ARCHIMEDES_FILES)
-	$(OCAMLC) -o $@ -pp "@CAMLP4O@ -parser macro" $(OCAMLC_FLAGS) -c $<
+archimedes.cmo: $(ARCHIMEDES_FILES:.ml=.cmo) archimedes.cmi
+	$(OCAMLC) -o $@ $(OCAMLC_FLAGS) -pack $(filter-out archimedes.cmi,$^)
 
-archimedes.cmx: archimedes.ml  $(ARCHIMEDES_FILES)
-	$(OCAMLOPT) -o $@ -pp "@CAMLP4O@ -parser macro" $(OCAMLOPT_FLAGS) -c $<
+archimedes.cmx: $(ARCHIMEDES_FILES:.ml=.cmx) archimedes.cmi
+	$(OCAMLOPT) -o $@ $(OCAMLOPT_FLAGS) -pack \
+	$(filter-out archimedes.cmi,$^)
+
+$(ARCHIMEDES_FILES:.ml=.cmx): OCAMLOPT_FLAGS += -for-pack Archimedes
+
+archimedes.mli: $(wildcard *_public.mli) public_interface.ml
+	@OCAML@ public_interface.ml > $@
 
 # Plugins
 archimedes_graphics.cmo: archimedes_graphics.ml
@@ -77,8 +80,6 @@ install: META $(INSTALL_FILES)
 
 uninstall:
 	ocamlfind remove $(PACKAGE)
-
-.depend.ocaml: PP_FLAGS=-pp "@CAMLP4O@ -parser macro"
 
 include $(ROOT)/Makefile.ocaml
 

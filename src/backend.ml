@@ -28,10 +28,33 @@ module ForLinking_2__ = Hashtbl
    symbol: caml_hash_variant" when loading Cairo. *)
 external for_linking_1__ : unit -> unit = "caml_hash_variant"
 
+  type line_cap =
+    | BUTT
+    | ROUND
+    | SQUARE
+
+  type line_join =
+    | JOIN_MITER
+    | JOIN_ROUND
+    | JOIN_BEVEL
+
+  type text_position =
+    | CC
+    | LC
+    | RC
+    | CT
+    | CB
+    | LT
+    | LB
+    | RT
+    | RB
+
+  type slant = Upright | Italic
+  type weight = Normal | Bold
+
 module type T =
 sig
   type t
-  val backend_to_device : t -> matrix
 
   val set_color : t -> Color.t -> unit
   val set_line_width : t -> float -> unit
@@ -63,7 +86,7 @@ sig
   *)
   val close_path : t -> unit
   val clear_path : t -> unit
-  val path_extents : t -> rectangle
+  val path_extents : t -> Matrix.rectangle
 
   val stroke : t -> unit
   val stroke_preserve : t -> unit
@@ -78,12 +101,13 @@ sig
   val translate : t -> x:float -> y:float -> unit
   val scale : t -> x:float -> y:float -> unit
   val rotate : t -> angle:float -> unit
-  val set_matrix : t -> matrix -> unit
-  val get_matrix : t -> matrix
+  val set_matrix : t -> Matrix.t -> unit
+  val get_matrix : t -> Matrix.t
+  val backend_to_device : t -> Matrix.t
 
   val select_font_face : t -> slant -> weight -> string -> unit
   val set_font_size : t -> float -> unit
-  val text_extents : t -> string -> rectangle
+  val text_extents : t -> string -> Matrix.rectangle
   val show_text : t -> rotate:float -> x:float -> y:float ->
     text_position -> string -> unit
 
@@ -98,8 +122,8 @@ type t = {
   width: float;  (* width of the backend canvas in its original units *)
   height: float; (* height of the backend canvas in its original units *)
   close: unit -> unit;
-  backend_to_device: matrix;
-  device_to_backend: matrix;
+  backend_to_device: Matrix.t;
+  device_to_backend: Matrix.t;
 
   set_color : Color.t -> unit;
   set_line_width : float -> unit;
@@ -123,7 +147,7 @@ type t = {
   arc : r:float -> a1:float -> a2:float -> unit;
   close_path : unit -> unit;
   clear_path : unit -> unit;
-  path_extents : unit -> rectangle;
+  path_extents : unit -> Matrix.rectangle;
 
   stroke : unit -> unit;
   stroke_preserve : unit -> unit;
@@ -137,12 +161,12 @@ type t = {
   translate : x:float -> y:float -> unit;
   scale : x:float -> y:float -> unit;
   rotate : angle:float -> unit;
-  set_matrix : matrix -> unit;
-  get_matrix : unit -> matrix;
+  set_matrix : Matrix.t -> unit;
+  get_matrix : unit -> Matrix.t;
 
   select_font_face: slant -> weight -> string -> unit;
   set_font_size: float -> unit;
-  text_extents: string -> rectangle;
+  text_extents: string -> Matrix.rectangle;
   show_text: rotate:float -> x:float -> y:float ->
                                 text_position -> string -> unit
   (* put_image: 'a -> x:float -> y:float -> ?scale:float -> string -> unit; *)

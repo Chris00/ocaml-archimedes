@@ -23,9 +23,9 @@ module Matrix = Archimedes.Matrix
 module Backend = Archimedes.Backend
 
 (* Re-export the labels so we do not have to qualify them with [Backend]. *)
-type matrix = Archimedes.matrix = { mutable xx: float; mutable yx: float;
-                                    mutable xy: float; mutable yy: float;
-                                    mutable x0: float; mutable y0: float; }
+type matrix = Matrix.t = { mutable xx: float; mutable yx: float;
+                           mutable xy: float; mutable yy: float;
+                           mutable x0: float; mutable y0: float; }
 
 let is_infinite x = 1. /. x = 0.
 let min a b = if (a:float) < b then a else b
@@ -37,11 +37,11 @@ let round x =
 (** Return the smaller rectangle including the rectangle [r] and the
     segment joining [(x0,y0)] and [(x1,y1)]. *)
 let update_rectangle r x0 y0 x1 y1 =
-  let x = min r.Archimedes.x (min x0 x1)
-  and y = min r.Archimedes.y (min y0 y1)
-  and x' = max (r.Archimedes.x +. r.Archimedes.w) (max x0 x1)
-  and y' = max (r.Archimedes.y +. r.Archimedes.h) (max y0 y1) in
-  { Archimedes.x = x;  y = y;  w = x' -. x;  h = y' -. y }
+  let x = min r.Matrix.x (min x0 x1)
+  and y = min r.Matrix.y (min y0 y1)
+  and x' = max (r.Matrix.x +. r.Matrix.w) (max x0 x1)
+  and y' = max (r.Matrix.y +. r.Matrix.h) (max y0 y1) in
+  { Matrix.x = x;  y = y;  w = x' -. x;  h = y' -. y }
 
 (** Returns the range of the function f = t -> (1-t)**3 x0 + 3
     (1-t)**2 t x1 + 3 (1-t) t**2 x2 + t**3 x3, 0 <= t <= 1, under the
@@ -91,19 +91,19 @@ let range_bezier x0 x1 x2 x3 =
     given by the control points. *)
 let update_curve r x0 y0 x1 y1 x2 y2 x3 y3 =
   let xmin, xmax = range_bezier x0 x1 x2 x3 in
-  let xmin = min xmin r.Archimedes.x in
-  let w = max xmax (r.Archimedes.x +. r.Archimedes.w) -. xmin in
+  let xmin = min xmin r.Matrix.x in
+  let w = max xmax (r.Matrix.x +. r.Matrix.w) -. xmin in
   let ymin, ymax = range_bezier y0 y1 y2 y3 in
-  let ymin = min ymin r.Archimedes.y in
-  let h = max ymax (r.Archimedes.y +. r.Archimedes.h) -. ymin in
-  { Archimedes.x = xmin;  y = ymin; w = w; h = h }
+  let ymin = min ymin r.Matrix.y in
+  let h = max ymax (r.Matrix.y +. r.Matrix.h) -. ymin in
+  { Matrix.x = xmin;  y = ymin; w = w; h = h }
 
 
 module B =
 struct
   let name = "graphics"
 
-  let backend_to_device t = Matrix.make_identity()
+  let backend_to_device _ = Matrix.make_identity()
     (*A Graphics handle has already the "good" coordinates.*)
   let in_use = ref false (* only one Graphics handle can be created *)
 
@@ -127,9 +127,9 @@ struct
     mutable x: float;
     mutable y: float;
     mutable current_path: path_data list; (* Path actions in reverse order *)
-    mutable path_extents: Archimedes.rectangle;
+    mutable path_extents: Matrix.rectangle;
     (* The extent of the current path, in device coordinates. *)
-    mutable ctm : matrix; (* current transformation matrix from the
+    mutable ctm : Matrix.t; (* current transformation matrix from the
                              user coordinates to the device ones. *)
     mutable font_size : float;
   }
@@ -153,7 +153,7 @@ struct
        it. We need to store a *copy* of the ctm, because
        scaling/translation/rotation mustn't modify this stored
        matrix.*)
-    let state_copy = { st with ctm = Archimedes.Matrix.copy st.ctm} in
+    let state_copy = { st with ctm = Matrix.copy st.ctm} in
     Stack.push state_copy t.history
 
   let restore t =
@@ -182,7 +182,7 @@ struct
       x = 0.;
       y = 0.;
       current_path = [];
-      path_extents = { Archimedes.x=0.; y=0.; w=0.; h=0. };
+      path_extents = { Matrix.x=0.; y=0.; w=0.; h=0. };
       (* Identity transformation matrix *)
       ctm = Matrix.make_identity();
       font_size = 10.;
@@ -205,7 +205,7 @@ struct
   let clear_path t =
     let st = get_state t in
     st.current_path <- [];
-    st.path_extents <- { Archimedes.x=0.; y=0.; w=0.; h=0. };
+    st.path_extents <- { Matrix.x=0.; y=0.; w=0.; h=0. };
     st.curr_pt <- false
 
   let set_color t c =
@@ -235,9 +235,9 @@ struct
 
   (* Not supported, do nothing *)
   let set_line_cap t _ = check_valid_handle t
-  let get_line_cap t = check_valid_handle t; Archimedes.BUTT
+  let get_line_cap t = check_valid_handle t; Backend.BUTT
   let set_line_join t _ = check_valid_handle t
-  let get_line_join t = check_valid_handle t; Archimedes.JOIN_MITER
+  let get_line_join t = check_valid_handle t; Backend.JOIN_MITER
   let set_miter_limit t _ = check_valid_handle t
 
   (* Paths are not acted upon directly but wait for [stroke] or [fill]. *)
@@ -430,7 +430,7 @@ struct
   let text_extents t txt =
     check_valid_handle t;
     let w, h = Graphics.text_size txt in
-    { Archimedes.x = 0.; y = 0.; w = float w ; h = float h }
+    { Matrix.x = 0.; y = 0.; w = float w ; h = float h }
 
   let show_text t ~rotate ~x ~y pos txt =
     let st = get_state t in
@@ -447,18 +447,18 @@ struct
       let wx = float w' and wy = 0. in
       let hx = 0. and hy = float h' in
       let x'' =  match pos with
-        | Archimedes.CC | Archimedes.CT | Archimedes.CB ->
+        | Backend.CC | Backend.CT | Backend.CB ->
             x' -. (wx +. hx) *. 0.5
-        | Archimedes.RC | Archimedes.RT | Archimedes.RB ->
+        | Backend.RC | Backend.RT | Backend.RB ->
             x'
-        | Archimedes.LC | Archimedes.LT | Archimedes.LB ->
+        | Backend.LC | Backend.LT | Backend.LB ->
             x' -. wx -. hx
       and y'' = match pos with
-        | Archimedes.CC | Archimedes.RC | Archimedes.LC ->
+        | Backend.CC | Backend.RC | Backend.LC ->
             y' -. (hy +. wy) *. 0.5
-        | Archimedes.CT | Archimedes.RT | Archimedes.LT ->
+        | Backend.CT | Backend.RT | Backend.LT ->
             y'
-        | Archimedes.CB | Archimedes.RB | Archimedes.LB ->
+        | Backend.CB | Backend.RB | Backend.LB ->
             y' -. hy -. wy
       in
       Graphics.moveto (round x'') (round y'');

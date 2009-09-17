@@ -18,8 +18,9 @@
 
 (**Styles definitions to make axes*)
 
-type ranges =
-    {x1:float;x2:float;y1:float;y2:float}
+type rectangle = Matrix.rectangle = { x:float; y:float; w:float; h:float }
+
+type ranges = {x1:float; x2:float; y1:float; y2:float}
 
 module FixedRanges =
 struct
@@ -233,6 +234,13 @@ type data =
     | `Number
     | `Expnumber]
 
+
+let make_box_from_text txt pos b =
+  let rect' = Backend.text_extents b txt in
+  let rect =
+    Matrix.inv_transform_rectangle ~dist_basepoint:true
+      (Backend.get_matrix b) rect'
+
 let make_box_from_text txt pos b =
   let rect' = Backend.text_extents b txt in
   let rect =
@@ -258,6 +266,7 @@ let make_action_from txt rotate x y pos t =
   Backend.set_color t (Color.make ~a:0.3 1. 0.5 0.);
   Backend.rectangle t (x +. rect.x) (y+.rect.y) rect.w rect.h;
   Backend.set_color t Color.black
+
 
 let get_labels x_axis data =
   match data with
@@ -550,7 +559,7 @@ type 'a axis = (*'a for tic type*)
      major:'a; minor:'a;
      major_extents: rectangle; minor_extents: rectangle;
      positions:tic_position;
-     label_position:text_position}
+     label_position: Backend.text_position}
 
 type ('a,'b) t = (*'a for axes type, 'b for tic types*)
     {axes:'a; xaxis:'b axis; yaxis:'b axis}
