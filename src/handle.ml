@@ -473,12 +473,13 @@ struct
     (*Need to change the current viewport and coordinates of the
       context, but also flag the viewport, if it is not, and add it to
       the [used_vp] field of the context.*)
-    (Printf.printf "Use vp \n%!";
+    Printf.printf "Use vp \n%!";
     let handle = vp.handle in
     handle.vp <- vp;
+    ignore (Coordinate.use handle.backend vp.user_device);
     if not vp.stored then (
       vp.stored <- true;
-      Queue.push vp handle.used_vp))
+      Queue.push vp handle.used_vp)
 
   (*{2 Convenience functions to create viewports}*)
   let rows handle n =
@@ -886,6 +887,11 @@ let print_axes t axes ?(color = Color.black)
     if margins_ok then
       (let vp = Viewport.make t left (1. -.right) bottom (1. -.top) in
        Viewport.use vp;
+       t.only_immediate <- true;
+       rectangle t 0. 0. 1. 1.;
+       set_color t (Color.make ~a:0.2 0. 0. 1.);
+       fill t;
+       t.only_immediate <- false;
        Some vp)
     else (  (* Labels take too big margins to plot correctly => no scaling.*)
       Printf.printf
