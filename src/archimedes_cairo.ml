@@ -29,10 +29,8 @@ struct
   (* identity CTM -- never modified *)
   let id = { Cairo.xx = 1.; xy = 0.;  yx = 0.; yy = 1.;  x0 = 0.; y0 = 0. }
 
-  type t = { cr:Cairo.context; mutable lw:Cairo.matrix; h:float}
-      (*The [lw] field stores the coordinate system in which the line
-        width is specified. [h] is for height, to make the
-        backend_to_device matrix.*)
+  type t = { cr:Cairo.context; h:float}
+      (* [h] is for height, to make the backend_to_device matrix.*)
 
   (* let path_extents cr = Cairo.Path.extents cr
      let close_path cr = Cairo.Path.close cr
@@ -55,9 +53,7 @@ struct
   let clear_path t = Cairo.Path.clear t.cr
 
 
-  let set_line_width t w =
-    t.lw <- Cairo.get_matrix t.cr;
-    set_line_width t.cr w
+  let set_line_width t = set_line_width t.cr
 
   let get_line_width t = get_line_width t.cr
 
