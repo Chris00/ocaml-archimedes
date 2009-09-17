@@ -35,7 +35,7 @@ struct
     - if a node is up_to_date, then "style" is ABSOLUTE(x) or
     REL_UPDATED(h,x); in this latter case, we have that:
 
-    *the parent of the current node is also ABSLOUTE(y) or REL_UPDATED(_,y);
+    *the parent of the current node is also ABSOLUTE(y) or REL_UPDATED(_,y);
     *and x = h *. y.
   *)
 
@@ -56,7 +56,7 @@ struct
       {parent = real_root;
        lw = REL_UPDATED (lines, init *. lines);
        ts = REL_UPDATED (text, init *. text);
-       marks = REL_UPDATED (marks, init *. marks);
+       marks = REL_UPDATED (marks, marks);
        children = []}
     in
     real_root.children <- [root];
