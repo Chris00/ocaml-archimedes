@@ -114,8 +114,7 @@ struct
       Handle.update_coords p.h ranges.Axes.xmax ranges.Axes.ymax;
       let r = { Axes.x1 = ranges.Axes.xmin; x2 = ranges.Axes.xmax;
                 y1 = ranges.Axes.ymin; y2 = ranges.Axes.ymax } in
-      (* ignore(Handle.print_axes p.h axes r) *)
-        (* => "index out of bounds" !!! FIXME!!! *)
+      ignore(Handle.print_axes p.h axes r)
     );
     Handle.f p.h ?color ?nsamples ~do_with ~finish f a b
 

@@ -28,7 +28,7 @@ let draw backend =
     H.close_path handle;
     H.stroke handle
   in
-*)  P.f p (fun x -> x) (-3.) 3.;
+*)  P.f p (fun x -> x *. (x *. x -. 3.)) (-3.) 3.;
 
   P.viewport vp.(1).(1);
 (*  let xaxis =
