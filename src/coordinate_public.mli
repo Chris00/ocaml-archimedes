@@ -6,7 +6,7 @@ module type T = sig
 
   type ctm
     (** Current transformation matrix of the backend (to be able to
-        restore it through {!Coordinate.restore}. *)
+        restore it with {!Coordinate.restore}. *)
 
   val use : Backend.t -> t -> ctm
     (** After a call to [use b c], all backend operations will be
