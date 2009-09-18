@@ -273,6 +273,13 @@ let usr_lw, usr_ts, usr_marks = 500., 100., 100.
 (*Initial scale of the user_to_viewport coordinates.*)
 let initial_scale = 1.
 
+let backend h = h.backend
+let ranges h = match h.vp.ranges with
+  | None -> failwith "ranges"
+  | Some r ->
+      { Axes.x1 = r.Axes.xmin; Axes.y1 = r.Axes.ymin;
+        Axes.x2 = r.Axes.xmax; Axes.y2 = r.Axes.ymax }
+
 let make ~dirs name w h =
   let backend = Backend.make ~dirs name w h in
   let init = Coordinate.make_root_from (Backend.backend_to_device backend) in
@@ -492,7 +499,7 @@ struct
     let f i = make_rect handle ((float i)*. step) 0. step 1. in
     Array.init n f
 
-  let matrix handle n m =
+  let grid handle n m =
     let stepx = 1. /. (float n)
     and stepy = 1. /. (float m) in
     let f i j = make_rect handle

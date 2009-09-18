@@ -424,7 +424,7 @@ struct
         (*FIXME : this causes a Stack overflow.*)
         (*Find the middle point of the curve.*)
         let x01 = float(x0 + x1) /.2.
-        and x12 = float(x1 + x2) /.2
+        and x12 = float(x1 + x2) /.2.
         and x23 = float(x2 + x3) /.2.
         and y01 = float(y0 + y1) /.2.
         and y12 = float(y1 + y2) /.2.

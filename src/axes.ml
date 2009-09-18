@@ -504,11 +504,16 @@ let get_position loc labels =
          let dist_min = get_dist vmin x_axis in
          (*Get the significant digit in order to find which list
            of steps to use*)
+         (* FIXME: vmin <= vmax ??? -- ChriS *)
          let diffexp = floor (log10 diff) in
          let order = 10. ** diffexp in
          let significant_digit = truncate (vmin /. order) in
          let dist = float (10 * significant_digit) in
-         let distances = distances.(significant_digit -1) in
+         (* FIXME: That thing does not work, I sometimes get
+            [significant_digit = -3]!!! -- ChriS *)
+         let distances =
+           if significant_digit < 0 || significant_digit > 8 then []
+           else distances.(significant_digit) in
          (*In this list, find the smallest number for which the
            texts won't overlap; and return the corrsponding step to use.*)
          let rec find_minimal_dist dists =

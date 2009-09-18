@@ -29,7 +29,7 @@ let () =
 
   section "Plotting functions";
   include_module "Axes";
-  (* include_module "Plot"; *)
+  include_module "Plot";
 
   section "Affine transformations";
   include_module "Matrix";
