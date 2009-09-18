@@ -7,6 +7,8 @@ val immediate : t -> bool -> unit
      handle true] or a [close handle] to do the orders if [b] is
      false. *)
 
+val backend : t -> Backend.t
+
 type viewport
   (**Viewports creation.*)
 module Viewport :
@@ -55,7 +57,7 @@ val get_mark_size : t -> float
 val width : t -> float
 val height : t -> float
 val set_color : t -> Color.t -> unit
-val set_line_width : t -> float -> unit
+(* val set_line_width : t -> float -> unit *)
 val set_line_cap : t -> Backend.line_cap -> unit
 val set_dash : t -> float -> float array -> unit
 val set_line_join : t -> Backend.line_join -> unit
@@ -138,3 +140,6 @@ val print_axes :
        margins (reducing the graph to nothing). In this latter case,
        the axes are not guaranteed to fit the viewport.*)
 
+
+(**/**)
+val update_coords : t -> float -> float -> unit
