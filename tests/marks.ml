@@ -1,5 +1,4 @@
-open Archimedes
-module H = Handle
+module H = Archimedes
 
 let () =
   let markers =

@@ -10,6 +10,8 @@ let () =
       B.set_matrix backend (B.backend_to_device backend);
       B.scale backend 1. 2.;
       let matrix = B.get_matrix backend in
+      let inv_matrix = Matrix.copy matrix in
+      Matrix.invert inv_matrix;
       B.set_font_size backend 14.;
       let text = "Test with a y."  in
       let extents = B.text_extents backend text in
@@ -17,7 +19,7 @@ let () =
          and hx,hy = Matrix.inv_transform_distance matrix 0. rect.h in
          let x',y' = Matrix.inv_transform_distance matrix rect.x rect.y in*)
       let rect =
-        Matrix.inv_transform_rectangle ~dist_basepoint:true matrix extents
+        Matrix.transform_rectangle ~dist_basepoint:true inv_matrix extents
       in
       let w = 140. and h = 40. in
       let w' = 2.*.w and h' = 2.*.h in

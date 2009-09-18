@@ -102,14 +102,14 @@ let translate_for_tic x y tic_ext marks pos =
   and h2 = h1 +. tic_ext.h *. marks in
   let x' =
     match pos with
-    | LT | LC | LB -> x +. w1
-    | CT | CC | CB -> x
-    | RT | RC | RB -> x +. w2
+    | Backend.LT | Backend.LC | Backend.LB -> x +. w1
+    | Backend.CT | Backend.CC | Backend.CB -> x
+    | Backend.RT | Backend.RC | Backend.RB -> x +. w2
   and y' =
     match pos with
-    | LT | CT | RT -> y +. h2
-    | LC | CC | RC -> y
-    | LB | CB | RB -> y +. h1
+    | Backend.LT | Backend.CT | Backend.RT -> y +. h2
+    | Backend.LC | Backend.CC | Backend.RC -> y
+    | Backend.LB | Backend.CB | Backend.RB -> y +. h1
   in
   Printf.printf "(%f,%f) -- (%f,%f)%!" x y x' y';
   x', y'
@@ -191,8 +191,8 @@ let tic_extents tic =
   | _ -> raise Not_available
 
 type label =
-    {action: float -> float -> text_position -> Backend.t -> unit;
-     box: float -> float -> text_position -> Backend.t -> rectangle;
+    {action: float -> float -> Backend.text_position -> Backend.t -> unit;
+     box: float -> float -> Backend.text_position -> Backend.t -> Matrix.rectangle;
      rotation:float}
 
 (*Extents as if the tic has been made at (0,0). [tic_ext] is given in
@@ -240,21 +240,15 @@ let make_box_from_text txt pos b =
   let rect =
     Matrix.inv_transform_rectangle ~dist_basepoint:true
       (Backend.get_matrix b) rect'
-
-let make_box_from_text txt pos b =
-  let rect' = Backend.text_extents b txt in
-  let rect =
-    Matrix.inv_transform_rectangle ~dist_basepoint:true
-      (Backend.get_matrix b) rect'
   in
   let x = match pos with
-    | CC | CT | CB -> rect.x -. 0.5 *. rect.w
-    | RC | RT | RB -> rect.x
-    | LC | LT | LB -> rect.x -. rect.w
+    | Backend.CC | Backend.CT | Backend.CB -> rect.x -. 0.5 *. rect.w
+    | Backend.RC | Backend.RT | Backend.RB -> rect.x
+    | Backend.LC | Backend.LT | Backend.LB -> rect.x -. rect.w
   and y = match pos with
-    | CC | RC | LC -> rect.y -. 0.5 *. rect.h
-    | CT | RT | LT -> rect.y
-    | CB | RB | LB -> rect.y -. rect.h
+    | Backend.CC | Backend.RC | Backend.LC -> rect.y -. 0.5 *. rect.h
+    | Backend.CT | Backend.RT | Backend.LT -> rect.y
+    | Backend.CB | Backend.RB | Backend.LB -> rect.y -. rect.h
   in
   Printf.printf "TE of %s : %f %f %f %f\nto %f %f %f %f -> base %f %f\n%!"
     txt rect'.x rect'.y rect'.w rect'.h rect.x rect.y rect.w rect.h x y;
