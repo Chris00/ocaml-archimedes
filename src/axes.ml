@@ -327,7 +327,7 @@ let get_position loc labels =
         in
         if x_axis then t,0.,labelopt
         else 0.,t, labelopt
-        (*f ranges.x1 ranges.x2 t, f ranges.y1 ranges.y2 t, labelopt*)
+          (*f ranges.x1 ranges.x2 t, f ranges.y1 ranges.y2 t, labelopt*)
       in
       (fun ranges x_axis  _ ->
          List.map (g ranges x_axis) t_list)
@@ -460,13 +460,13 @@ let get_position loc labels =
          List.rev_map
            (fun (j,k,label) ->
               let t = float j /. number_of_majors in
-             (* let x0 = ranges.x1 +. t *. xmajorstep
-              and y0 = ranges.y1 +. t *. ymajorstep in*)
+              (* let x0 = ranges.x1 +. t *. xmajorstep
+                 and y0 = ranges.y1 +. t *. ymajorstep in*)
               (*let f mstep v0 =
                 let ministep = mstep *. (float k) /. (float (minors + 1)) in
                 let g st = log10 (1. +. st /. v0) in
                 x0 +. mstep *. (g ministep) /. (g mstep)
-              in
+                in
                 f xmajorstep x0, f ymajorstep y0, label *)
               let ministep = (float k) /.
                 ((float (minors + 1)) *. number_of_majors)
@@ -478,7 +478,7 @@ let get_position loc labels =
               if x_axis then t+.t',0.,label
               else 0.,t+.t',label
            )
-                list)
+           list)
   | `Auto_linear ->
       let distances =
         [|[1;2;5;10];
@@ -494,6 +494,9 @@ let get_position loc labels =
       (fun ranges x_axis backend ->
          let get_dist v =
            let rect = Backend.text_extents backend (string_of_float v) in
+           let rect =
+             Matrix.inv_transform_rectangle (Backend.get_matrix backend) rect
+           in
            fun x_axis -> if x_axis then rect.w else rect.h
          in
          let vmin, vmax =
@@ -505,24 +508,31 @@ let get_position loc labels =
          (*Get the significant digit in order to find which list
            of steps to use*)
          (* FIXME: vmin <= vmax ??? -- ChriS *)
-         let diffexp = floor (log10 diff) in
-         let order = 10. ** diffexp in
-         let significant_digit = truncate (vmin /. order) in
+         let log_digit, log_order = modf (log10 diff) in
+         let order = 10. ** log_order in
+         let significant_digit = truncate (10. ** log_digit) in
+         (*let significant_digit = truncate (vmin /. order) in*)
          let dist = float (10 * significant_digit) in
          (* FIXME: That thing does not work, I sometimes get
             [significant_digit = -3]!!! -- ChriS *)
+         Printf.printf "Auto_lin: min %f max %f diff %f dig %d ord %f\n%!"
+           vmin vmax diff significant_digit order;
          let distances =
-           if significant_digit < 0 || significant_digit > 8 then []
-           else distances.(significant_digit) in
+           (* Note: 9 is also allowed! *)
+           if significant_digit < 0 || significant_digit > 9 then []
+           else distances.(significant_digit - 1) in
          (*In this list, find the smallest number for which the
-           texts won't overlap; and return the corrsponding step to use.*)
+           texts won't overlap; and return the corresponding step to use.*)
          let rec find_minimal_dist dists =
            match dists with
              [] -> (*Overlap for all distances => labels only at the boundaries*)
                diff
            | d::dists ->
                let ddist = diff *. (float d) /. dist in
-               let len = get_dist (vmin +. ddist *. order) x_axis in
+               let test_value = vmin +. ddist *. order in
+               let dist_curr = get_dist test_value x_axis in
+               (* FIXME: get_dist must return the length, expressed in
+                  user (graph) coordinates. *)
                (*Condition of acceptance: if the two first boxes are as follows:
 
                  *Half of the first box;
@@ -531,13 +541,17 @@ let get_position loc labels =
 
                  then the space is at least equal to the space
                  occupied by the boxes in this interval.  *)
-               if (len > (ddist +. dist_min)) then ddist
+               Printf.printf
+                 "dist %f current %d ddist %f test %f dist_curr %f\n"
+                 dist d ddist test_value dist_curr;
+               if (ddist > (dist_curr +. dist_min)) then ddist
                else find_minimal_dist dists
          in
          let step = find_minimal_dist distances in
-         let new_vmax = vmin +. dist *. order in
+         let new_vmax = vmin +. (float significant_digit) *. order in
          let diffx = ranges.x2 -. ranges.x1
          and diffy = ranges.y2 -. ranges.y1 in
+         Printf.printf "Step %f; new max %f\n%!" step new_vmax;
          let rec make_list list i =
            let v = new_vmax -. (float i) *. step *. order in
            if v >= vmin then
