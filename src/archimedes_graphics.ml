@@ -22,7 +22,10 @@ open Printf
 module Matrix = Archimedes.Matrix
 module Backend = Archimedes.Backend
 
-(* Re-export the labels so we do not have to qualify them with [Backend]. *)
+let ofsw = ref 0.
+and ofsh = ref 0.
+
+(* Re-export the labels so we do not have to qualify them with [Matrix]. *)
 type matrix = Matrix.t = { mutable xx: float; mutable yx: float;
                            mutable xy: float; mutable yy: float;
                            mutable x0: float; mutable y0: float; }
@@ -170,7 +173,8 @@ struct
   (* FIXME: options "x=" and "y=" for the position *)
   let make ~options:_ width height =
     if !in_use then failwith "Archimedes_graphics.make: in use";
-    Graphics.open_graph(sprintf " %.0fx%.0f" width height);
+    printf "Init graphics: %f %f\n%!" !ofsh !ofsh;
+    Graphics.open_graph(sprintf " %.0fx%.0f" (width +. !ofsw) (height +. !ofsh));
     Graphics.set_window_title "Archimedes";
     in_use := true;
     let state = {
@@ -241,37 +245,49 @@ struct
   let set_miter_limit t _ = check_valid_handle t
 
   (* Paths are not acted upon directly but wait for [stroke] or [fill]. *)
+  let device_move_to t x y =
+    let st = get_state t in
+    st.current_path <- MOVE_TO(x,y) :: st.current_path;
+    (* move only updates the current point but not the path extents *)
+    st.curr_pt <- true;
+    st.x <- x;
+    st.y <- y
+
+  let device_line_to t x y =
+    let st = get_state t in
+    (*Note: if there's no current point then line_to behaves as move_to.*)
+    if st.curr_pt then (
+      st.current_path <- LINE_TO(x,y) :: st.current_path;
+      (* Update extents*)
+      st.path_extents <- update_rectangle st.path_extents st.x st.y x y;
+    )
+    else (
+      st.curr_pt <- true;
+      st.current_path <- MOVE_TO(x,y) :: st.current_path
+    );
+    (* Update current point *)
+    st.x <- x;
+    st.y <- y
+
   let move_to t ~x ~y =
     let st = get_state t in
     let x', y' = Matrix.transform_point st.ctm x y in
-    st.current_path <- MOVE_TO(x',y') :: st.current_path;
-    (* move only updates the current point but not the path extents *)
-    st.curr_pt <- true;
-    st.x <- x';
-    st.y <- y'
+    device_move_to t x' y'
 
   let line_to t ~x ~y =
     let st = get_state t in
     let x', y' = Matrix.transform_point st.ctm x y in
-    (*Note: if there's no current point then line_to behaves as move_to.*)
-    if st.curr_pt then (
-      st.current_path <- LINE_TO(x',y') :: st.current_path;
-      (* Update extents and current point *)
-      let x0', y0' = Matrix.transform_point st.ctm st.x st.y in
-      st.path_extents <- update_rectangle st.path_extents x0' y0' x' y';
-    )
-    else (
-      st.curr_pt <- true;
-      st.current_path <- MOVE_TO(x',y') :: st.current_path
-    );
-    st.x <- x';
-    st.y <- y'
+    device_line_to t x' y'
 
   let rel_move_to t ~x ~y =
-    let st = get_state t in move_to t (st.x +. x) (st.y +. y)
+    let st = get_state t in
+    let x,y = Matrix.transform_distance st.ctm x y in
+    device_move_to t (st.x +. x) (st.y +. y)
 
   let rel_line_to t ~x ~y =
-    let st = get_state t in line_to t (st.x +. x) (st.y +. y)
+    let st = get_state t in
+    let x',y' = Matrix.transform_distance st.ctm x y in
+    device_line_to t (st.x +. x') (st.y +. y')
 
   let curve_to t ~x1 ~y1 ~x2 ~y2 ~x3 ~y3 =
     (* Suffices to transform the control point by the affine
@@ -319,7 +335,7 @@ struct
     let rec arcin a1 a2 =
       let diff_angle = abs_float (a2 -. a1) in
       let curvelen = r *. diff_angle in
-      if diff_angle < 2. && curvelen < 100. then (
+      if diff_angle < (atan 1.)  && curvelen < 100. then (
         let rcos1 = r *. cos a1 and rsin1 = r *. sin a1 in
         let rcos2 = r *. cos a2 and rsin2 = r *. sin a2 in
         let coeff = (2. *. (sqrt 5.) -. 4.) /. 3. in
@@ -386,7 +402,91 @@ struct
   let stroke t = stroke_preserve t; clear_path t
 
   let fill_preserve t =
-    ()
+    let st = get_state t in
+    let add_to_first_list x = function
+        [] -> failwith ""
+      | list::tail -> (List.rev_append x list)::tail
+    in
+    let rec make_points_for_curve ?(reverse=true) x0 y0 x1 y1 x2 y2 x3 y3 list =
+      let diffx01 = x1 - x0
+      and diffy01 = y1 - y0
+      and diffx12 = x2 - x1
+      and diffy12 = y2 - y1
+      and diffx23 = x3 - x2
+      and diffy23 = y3 - y2 in
+      let eqslope y x y' x' = y * x' = x * y' in
+      if eqslope diffy12 diffx12 diffy01 diffx01
+        && eqslope diffy12 diffx12 diffy23 diffx23 then
+          (*All slopes are equal : finish by adding the last point*)
+          [x3,y3]
+      else if true then [(x3, y3);(x2,y2);(x1,y1)]
+      else
+        (*FIXME : this causes a Stack overflow.*)
+        (*Find the middle point of the curve.*)
+        let x01 = float(x0 + x1) /.2.
+        and x12 = float(x1 + x2) /.2
+        and x23 = float(x2 + x3) /.2.
+        and y01 = float(y0 + y1) /.2.
+        and y12 = float(y1 + y2) /.2.
+        and y23 = float(y2 + y3) /.2. in
+        let x0' = (x01 +. x12) /. 2.
+        and x1' = (x12 +. x23) /. 2.
+        and y0' = (y01 +. y12) /. 2.
+        and y1' = (y12 +. y23) /. 2. in
+        let x5 = truncate ((x0' +. x1') /.2.)
+        and y5 = truncate ((y0' +. y1') /.2.) in
+        (* Then find the point for each part of the curve. *)
+        let part1 =
+          make_points_for_curve ~reverse
+            x5 y5 (truncate x1') (truncate y1')
+            (truncate x23) (truncate y23) x3 y3 list in
+        let reverse = not reverse in
+        let part2 =
+          make_points_for_curve ~reverse
+            x0 y0 (truncate x01) (truncate y01)
+            (truncate x0') (truncate y0') x5 y5 list in
+        List.rev_append part2 part1
+          (*if x0 = x1 && x1 = x2 && x2 = x3 then
+          (*end with a line y0--y3*)
+            else if y0 = y1 && y1 = y2 && y2 = y3 then
+          (*x0--x3*)
+            else ()*)
+    in
+    let add_points list = function
+      | MOVE_TO(x,y) -> [((round x), (round y))]::list
+      | LINE_TO(x,y) -> add_to_first_list [((round x), (round y))] list
+      | RECTANGLE(x,y,w,h) ->
+          let x' = round (x+.w) and y' = round (y+.h) in
+          let x = round x and y = round y in
+          let list = [(x,y)]::list in
+          add_to_first_list [(x,y'); (x',y'); (x',y)] list
+      | CURVE_TO(x1,y1, x2,y2, x3,y3) ->
+          let x0,y0 =
+            match list with
+              (current::points)::others -> current
+            | _ -> (round x1), (round y1)
+          in
+          let points_curve = make_points_for_curve x0 y0
+            (round x1) (round y1) (round x2) (round y2) (round x3) (round y3) []
+          in
+          add_to_first_list points_curve list
+      | CLOSE_PATH(x,y) -> add_to_first_list [((round x), (round y))] list
+    in
+    let subpaths = List.fold_left add_points [] (List.rev st.current_path) in
+    let subpath_arrays = List.map Array.of_list subpaths in
+    let rec fill = function
+        [] -> ()
+      | path::list -> 
+          if Array.length path < 3 then
+            (if Array.length path = 2 then
+               (let x,y = path.(0)
+                and x',y' = path.(1) in
+                Graphics.moveto x y;
+                Graphics.lineto x' y'))
+          else Graphics.fill_poly path;
+          fill list
+    in fill subpath_arrays
+
 
   let fill t = fill_preserve t; clear_path t
 
@@ -459,7 +559,14 @@ struct
 end
 
 let () =
-  let module U = Backend.Register(B)  in ()
+  let module U = Backend.Register(B)  in
+  (
+    Graphics.open_graph " 100x100";
+    let w = Graphics.size_x () and h = Graphics.size_y() in
+    Graphics.close_graph ();
+    ofsw := float (100 - 90);
+    ofsh := float (100 - h);
+  )
 
 
 (* Local Variables: *)

@@ -1,12 +1,11 @@
-open Archimedes
-module H = Handle
-
+module H = Archimedes.Handle
+module Backend = Archimedes.Backend
 let () =
   let markers =
     [| "X";   "-";   "|";   "o";
        "O";   "+";   "s";   "S";
        "d";   "D";   "v";   "^";
-       ">";   "<";"  -v";   "^-";
+       ">";   "<";   "-v";   "^-";
        "|>";  "<|";  "--v"; "^--";
        "||>"; "<||"; "*";   "p";
        "P";   "h";   "H";   "tic_up";

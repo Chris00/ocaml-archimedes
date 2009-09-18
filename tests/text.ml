@@ -8,7 +8,7 @@ let () =
         B.make ~dirs:[ "../src"; "./src"] s 300. 300.
       in
       B.set_matrix backend (B.backend_to_device backend);
-      (*B.scale backend 1. 2.;*)
+      B.scale backend 1. 2.;
       let matrix = B.get_matrix backend in
       let inv_matrix = Matrix.copy matrix in
       Matrix.invert inv_matrix;
@@ -43,6 +43,7 @@ let () =
         B.move_to backend x y;
         B.arc backend 2. 0. 7.;
         B.stroke backend;
+        B.set_color backend (Color.make ~a:0.4 r g b);
         B.show_text backend 0. x y pos text;
         B.set_color backend (Color.make ~a:0.4 r g b);
         B.move_to backend (dx -. rect.Matrix.x) (dy -. rect.Matrix.y);
