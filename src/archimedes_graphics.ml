@@ -22,7 +22,10 @@ open Printf
 module Matrix = Archimedes.Matrix
 module Backend = Archimedes.Backend
 
-(* Re-export the labels so we do not have to qualify them with [Backend]. *)
+let ofsw = ref 0.
+and ofsh = ref 0.
+
+(* Re-export the labels so we do not have to qualify them with [Matrix]. *)
 type matrix = Matrix.t = { mutable xx: float; mutable yx: float;
                            mutable xy: float; mutable yy: float;
                            mutable x0: float; mutable y0: float; }
@@ -170,7 +173,8 @@ struct
   (* FIXME: options "x=" and "y=" for the position *)
   let make ~options:_ width height =
     if !in_use then failwith "Archimedes_graphics.make: in use";
-    Graphics.open_graph(sprintf " %.0fx%.0f" width height);
+    printf "Init graphics: %f %f\n%!" !ofsh !ofsh;
+    Graphics.open_graph(sprintf " %.0fx%.0f" (width +. !ofsw) (height +. !ofsh));
     Graphics.set_window_title "Archimedes";
     in_use := true;
     let state = {
@@ -398,7 +402,33 @@ struct
   let stroke t = stroke_preserve t; clear_path t
 
   let fill_preserve t =
-    ()
+    let st = get_state t in
+    let add_to_first_list x = function
+        [] -> failwith ""
+      | list::tail -> (List.rev_append x list)::tail
+    in
+    let add_points list = function
+    | MOVE_TO(x,y) -> [((round x), (round y))]::list
+    | LINE_TO(x,y) -> add_to_first_list [((round x), (round y))] list
+    | RECTANGLE(x,y,w,h) ->
+        let x' = round (x+.w) and y' = round (y+.h) in
+        let x = round x and y = round y in
+        let list = [(x,y)]::list in
+        add_to_first_list [(x,y'); (x',y'); (x',y)] list
+    | CURVE_TO(x1,y1, x2,y2, x3,y3) ->
+        add_to_first_list
+          [(round x3, round y3); (round x2, round y2);(round x1, round y1)]
+          list
+    | CLOSE_PATH(x,y) -> add_to_first_list [((round x), (round y))] list
+    in
+    let subpaths = List.fold_left add_points [] (List.rev st.current_path) in
+    let subpath_arrays = List.map Array.of_list subpaths in
+    let rec fill = function
+        [] -> ()
+      | path::list -> Graphics.fill_poly path;
+          fill list
+    in fill subpath_arrays
+
 
   let fill t = fill_preserve t; clear_path t
 
@@ -471,7 +501,14 @@ struct
 end
 
 let () =
-  let module U = Backend.Register(B)  in ()
+  let module U = Backend.Register(B)  in
+  (
+    Graphics.open_graph " 100x100";
+    let w = Graphics.size_x () and h = Graphics.size_y() in
+    Graphics.close_graph ();
+    ofsw := float (100 - 90);
+    ofsh := float (100 - h);
+  )
 
 
 (* Local Variables: *)
