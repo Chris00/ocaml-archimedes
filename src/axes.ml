@@ -494,6 +494,9 @@ let get_position loc labels =
       (fun ranges x_axis backend ->
          let get_dist v =
            let rect = Backend.text_extents backend (string_of_float v) in
+           let rect =
+             Matrix.inv_transform_rectangle (Backend.get_matrix backend) rect
+           in
            fun x_axis -> if x_axis then rect.w else rect.h
          in
          let vmin, vmax =
@@ -538,7 +541,7 @@ let get_position loc labels =
 
                  then the space is at least equal to the space
                  occupied by the boxes in this interval.  *)
-               Printf.printf 
+               Printf.printf
                  "dist %f current %d ddist %f test %f dist_curr %f\n"
                  dist d ddist test_value dist_curr;
                if (ddist > (dist_curr +. dist_min)) then ddist
