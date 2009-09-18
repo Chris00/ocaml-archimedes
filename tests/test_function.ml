@@ -32,10 +32,10 @@ let () =
       H.f handle ~finish parabola (-3.) 3.;
       H.use (vps.(1).(1));
       let xaxis =
-        H.make_xaxis (`P "|") `Number CB (`P "tic_up") (`Linear(7,0))
+        H.make_xaxis (`P "|") `Number B.CB (`P "tic_up") (`Linear(7,0))
       in
       let yaxis =
-        H.make_yaxis (`P "-") `Number LC (`P "tic_left") (`Linear(7,2))
+        H.make_yaxis (`P "-") `Number B.LC (`P "tic_left") (`Linear(7,2))
       in
       let axes = H.make_axes (`Rectangle(true,true)) xaxis yaxis in
       ignore

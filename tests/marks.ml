@@ -1,5 +1,5 @@
-module H = Archimedes
-
+module H = Archimedes.Handle
+module Backend = Archimedes.Backend
 let () =
   let markers =
     [| "X";   "-";   "|";   "o";
