@@ -21,6 +21,8 @@
 type rectangle = Matrix.rectangle = { x:float; y:float; w:float; h:float }
 
 type ranges = {x1:float; x2:float; y1:float; y2:float}
+type margins =
+    {left: float; right: float; top: float; bottom: float}
 
 module FixedRanges =
 struct
@@ -102,16 +104,16 @@ let translate_for_tic x y tic_ext marks pos =
   and h2 = h1 +. tic_ext.h *. marks in
   let x' =
     match pos with
-    | Backend.LT | Backend.LC | Backend.LB -> x +. w1
+    | Backend.LT | Backend.LC | Backend.LB -> x +. 2.*.w1
     | Backend.CT | Backend.CC | Backend.CB -> x
-    | Backend.RT | Backend.RC | Backend.RB -> x +. w2
+    | Backend.RT | Backend.RC | Backend.RB -> x +. 2.*.w2
   and y' =
     match pos with
-    | Backend.LT | Backend.CT | Backend.RT -> y +. h2
+    | Backend.LT | Backend.CT | Backend.RT -> y +. 2.*.h2
     | Backend.LC | Backend.CC | Backend.RC -> y
-    | Backend.LB | Backend.CB | Backend.RB -> y +. h1
+    | Backend.LB | Backend.CB | Backend.RB -> y +. 2.*.h1
   in
-  Printf.printf "(%f,%f) -- (%f,%f)%!" x y x' y';
+  Printf.printf "translate_for tic :%f %f > %f %f\n%!" x y x' y';
   x', y'
 
 type axes =
@@ -192,34 +194,40 @@ let tic_extents tic =
 
 type label =
     {action: float -> float -> Backend.text_position -> Backend.t -> unit;
-     box: float -> float -> Backend.text_position -> Backend.t -> Matrix.rectangle;
+     box: float->float->Backend.text_position -> Backend.t -> Matrix.rectangle;
      rotation:float}
 
 (*Extents as if the tic has been made at (0,0). [tic_ext] is given in
   'marks' coordinates.  We work (and give the result) in normalized
   coordinates.*)
-let tic_label_extents tic_ext marks label x y x' y' pos b =
-  let tic_ext =
-    {x = tic_ext.x *. marks;
-     y = tic_ext.y *. marks;
-     w = tic_ext.w *. marks;
-     h = tic_ext.h *. marks}
-  in
+let tic_label_extents tic_ext marks label ofsx ofsy x' y' pos b =
   match label with
-    None -> tic_ext
+    None ->  {left = -. tic_ext.x *. marks;
+              right = (tic_ext.w +. tic_ext.x) *. marks;
+              top = (tic_ext.h +. tic_ext.y) *. marks;
+              bottom = -. tic_ext.y *. marks;}
   | Some label ->
       (*Assert [b] is in normalized coords.*)
-      let x, y = translate_for_tic x y tic_ext marks pos in
       let box = label.box x' y' pos b in
       let matrix = Matrix.make_rotate label.rotation in
       let final_box =
         Matrix.transform_rectangle ~dist_basepoint:false matrix box in
       (*Note: the base point need not to be transformed.*)
-      let x'' = final_box.x +. final_box.w
-      and y'' = final_box.y +. final_box.h in
+      let x' = final_box.x +. ofsx
+      and y' = final_box.y +. ofsy in
+      let x'' = x' +. final_box.w
+      and y'' = y' +. final_box.h in
       Printf.printf "Ext: tic %f %f w%f h%f; label %f, %f to %f, %f\n%!"
-        tic_ext.x tic_ext.y tic_ext.w tic_ext.h final_box.x final_box.y x'' y'';
-      rectangle_extents tic_ext final_box.x x'' final_box.y y''
+        tic_ext.x tic_ext.y tic_ext.w tic_ext.h x' y' x'' y'';
+      let xtic = tic_ext.x *. marks
+      and ytic = tic_ext.y *. marks in
+      let xtic' = xtic +. tic_ext.w *. marks
+      and ytic' = ytic +. tic_ext.h *. marks in
+      {left = -. (min x' xtic);
+       right = max x'' xtic';
+       top = max y'' ytic';
+       bottom = -. (min y' ytic);}
+      (*rectangle_extents final_box xtic xtic' ytic ytic'*)
 
 (*FIXME: really need a range?*)
 type tic_position = ranges -> bool -> Backend.t ->
@@ -250,16 +258,16 @@ let make_box_from_text txt pos b =
     | Backend.CT | Backend.RT | Backend.LT -> rect.y
     | Backend.CB | Backend.RB | Backend.LB -> rect.y -. rect.h
   in
-  Printf.printf "TE of %s : %f %f %f %f\nto %f %f %f %f -> base %f %f\n%!"
-    txt rect'.x rect'.y rect'.w rect'.h rect.x rect.y rect.w rect.h x y;
+ (* Printf.printf "TE of %s : %f %f %f %f\nto %f %f %f %f -> base %f %f\n%!"
+    txt rect'.x rect'.y rect'.w rect'.h rect.x rect.y rect.w rect.h x y;*)
   {x = x; y = y; w = rect.w; h = rect.h}
 
 let make_action_from txt rotate x y pos t =
-  Backend.show_text t rotate x y pos txt;
-  let rect = make_box_from_text txt pos t in
+  Backend.show_text t rotate x y pos txt
+  (*let rect = make_box_from_text txt pos t in
   Backend.set_color t (Color.make ~a:0.3 1. 0.5 0.);
   Backend.rectangle t (x +. rect.x) (y+.rect.y) rect.w rect.h;
-  Backend.set_color t Color.black
+  Backend.set_color t Color.black*)
 
 
 let get_labels x_axis data =
@@ -575,12 +583,16 @@ let make axes x y =
   {axes = axes; xaxis = x; yaxis = y}
 
 (*FIXME: need of a range?*)
-let print_tics axis ranges print_tic normalization marks font_size backend =
+let print_tics axis ranges v print_tic normalization marks font_size backend =
   let rec print = function
       [] -> ()
     | (x,y,label)::l ->
-        let x' = ranges.x1 +. x *. (ranges.x2 -. ranges.x1)
-        and y' = ranges.y1 +. y *. (ranges.y2 -. ranges.y1) in
+        let x',y' =
+          if axis.x_axis then
+            ranges.x1 +. x *. (ranges.x2 -. ranges.x1), v
+          else
+            v, ranges.y1 +. y *. (ranges.y2 -. ranges.y1)
+        in
         Backend.move_to backend x' y';
         Printf.printf "*%!";
         let user_coords = Coordinate.use backend normalization in
@@ -601,7 +613,13 @@ let print_tics axis ranges print_tic normalization marks font_size backend =
               in
               let x1' = ranges.x1 +. x1 *. (ranges.x2 -. ranges.x1)
               and y1' = ranges.y1 +. y1 *. (ranges.y2 -. ranges.y1) in
-              Printf.printf "l(%f,%f)(vp coords)%!" x1 y1;
+              Printf.printf
+                "l: ranges %f %f %f %f; val: %f; \
+init (%f,%f)>%f %f ; translated_tic: (%f,%f) > %f %f\n%!"
+               ranges.x1 ranges.x2 ranges.y1 ranges.y2 v x y x' y' x1 y1 x1' y1';
+              (*Backend.move_to backend x1' y1';
+              Backend.arc backend 0.1 0. 7.;
+              Backend.fill backend;*)
               label.action x1' y1' axis.label_position backend);
         Printf.printf "-%!";
         print l
@@ -610,9 +628,6 @@ let print_tics axis ranges print_tic normalization marks font_size backend =
   Printf.printf ">%!";
   print (axis.positions ranges axis.x_axis backend)
 
-type margins =
-    {left: float; right: float; top: float; bottom: float}
-
 let axis_margins normalization marks font_size ranges backend axis =
   Backend.set_font_size backend font_size;
   let list = axis.positions ranges axis.x_axis backend in
@@ -620,7 +635,7 @@ let axis_margins normalization marks font_size ranges backend axis =
     Printf.printf "M %f %f %f %f\n%!" left right top bottom;
     match list with
       [] -> Printf.printf "ok\n%!";
-        {left = -.left; right = right; top = top; bottom = -.bottom}
+        {left = left; right = right; top = top; bottom = bottom}
     | (x,y,label)::l ->
         let x' = ranges.x1 +. x *. (ranges.x2 -. ranges.x1)
         and y' = ranges.y1 +. y *. (ranges.y2 -. ranges.y1) in
@@ -630,17 +645,20 @@ let axis_margins normalization marks font_size ranges backend axis =
           | Some _ -> axis.major_extents
         in
         (*let ctm = Coordinate.use backend normalization in*)
+        let ofsx, ofsy =
+          translate_for_tic 0. 0. tic_ext marks axis.label_position
+        in
         let extents =
-          tic_label_extents tic_ext marks label x y
-            x' y' axis.label_position backend
+          tic_label_extents tic_ext marks label ofsx ofsy x' y'
+            axis.label_position backend
         in
         (*Coordinate.restore backend ctm;*)
-        Printf.printf "data: %f %f %f %f\n%!"
-          extents.x extents.y extents.w extents.h;
-        let xmin = min left extents.x
-        and ymin = min bottom extents.y in
-        let xmax = max (xmin +. extents.w) right
-        and ymax = max (ymin +. extents.h) top in
+        Printf.printf "data: L%f R%f B%f T%f\n%!"
+          extents.left extents.right extents.bottom extents.top;
+        let xmin = max left extents.left
+        and ymin = max bottom extents.bottom in
+        let xmax = max extents.right right
+        and ymax = max extents.top top in
         make_margins l xmin xmax ymax ymin
   in make_margins list 0. 0. 0. 0.
 
@@ -673,17 +691,18 @@ let print t ~normalization ~lines ~marks ~font_size ~ranges
   Backend.set_line_width backend lines;
   Backend.stroke backend;
   Coordinate.restore backend ctm;
-  let xrange = {x1=ranges.x1; x2 = ranges.x2; y1 = y; y2 = y} in
-(*
- Ranges.make ranges.xmin y in
-  ignore (Ranges.update xrange ranges.xmax y);*)
-  let yrange = {x1=x; x2 = x; y1 = ranges.y1; y2 = ranges.y2} in
-(*
- Ranges.make x ranges.ymin in
-  ignore (Ranges.update yrange x ranges.ymax);*)
+  let x1, x2 =
+    let up1, up2 =
+      (if ranges.x1 < ranges.x2 then min, max else max, min)
+    in up1 x ranges.x1, up2 x ranges.x2
+  and y1, y2 =
+    let up1, up2 =
+      (if ranges.y1 < ranges.y2 then min, max else max, min)
+    in up1 y ranges.y1, up2 y ranges.y2
+  in
   Printf.printf "X%!";
-  print_tics t.xaxis xrange print_tic normalization marks font_size backend;
+  print_tics t.xaxis ranges y print_tic normalization marks font_size backend;
   (*X axis*)
   Printf.printf "Y%!";
-  print_tics t.yaxis yrange print_tic normalization marks font_size backend;
+  print_tics t.yaxis ranges x print_tic normalization marks font_size backend;
   (*Y axis*)

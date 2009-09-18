@@ -661,7 +661,7 @@ module Iterator : sig
 end
 
 module Handle : sig
-    type t
+  type t
   val make : dirs:string list -> string -> float -> float -> t
   val close : t -> unit
   val immediate : t -> bool -> unit
