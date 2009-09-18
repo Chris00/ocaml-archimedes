@@ -104,7 +104,7 @@ struct
       | None -> Handle.stroke in
     if p.axes_set then () (* FIXME: todo *)
     else (
-      let x = Handle.make_xaxis (`P "-") `Number CB (`P "tic_up") `Auto_linear
+      let x = Handle.make_xaxis (`P "|") `Number CB (`P "tic_up") `Auto_linear
       and y = Handle.make_yaxis (`P "-") `Number LC (`P "tic_left") `Auto_linear
       in
       let axes = Handle.make_axes (`Rectangle(true,true)) x y in
