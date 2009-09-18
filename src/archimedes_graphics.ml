@@ -407,25 +407,83 @@ struct
         [] -> failwith ""
       | list::tail -> (List.rev_append x list)::tail
     in
+    let rec make_points_for_curve ?(reverse=true) x0 y0 x1 y1 x2 y2 x3 y3 list =
+      let diffx01 = x1 - x0
+      and diffy01 = y1 - y0
+      and diffx12 = x2 - x1
+      and diffy12 = y2 - y1
+      and diffx23 = x3 - x2
+      and diffy23 = y3 - y2 in
+      let eqslope y x y' x' = y * x' = x * y' in
+      if eqslope diffy12 diffx12 diffy01 diffx01
+        && eqslope diffy12 diffx12 diffy23 diffx23 then
+          (*All slopes are equal : finish by adding the last point*)
+          [x3,y3]
+      else if true then [(x3, y3);(x2,y2);(x1,y1)]
+      else
+        (*FIXME : this causes a Stack overflow.*)
+        (*Find the middle point of the curve.*)
+        let x01 = float(x0 + x1) /.2.
+        and x12 = float(x1 + x2) /.2
+        and x23 = float(x2 + x3) /.2.
+        and y01 = float(y0 + y1) /.2.
+        and y12 = float(y1 + y2) /.2.
+        and y23 = float(y2 + y3) /.2. in
+        let x0' = (x01 +. x12) /. 2.
+        and x1' = (x12 +. x23) /. 2.
+        and y0' = (y01 +. y12) /. 2.
+        and y1' = (y12 +. y23) /. 2. in
+        let x5 = truncate ((x0' +. x1') /.2.)
+        and y5 = truncate ((y0' +. y1') /.2.) in
+        (* Then find the point for each part of the curve. *)
+        let part1 =
+          make_points_for_curve ~reverse
+            x5 y5 (truncate x1') (truncate y1')
+            (truncate x23) (truncate y23) x3 y3 list in
+        let reverse = not reverse in
+        let part2 =
+          make_points_for_curve ~reverse
+            x0 y0 (truncate x01) (truncate y01)
+            (truncate x0') (truncate y0') x5 y5 list in
+        List.rev_append part2 part1
+          (*if x0 = x1 && x1 = x2 && x2 = x3 then
+          (*end with a line y0--y3*)
+            else if y0 = y1 && y1 = y2 && y2 = y3 then
+          (*x0--x3*)
+            else ()*)
+    in
     let add_points list = function
-    | MOVE_TO(x,y) -> [((round x), (round y))]::list
-    | LINE_TO(x,y) -> add_to_first_list [((round x), (round y))] list
-    | RECTANGLE(x,y,w,h) ->
-        let x' = round (x+.w) and y' = round (y+.h) in
-        let x = round x and y = round y in
-        let list = [(x,y)]::list in
-        add_to_first_list [(x,y'); (x',y'); (x',y)] list
-    | CURVE_TO(x1,y1, x2,y2, x3,y3) ->
-        add_to_first_list
-          [(round x3, round y3); (round x2, round y2);(round x1, round y1)]
-          list
-    | CLOSE_PATH(x,y) -> add_to_first_list [((round x), (round y))] list
+      | MOVE_TO(x,y) -> [((round x), (round y))]::list
+      | LINE_TO(x,y) -> add_to_first_list [((round x), (round y))] list
+      | RECTANGLE(x,y,w,h) ->
+          let x' = round (x+.w) and y' = round (y+.h) in
+          let x = round x and y = round y in
+          let list = [(x,y)]::list in
+          add_to_first_list [(x,y'); (x',y'); (x',y)] list
+      | CURVE_TO(x1,y1, x2,y2, x3,y3) ->
+          let x0,y0 =
+            match list with
+              (current::points)::others -> current
+            | _ -> (round x1), (round y1)
+          in
+          let points_curve = make_points_for_curve x0 y0
+            (round x1) (round y1) (round x2) (round y2) (round x3) (round y3) []
+          in
+          add_to_first_list points_curve list
+      | CLOSE_PATH(x,y) -> add_to_first_list [((round x), (round y))] list
     in
     let subpaths = List.fold_left add_points [] (List.rev st.current_path) in
     let subpath_arrays = List.map Array.of_list subpaths in
     let rec fill = function
         [] -> ()
-      | path::list -> Graphics.fill_poly path;
+      | path::list -> 
+          if Array.length path < 3 then
+            (if Array.length path = 2 then
+               (let x,y = path.(0)
+                and x',y' = path.(1) in
+                Graphics.moveto x y;
+                Graphics.lineto x' y'))
+          else Graphics.fill_poly path;
           fill list
     in fill subpath_arrays
 
