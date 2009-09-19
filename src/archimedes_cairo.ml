@@ -93,11 +93,11 @@ struct
   let curve_to t = curve_to t.cr
   let rectangle t = rectangle t.cr
 
-  let arc t ~r ~a1 =
+  let arc t ~r ~a1 ~a2 =
     let x,y = Cairo.Path.get_current_point t.cr in
     let x = x -. r *. cos a1
     and y = y -. r *. sin a1 in
-    arc t.cr ~x ~y ~r ~a1
+    arc t.cr ~x ~y ~r ~a1 ~a2
 
   let stroke t =
     Cairo.save t.cr;
