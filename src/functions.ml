@@ -90,7 +90,8 @@ let plotfx t f = plotfxy t (fun t -> t,f t)
 let stroke_plot ?(init=true) t f ?(nsamples = 100) a b =
   plotfx t f ~nsamples a b;
   if init then
-    let ctm = Coordinate.use t (Coordinate.make_identity ()) in
+    let ctm =
+      Coordinate.use t (Coordinate.make_root (Matrix.make_identity ())) in
     stroke t;
     Coordinate.restore t ctm
   else stroke t
@@ -98,7 +99,8 @@ let stroke_plot ?(init=true) t f ?(nsamples = 100) a b =
 let stroke_plot_param ?(init=true) t f ?(nsamples = 100) a b =
   plotfxy t f ~nsamples a b;
   if init then
-    let ctm = Coordinate.use t (Coordinate.make_identity ()) in
+    let ctm =
+      Coordinate.use t (Coordinate.make_root (Matrix.make_identity ())) in
     stroke t;
     Coordinate.restore t ctm
   else stroke t
@@ -112,13 +114,13 @@ let color_level f ?(extend=PAD) ~xmin ~xmax ~ymin ~ymax fmin cmin fmax cmax =
   and cr', cg', cb', ca' = Color.get_rgba cmax in
   let conv a b t = a +. t *. (b -. a) in
   let make_color fxy =
-    let make_in t = Color.make ~a:(conv ca ca' t)
-      (conv cr cr' t) (conv cg cg' t) (conv cb cb' t)
+    let make_in t =
+      Color.rgba (conv cr cr' t) (conv cg cg' t) (conv cb cb' t) (conv ca ca' t)
     in
     let t = (fxy -. fmin) /. (fmax -. fmin) in
     if t > 0. && t < 1. then make_in t
     else match extend with
-      NONE -> Color.make ~a:0. 0. 0. 0.
+      NONE -> Color.rgba 0. 0. 0. 0.
     | PAD ->  if t <= 0. then cmin else cmax
     | REPEAT ->
         let t' = mod_float t 1. in

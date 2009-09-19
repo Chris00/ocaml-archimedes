@@ -4,8 +4,13 @@ module type T = sig
   type t
     (**The type for colors*)
 
-  val make : ?a:float -> float -> float -> float -> t
-    (**[color ~a r g b] creates the color with transparency [~a], red
+  val rgb : float -> float -> float -> t
+    (**[rgb r g b] creates the color with transparency [~a], red
+       component [r], green component [g] and blue component [b]. All values
+       must be between [0.] and [1.]; raises [Invalid_argument] otherwise.*)
+
+  val rgba : float -> float -> float -> float -> t
+    (**[rgba r g b a] creates the color with transparency [~a], red
        component [r], green component [g] and blue component [b]. All values
        must be between [0.] and [1.]; raises [Invalid_argument] otherwise.*)
 
