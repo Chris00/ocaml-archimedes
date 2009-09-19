@@ -4,8 +4,9 @@ open Archimedes
 let pi = 4. *. atan 1.
 
 let draw bk =
-  let bk = Backend.make bk 600. 600. ~dirs:[ "./src"; "../src" ] in
+  let bk = Backend.make bk 800. 700. ~dirs:[ "./src"; "../src" ] in
   Backend.set_matrix bk (Backend.backend_to_device bk);
+  Backend.scale bk 1.5 1.5;
 
   Backend.move_to bk 500. 300.;
   Backend.arc bk 150. 0. (2. *. pi);
@@ -14,6 +15,8 @@ let draw bk =
   Backend.move_to bk 400. 300.;
   Backend.arc bk 100. 0. (2. *. pi);
   Backend.fill bk;
+
+  Backend.save bk;
 
   Backend.set_color bk (Color.rgb 0.9 0. 0.2);
   Backend.move_to bk 450. 400.;
@@ -25,6 +28,14 @@ let draw bk =
   Backend.move_to bk 150. 400.;
   (* Backend.arc bk 20. 0. (2. *. pi); *)
   Backend.curve_to bk 150. 480.  80. 420.  50. 400.;
+  Backend.fill bk;
+
+  Backend.restore bk;
+
+  (* Filling a self crossing path. *)
+  Backend.move_to bk 50. 100.;
+  Backend.curve_to bk 80. 180.  180. 180.  200. 100.;
+  Backend.curve_to bk 220. 30.  350. 20.  400. 100.;
   Backend.fill bk;
 
   Backend.close bk
