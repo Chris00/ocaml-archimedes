@@ -168,7 +168,8 @@ struct
       t.state <- st;
       (* Re-enable previous settings in case they were changed *)
       Graphics.set_color st.color;
-    with Stack.Empty -> () (* nothing to restore *)
+    with Stack.Empty ->
+      invalid_arg "Archimedes_graphics.restore: no save issued.\n%!"
 
   (* On windows, the size given to open_graph is the one of the window
      WITH decorations.  These quantities tell how much need to be
@@ -408,8 +409,22 @@ struct
 
   (* We will use the fill_poly primitive of graphics for all fillings.
      Thus one must transform each sub-path into an array of coordinates. *)
-  let curve_nsamples = 9 (* curve_nsamples + 1 points *)
+  let curve_nsamples = 20 (* curve_nsamples + 1 points *)
   let curve_dt = 1. /. float curve_nsamples
+  let add_curve_sampling x0 y0  x1 y1  x2 y2  x3 y3 coords =
+    let coords = ref coords in
+    for i = 0 to curve_nsamples do
+      let t = float i *. curve_dt in
+      let tm = 1. -. t in
+      let t2 = t *. t   and tm2 = tm *. tm in
+      let t3 = t2 *. t  and tm3 = tm2 *. tm in
+      let t' = 3. *. t2 *. tm  and t'' = 3. *. t *. tm2 in
+      let x = t3 *. x0 +. t' *. x1 +. t'' *. x2 +. tm3 *. x3
+      and y = t3 *. y0 +. t' *. y1 +. t'' *. y2 +. tm3 *. y3 in
+      coords := (round x, round y) :: !coords;
+    done;
+    !coords
+
   let rec gather_subpath path coords =
     match path with
     | [] -> () (* we are done with the path *)
@@ -426,19 +441,8 @@ struct
         fill_subpath coords;
         gather_subpath tl [(round x, round y)]
     | CURVE_TO(x0,y0, x1,y1, x2,y2, x3,y3) :: tl ->
-        (* only add a few points on the curve *)
-        let coords = ref coords in
-        for i = 0 to curve_nsamples do
-          let t = float i *. curve_dt in
-          let tm = 1. -. t in
-          let t2 = t *. t   and tm2 = tm *. tm in
-          let t3 = t2 *. t  and tm3 = tm2 *. tm in
-          let t' = 3. *. t2 *. tm  and t'' = 3. *. t *. tm2 in
-          let x = t3 *. x0 +. t' *. x1 +. t'' *. x2 +. tm3 *. x3
-          and y = t3 *. y0 +. t' *. y1 +. t'' *. y2 +. tm3 *. y3 in
-          coords := (round x, round y) :: !coords;
-        done;
-        gather_subpath tl !coords
+        let coords = add_curve_sampling x0 y0  x1 y1  x2 y2  x3 y3 coords in
+        gather_subpath tl coords
   and fill_subpath = function
     | [] | [ _ ] -> ()
     | coords -> Graphics.fill_poly (Array.of_list (List.rev coords))
