@@ -6,7 +6,8 @@ OCAMLINCLUDES = $(ROOT)/src
 LIBS_CMA = dynlink.cma bigarray.cma archimedes.cma
 LIBS_CMXA = dynlink.cmxa bigarray.cmxa archimedes.cmxa
 
-TESTS = backend_text.ml text.ml marks.ml viewports.ml test_function.ml
+TESTS = backend_text.ml backend_path.ml \
+  text.ml marks.ml viewports.ml test_function.ml
 
 .PHONY: all byte opt native
 all: byte native

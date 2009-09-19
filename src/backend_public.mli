@@ -58,10 +58,16 @@ module type T = sig
       x1:float -> y1:float ->
       x2:float -> y2:float ->
       x3:float -> y3:float -> unit
+      (** [curve_to x1 y1 x2 y2 x3 y3] adds an Bezier curve to the
+          path, starting at the current point, ending at point
+          [(x3,y3)], with control points [(x1,y1)] and [(x2,y2)]. *)
 
     val rectangle : t -> x:float -> y:float -> w:float -> h:float -> unit
 
     val arc : t -> r:float -> a1:float -> a2:float -> unit
+      (** [arc b r a1 a2] add an arc to the current path starting from
+          the current point with a radius [r], starting at angle [a1]
+          and going clockwise to angle [a2]. *)
 
     val close_path : t -> unit
       (** Adds a line segment to the path from the current point to
