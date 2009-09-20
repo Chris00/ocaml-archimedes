@@ -1,11 +1,11 @@
 open Archimedes
-module H = Handle
+module H = Plot
 
 let () =
   let f s =
     try
       let handle = H.make ~dirs:[ "../src"; "./src"] s 600. 600. in
-      let vps = H.Viewport.matrix handle 2 2 in
+      let vps = H.Viewport.grid handle 2 2 in
       H.use (vps.(0).(0));
       H.set_color handle Color.blue;
       H.move_to handle 0. 0.;

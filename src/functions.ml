@@ -1,5 +1,7 @@
 open Backend
 
+let is_nan (x: float) = x <> x
+
 let samplefxy f ?(min_step=1E-9) ?(nsamples = 100) a b =
   let step = (b -. a) /. (float nsamples) in
   (*Can be negative; in this way, plotting is done 'in the reverse order'*)
@@ -14,23 +16,29 @@ let samplefxy f ?(min_step=1E-9) ?(nsamples = 100) a b =
         if i <= samples then
           (let p = tmin +. (float i) *. step in
            let x,y = f p in
-           let diffx = x -. x0 and diffy = y -. y0 in
-           let rel_max =
-             max_length *. (x0 *. x0 +. y0 *. y0 +. (b-.a) *. (b-.a))
-           in
-           if diffx *. diffx +. diffy *. diffy < rel_max
-             || step < min_step then (
-               ignore (Axes.FixedRanges.update extents x y);
-               next_point (i+1) tmin x y bounds ((x,y)::listxy) (len+1) extents
-             )
+           if is_nan y then
+             (* ignore the point *)
+             (* FIXME: this has to include "discontinuity"... what
+                about preserving it and take care about it in higher
+                levels? Note: if preserving it, be careful on next
+                iteration (should always accept the new point). *)
+             next_point (i+1) tmin x0 y0 bounds listxy (len+1) extents
            else
-             (*increase precision by dividing step by 2.*)
-             let ntmin = tmin +. (float (i-1)) *. step in
-             (* print_string "DIV -> ";
-                print_float (step /. 2.);*)
-             next_point 1 ntmin x0 y0 ((i, tmin, step/.2., 2)::bounds)
-               listxy len extents
-
+             let diffx = x -. x0 and diffy = y -. y0 in
+             let rel_max =
+               max_length *. (x0 *. x0 +. y0 *. y0 +. (b-.a) *. (b-.a)) in
+             if diffx *. diffx +. diffy *. diffy < rel_max
+               || step < min_step then (
+                 ignore (Axes.FixedRanges.update extents x y);
+                 next_point (i+1) tmin x y bounds ((x,y)::listxy) (len+1) extents
+               )
+             else
+               (*increase precision by dividing step by 2.*)
+               let ntmin = tmin +. (float (i-1)) *. step in
+               (* print_string "DIV -> ";
+                  print_float (step /. 2.);*)
+               next_point 1 ntmin x0 y0 ((i, tmin, step/.2., 2)::bounds)
+                 listxy len extents
           )
         else
           (*Plot with current step size finished; return to previous step size.*)
@@ -90,7 +98,8 @@ let plotfx t f = plotfxy t (fun t -> t,f t)
 let stroke_plot ?(init=true) t f ?(nsamples = 100) a b =
   plotfx t f ~nsamples a b;
   if init then
-    let ctm = Coordinate.use t (Coordinate.make_identity ()) in
+    let ctm =
+      Coordinate.use t (Coordinate.make_root (Matrix.make_identity ())) in
     stroke t;
     Coordinate.restore t ctm
   else stroke t
@@ -98,7 +107,8 @@ let stroke_plot ?(init=true) t f ?(nsamples = 100) a b =
 let stroke_plot_param ?(init=true) t f ?(nsamples = 100) a b =
   plotfxy t f ~nsamples a b;
   if init then
-    let ctm = Coordinate.use t (Coordinate.make_identity ()) in
+    let ctm =
+      Coordinate.use t (Coordinate.make_root (Matrix.make_identity ())) in
     stroke t;
     Coordinate.restore t ctm
   else stroke t
@@ -112,13 +122,13 @@ let color_level f ?(extend=PAD) ~xmin ~xmax ~ymin ~ymax fmin cmin fmax cmax =
   and cr', cg', cb', ca' = Color.get_rgba cmax in
   let conv a b t = a +. t *. (b -. a) in
   let make_color fxy =
-    let make_in t = Color.make ~a:(conv ca ca' t)
-      (conv cr cr' t) (conv cg cg' t) (conv cb cb' t)
+    let make_in t =
+      Color.rgba (conv cr cr' t) (conv cg cg' t) (conv cb cb' t) (conv ca ca' t)
     in
     let t = (fxy -. fmin) /. (fmax -. fmin) in
     if t > 0. && t < 1. then make_in t
     else match extend with
-      NONE -> Color.make ~a:0. 0. 0. 0.
+      NONE -> Color.rgba 0. 0. 0. 0.
     | PAD ->  if t <= 0. then cmin else cmax
     | REPEAT ->
         let t' = mod_float t 1. in

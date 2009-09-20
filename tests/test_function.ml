@@ -11,14 +11,13 @@ let draw backend =
   P.f p (fun x -> x *. x) (-3.) 3. ~color:Color.blue;
 
   P.viewport vp.(1).(0);
-  P.set_color p Color.red;
 (*  let finish handle =
     H.line_to handle 3. 10.;
     H.line_to handle (-3.) 10.;
     H.close_path handle;
     H.fill handle
   in*)
-  P.f p (fun x -> x *. x) (-3.) 3.;
+  P.f p (fun x -> x *. x) (-3.) 3. ~color:Color.red;
 
   P.viewport vp.(0).(1);
   P.set_color p Color.green;

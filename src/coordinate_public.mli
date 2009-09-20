@@ -6,7 +6,7 @@ module type T = sig
 
   type ctm
     (** Current transformation matrix of the backend (to be able to
-        restore it through {!Coordinate.restore}. *)
+        restore it with {!Coordinate.restore}. *)
 
   val use : Backend.t -> t -> ctm
     (** After a call to [use b c], all backend operations will be
@@ -37,11 +37,13 @@ module type T = sig
     (**[to_coord coord x y] converts the (device) distance [(dx,dy)] into
        the corresponding distance, expressed in [coord] coordinates.*)
 
+
   (** {2 Creating new coordinate systems} *)
 
-  val make_identity : unit -> t
-    (** Make a system of coordinates which, when used, amounts to plot
-        in the "raw" device coordinates. *)
+  val make_root : Matrix.t -> t
+    (** [make_from m] make a system of coordinates which, when used,
+        amounts to use [m].  This coordinate system depends on no
+        other so will never be updated -- but can be modified. *)
 
   val make_translate : t -> x:float -> y:float -> t
     (** [make_translate coord x y] defines a new coordinate system that

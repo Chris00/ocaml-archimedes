@@ -107,14 +107,13 @@ struct
       let x = Handle.make_xaxis (`P "|") `Number CB (`P "tic_up") `Auto_linear
       and y = Handle.make_yaxis (`P "-") `Number LC (`P "tic_left") `Auto_linear
       in
-      let axes = Handle.make_axes (`Rectangle(true,true)) x y in
       (* FIXME: The ranges determination must be false *)
       let _, ranges, _ = Functions.samplefxy (fun t -> (t,f t)) ?nsamples b a in
       Handle.update_coords p.h ranges.Axes.xmin ranges.Axes.ymin;
       Handle.update_coords p.h ranges.Axes.xmax ranges.Axes.ymax;
       let r = { Axes.x1 = ranges.Axes.xmin; x2 = ranges.Axes.xmax;
                 y1 = ranges.Axes.ymin; y2 = ranges.Axes.ymax } in
-      ignore(Handle.print_axes p.h axes r)
+      Handle.axes p.h (`Rectangle(true,true)) x y r
     );
     Handle.f p.h ?color ?nsamples ~do_with ~finish f a b
 
