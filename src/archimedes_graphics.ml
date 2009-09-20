@@ -32,8 +32,8 @@ let max a b = if (a:float) > b then a else b
 
 let round x = truncate(if x >= 0. then x +. 0.5 else x -. 0.5)
 
-let half_pi = 2. *. atan 1.
-let two_pi = 4. *. half_pi
+let fourth_pi = atan 1.
+let two_pi = 8. *. fourth_pi
 
 (** Return the smaller rectangle including the rectangle [r] and the
     segment joining [(x0,y0)] and [(x1,y1)]. *)
@@ -345,18 +345,20 @@ struct
 
   (* Constant to determine the control points so that the bezier curve
      passes by middle point of the arc. *)
-  let arc_control = 4. *. (sqrt 2. -. 1.) /. 3.
+  let arc_control = 4. /. 3. (* (1 - cos(b))/(sin b),  b = (a1 - a2)/2 *)
 
   let rec bezier_arc t st x0 y0 r a1 a2 =
-    if abs_float(a2 -. a1) <= half_pi then
+    let da = 0.5 *. (a2 -. a1) in
+    if abs_float(da) <= fourth_pi then
+      let k = arc_control *. (1. -. cos da) /. sin da in
       let rcos_a1 = r *. cos a1 and rsin_a1 = r *. sin a1 in
       let rcos_a2 = r *. cos a2 and rsin_a2 = r *. sin a2 in
       let x3 = x0 -. rcos_a1 +. rcos_a2
       and y3 = y0 -. rsin_a1 +. rsin_a2 in
-      let x1 = x0 -. arc_control *. rsin_a1
-      and y1 = y0 +. arc_control *. rcos_a1 in
-      let x2 = x3 +. arc_control *. rsin_a2
-      and y2 = y3 -. arc_control *. rcos_a2 in
+      let x1 = x0 -. k *. rsin_a1
+      and y1 = y0 +. k *. rcos_a1 in
+      let x2 = x3 +. k *. rsin_a2
+      and y2 = y3 -. k *. rcos_a2 in
       internal_curve_to t st x1 y1 x2 y2 x3 y3;
       x3, y3
     else (* several Bezier curves are needed. *)
