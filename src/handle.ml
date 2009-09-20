@@ -324,8 +324,7 @@ let check t =
 
 let do_viewport_orders ?orders_queue vp backend =
   match vp.ranges with
-    None -> (*No ranges, so no drawings *)
-       Printf.printf " > no ranges.\n%!"
+    None -> () (*No ranges, so no drawings *)
   | Some ranges ->
       let ctm = Coordinate.use backend vp.user_device in
       (*let m1 = vp.vp_device.Coordinate.ctm in
@@ -339,7 +338,6 @@ let do_viewport_orders ?orders_queue vp backend =
         m3.xx m3.xy m3.yx m3.yy m3.x0 m3.y0;*)
       let rec make_orders orders =
         if not (Queue.is_empty orders) then (
-          Printf.printf "*%!";
           let order = Queue.pop orders in
           order ();
           (match orders_queue with None -> ()
@@ -357,7 +355,6 @@ let do_orders t preserve =
   let vp_storing_queue = Queue.create () in
   let rec do_viewports_orders () =
     if not (Queue.is_empty t.used_vp) then (
-      Printf.printf "\nPop a vp%!";
       let vp = Queue.pop t.used_vp in
       let orders_queue =
         if preserve then Some (Queue.create ())
@@ -893,11 +890,11 @@ let print_axes t axes ?(color = Color.black)
     if margins_ok then
       (let vp = Viewport.make t left (1. -.right) bottom (1. -.top) in
        Viewport.use vp;
-       t.only_immediate <- true;
-       rectangle t 0. 0. 1. 1.;
-       set_color t (Color.make ~a:0.2 0. 0. 1.);
-       fill t;
-       t.only_immediate <- false;
+       (* t.only_immediate <- true; *)
+       (* rectangle t 0. 0. 1. 1.; *)
+       (* set_color t (Color.make ~a:0.2 0. 0. 1.); *)
+       (* fill t; *)
+       (* t.only_immediate <- false; *)
        Some vp)
     else (  (* Labels take too big margins to plot correctly => no scaling.*)
       Printf.printf

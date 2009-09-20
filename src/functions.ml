@@ -1,5 +1,7 @@
 open Backend
 
+let is_nan (x: float) = x <> x
+
 let samplefxy f ?(min_step=1E-9) ?(nsamples = 100) a b =
   let step = (b -. a) /. (float nsamples) in
   (*Can be negative; in this way, plotting is done 'in the reverse order'*)
@@ -14,23 +16,25 @@ let samplefxy f ?(min_step=1E-9) ?(nsamples = 100) a b =
         if i <= samples then
           (let p = tmin +. (float i) *. step in
            let x,y = f p in
-           let diffx = x -. x0 and diffy = y -. y0 in
-           let rel_max =
-             max_length *. (x0 *. x0 +. y0 *. y0 +. (b-.a) *. (b-.a))
-           in
-           if diffx *. diffx +. diffy *. diffy < rel_max
-             || step < min_step then (
-               ignore (Axes.FixedRanges.update extents x y);
-               next_point (i+1) tmin x y bounds ((x,y)::listxy) (len+1) extents
-             )
+           if is_nan y then
+             (* ignore the point *)
+             next_point (i+1) tmin x y bounds listxy (len+1) extents
            else
-             (*increase precision by dividing step by 2.*)
-             let ntmin = tmin +. (float (i-1)) *. step in
-             (* print_string "DIV -> ";
-                print_float (step /. 2.);*)
-             next_point 1 ntmin x0 y0 ((i, tmin, step/.2., 2)::bounds)
-               listxy len extents
-
+             let diffx = x -. x0 and diffy = y -. y0 in
+             let rel_max =
+               max_length *. (x0 *. x0 +. y0 *. y0 +. (b-.a) *. (b-.a)) in
+             if diffx *. diffx +. diffy *. diffy < rel_max
+               || step < min_step then (
+                 ignore (Axes.FixedRanges.update extents x y);
+                 next_point (i+1) tmin x y bounds ((x,y)::listxy) (len+1) extents
+               )
+             else
+               (*increase precision by dividing step by 2.*)
+               let ntmin = tmin +. (float (i-1)) *. step in
+               (* print_string "DIV -> ";
+                  print_float (step /. 2.);*)
+               next_point 1 ntmin x0 y0 ((i, tmin, step/.2., 2)::bounds)
+                 listxy len extents
           )
         else
           (*Plot with current step size finished; return to previous step size.*)
