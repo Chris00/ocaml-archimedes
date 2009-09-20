@@ -14,7 +14,7 @@ let draw bk =
 
   (* Black disk *)
   Backend.move_to bk 400. 300.;
-  Backend.arc bk 100. 0. (2. *. pi);
+  Backend.arc bk 100. 0. (1.5 *. pi);
   Backend.fill bk;
 
   Backend.set_color bk (Color.rgb 0.5 0. 0.5);
@@ -38,15 +38,7 @@ let draw bk =
     Backend.scale bk 3. 1.;
     Backend.arc bk 50. 0. (2. *. pi);
     Backend.stroke bk;
-
-    Backend.save bk;
-    Backend.move_to bk 100. 300.;
-    Backend.rotate bk (pi /. 4.);
-    Backend.arc bk 10. 0. (2. *. pi);
-    Backend.stroke bk;
-    Backend.restore bk;
-
-    Backend.set_color bk (Color.rgba 0. 0.7 0.2 0.5);
+    Backend.set_color bk (Color.rgba 0.9 0. 0. 0.5);
     Backend.move_to bk 150. 400.;
     (* Backend.arc bk 20. 0. (2. *. pi); *)
     Backend.curve_to bk 150. 480.  80. 420.  50. 400.;
@@ -56,8 +48,8 @@ let draw bk =
 
   (* Filling a self crossing path. *)
   Backend.move_to bk 50. 100.;
-  Backend.curve_to bk 80. 180.  180. 180.  200. 100.;
-  Backend.curve_to bk 220. 30.  350. 20.  400. 100.;
+  Backend.curve_to bk 50. 150.  70. 150.  100. 100.;
+  Backend.curve_to bk 120. 30.  150. 20.  200. 100.;
   Backend.fill bk;
 
   (* Path made of several subpaths *)
@@ -70,6 +62,25 @@ let draw bk =
   Backend.line_to bk 140. 250.;
   Backend.rectangle bk 30. 200. 100. 10.; (* subpath in itself *)
   Backend.fill bk;
+
+  (* Paths and save/restore *)
+  Backend.set_color bk (Color.rgb 0. 0.8 0.);
+  Backend.move_to bk 220. 100.;
+  Backend.line_to bk 300. 150.;
+  Backend.save bk;
+  (* This [line_to] is taken into account even though is it in a
+     save/restore group. *)
+  Backend.line_to bk 350. 150.;
+  Backend.restore bk;
+  Backend.save bk;
+  begin
+    Backend.line_to bk 300. 50.;
+    Backend.stroke_preserve bk;
+    Backend.move_to bk 250. 100.;
+  end;
+  Backend.restore bk;
+  Backend.line_to bk 220. 50.;
+  Backend.stroke bk;
 
   Backend.close bk
 

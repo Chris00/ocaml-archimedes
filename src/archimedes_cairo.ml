@@ -99,10 +99,12 @@ struct
     arc t.cr ~x ~y ~r ~a1 ~a2
 
   let stroke t =
-    Cairo.save t.cr;
-    Cairo.set_matrix t.cr id;
+    (* FIXME: Do we really want this? are we not supposed to always
+       draw in a nice coordinate system? *)
+    let m = Cairo.get_matrix t.cr in
+    Cairo.set_matrix t.cr id; (* to avoid the lines being deformed by [m] *)
     stroke t.cr;
-    Cairo.restore t.cr
+    Cairo.set_matrix t.cr m
 
   let stroke_preserve t =
     Cairo.save t.cr;

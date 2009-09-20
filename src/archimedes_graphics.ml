@@ -126,12 +126,6 @@ struct
        graphics line width, according to the CTM. *)
     mutable dash_offset: float;
     mutable dash: float array;
-    (* (x,y): current point (when creating a path), in device coordinates. *)
-    mutable curr_pt: bool;
-    mutable x: float;
-    mutable y: float;
-    mutable current_path: path_data list; (* Path actions in reverse order *)
-    mutable path_extents: Matrix.rectangle;
     (* The extent of the current path, in device coordinates. *)
     mutable ctm : Matrix.t; (* current transformation matrix from the
                                user coordinates to the device ones. *)
@@ -143,6 +137,13 @@ struct
     hold: bool; (* on close, hold the windows until a key is pressed *)
     history: state Stack.t; (* saved states *)
     mutable state: state;   (* current state *)
+    (* save/restore do not affect the current path. *)
+    mutable current_path: path_data list; (* Path actions in reverse order *)
+    mutable path_extents: Matrix.rectangle;
+    (* (x,y): current point (when creating a path), in device coordinates. *)
+    mutable curr_pt: bool;
+    mutable x: float;
+    mutable y: float;
   }
 
   let check_valid_handle t =
@@ -195,11 +196,6 @@ struct
       line_width = 1.;
       dash_offset = 0.;
       dash = [| |]; (* no dash *)
-      curr_pt = false;
-      x = 0.;
-      y = 0.;
-      current_path = [];
-      path_extents = { Matrix.x=0.; y=0.; w=0.; h=0. };
       (* Identity transformation matrix *)
       ctm = Matrix.make_identity();
       font_size = 10.;
@@ -208,6 +204,11 @@ struct
       hold = !hold;
       history = Stack.create();
       state = state;
+      current_path = [];
+      path_extents = { Matrix.x=0.; y=0.; w=0.; h=0. };
+      curr_pt = false;
+      x = 0.;
+      y = 0.;
     }
 
   let close ~options:_ t =
@@ -224,10 +225,10 @@ struct
     )
 
   let clear_path t =
-    let st = get_state t in
-    st.current_path <- [];
-    st.path_extents <- { Matrix.x=0.; y=0.; w=0.; h=0. };
-    st.curr_pt <- false
+    check_valid_handle t;
+    t.current_path <- [];
+    t.path_extents <- { Matrix.x=0.; y=0.; w=0.; h=0. };
+    t.curr_pt <- false
 
   let set_color t c =
     let st = get_state t in
@@ -265,44 +266,44 @@ struct
   let set_miter_limit t _ = check_valid_handle t
 
   (* Paths are not acted upon directly but wait for [stroke] or [fill]. *)
-  let device_move_to st x y =
-    st.current_path <- MOVE_TO(x,y) :: st.current_path;
+  let device_move_to t x y =
+    t.current_path <- MOVE_TO(x,y) :: t.current_path;
     (* move only updates the current point but not the path extents *)
-    st.curr_pt <- true;
-    st.x <- x;
-    st.y <- y
+    t.curr_pt <- true;
+    t.x <- x;
+    t.y <- y
 
-  let device_line_to st x y =
+  let device_line_to t x y =
     (*Note: if there's no current point then line_to behaves as move_to.*)
-    if st.curr_pt then (
-      st.current_path <- LINE_TO(x,y) :: st.current_path;
+    if t.curr_pt then (
+      t.current_path <- LINE_TO(x,y) :: t.current_path;
       (* Update extents*)
-      st.path_extents <- update_rectangle st.path_extents st.x st.y x y;
+      t.path_extents <- update_rectangle t.path_extents t.x t.y x y;
       (* Update current point *)
-      st.x <- x;
-      st.y <- y
+      t.x <- x;
+      t.y <- y
     )
-    else device_move_to st x y
+    else device_move_to t x y
 
   let move_to t ~x ~y =
     let st = get_state t in
     let x', y' = Matrix.transform_point st.ctm x y in
-    device_move_to st x' y'
+    device_move_to t x' y'
 
   let line_to t ~x ~y =
     let st = get_state t in
     let x', y' = Matrix.transform_point st.ctm x y in
-    device_line_to st x' y'
+    device_line_to t x' y'
 
   let rel_move_to t ~x ~y =
     let st = get_state t in
-    let x,y = Matrix.transform_distance st.ctm x y in
-    device_move_to st (st.x +. x) (st.y +. y)
+    let x, y = Matrix.transform_distance st.ctm x y in
+    device_move_to t (t.x +. x) (t.y +. y)
 
   let rel_line_to t ~x ~y =
     let st = get_state t in
     let x',y' = Matrix.transform_distance st.ctm x y in
-    device_line_to st (st.x +. x') (st.y +. y')
+    device_line_to t (t.x +. x') (t.y +. y')
 
   let rectangle t ~x ~y ~w ~h =
     let st = get_state t in
@@ -310,43 +311,43 @@ struct
     and w', h' = Matrix.transform_distance st.ctm w h in
     (*FIXME: this is not sufficient to make a rectangle ("rectangle on
       their corner"...)*)
-    st.current_path <- RECTANGLE(x', y', w', h') :: st.current_path;
+    t.current_path <- RECTANGLE(x', y', w', h') :: t.current_path;
     (* Update the current point and extents *)
-    st.path_extents <-
-      update_rectangle st.path_extents x' y' (x' +. w') (y' +. h');
-    st.curr_pt <- true;
-    st.x <- x';
-    st.y <- y'
+    t.path_extents <-
+      update_rectangle t.path_extents x' y' (x' +. w') (y' +. h');
+    t.curr_pt <- true;
+    t.x <- x';
+    t.y <- y'
 
-  let internal_curve_to st ~x1 ~y1 ~x2 ~y2 ~x3 ~y3 =
+  let internal_curve_to t st ~x1 ~y1 ~x2 ~y2 ~x3 ~y3 =
     (* Suffices to transform the control point by the affine
        transformation to have the affine image of the curve *)
     let x1', y1' = Matrix.transform_point st.ctm x1 y1 in
     let x2', y2' = Matrix.transform_point st.ctm x2 y2 in
     let x3', y3' = Matrix.transform_point st.ctm x3 y3 in
     let x0', y0' =
-      if st.curr_pt then st.x, st.y
+      if t.curr_pt then t.x, t.y
       else (
-        st.current_path <- MOVE_TO(x1', y1') :: st.current_path;
-        st.curr_pt <- true;
+        t.current_path <- MOVE_TO(x1', y1') :: t.current_path;
+        t.curr_pt <- true;
         x1', y1'
       ) in
-    st.current_path <-
-      CURVE_TO(x0', y0', x1',y1', x2',y2', x3',y3') :: st.current_path;
+    t.current_path <-
+      CURVE_TO(x0', y0', x1',y1', x2',y2', x3',y3') :: t.current_path;
     (* Update the current point and extents *)
-    st.path_extents <-
-      update_curve st.path_extents x0' y0' x1' y1' x2' y2' x3' y3';
-    st.x <- x3';
-    st.y <- y3'
+    t.path_extents <-
+      update_curve t.path_extents x0' y0' x1' y1' x2' y2' x3' y3';
+    t.x <- x3';
+    t.y <- y3'
 
   let curve_to t ~x1 ~y1 ~x2 ~y2 ~x3 ~y3 =
-    internal_curve_to (get_state t) ~x1 ~y1 ~x2 ~y2 ~x3 ~y3
+    internal_curve_to t (get_state t) ~x1 ~y1 ~x2 ~y2 ~x3 ~y3
 
   (* Constant to determine the control points so that the bezier curve
      passes by middle point of the arc. *)
   let arc_control = 4. *. (sqrt 2. -. 1.) /. 3.
 
-  let rec bezier_arc st x0 y0 r a1 a2 =
+  let rec bezier_arc t st x0 y0 r a1 a2 =
     if abs_float(a2 -. a1) <= half_pi then
       let rcos_a1 = r *. cos a1 and rsin_a1 = r *. sin a1 in
       let rcos_a2 = r *. cos a2 and rsin_a2 = r *. sin a2 in
@@ -356,20 +357,20 @@ struct
       and y1 = y0 +. arc_control *. rcos_a1 in
       let x2 = x3 +. arc_control *. rsin_a2
       and y2 = y3 -. arc_control *. rcos_a2 in
-      internal_curve_to st x1 y1 x2 y2 x3 y3;
+      internal_curve_to t st x1 y1 x2 y2 x3 y3;
       x3, y3
     else (* several Bezier curves are needed. *)
       let mid = 0.5 *. (a1 +. a2) in
-      let x0, y0 = bezier_arc st x0 y0 r a1 mid in
-      bezier_arc st x0 y0 r mid a2
+      let x0, y0 = bezier_arc t st x0 y0 r a1 mid in
+      bezier_arc t st x0 y0 r mid a2
 
   let arc t ~r ~a1 ~a2 =
     (* Approximate the arc by Bezier curves to allow for arbitrary
        affine transformations. *)
     let st = get_state t in
-    if not st.curr_pt then failwith "archimedes_graphics.arc: no current point";
-    let x0, y0 = Matrix.inv_transform_point st.ctm st.x st.y in
-    ignore(bezier_arc st x0 y0 r a1 a2)
+    if not t.curr_pt then failwith "archimedes_graphics.arc: no current point";
+    let x0, y0 = Matrix.inv_transform_point st.ctm t.x t.y in
+    ignore(bezier_arc t st x0 y0 r a1 a2)
 
   let rec beginning_of_subpath = function
     | [] -> failwith "Archimedes_graphics: No subpath"
@@ -379,17 +380,17 @@ struct
     | (LINE_TO _ | CURVE_TO _) :: tl -> beginning_of_subpath tl
 
   let close_path t =
-    let st = get_state t in
-    if st.curr_pt then (
+    check_valid_handle t;
+    if t.curr_pt then (
       (* Search for the beginning of the current sub-path, if any *)
-      let x, y = beginning_of_subpath st.current_path in
-      st.current_path <- CLOSE_PATH(x,y) :: st.current_path;
-      st.x <- x;
-      st.y <- y
+      let x, y = beginning_of_subpath t.current_path in
+      t.current_path <- CLOSE_PATH(x,y) :: t.current_path;
+      t.x <- x;
+      t.y <- y
     )
 
 
-  let path_extents t = (get_state t).path_extents
+  let path_extents t = t.path_extents
 
   let stroke_preserve t =
     let st = get_state t in
@@ -403,7 +404,7 @@ struct
         Graphics.curveto
           (round x1, round y1) (round x2, round y2) (round x3, round y3)
     | CLOSE_PATH(x,y) -> Graphics.lineto (round x) (round y)
-    end (List.rev st.current_path)
+    end (List.rev t.current_path)
 
   let stroke t = stroke_preserve t; clear_path t
 
@@ -464,8 +465,8 @@ struct
     | coords -> Graphics.fill_poly (Array.of_list coords)
 
   let fill_preserve t =
-    let st = get_state t in
-    gather_subpath st.current_path []
+    check_valid_handle t;
+    gather_subpath t.current_path []
 
   let fill t = fill_preserve t; clear_path t
 

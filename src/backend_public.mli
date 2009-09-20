@@ -89,7 +89,10 @@ module type T = sig
           clip rectangle.  This {i may clear} the current path. *)
 
     val save : t -> unit
+      (** Save the current state of the backend.  Note that
+          save/restore must not affect the current path. *)
     val restore : t -> unit
+      (** Restore the saved state of the backend. *)
 
     val translate : t -> x:float -> y:float -> unit
       (** [translate cr tx ty] modifies the current transformation
