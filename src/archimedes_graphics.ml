@@ -168,7 +168,7 @@ struct
       let st = Stack.pop t.history in
       t.state <- st;
       (* Re-enable previous settings in case they were changed *)
-      Graphics.set_color st.color;
+      Graphics.set_color st.color
     with Stack.Empty ->
       invalid_arg "Archimedes_graphics.restore: no save issued.\n%!"
 
@@ -260,7 +260,7 @@ struct
 
   (* Not supported, do nothing *)
   let set_line_cap t _ = check_valid_handle t
-  let get_line_cap t = check_valid_handle t; Backend.BUTT
+  let get_line_cap t = check_valid_handle t; Backend.ROUND
   let set_line_join t _ = check_valid_handle t
   let get_line_join t = check_valid_handle t; Backend.JOIN_MITER
   let set_miter_limit t _ = check_valid_handle t
@@ -467,7 +467,7 @@ struct
     | coords -> Graphics.fill_poly (Array.of_list coords)
 
   let fill_preserve t =
-    check_valid_handle t;
+    (* Line width does not matter for "fill". *)
     gather_subpath t.current_path []
 
   let fill t = fill_preserve t; clear_path t

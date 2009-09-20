@@ -145,6 +145,9 @@ struct
           failwith("Archimedes_cairo.make: options [" ^ opt
                    ^ "] not understood") in
     let cr = Cairo.create surface in
+    (* Round line caps are the only option currently offered by
+       graphics.  Be coherent with that. *)
+    Cairo.set_line_cap cr Cairo.ROUND;
     {cr = cr; h=height}
 
   let close ~options t =
