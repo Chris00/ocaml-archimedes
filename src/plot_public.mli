@@ -59,6 +59,7 @@ module type T = sig
       (float -> float) -> float -> float -> unit
 
     val xyf : t -> ?color: Color.t -> ?nsamples: int -> ?mark:string ->
+      ?fill:bool ->
       (float -> float * float) -> float -> float -> unit
 
 

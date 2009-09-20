@@ -15,14 +15,8 @@ let draw backend =
   P.f p (fun x -> x *. (x *. x -. 3.)) (-3.) 3. ~color:Color.red ~fill:true;
 
   P.viewport vp.(0).(1);
-  P.set_color p Color.green;
-(*  let finish handle =
-    H.line_to handle 3. (-1.);
-    H.line_to handle (-3.) (-1.);
-    H.close_path handle;
-    H.stroke handle
-  in
-*)  P.f p (fun x -> x *. (x *. x -. 3.)) (-3.) 3.;
+  P.set_color p (Color.rgb 0. 0.5 0.);
+  P.xyf p (fun t -> (sin t, sin(2. *. t))) 0. 6.5 ~fill:true;
 
   P.viewport vp.(1).(1);
   P.f p (fun x -> x *. x -. 2.) (-3.) 3.;

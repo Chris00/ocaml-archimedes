@@ -781,10 +781,10 @@ let mark_extents t name =
 let f_line_to t (x,y) = line_to t x y
 let f_finish = stroke
 
-let f t ?color ?nsamples ?min_step
+let xyf t ?color ?nsamples ?min_step
     ?(do_with = f_line_to) ?(finish = f_finish) f a b =
   let _, ranges , fct =
-    Functions.samplefxy (fun t -> (t,f t)) ?nsamples ?min_step b a
+    Functions.samplefxy f ?nsamples ?min_step b a
   in
   let f () =
     Backend.save t.backend;
