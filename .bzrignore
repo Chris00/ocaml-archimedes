@@ -17,8 +17,9 @@ Makefile.ocaml
 *.com
 *.exe
 doc/html/
-# Generated dependency files
+# Generated dependency and interface files
 *.dep
+src/archimedes.mli
 # Tests and examples (images and TeX files)
 *.pdf
 *.png

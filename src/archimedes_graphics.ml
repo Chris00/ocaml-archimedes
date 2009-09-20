@@ -19,8 +19,7 @@
 (** Graphics Archimedes plugin *)
 
 open Printf
-module Matrix = Archimedes.Matrix
-module Backend = Archimedes.Backend
+open Archimedes
 
 (* Re-export the labels so we do not have to qualify them with [Matrix]. *)
 type matrix = Matrix.t = { mutable xx: float; mutable yx: float;
@@ -31,8 +30,10 @@ let is_infinite x = 1. /. x = 0.
 let min a b = if (a:float) < b then a else b
 let max a b = if (a:float) > b then a else b
 
-let round x =
-  truncate(if x >= 0. then x +. 0.5 else x -. 0.5)
+let round x = truncate(if x >= 0. then x +. 0.5 else x -. 0.5)
+
+let fourth_pi = atan 1.
+let two_pi = 8. *. fourth_pi
 
 (** Return the smaller rectangle including the rectangle [r] and the
     segment joining [(x0,y0)] and [(x1,y1)]. *)
@@ -112,32 +113,37 @@ struct
     | MOVE_TO of float * float
     | LINE_TO of float * float
     | RECTANGLE of float * float * float * float
-    | CURVE_TO of float * float * float * float * float * float
+        (* RECTANGLE(x, y, width, height) *)
+    | CURVE_TO of float * float * float * float * float * float * float * float
     | CLOSE_PATH of float * float
 
   (* Record the state of various graphics values (in a form close to
      what Graphics needs). *)
   type state = {
     mutable color: int;
-    mutable line_width: float;
+    mutable line_width : float;
+    (* current line width.  When stroking, this is used to set the
+       graphics line width, according to the CTM. *)
     mutable dash_offset: float;
     mutable dash: float array;
-    (* (x,y): current point (when creating a path), in device coordinates. *)
-    mutable curr_pt: bool;
-    mutable x: float;
-    mutable y: float;
-    mutable current_path: path_data list; (* Path actions in reverse order *)
-    mutable path_extents: Matrix.rectangle;
     (* The extent of the current path, in device coordinates. *)
     mutable ctm : Matrix.t; (* current transformation matrix from the
-                             user coordinates to the device ones. *)
+                               user coordinates to the device ones. *)
     mutable font_size : float;
   }
 
   type t = {
     mutable closed: bool;
+    hold: bool; (* on close, hold the windows until a key is pressed *)
     history: state Stack.t; (* saved states *)
     mutable state: state;   (* current state *)
+    (* save/restore do not affect the current path. *)
+    mutable current_path: path_data list; (* Path actions in reverse order *)
+    mutable path_extents: Matrix.rectangle;
+    (* (x,y): current point (when creating a path), in device coordinates. *)
+    mutable curr_pt: bool;
+    mutable x: float;
+    mutable y: float;
   }
 
   let check_valid_handle t =
@@ -162,9 +168,9 @@ struct
       let st = Stack.pop t.history in
       t.state <- st;
       (* Re-enable previous settings in case they were changed *)
-      Graphics.set_color st.color;
-      Graphics.set_line_width (round st.line_width)
-    with Stack.Empty -> () (* nothing to restore *)
+      Graphics.set_color st.color
+    with Stack.Empty ->
+      invalid_arg "Archimedes_graphics.restore: no save issued.\n%!"
 
   (* On windows, the size given to open_graph is the one of the window
      WITH decorations.  These quantities tell how much need to be
@@ -174,9 +180,13 @@ struct
   and ofsh = ref 0.
 
   (* FIXME: options "x=" and "y=" for the position *)
-  let make ~options:_ width height =
+  let make ~options width height =
     if !in_use then failwith "Archimedes_graphics.make: in use";
-    printf "Init graphics: %f %f\n%!" !ofsh !ofsh;
+    (* Parse options *)
+    let hold = ref false in
+    List.iter (fun o ->
+                 if o = "hold" then hold := true;
+              ) options;
     Graphics.open_graph(sprintf " %.0fx%.0f"
                           (width +. !ofsw) (height +. !ofsh));
     Graphics.set_window_title "Archimedes";
@@ -186,35 +196,39 @@ struct
       line_width = 1.;
       dash_offset = 0.;
       dash = [| |]; (* no dash *)
-      curr_pt = false;
-      x = 0.;
-      y = 0.;
-      current_path = [];
-      path_extents = { Matrix.x=0.; y=0.; w=0.; h=0. };
       (* Identity transformation matrix *)
       ctm = Matrix.make_identity();
       font_size = 10.;
     } in
     { closed = false;
+      hold = !hold;
       history = Stack.create();
       state = state;
+      current_path = [];
+      path_extents = { Matrix.x=0.; y=0.; w=0.; h=0. };
+      curr_pt = false;
+      x = 0.;
+      y = 0.;
     }
 
   let close ~options:_ t =
     if not(t.closed) then (
       (* FIXME: Temprary solution, the interactive module must handle this. *)
-      printf "Please press a key to continue...%!";
-      ignore (Graphics.wait_next_event [Graphics.Key_pressed]);
+      if t.hold then (
+        Graphics.set_window_title "Archimedes [Press a key to close]";
+        ignore(Graphics.wait_next_event [Graphics.Key_pressed]);
+        printf "\n";
+      );
       Graphics.close_graph();
       t.closed <- true;
       in_use := false;
     )
 
   let clear_path t =
-    let st = get_state t in
-    st.current_path <- [];
-    st.path_extents <- { Matrix.x=0.; y=0.; w=0.; h=0. };
-    st.curr_pt <- false
+    check_valid_handle t;
+    t.current_path <- [];
+    t.path_extents <- { Matrix.x=0.; y=0.; w=0.; h=0. };
+    t.curr_pt <- false
 
   let set_color t c =
     let st = get_state t in
@@ -226,11 +240,17 @@ struct
     Graphics.set_color color
 
   let set_line_width t w =
-    let st = get_state t in
-    st.line_width <- w;
-    Graphics.set_line_width (round w)
+    if w < 0. then invalid_arg "set_line_width";
+    (get_state t).line_width <- w
 
   let get_line_width t = (get_state t).line_width
+
+  let graphics_set_line_width st =
+    (* FIXME: the linewidth is independent of the CTM.  Do we want to
+       keep it that way ?  Can we otherwise handle it properly for Graphics? *)
+    (* let w = st.line_width *. min st.ctm.xx st.ctm.yy in
+       Graphics.set_line_width (round w) *)
+    Graphics.set_line_width (round st.line_width)
 
   (* No Graphics action, see [stroke]. *)
   let set_dash t ofs arr =
@@ -243,35 +263,30 @@ struct
 
   (* Not supported, do nothing *)
   let set_line_cap t _ = check_valid_handle t
-  let get_line_cap t = check_valid_handle t; Backend.BUTT
+  let get_line_cap t = check_valid_handle t; Backend.ROUND
   let set_line_join t _ = check_valid_handle t
   let get_line_join t = check_valid_handle t; Backend.JOIN_MITER
   let set_miter_limit t _ = check_valid_handle t
 
   (* Paths are not acted upon directly but wait for [stroke] or [fill]. *)
   let device_move_to t x y =
-    let st = get_state t in
-    st.current_path <- MOVE_TO(x,y) :: st.current_path;
+    t.current_path <- MOVE_TO(x,y) :: t.current_path;
     (* move only updates the current point but not the path extents *)
-    st.curr_pt <- true;
-    st.x <- x;
-    st.y <- y
+    t.curr_pt <- true;
+    t.x <- x;
+    t.y <- y
 
   let device_line_to t x y =
-    let st = get_state t in
     (*Note: if there's no current point then line_to behaves as move_to.*)
-    if st.curr_pt then (
-      st.current_path <- LINE_TO(x,y) :: st.current_path;
+    if t.curr_pt then (
+      t.current_path <- LINE_TO(x,y) :: t.current_path;
       (* Update extents*)
-      st.path_extents <- update_rectangle st.path_extents st.x st.y x y;
+      t.path_extents <- update_rectangle t.path_extents t.x t.y x y;
+      (* Update current point *)
+      t.x <- x;
+      t.y <- y
     )
-    else (
-      st.curr_pt <- true;
-      st.current_path <- MOVE_TO(x,y) :: st.current_path
-    );
-    (* Update current point *)
-    st.x <- x;
-    st.y <- y
+    else device_move_to t x y
 
   let move_to t ~x ~y =
     let st = get_state t in
@@ -285,35 +300,13 @@ struct
 
   let rel_move_to t ~x ~y =
     let st = get_state t in
-    let x,y = Matrix.transform_distance st.ctm x y in
-    device_move_to t (st.x +. x) (st.y +. y)
+    let x, y = Matrix.transform_distance st.ctm x y in
+    device_move_to t (t.x +. x) (t.y +. y)
 
   let rel_line_to t ~x ~y =
     let st = get_state t in
     let x',y' = Matrix.transform_distance st.ctm x y in
-    device_line_to t (st.x +. x') (st.y +. y')
-
-  let curve_to t ~x1 ~y1 ~x2 ~y2 ~x3 ~y3 =
-    (* Suffices to transform the control point by the affine
-       transformation to have the affine image of the curve *)
-    let st = get_state t in
-    let x1', y1' = Matrix.transform_point st.ctm x1 y1 in
-    let x2', y2' = Matrix.transform_point st.ctm x2 y2 in
-    let x3', y3' = Matrix.transform_point st.ctm x3 y3 in
-    let x0', y0' =
-      if not st.curr_pt then (
-        st.current_path <- MOVE_TO(x1', y1') :: st.current_path;
-        st.curr_pt <- true;
-        x1', y1'
-      )
-      else  Matrix.transform_point st.ctm st.x st.y in
-    st.current_path <- CURVE_TO(x1',y1', x2',y2', x3',y3') :: st.current_path;
-    (* Update the current point and extents *)
-    st.path_extents <-
-      update_curve st.path_extents x0' y0' x1' y1' x2' y2' x3' y3';
-    st.x <- x3';
-    st.y <- y3'
-
+    device_line_to t (t.x +. x') (t.y +. y')
 
   let rectangle t ~x ~y ~w ~h =
     let st = get_state t in
@@ -321,181 +314,171 @@ struct
     and w', h' = Matrix.transform_distance st.ctm w h in
     (*FIXME: this is not sufficient to make a rectangle ("rectangle on
       their corner"...)*)
-    st.current_path <- RECTANGLE(x', y', w', h') :: st.current_path;
+    t.current_path <- RECTANGLE(x', y', w', h') :: t.current_path;
     (* Update the current point and extents *)
-    st.path_extents <-
-      update_rectangle st.path_extents x' y' (x' +. w') (y' +. h');
-    st.curr_pt <- true;
-    st.x <- x';
-    st.y <- y'
+    t.path_extents <-
+      update_rectangle t.path_extents x' y' (x' +. w') (y' +. h');
+    t.curr_pt <- true;
+    t.x <- x';
+    t.y <- y'
+
+  let internal_curve_to t st ~x1 ~y1 ~x2 ~y2 ~x3 ~y3 =
+    (* Suffices to transform the control point by the affine
+       transformation to have the affine image of the curve *)
+    let x1', y1' = Matrix.transform_point st.ctm x1 y1 in
+    let x2', y2' = Matrix.transform_point st.ctm x2 y2 in
+    let x3', y3' = Matrix.transform_point st.ctm x3 y3 in
+    let x0', y0' =
+      if t.curr_pt then t.x, t.y
+      else (
+        t.current_path <- MOVE_TO(x1', y1') :: t.current_path;
+        t.curr_pt <- true;
+        x1', y1'
+      ) in
+    t.current_path <-
+      CURVE_TO(x0', y0', x1',y1', x2',y2', x3',y3') :: t.current_path;
+    (* Update the current point and extents *)
+    t.path_extents <-
+      update_curve t.path_extents x0' y0' x1' y1' x2' y2' x3' y3';
+    t.x <- x3';
+    t.y <- y3'
+
+  let curve_to t ~x1 ~y1 ~x2 ~y2 ~x3 ~y3 =
+    internal_curve_to t (get_state t) ~x1 ~y1 ~x2 ~y2 ~x3 ~y3
+
+  (* Constant to determine the control points so that the bezier curve
+     passes by middle point of the arc. *)
+  let arc_control = 4. /. 3. (* (1 - cos(b))/(sin b),  b = (a1 - a2)/2 *)
+
+  let rec bezier_arc t st x0 y0 r a1 a2 =
+    let da = 0.5 *. (a2 -. a1) in
+    if abs_float(da) <= fourth_pi then
+      let k = arc_control *. (1. -. cos da) /. sin da in
+      let rcos_a1 = r *. cos a1 and rsin_a1 = r *. sin a1 in
+      let rcos_a2 = r *. cos a2 and rsin_a2 = r *. sin a2 in
+      let x3 = x0 -. rcos_a1 +. rcos_a2
+      and y3 = y0 -. rsin_a1 +. rsin_a2 in
+      let x1 = x0 -. k *. rsin_a1
+      and y1 = y0 +. k *. rcos_a1 in
+      let x2 = x3 +. k *. rsin_a2
+      and y2 = y3 -. k *. rcos_a2 in
+      internal_curve_to t st x1 y1 x2 y2 x3 y3;
+      x3, y3
+    else (* several Bezier curves are needed. *)
+      let mid = 0.5 *. (a1 +. a2) in
+      let x0, y0 = bezier_arc t st x0 y0 r a1 mid in
+      bezier_arc t st x0 y0 r mid a2
 
   let arc t ~r ~a1 ~a2 =
+    (* Approximate the arc by Bezier curves to allow for arbitrary
+       affine transformations. *)
     let st = get_state t in
-    let rxx, rxy = Matrix.transform_distance st.ctm r 0.
-    and ryx, ryy = Matrix.transform_distance st.ctm 0. r in
-    (*FIXME: better radius*)
-    let r = (sqrt(rxx *. rxx +. rxy *. rxy) +. sqrt(ryx *. ryx +. ryy *. ryy)) /.2. in
-    let b1 = atan2 rxy rxx in
-    let rec arcin a1 a2 =
-      let diff_angle = abs_float (a2 -. a1) in
-      let curvelen = r *. diff_angle in
-      if diff_angle < (atan 1.)  && curvelen < 100. then (
-        let rcos1 = r *. cos a1 and rsin1 = r *. sin a1 in
-        let rcos2 = r *. cos a2 and rsin2 = r *. sin a2 in
-        let coeff = (2. *. (sqrt 5.) -. 4.) /. 3. in
-        (*let coeff = 1. in*)
-        (*This coefficient makes the middle point of a Bezier curve
-          coïncide with the arc.*)
-        let f z a = z +.coeff *. a in
-        if st.curr_pt then
-          let x = st.x -. rcos1 and y = st.y -. rsin1 in
-          let x' = x +. rcos2 and y' = y +. rsin2 in
-          let cx = f st.x ( -.rsin1) and cy = f st.y rcos1 in
-          let cx' = f x' rsin2 and cy' = f y' ( -. rcos2) in
-          st.current_path <- CURVE_TO(cx,cy, cx',cy', x',y') :: st.current_path;
-          (* Update the current point and extents *)
-          st.path_extents <-
-            update_curve st.path_extents st.x st.y cx cy cx' cy' x' y';
-          st.curr_pt <- true;
-          st.x <- x';
-          st.y <- y'
-        else failwith "Archimedes_graphics.arc: no current point"
-      )
-      else (
-        let a3 = (a1 +. a2) /.2. in
-        arcin a1 a3;
-        arcin a3 a2)
-    in
-    arcin (b1 +. a1) (b1 +. a2)
+    if not t.curr_pt then failwith "archimedes_graphics.arc: no current point";
+    let x0, y0 = Matrix.inv_transform_point st.ctm t.x t.y in
+    ignore(bezier_arc t st x0 y0 r a1 a2)
 
-  let rec beginning_of_subpath list =
-    match list with
+  let rec beginning_of_subpath = function
     | [] -> failwith "Archimedes_graphics: No subpath"
-    | MOVE_TO(x,y):: _ -> x,y
-    | CLOSE_PATH(x,y):: _ -> x,y
-    | RECTANGLE(x,y,_,_):: _ -> x,y
-    | _ :: tl -> beginning_of_subpath tl
+    | MOVE_TO(x,y) :: _ -> x,y
+    | CLOSE_PATH(x,y) :: _ -> x,y
+    | RECTANGLE(x,y,_,_) :: _ -> x,y
+    | (LINE_TO _ | CURVE_TO _) :: tl -> beginning_of_subpath tl
 
   let close_path t =
-    let st = get_state t in
-    if st.curr_pt then (
+    check_valid_handle t;
+    if t.curr_pt then (
       (* Search for the beginning of the current sub-path, if any *)
-      let x, y = beginning_of_subpath st.current_path in
-      st.current_path <- CLOSE_PATH(x,y) :: st.current_path;
-      st.curr_pt <- true;
-      st.x <- x;
-      st.y <- y
+      let x, y = beginning_of_subpath t.current_path in
+      t.current_path <- CLOSE_PATH(x,y) :: t.current_path;
+      t.x <- x;
+      t.y <- y
     )
 
 
-  let path_extents t = (get_state t).path_extents
+  let path_extents t = t.path_extents
 
   let stroke_preserve t =
     let st = get_state t in
+    graphics_set_line_width st;
     List.iter begin function
     | MOVE_TO(x,y) -> Graphics.moveto (round x) (round y)
     | LINE_TO(x,y) -> Graphics.lineto (round x) (round y)
     | RECTANGLE(x,y,w,h) ->
         Graphics.draw_rect (round x) (round y) (round w) (round h)
-    | CURVE_TO(x1,y1, x2,y2, x3,y3) ->
+    | CURVE_TO(_, _, x1,y1, x2,y2, x3,y3) ->
         Graphics.curveto
           (round x1, round y1) (round x2, round y2) (round x3, round y3)
     | CLOSE_PATH(x,y) -> Graphics.lineto (round x) (round y)
-    end (List.rev st.current_path)
+    end (List.rev t.current_path)
 
   let stroke t = stroke_preserve t; clear_path t
 
-  let fill_preserve t =
-    let st = get_state t in
-    let add_to_first_list x = function
-        [] -> failwith ""
-      | list::tail -> (List.rev_append x list)::tail
-    in
-    let rec make_points_for_curve ?(reverse=true) x0 y0 x1 y1 x2 y2 x3 y3 list =
-      let diffx01 = x1 - x0
-      and diffy01 = y1 - y0
-      and diffx12 = x2 - x1
-      and diffy12 = y2 - y1
-      and diffx23 = x3 - x2
-      and diffy23 = y3 - y2 in
-      let eqslope y x y' x' = y * x' = x * y' in
-      if eqslope diffy12 diffx12 diffy01 diffx01
-        && eqslope diffy12 diffx12 diffy23 diffx23 then
-          (*All slopes are equal : finish by adding the last point*)
-          [x3,y3]
-      else if true then [(x3, y3);(x2,y2);(x1,y1)]
-      else
-        (*FIXME : this causes a Stack overflow.*)
-        (*Find the middle point of the curve.*)
-        let x01 = float(x0 + x1) /.2.
-        and x12 = float(x1 + x2) /.2.
-        and x23 = float(x2 + x3) /.2.
-        and y01 = float(y0 + y1) /.2.
-        and y12 = float(y1 + y2) /.2.
-        and y23 = float(y2 + y3) /.2. in
-        let x0' = (x01 +. x12) /. 2.
-        and x1' = (x12 +. x23) /. 2.
-        and y0' = (y01 +. y12) /. 2.
-        and y1' = (y12 +. y23) /. 2. in
-        let x5 = truncate ((x0' +. x1') /.2.)
-        and y5 = truncate ((y0' +. y1') /.2.) in
-        (* Then find the point for each part of the curve. *)
-        let part1 =
-          make_points_for_curve ~reverse
-            x5 y5 (truncate x1') (truncate y1')
-            (truncate x23) (truncate y23) x3 y3 list in
-        let reverse = not reverse in
-        let part2 =
-          make_points_for_curve ~reverse
-            x0 y0 (truncate x01) (truncate y01)
-            (truncate x0') (truncate y0') x5 y5 list in
-        List.rev_append part2 part1
-          (*if x0 = x1 && x1 = x2 && x2 = x3 then
-          (*end with a line y0--y3*)
-            else if y0 = y1 && y1 = y2 && y2 = y3 then
-          (*x0--x3*)
-            else ()*)
-    in
-    let add_points list = function
-      | MOVE_TO(x,y) -> [((round x), (round y))]::list
-      | LINE_TO(x,y) -> add_to_first_list [((round x), (round y))] list
-      | RECTANGLE(x,y,w,h) ->
-          let x' = round (x+.w) and y' = round (y+.h) in
-          let x = round x and y = round y in
-          let list = [(x,y)]::list in
-          add_to_first_list [(x,y'); (x',y'); (x',y)] list
-      | CURVE_TO(x1,y1, x2,y2, x3,y3) ->
-          let x0,y0 =
-            match list with
-              (current::points)::others -> current
-            | _ -> (round x1), (round y1)
-          in
-          let points_curve = make_points_for_curve x0 y0
-            (round x1) (round y1) (round x2) (round y2) (round x3) (round y3) []
-          in
-          add_to_first_list points_curve list
-      | CLOSE_PATH(x,y) -> add_to_first_list [((round x), (round y))] list
-    in
-    let subpaths = List.fold_left add_points [] (List.rev st.current_path) in
-    let subpath_arrays = List.map Array.of_list subpaths in
-    let rec fill = function
-        [] -> ()
-      | path::list -> 
-          if Array.length path < 3 then
-            (if Array.length path = 2 then
-               (let x,y = path.(0)
-                and x',y' = path.(1) in
-                Graphics.moveto x y;
-                Graphics.lineto x' y'))
-          else Graphics.fill_poly path;
-          fill list
-    in fill subpath_arrays
+  (* We will use the fill_poly primitive of graphics for all fillings.
+     Thus one must transform each sub-path into an array of coordinates. *)
+  let curve_nsamples = 20 (* curve_nsamples + 1 points *)
+  let curve_dt = 1. /. float curve_nsamples
 
+  (* Add some points on the Bezier curve to [coords] in *reverse*
+     order, except the 1st point which is sopposed to be added by the
+     previous component of the path. *)
+  let add_curve_sampling x0 y0  x1 y1  x2 y2  x3 y3 coords =
+    let coords = ref coords in
+    for i = curve_nsamples downto 1 do
+      let t = float i *. curve_dt in
+      let tm = 1. -. t in
+      let t2 = t *. t   and tm2 = tm *. tm in
+      let t3 = t2 *. t  and tm3 = tm2 *. tm in
+      let t' = 3. *. t2 *. tm  and t'' = 3. *. t *. tm2 in
+      let x = tm3 *. x0 +. t'' *. x1 +. t' *. x2 +. t3 *. x3
+      and y = tm3 *. y0 +. t'' *. y1 +. t' *. y2 +. t3 *. y3 in
+      coords := (round x, round y) :: !coords;
+    done;
+    !coords
+
+  (* [path] gives the path elements in *reverse* order. *)
+  let rec gather_subpath path coords =
+    match path with
+    | [] -> fill_subpath coords (* reached the beginning of the path *)
+    | MOVE_TO(x,y) :: tl ->
+        fill_subpath ((round x, round y) :: coords);
+        gather_subpath tl []
+    | LINE_TO(x,y) :: tl ->
+        gather_subpath tl ((round x, round y) :: coords)
+    | RECTANGLE(x,y,w,h) :: tl ->
+        let x = round x and y = round y in
+        let w = round w and h = round h in
+        (* If there was no "MOVE_TO" after the rectangle, the base
+           point of the rectangle is used. *)
+        if coords = [] then
+          (* This rectangle is not continued by another path.  We can
+             optimize using the [fill_rect] Graphics' primitive. *)
+          Graphics.fill_rect x y w h
+        else (
+          let x1 = x + w and y1 = y + h in
+          let c = (x,y) :: (x1,y) :: (x1,y1) :: (x,y1) :: (x,y) :: coords in
+          fill_subpath c;
+        );
+        gather_subpath tl []
+    | CLOSE_PATH(x,y) :: tl ->
+        fill_subpath ((round x, round y) :: coords);
+        gather_subpath tl []
+    | CURVE_TO(x0,y0, x1,y1, x2,y2, x3,y3) :: tl ->
+        let coords = add_curve_sampling x0 y0 x1 y1 x2 y2 x3 y3 coords in
+        gather_subpath tl coords
+  and fill_subpath = function
+    | [] | [ _ ] -> ()
+    | coords -> Graphics.fill_poly (Array.of_list coords)
+
+  let fill_preserve t =
+    (* Line width does not matter for "fill". *)
+    gather_subpath t.current_path []
 
   let fill t = fill_preserve t; clear_path t
 
 
-  let clip_rectangle t ~x ~y ~w ~h =
+  let clip_rectangle _t ~x:_ ~y:_ ~w:_ ~h:_ =
+    (* FIXME: we could try a sophisticated procedure of plotting on a
+       copy and extrating the rectangle of interest. *)
     ()
 
   let translate t ~x ~y = Matrix.translate (get_state t).ctm x y
@@ -511,7 +494,7 @@ struct
 
   let get_matrix t = Matrix.copy (get_state t).ctm
 
-  let select_font_face t slant weight family =
+  let select_font_face _t _slant _weight family =
     (* FIXME: can we be more clever and try some *)
     Graphics.set_font family
 
