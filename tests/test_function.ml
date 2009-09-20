@@ -49,7 +49,7 @@ let () =
   let bk =
     if Array.length Sys.argv > 1 then [Sys.argv.(1)]
     else [ "tikz functions.tex";
-           "graphics";
+           "graphics hold";
            "cairo PNG functions.png";
            "cairo PDF functions.pdf" ]
   in

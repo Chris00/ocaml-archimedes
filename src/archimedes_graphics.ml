@@ -214,7 +214,7 @@ struct
     if not(t.closed) then (
       (* FIXME: Temprary solution, the interactive module must handle this. *)
       if t.hold then (
-        printf "Please press a key to continue...%!";
+        Graphics.set_window_title "Archimedes [Press a key to close]";
         ignore(Graphics.wait_next_event [Graphics.Key_pressed]);
         printf "\n";
       );
@@ -411,41 +411,57 @@ struct
      Thus one must transform each sub-path into an array of coordinates. *)
   let curve_nsamples = 20 (* curve_nsamples + 1 points *)
   let curve_dt = 1. /. float curve_nsamples
+
+  (* Add some points on the Bezier curve to [coords] in *reverse*
+     order, except the 1st point which is sopposed to be added by the
+     previous component of the path. *)
   let add_curve_sampling x0 y0  x1 y1  x2 y2  x3 y3 coords =
     let coords = ref coords in
-    for i = 0 to curve_nsamples do
+    for i = curve_nsamples downto 1 do
       let t = float i *. curve_dt in
       let tm = 1. -. t in
       let t2 = t *. t   and tm2 = tm *. tm in
       let t3 = t2 *. t  and tm3 = tm2 *. tm in
       let t' = 3. *. t2 *. tm  and t'' = 3. *. t *. tm2 in
-      let x = t3 *. x0 +. t' *. x1 +. t'' *. x2 +. tm3 *. x3
-      and y = t3 *. y0 +. t' *. y1 +. t'' *. y2 +. tm3 *. y3 in
+      let x = tm3 *. x0 +. t'' *. x1 +. t' *. x2 +. t3 *. x3
+      and y = tm3 *. y0 +. t'' *. y1 +. t' *. y2 +. t3 *. y3 in
       coords := (round x, round y) :: !coords;
     done;
     !coords
 
+  (* [path] gives the path elements in *reverse* order. *)
   let rec gather_subpath path coords =
     match path with
-    | [] -> () (* we are done with the path *)
+    | [] -> fill_subpath coords (* reached the beginning of the path *)
     | MOVE_TO(x,y) :: tl ->
-        fill_subpath coords;
-        gather_subpath tl [(round x, round y)]
+        fill_subpath ((round x, round y) :: coords);
+        gather_subpath tl []
     | LINE_TO(x,y) :: tl ->
         gather_subpath tl ((round x, round y) :: coords)
     | RECTANGLE(x,y,w,h) :: tl ->
-        fill_subpath coords;
-        Graphics.fill_rect (round x) (round y) (round w) (round h);
-        gather_subpath tl ((round(x +. w), round(y +. h)) :: coords)
+        let x = round x and y = round y in
+        let w = round w and h = round h in
+        (* If there was no "MOVE_TO" after the rectangle, the base
+           point of the rectangle is used. *)
+        if coords = [] then
+          (* This rectangle is not continued by another path.  We can
+             optimize using the [fill_rect] Graphics' primitive. *)
+          Graphics.fill_rect x y w h
+        else (
+          let x1 = x + w and y1 = y + h in
+          let c = (x,y) :: (x1,y) :: (x1,y1) :: (x,y1) :: (x,y) :: coords in
+          fill_subpath c;
+        );
+        gather_subpath tl []
     | CLOSE_PATH(x,y) :: tl ->
-        fill_subpath coords;
-        gather_subpath tl [(round x, round y)]
+        fill_subpath ((round x, round y) :: coords);
+        gather_subpath tl []
     | CURVE_TO(x0,y0, x1,y1, x2,y2, x3,y3) :: tl ->
-        let coords = add_curve_sampling x0 y0  x1 y1  x2 y2  x3 y3 coords in
+        let coords = add_curve_sampling x0 y0 x1 y1 x2 y2 x3 y3 coords in
         gather_subpath tl coords
   and fill_subpath = function
     | [] | [ _ ] -> ()
-    | coords -> Graphics.fill_poly (Array.of_list (List.rev coords))
+    | coords -> Graphics.fill_poly (Array.of_list coords)
 
   let fill_preserve t =
     let st = get_state t in

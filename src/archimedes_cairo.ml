@@ -62,7 +62,6 @@ struct
   let get_dash t = get_dash t.cr
 
   let set_matrix t m =
-    Printf.printf "set_matrix%!";
 (*    Gc.compact ();*)
     let m' = { Cairo.xx = m.M.xx; xy = m.M.xy;
                     yx = m.M.yx; yy = m.M.yy;
