@@ -246,8 +246,11 @@ struct
   let get_line_width t = (get_state t).line_width
 
   let graphics_set_line_width st =
-    let w = st.line_width *. min st.ctm.xx st.ctm.yy in
-    Graphics.set_line_width (round w)
+    (* FIXME: the linewidth is independent of the CTM.  Do we want to
+       keep it that way ?  Can we otherwise handle it properly for Graphics? *)
+    (* let w = st.line_width *. min st.ctm.xx st.ctm.yy in
+       Graphics.set_line_width (round w) *)
+    Graphics.set_line_width (round st.line_width)
 
   (* No Graphics action, see [stroke]. *)
   let set_dash t ofs arr =

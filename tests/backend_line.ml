@@ -24,6 +24,16 @@ let draw bk =
   Backend.set_line_width bk 10.;
   Backend.stroke bk;
 
+  (* The line width is relative to the current CTM *)
+  Backend.set_line_width bk 10.;
+  Backend.move_to bk 400. 50.;
+  Backend.line_to bk 500. 50.;
+  Backend.stroke bk;
+  Backend.scale bk 1. 4.;
+  Backend.move_to bk 400. 20.;
+  Backend.line_to bk 500. 20.;
+  Backend.stroke bk;
+
   Backend.close bk
 
 let () =
