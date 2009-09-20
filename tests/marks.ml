@@ -21,10 +21,14 @@ let draw backend =
   for i = 0 to Array.length markers - 1 do
     let i1 = i / 8 in
     let i2 = i - (i1 * 8) in
-    P.move_to handle (float i2) (float i1);
-    P.render handle markers.(i);
+    let data = [(float i2),(float i1)] in
+    let iter plot data =
+      let x,y = List.hd data in
+      plot x y
+    in
+    P.xy p ~iter data
   done;
-  P.close handle
+  P.close p
 
 
 let () =
