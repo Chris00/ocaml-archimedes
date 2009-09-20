@@ -454,28 +454,23 @@ struct
       }
 
   let sub_rect vp ~x ~y ~w ~h =
-    Printf.printf "viewport:%f %f w:%f h:%f\n%!" x y w h;
     let ndrawings = Coordinate.make_translate vp.vp_device x y in
     Coordinate.scale ndrawings w h;
     inner_make vp.handle ndrawings
 
   let make_rect handle =
-    Printf.printf "make_rect ";
     sub_rect handle.vp
 
   let sub vp ~xmin ~xmax ~ymin ~ymax =
-    Printf.printf "sub ";
     sub_rect vp xmin ymin (xmax -. xmin) (ymax -.ymin)
 
   let make handle =
-    Printf.printf "make ";
     sub handle.vp
 
   let use vp =
     (*Need to change the current viewport and coordinates of the
       context, but also flag the viewport, if it is not, and add it to
       the [used_vp] field of the context.*)
-    Printf.printf "Use vp \n%!";
     let handle = vp.handle in
     handle.vp <- vp;
     ignore (Coordinate.use handle.backend vp.user_device);
@@ -784,10 +779,10 @@ let mark_extents t name =
 let f_line_to t (x,y) = line_to t x y
 let f_finish = stroke
 
-let f t ?color ?nsamples ?min_step
+let xyf t ?color ?nsamples ?min_step
     ?(do_with = f_line_to) ?(finish = f_finish) f a b =
   let _, ranges , fct =
-    Functions.samplefxy (fun t -> (t,f t)) ?nsamples ?min_step b a
+    Functions.samplefxy f ?nsamples ?min_step b a
   in
   let f () =
     Backend.save t.backend;
@@ -870,8 +865,6 @@ let axes t ?(color = Color.black) type_axes ?type_axes_printer ?axes_meeting
   and yy1 = ymargin.Axes.bottom
   and yy2 = ymargin.Axes.top
   in
-  Printf.printf "Margins 1: L%f R%f B%f T%f\nMargins 2: L%f R%f B%f T%f\n%!"
-    xx1 xx2 xy1 xy2 yx1 yx2 yy1 yy2;
   let left = max xx1 yx1
   and right = max xx2 yx2
   and top = max xy2 yy2
@@ -900,6 +893,4 @@ let axes t ?(color = Color.black) type_axes ?type_axes_printer ?axes_meeting
     Printf.printf
       "Archimedes.Handle -- warning: the axes labels have too big margins.\n%!"
 let current_vp t = t.vp
-
-
 

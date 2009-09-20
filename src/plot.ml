@@ -22,6 +22,7 @@ type t = { h: Handle.t;
            mutable axes_set: bool; (* wether the user set exes *)
          }
 
+
 type line_cap = Backend.line_cap = BUTT | ROUND | SQUARE
 
 type line_join = Backend.line_join = JOIN_MITER | JOIN_ROUND | JOIN_BEVEL
@@ -40,9 +41,10 @@ module type COMMON = sig
   val set_mark_size : t -> float -> unit
   val set_color : t -> Color.t -> unit
 
-  val f : t -> ?color: Color.t -> ?nsamples: int -> ?mark:string ->
+  val f : t -> ?color: Color.t -> ?nsamples: int -> ?mark:string -> ?fill:bool ->
     (float -> float) -> float -> float -> unit
   val xyf : t -> ?color: Color.t -> ?nsamples: int -> ?mark:string ->
+    ?fill:bool ->
     (float -> float * float) -> float -> float -> unit
 
   val set_font_size : t -> float -> unit
@@ -89,47 +91,60 @@ struct
 
   let set_color p c = Handle.set_color p.h c
 
-  let f p ?color ?nsamples ?mark f a b =
-    let do_with = match mark with
-      | Some mark ->
-          (fun p (x,y) ->
-             Handle.render p mark;
-             Handle.line_to p x y)
-      | None -> (fun p (x,y) -> Handle.line_to p x y) in
-    let finish = match mark with
-      | Some mark -> (fun p ->
-                       (* final point *)
-                       Handle.render p mark;
-                       Handle.stroke p)
-      | None -> Handle.stroke in
+  let plot_f p ?color ?nsamples ?mark ?(fill=false) f a b fill0 fill1 =
     if p.axes_set then () (* FIXME: todo *)
     else (
       let x = Handle.make_xaxis (`P "|") `Number CB (`P "tic_up") `Auto_linear
       and y = Handle.make_yaxis (`P "-") `Number LC (`P "tic_left") `Auto_linear
       in
       (* FIXME: The ranges determination must be false *)
-      let _, ranges, _ = Functions.samplefxy (fun t -> (t,f t)) ?nsamples b a in
+      let _, ranges, _ = Functions.samplefxy f ?nsamples b a in
       Handle.update_coords p.h ranges.Axes.xmin ranges.Axes.ymin;
       Handle.update_coords p.h ranges.Axes.xmax ranges.Axes.ymax;
       let r = { Axes.x1 = ranges.Axes.xmin; x2 = ranges.Axes.xmax;
                 y1 = ranges.Axes.ymin; y2 = ranges.Axes.ymax } in
       Handle.axes p.h (`Rectangle(true,true)) x y r
     );
-    Handle.f p.h ?color ?nsamples ~do_with ~finish f a b
+    let do_with, finish =
+      if fill then
+        let x_last = ref nan
+        and y_last = ref nan in
+        let first = ref true in
+        ((fun p (x,y) ->
+            if !first then (
+              let x, y = fill0 x y in
+              Handle.move_to p x y;
+              first := false);
+            Handle.line_to p x y;
+            x_last := x;
+            y_last := y),
+         (fun p ->
+            let x, y = fill1 !x_last !y_last in
+            Handle.line_to p x y;
+            Handle.fill p;
+            first := true; (* this set of functions may be run several times *)
+         ))
+      else
+        ((fun p (x,y) -> Handle.line_to p x y),  Handle.stroke) in
+    Handle.xyf p.h ?color ?nsamples ~do_with ~finish f a b;
+    (* Add marks if requested *)
+    match mark with
+    | None -> ()
+    | Some mark ->
+        let do_with p (x,y) =
+          Handle.move_to p x y;
+          Handle.render p mark
+        and finish _ = () in
+        Handle.xyf p.h ?color ?nsamples~do_with ~finish f a b
+  ;;
 
+  let id x y = (x, y)
+  let xyf p ?color ?nsamples ?mark ?(fill=false) f a b =
+    plot_f p ?color ?nsamples ?mark ~fill f a b id id
 
-  let xyf p ?color ?nsamples ?(mark="") f a b =
-    let do_with h x y =
-      Handle.render h mark;
-      Handle.line_to h x y in
-    let iter = Iterator.from_sampling f ?nsamples a b in
-    Backend.save (Handle.backend p.h);
-    (match color with
-     | Some c -> Backend.set_color (Handle.backend p.h) c
-     | None -> ());
-    Handle.xy p.h ~do_with iter;
-    Backend.restore (Handle.backend p.h)
-
+  let pr_x x y = (x, 0.)
+  let f p ?color ?nsamples ?mark ?(fill=false) f a b =
+    plot_f p ?color ?nsamples ?mark ~fill (fun x -> (x, f x)) a b pr_x pr_x
 
   let set_font_size p w = Handle.set_global_font_size p.h w
   let text p ?(rotate=0.) ~x ~y ?(pos=CC) txt =

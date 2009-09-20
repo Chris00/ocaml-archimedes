@@ -97,14 +97,14 @@ val render : t -> string -> unit
 (* val mark_extents : t -> string -> rectangle *)
 
 (**{2 Plotting}*)
-val f :
+val xyf :
   t ->
   ?color: Color.t ->
   ?nsamples:int ->
   ?min_step:float ->
   ?do_with:(t -> float * float -> unit) ->
   ?finish:(t -> unit) ->
-  (float -> float) -> float -> float -> unit
+  (float -> float * float) -> float -> float -> unit
 val xy :
   t ->
   ?axes:([> Axes.axes ],[> Axes.tic]) Axes.t ->

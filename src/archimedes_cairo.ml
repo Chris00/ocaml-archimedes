@@ -62,7 +62,6 @@ struct
   let get_dash t = get_dash t.cr
 
   let set_matrix t m =
-    Printf.printf "set_matrix%!";
 (*    Gc.compact ();*)
     let m' = { Cairo.xx = m.M.xx; xy = m.M.xy;
                     yx = m.M.yx; yy = m.M.yy;
@@ -93,17 +92,19 @@ struct
   let curve_to t = curve_to t.cr
   let rectangle t = rectangle t.cr
 
-  let arc t ~r ~a1 =
+  let arc t ~r ~a1 ~a2 =
     let x,y = Cairo.Path.get_current_point t.cr in
     let x = x -. r *. cos a1
     and y = y -. r *. sin a1 in
-    arc t.cr ~x ~y ~r ~a1
+    arc t.cr ~x ~y ~r ~a1 ~a2
 
   let stroke t =
-    Cairo.save t.cr;
-    Cairo.set_matrix t.cr id;
+    (* FIXME: Do we really want this? are we not supposed to always
+       draw in a nice coordinate system? *)
+    let m = Cairo.get_matrix t.cr in
+    Cairo.set_matrix t.cr id; (* to avoid the lines being deformed by [m] *)
     stroke t.cr;
-    Cairo.restore t.cr
+    Cairo.set_matrix t.cr m
 
   let stroke_preserve t =
     Cairo.save t.cr;
@@ -144,6 +145,9 @@ struct
           failwith("Archimedes_cairo.make: options [" ^ opt
                    ^ "] not understood") in
     let cr = Cairo.create surface in
+    (* Round line caps are the only option currently offered by
+       graphics.  Be coherent with that. *)
+    Cairo.set_line_cap cr Cairo.ROUND;
     {cr = cr; h=height}
 
   let close ~options t =
