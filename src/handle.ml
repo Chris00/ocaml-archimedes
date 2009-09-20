@@ -282,7 +282,7 @@ let ranges h = match h.vp.ranges with
 
 let make ~dirs name w h =
   let backend = Backend.make ~dirs name w h in
-  let init = Coordinate.make_root_from (Backend.backend_to_device backend) in
+  let init = Coordinate.make_root (Backend.backend_to_device backend) in
   let coord = Coordinate.make_scale init w h in
   let coord2 = Coordinate.make_scale coord initial_scale initial_scale in
   let square_side = min w h in

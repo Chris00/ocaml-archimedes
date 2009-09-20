@@ -78,7 +78,7 @@ struct
     tm : Matrix.t; (* transformation matrix that transform these
                       coordinates into the coordinates it depends on.  *)
     ctm : Matrix.t;
-    (* Transformation to device coordinates.  This is the composition of
+    (* Transformation to "root" coordinates.  This is the composition of
        [tm] with the [ctm] of the coordinate system this one depends on.
        This is an optimization that needs to be updated if the
        underlying coordinate system is modified.  *)
@@ -150,23 +150,11 @@ let to_coord_distance coord ~dx ~dy =
 (* Creating new coordinate systems
  ***********************************************************************)
 
-let make_identity() =
+let make_root m =
   let rec dev =
-    { depends_on = dev; (* fake parent, never accessed *)
-      tm = Matrix.make_identity();
-      ctm = Matrix.make_identity();
-      up_to_date = true; (* always must be *)
-      children = W.create 5;
-      monitors = WM.create 0;
-      id = new_id();
-    } in
-  dev
-
-let make_root_from matrix =
-  let rec dev =
-    { depends_on = dev; (* fake parent, never accessed *)
-      tm = matrix;
-      ctm = Matrix.copy matrix;
+    { depends_on = dev; (* fake parent, physically equal *)
+      tm = m;
+      ctm = m;
       up_to_date = true; (* always must be *)
       children = W.create 5;
       monitors = WM.create 0;
@@ -190,14 +178,6 @@ let copy coord =
 (* Create a new coordinate system that consists into first applying
    the transformation [tm] before the one of [coord]. *)
 let make_from_transform coord tm =
-(*  let a = tm and b = coord.ctm and c = Matrix.mul coord.ctm tm in
-      Printf.printf
-      "\nCreating a child from coord %f %f %f %f %f %f and transformation \
- %f %f %f %f %f %f\nResult: %f %f %f %f %f %f\n"
-      b.B.xx b.B.xy b.B.yx b.B.yy b.B.x0 b.B.y0
-      a.B.xx a.B.xy a.B.yx a.B.yy a.B.x0 a.B.y0
-      c.B.xx c.B.xy c.B.yx c.B.yy c.B.x0 c.B.y0;*)
-
   let coord' = { depends_on = coord;
                  tm = tm;
                  ctm = Matrix.mul coord.ctm tm;
@@ -223,7 +203,7 @@ let make_rotate coord ~angle =
 
 let rec put_children_not_up_to_date coord =
   (*Cannot put any root 'not up to date'*)
-  if coord == coord.depends_on then (*that must be the root.*)
+  if coord == coord.depends_on then (* that must be the root. *)
     failwith "Coordinate: Trying to modify root coordinate";
   (* If the current coordinate system is not up to date (which implies
      its children are not either -- because of the invariant), there

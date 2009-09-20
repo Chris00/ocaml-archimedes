@@ -1,6 +1,6 @@
 type t = {r:float; g:float; b:float; a:float}
 
-let make ?(a=1.) r g b =
+let rgba r g b a =
   let in_interval ?(min=0.) ?(max=1.) x = x >= min && x <= max in
   if in_interval r && in_interval g && in_interval b && in_interval a then
     if in_interval ~max:a r
@@ -14,6 +14,8 @@ let make ?(a=1.) r g b =
     let data ?(s=", ") x = (string_of_float x)^s in
     let msg = msg_intro^(data r)^(data g)^(data b)^(data ~s:")" a) in
     invalid_arg msg
+
+let rgb r g b = rgba r g b 1.
 
 let r t = t.r
 
@@ -122,7 +124,3 @@ let add ?(op=Over) init newc =
    g = merge init.g newc.g;
    b = merge init.b newc.b;
    a = alpha}
-
-(*Local variables:*)
-(*compile-command: "ocamlc -c color.ml"*)
-(*End:*)

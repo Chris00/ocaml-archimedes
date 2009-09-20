@@ -22,9 +22,6 @@ open Printf
 module Matrix = Archimedes.Matrix
 module Backend = Archimedes.Backend
 
-let ofsw = ref 0.
-and ofsh = ref 0.
-
 (* Re-export the labels so we do not have to qualify them with [Matrix]. *)
 type matrix = Matrix.t = { mutable xx: float; mutable yx: float;
                            mutable xy: float; mutable yy: float;
@@ -90,7 +87,7 @@ let range_bezier x0 x1 x2 x3 =
         else min x0 x3, max x0 x3
 ;;
 
-(** Return the smaller reactangle containing [r] and the Bézier curve
+(** Return the smaller rectangle containing [r] and the Bézier curve
     given by the control points. *)
 let update_curve r x0 y0 x1 y1 x2 y2 x3 y3 =
   let xmin, xmax = range_bezier x0 x1 x2 x3 in
@@ -167,14 +164,21 @@ struct
       (* Re-enable previous settings in case they were changed *)
       Graphics.set_color st.color;
       Graphics.set_line_width (round st.line_width)
-    with Stack.Empty ->  Printf.printf
-      "archimedes_graphics : warning - restore without saving\n%!"
+    with Stack.Empty -> () (* nothing to restore *)
+
+  (* On windows, the size given to open_graph is the one of the window
+     WITH decorations.  These quantities tell how much need to be
+     added to the width and height so that the surface has the desired
+     size (set below, when the library is loaded). *)
+  let ofsw = ref 0.
+  and ofsh = ref 0.
 
   (* FIXME: options "x=" and "y=" for the position *)
   let make ~options:_ width height =
     if !in_use then failwith "Archimedes_graphics.make: in use";
     printf "Init graphics: %f %f\n%!" !ofsh !ofsh;
-    Graphics.open_graph(sprintf " %.0fx%.0f" (width +. !ofsw) (height +. !ofsh));
+    Graphics.open_graph(sprintf " %.0fx%.0f"
+                          (width +. !ofsw) (height +. !ofsh));
     Graphics.set_window_title "Archimedes";
     in_use := true;
     let state = {
@@ -560,12 +564,14 @@ end
 
 let () =
   let module U = Backend.Register(B)  in
-  (
+  if Sys.os_type = "Win32" then (
+    (* Set offsets so the actual surface is of the requested size. *)
     Graphics.open_graph " 100x100";
-    let w = Graphics.size_x () and h = Graphics.size_y() in
+    let w = Graphics.size_x ()
+    and h = Graphics.size_y() in
     Graphics.close_graph ();
-    ofsw := float (100 - 90);
-    ofsh := float (100 - h);
+    B.ofsw := float (100 - w);
+    B.ofsh := float (100 - h);
   )
 
 
