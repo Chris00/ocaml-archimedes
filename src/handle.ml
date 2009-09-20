@@ -260,16 +260,16 @@ and t =
   width, then height is by default equal to:
 
   * 500 superposed lines, or
-  * 10 lines of text, or
+  * 50 lines of text, or
   * 100 boxes of 1x1 marks.
 *)
-let def_lw, def_ts, def_marks = 0.002, 0.12, 0.01
+let def_lw, def_ts, def_marks = 0.002, 0.024, 0.01
 
 (*User transformations. To get the previous defaults, the user will
   enter resp. 1, 12, 1. (12 is determined experimentally using cairo:
-  a 100 x 100 pixels output can contain 10 lines of text, putting font
+  a 500 x 500 pixels output can contain 50 lines of text, putting font
   size as 12.) *)
-let usr_lw, usr_ts, usr_marks = 500., 100., 100.
+let usr_lw, usr_ts, usr_marks = 500., 500., 100.
 
 (*Initial scale of the user_to_viewport coordinates.*)
 let initial_scale = 1.
@@ -852,8 +852,7 @@ let axes t ?(color = Color.black) type_axes ?type_axes_printer ?axes_meeting
     | Some f -> fun _ -> f t
   in
   let scalings = t.vp.scalings in
-  let ts = Sizes.get_ts scalings in
-  let font_size = ts /. 3. in
+  let font_size = Sizes.get_ts scalings in
   let lines = Sizes.get_lw scalings
   and marks = Sizes.get_marks scalings in
   let ctm = Coordinate.use t.backend t.vp.vp_device in
