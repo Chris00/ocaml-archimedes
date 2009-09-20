@@ -7,8 +7,9 @@ let draw backend =
   let p = P.make backend 800. 800. ~dirs:[ "../src"; "./src"] in
   let vp = P.Viewport.grid p 2 2 in
 
+  (* P.set_mark_size p 1.; *)
   P.viewport vp.(0).(0);
-  P.f p (fun x -> x *. x) (-3.) 3. ~color:Color.blue;
+  P.f p (fun x -> x *. x) (-3.) 3. ~color:Color.blue ~mark:"+";
 
   P.viewport vp.(1).(0);
 (*  let finish handle =
@@ -48,7 +49,7 @@ let () =
   let bk =
     if Array.length Sys.argv > 1 then [Sys.argv.(1)]
     else [ "tikz functions.tex";
-           "graphics";
+           "graphics hold";
            "cairo PNG functions.png";
            "cairo PDF functions.pdf" ]
   in

@@ -90,18 +90,6 @@ struct
   let set_color p c = Handle.set_color p.h c
 
   let f p ?color ?nsamples ?mark f a b =
-    let do_with = match mark with
-      | Some mark ->
-          (fun p (x,y) ->
-             Handle.render p mark;
-             Handle.line_to p x y)
-      | None -> (fun p (x,y) -> Handle.line_to p x y) in
-    let finish = match mark with
-      | Some mark -> (fun p ->
-                       (* final point *)
-                       Handle.render p mark;
-                       Handle.stroke p)
-      | None -> Handle.stroke in
     if p.axes_set then () (* FIXME: todo *)
     else (
       let x = Handle.make_xaxis (`P "|") `Number CB (`P "tic_up") `Auto_linear
@@ -116,7 +104,17 @@ struct
                 y1 = ranges.Axes.ymin; y2 = ranges.Axes.ymax } in
       ignore(Handle.print_axes p.h axes r)
     );
-    Handle.f p.h ?color ?nsamples ~do_with ~finish f a b
+    Handle.f p.h ?color ?nsamples(* ~do_with ~finish*) f a b;
+    (* Add marks if requested *)
+    match mark with
+    | None -> ()
+    | Some mark ->
+        let do_with p (x,y) =
+          Handle.move_to p x y;
+          Handle.render p mark
+        and finish p = () in
+        Handle.f p.h ?color ?nsamples~do_with ~finish f a b
+  ;;
 
 
   let xyf p ?color ?nsamples ?(mark="") f a b =
