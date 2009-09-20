@@ -35,7 +35,7 @@ let () =
         in
         B.move_to backend dx dy;
         B.arc backend 1. 0. 7.;
-        B.set_color backend (Color.make r g b);
+        B.set_color backend (Color.rgb r g b);
         B.stroke backend;
         B.rectangle backend dx dy rect.Matrix.w rect.Matrix.h;
         (*B.line_to backend x y;*)
@@ -43,9 +43,9 @@ let () =
         B.move_to backend x y;
         B.arc backend 2. 0. 7.;
         B.stroke backend;
-        B.set_color backend (Color.make ~a:0.4 r g b);
+        B.set_color backend (Color.rgba r g b 0.4);
         B.show_text backend 0. x y pos text;
-        B.set_color backend (Color.make ~a:0.4 r g b);
+        B.set_color backend (Color.rgba r g b 0.4);
         B.move_to backend (dx -. rect.Matrix.x) (dy -. rect.Matrix.y);
         B.rel_line_to backend rect.Matrix.w 0.;
         B.stroke backend

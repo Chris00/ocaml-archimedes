@@ -12,13 +12,7 @@ let draw backend =
   P.f p (fun x -> x *. x) (-3.) 3. ~color:Color.blue ~mark:"+";
 
   P.viewport vp.(1).(0);
-(*  let finish handle =
-    H.line_to handle 3. 10.;
-    H.line_to handle (-3.) 10.;
-    H.close_path handle;
-    H.fill handle
-  in*)
-  P.f p (fun x -> x *. x) (-3.) 3. ~color:Color.red;
+  P.f p (fun x -> x *. (x *. x -. 3.)) (-3.) 3. ~color:Color.red ~fill:true;
 
   P.viewport vp.(0).(1);
   P.set_color p Color.green;
@@ -31,16 +25,6 @@ let draw backend =
 *)  P.f p (fun x -> x *. (x *. x -. 3.)) (-3.) 3.;
 
   P.viewport vp.(1).(1);
-(*  let xaxis =
-    H.make_xaxis (`P "|") `Number CB (`P "tic_up") (`Linear(7,0))
-  in
-  let yaxis =
-    H.make_yaxis (`P "-") `Number LC (`P "tic_left") (`Linear(7,2))
-  in
-  let axes = H.make_axes (`Rectangle(true,true)) xaxis yaxis in
-  ignore
-    (H.print_axes handle axes {A.x1 = -3.;x2 = 3.;y1=0.;y2 = 9.});
-*)
   P.f p (fun x -> x *. x -. 2.) (-3.) 3.;
   P.close p
 ;;
@@ -61,5 +45,5 @@ let () =
 
 
 (* Local Variables: *)
-(* compile-command: "make -kB test_function.exe" *)
+(* compile-command: "make -kB functions.exe" *)
 (* End: *)

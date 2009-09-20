@@ -22,6 +22,7 @@ type t = { h: Handle.t;
            mutable axes_set: bool; (* wether the user set exes *)
          }
 
+
 type line_cap = Backend.line_cap = BUTT | ROUND | SQUARE
 
 type line_join = Backend.line_join = JOIN_MITER | JOIN_ROUND | JOIN_BEVEL
@@ -40,7 +41,7 @@ module type COMMON = sig
   val set_mark_size : t -> float -> unit
   val set_color : t -> Color.t -> unit
 
-  val f : t -> ?color: Color.t -> ?nsamples: int -> ?mark:string ->
+  val f : t -> ?color: Color.t -> ?nsamples: int -> ?mark:string -> ?fill:bool ->
     (float -> float) -> float -> float -> unit
   val xyf : t -> ?color: Color.t -> ?nsamples: int -> ?mark:string ->
     (float -> float * float) -> float -> float -> unit
@@ -89,7 +90,7 @@ struct
 
   let set_color p c = Handle.set_color p.h c
 
-  let f p ?color ?nsamples ?mark f a b =
+  let f p ?color ?nsamples ?mark ?(fill=false) f a b =
     if p.axes_set then () (* FIXME: todo *)
     else (
       let x = Handle.make_xaxis (`P "|") `Number CB (`P "tic_up") `Auto_linear
@@ -102,9 +103,24 @@ struct
       Handle.update_coords p.h ranges.Axes.xmax ranges.Axes.ymax;
       let r = { Axes.x1 = ranges.Axes.xmin; x2 = ranges.Axes.xmax;
                 y1 = ranges.Axes.ymin; y2 = ranges.Axes.ymax } in
-      ignore(Handle.print_axes p.h axes r)
+      ignore(Handle.print_axes p.h axes r);
     );
-    Handle.f p.h ?color ?nsamples(* ~do_with ~finish*) f a b;
+    let do_with, finish =
+      if fill then
+        let x_last = ref nan in
+        let first = ref true in
+        ((fun p (x,y) ->
+            if !first then (Handle.move_to p x 0.; first := false);
+            Handle.line_to p x y;
+            x_last := x),
+         (fun p ->
+            Handle.line_to p !x_last 0.;
+            Handle.fill p;
+            first := true; (* this set of functions may be run several times *)
+         ))
+      else
+        ((fun p (x,y) -> Handle.line_to p x y),  Handle.stroke) in
+    Handle.f p.h ?color ?nsamples ~do_with ~finish f a b;
     (* Add marks if requested *)
     match mark with
     | None -> ()
@@ -112,7 +128,7 @@ struct
         let do_with p (x,y) =
           Handle.move_to p x y;
           Handle.render p mark
-        and finish p = () in
+        and finish _ = () in
         Handle.f p.h ?color ?nsamples~do_with ~finish f a b
   ;;
 

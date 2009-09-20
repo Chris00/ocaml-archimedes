@@ -456,28 +456,23 @@ struct
       }
 
   let sub_rect vp ~x ~y ~w ~h =
-    Printf.printf "viewport:%f %f w:%f h:%f\n%!" x y w h;
     let ndrawings = Coordinate.make_translate vp.vp_device x y in
     Coordinate.scale ndrawings w h;
     inner_make vp.handle ndrawings
 
   let make_rect handle =
-    Printf.printf "make_rect ";
     sub_rect handle.vp
 
   let sub vp ~xmin ~xmax ~ymin ~ymax =
-    Printf.printf "sub ";
     sub_rect vp xmin ymin (xmax -. xmin) (ymax -.ymin)
 
   let make handle =
-    Printf.printf "make ";
     sub handle.vp
 
   let use vp =
     (*Need to change the current viewport and coordinates of the
       context, but also flag the viewport, if it is not, and add it to
       the [used_vp] field of the context.*)
-    Printf.printf "Use vp \n%!";
     let handle = vp.handle in
     handle.vp <- vp;
     ignore (Coordinate.use handle.backend vp.user_device);
@@ -871,8 +866,6 @@ let print_axes t axes ?(color = Color.black)
   and yy1 = ymargin.Axes.bottom
   and yy2 = ymargin.Axes.top
   in
-  Printf.printf "Margins 1: L%f R%f B%f T%f\nMargins 2: L%f R%f B%f T%f\n%!"
-    xx1 xx2 xy1 xy2 yx1 yx2 yy1 yy2;
   let left = max xx1 yx1
   and right = max xx2 yx2
   and top = max xy2 yy2
@@ -913,13 +906,12 @@ let print_axes t axes ?(color = Color.black)
   Backend.restore t.backend;*)
   Coordinate.restore t.backend ctm;
   let f () =
+    Backend.save t.backend;
     Backend.set_color t.backend color;
     Axes.print axes ~normalization:t.normalized
       ~lines ~marks ~font_size ~ranges
       ~print_axes ?axes_meeting ~print_tic t.backend;
+    Backend.restore t.backend;
   in
   add_order f t; (*if margins_ok, axes should stay in the initial viewport.*)
   new_vp
-
-
-
