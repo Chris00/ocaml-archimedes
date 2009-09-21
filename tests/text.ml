@@ -43,7 +43,7 @@ let () =
         B.move_to backend x y;
         B.arc backend 2. 0. 7.;
         B.stroke backend;
-        B.set_color backend (Color.rgba r g b 0.4);
+        B.set_color backend (Color.rgba r g b 0.7);
         B.show_text backend 0. x y pos text;
         B.set_color backend (Color.rgba r g b 0.4);
         B.move_to backend (dx -. rect.Matrix.x) (dy -. rect.Matrix.y);

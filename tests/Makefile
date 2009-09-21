@@ -7,8 +7,8 @@ LIBS_CMA = dynlink.cma bigarray.cma archimedes.cma
 LIBS_CMXA = dynlink.cmxa bigarray.cmxa archimedes.cmxa
 
 TESTS = backend_text.ml backend_path.ml backend_line.ml \
-  text.ml marks.ml viewports.ml functions.ml
-
+  text.ml marks.ml functions.ml
+#viewports.ml 
 .PHONY: all byte opt native
 all: byte native
 opt: native

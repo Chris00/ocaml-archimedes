@@ -209,6 +209,7 @@ type viewport =
       mutable ranges: Axes.fixed_ranges option;
       (*To update the ranges correctly, we need the current point.*)
       mutable current_pt: (float * float) option;
+      mutable axes: (unit -> unit) option;
       (*What has to be plotted in this viewport. Mutable so that if we
         want to do the orders but preserve the queue, we replace it by a
         (created and updated) copy.*)
@@ -259,16 +260,16 @@ and t =
   width, then height is by default equal to:
 
   * 500 superposed lines, or
-  * 10 lines of text, or
+  * 50 lines of text, or
   * 100 boxes of 1x1 marks.
 *)
-let def_lw, def_ts, def_marks = 0.002, 0.12, 0.01
+let def_lw, def_ts, def_marks = 0.002, 0.024, 0.01
 
 (*User transformations. To get the previous defaults, the user will
   enter resp. 1, 12, 1. (12 is determined experimentally using cairo:
-  a 100 x 100 pixels output can contain 10 lines of text, putting font
+  a 500 x 500 pixels output can contain 50 lines of text, putting font
   size as 12.) *)
-let usr_lw, usr_ts, usr_marks = 500., 100., 100.
+let usr_lw, usr_ts, usr_marks = 500., 500., 100.
 
 (*Initial scale of the user_to_viewport coordinates.*)
 let initial_scale = 1.
@@ -292,6 +293,7 @@ let make ~dirs name w h =
      scalings = Sizes.make_root square_side def_lw def_ts def_marks;
      (*No drawings yet*)
      ranges = None;
+     axes = None;
      current_pt = None;
      orders = Queue.create ();
      scalings_hist = Stack.create ();
@@ -327,15 +329,10 @@ let do_viewport_orders ?orders_queue vp backend =
     None -> () (*No ranges, so no drawings *)
   | Some ranges ->
       let ctm = Coordinate.use backend vp.user_device in
-      (*let m1 = vp.vp_device.Coordinate.ctm in
-      let m2 = vp.user_device.Coordinate.ctm in
-      let m3 = vp.user_device.Coordinate.tm in
-      Printf.printf "vp_device: %f %f %f %f %f %f\n%!"
-        m1.xx m1.xy m1.yx m1.yy m1.x0 m1.y0;
-      Printf.printf "user_device: %f %f %f %f %f %f\n%!"
-        m2.xx m2.xy m2.yx m2.yy m2.x0 m2.y0;
-      Printf.printf "user_vp: %f %f %f %f %f %f\n%!"
-        m3.xx m3.xy m3.yx m3.yy m3.x0 m3.y0;*)
+      (* Axes drawing if necessary *)
+      (match vp.axes with
+         None -> ()
+       | Some axes -> axes ());
       let rec make_orders orders =
         if not (Queue.is_empty orders) then (
           let order = Queue.pop orders in
@@ -446,6 +443,7 @@ struct
         scalings = Sizes.child handle.vp.scalings 1. 1. 1.;
         (*No drawings yet on this viewport.*)
         ranges = None;
+        axes = None;
         current_pt = None;
         orders = Queue.create ();
         (*Not in use*)
@@ -840,11 +838,12 @@ let xy t ?color ?axes ?(mark = "X") ?(do_with = (xy_mark mark)) iter =
 
 let make_xaxis = Axes.make_xaxis
 let make_yaxis = Axes.make_yaxis
-let make_axes = Axes.make
-let print_axes t axes ?(color = Color.black)
-    ?axes_print ?axes_meeting ?print_tic ranges=
+
+let axes t ?(color = Color.black) type_axes ?type_axes_printer ?axes_meeting
+    ?print_tic xaxis yaxis ranges =
+  let axes = Axes.make type_axes xaxis yaxis in
   let print_axes =
-    match axes_print with
+    match type_axes_printer with
       None -> Axes.print_axes
     | Some f -> fun axes ranges _ -> f axes ranges t
   and print_tic =
@@ -853,8 +852,7 @@ let print_axes t axes ?(color = Color.black)
     | Some f -> fun _ -> f t
   in
   let scalings = t.vp.scalings in
-  let ts = Sizes.get_ts scalings in
-  let font_size = ts /. 3. in
+  let font_size = Sizes.get_ts scalings in
   let lines = Sizes.get_lw scalings
   and marks = Sizes.get_marks scalings in
   let ctm = Coordinate.use t.backend t.vp.vp_device in
@@ -862,6 +860,7 @@ let print_axes t axes ?(color = Color.black)
     Axes.get_margins axes ?axes_meeting ~normalization:t.normalized
       ~lines ~marks ~font_size ranges t.backend
   in
+  Coordinate.restore t.backend ctm;
   let xx1 = xmargin.Axes.left
   and xx2 = xmargin.Axes.right
   and xy1 = xmargin.Axes.bottom
@@ -878,45 +877,25 @@ let print_axes t axes ?(color = Color.black)
   let margin_x = left +. right
   and margin_y = top +. bottom in
   let margins_ok = margin_x < 1. && margin_y < 1. in
-  (*let m = Backend.get_matrix t.backend in
-  Printf.printf "Initial coord: %f %f %f %f %f %f \n%!"
-    m.xx m.xy m.yx m.yy m.x0 m.y0;
-  Coordinate.restore t.backend ctm;
-  Printf.printf "Margins: %f %f %f %f \n%!"
-    left right bottom top;*)
-  let new_vp =
-    if margins_ok then
-      (let vp = Viewport.make t left (1. -.right) bottom (1. -.top) in
-       Viewport.use vp;
-       (* t.only_immediate <- true; *)
-       (* rectangle t 0. 0. 1. 1.; *)
-       (* set_color t (Color.make ~a:0.2 0. 0. 1.); *)
-       (* fill t; *)
-       (* t.only_immediate <- false; *)
-       Some vp)
-    else (  (* Labels take too big margins to plot correctly => no scaling.*)
-      Printf.printf
-        "Archimedes.Handle -- warning: the axes labels have too big margins.\n%!";
-      None)
-  in
-  (*let ctm = Coordinate.use t.backend t.current_coord in
-  let m = Backend.get_matrix t.backend in
-  Printf.printf "Initial coord: %f %f %f %f %f %f \n%!"
-    m.xx m.xy m.yx m.yy m.x0 m.y0;
-  Backend.save t.backend;
-  Backend.rectangle t.backend 0. 0. 0.8 0.8;
-  Backend.arc t.backend 0.9 0.9 0.1 0. 7.;
-  Backend.set_color t.backend (Color.make ~a:0.2 0. 0. 1.);
-  Backend.fill t.backend;
-  Backend.restore t.backend;*)
-  Coordinate.restore t.backend ctm;
-  let f () =
-    Backend.save t.backend;
-    Backend.set_color t.backend color;
-    Axes.print axes ~normalization:t.normalized
-      ~lines ~marks ~font_size ~ranges
-      ~print_axes ?axes_meeting ~print_tic t.backend;
-    Backend.restore t.backend;
-  in
-  add_order f t; (*if margins_ok, axes should stay in the initial viewport.*)
-  new_vp
+  if margins_ok then
+    (let vp = Viewport.make t left (1. -.right) bottom (1. -.top) in
+     Viewport.use vp;
+     (* t.only_immediate <- true; *)
+     (* rectangle t 0. 0. 1. 1.; *)
+     (* set_color t (Color.make ~a:0.2 0. 0. 1.); *)
+     (* fill t; *)
+     (* t.only_immediate <- false; *)
+     let f () =
+       Backend.save t.backend;
+       Backend.set_color t.backend color;
+       Axes.print axes ~normalization:t.normalized
+         ~lines ~marks ~font_size ~ranges
+         ~print_axes ?axes_meeting ~print_tic t.backend;
+       Backend.restore t.backend
+     in
+     vp.axes <- Some f)
+  else  (* Labels take too big margins to plot correctly => no scaling.*)
+    Printf.printf
+      "Archimedes.Handle -- warning: the axes labels have too big margins.\n%!"
+let current_vp t = t.vp
+

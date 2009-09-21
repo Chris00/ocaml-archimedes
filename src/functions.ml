@@ -18,7 +18,11 @@ let samplefxy f ?(min_step=1E-9) ?(nsamples = 100) a b =
            let x,y = f p in
            if is_nan y then
              (* ignore the point *)
-             next_point (i+1) tmin x y bounds listxy (len+1) extents
+             (* FIXME: this has to include "discontinuity"... what
+                about preserving it and take care about it in higher
+                levels? Note: if preserving it, be careful on next
+                iteration (should always accept the new point). *)
+             next_point (i+1) tmin x0 y0 bounds listxy (len+1) extents
            else
              let diffx = x -. x0 and diffy = y -. y0 in
              let rel_max =

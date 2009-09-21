@@ -27,11 +27,11 @@ let () =
                  (180., 20., Backend.RB) ]
       in
       List.iter (fun (x,y,p) ->
-                   Backend.set_color b (Archimedes.Color.make 1. 0. 0.);
+                   Backend.set_color b (Archimedes.Color.rgb 1. 0. 0.);
                    Backend.move_to b x y;
                    Backend.arc b ~r:1. ~a1:0. ~a2:two_pi;
                    Backend.fill b;
-                   Backend.set_color b (Archimedes.Color.make 0. 0. 0.5);
+                   Backend.set_color b (Archimedes.Color.rgb 0. 0. 0.5);
                    Backend.show_text b ~x ~y ~rotate:0. p "Joy";
                 ) pos;
 

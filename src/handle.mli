@@ -126,21 +126,21 @@ val make_yaxis :
                    Axes.label_collection -> Axes.tic_position) ->
   ?tic_extents:('a -> Matrix.rectangle) ->
   'c -> 'a Axes.axis
-val make_axes : ([>Axes.axes] as 'a) ->
-  'b Axes.axis -> 'b Axes.axis -> ('a,'b) Axes.t
-val print_axes :
-  t -> ([> Axes.axes] as 'a, [> Axes.tic] as 'b) Axes.t ->
-  ?color:Color.t ->
-  ?axes_print:('a -> Axes.ranges -> t -> unit) ->
-  ?axes_meeting:('a -> Axes.ranges -> float * float) ->
-  ?print_tic:(t -> 'b -> unit) -> Axes.ranges ->
-  viewport option
-    (**Prints axes, following the parameters stored in [t] and the
-       optional arguments, if given. Returns a [viewport] in which the
-       graph will take place, or [None] if the axes take too big
-       margins (reducing the graph to nothing). In this latter case,
-       the axes are not guaranteed to fit the viewport.*)
 
+val axes : t -> ?color:Color.t  -> ([>Axes.axes] as 'a) ->
+  ?type_axes_printer:('a -> Axes.ranges -> t -> unit) ->
+  ?axes_meeting:('a -> Axes.ranges -> float * float) ->
+  ?print_tic:(t -> ([> Axes.tic] as 'b) -> unit) ->
+  'b Axes.axis -> 'b Axes.axis -> Axes.ranges -> unit
+  (** Says that axes are required and should be in the current viewport
+     of [t], following the given parameters. Note that this function creates a new
+     viewport and sets the handle's current viewport to it. But if the
+     axes take too big margins (reducing the graph to nothing), the
+     current viewport is maintained. In this latter case, the axes are
+     not guaranteed to fit in the viewport. *)
+
+val current_vp: t -> viewport
+  (** Returns the current viewport of the handle. *)
 
 (**/**)
 val update_coords : t -> float -> float -> unit
