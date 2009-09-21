@@ -218,6 +218,8 @@ type viewport =
       scalings_hist : (float * float * float) Stack.t;
       vp_device:Coordinate.t;
       user_device:Coordinate.t;
+      mutable axes_fitting:Axes.margins;
+      mutable axes_ranges: Axes.fixed_ranges option;
       (*Flag indicating if this viewport has been stored in the handle.*)
       mutable stored : bool;
     }
@@ -299,6 +301,8 @@ let make ~dirs name w h =
      scalings_hist = Stack.create ();
      vp_device = coord;
      user_device = coord2;
+     axes_fitting = {Axes.left = 0.;right = 0.;top = 0.;bottom=0.};
+     axes_ranges = None;
      stored = true;(*will be... in the end of [make].*)
     }
   and handle =
@@ -375,13 +379,19 @@ let immediate t b =
   t.immediate_drawing <- b
 
 (*Easy update Axes.ranges options and coordinates*)
-let update_coords t x y =
-  match t.vp.ranges with
+let update_coords t ?axes x y =
+  let update ranges =
+  match ranges with
     None ->
-      t.vp.ranges <- Some (Axes.FixedRanges.make x y);
-      Coordinate.translate t.vp.user_device
-        (x+.initial_scale/.2.) (y+.initial_scale/.2.);
-      (*Printf.printf "Init_update %f %f\n%!" x y*)
+      (match axes with
+        None
+      | Some false ->
+          t.vp.ranges <- Some (Axes.FixedRanges.make x y);
+          Coordinate.translate t.vp.user_device
+            (x+.initial_scale/.2.) (y+.initial_scale/.2.);
+      | Some true ->
+          t.vp.axes_ranges <- Some (Axes.FixedRanges.make x y);
+      (*Printf.printf "Init_update %f %f\n%!" x y*))
   | Some ranges ->
       let xmin = ranges.Axes.xmin
       and xmax = ranges.Axes.xmax
@@ -390,7 +400,7 @@ let update_coords t x y =
 (*      let one_point = xmin = xmax && ymin = ymax in*)
       (*Printf.printf "update %f %f and %f %f; %f %f%!" xmin ymax ymin ymax x y;*)
       let updated = Axes.FixedRanges.update ranges x y in
-      if updated then (
+      if updated && (axes <> Some true) then (
         (*Coordinate changement*)
         let xmin = min x xmin
         and xmax = max x xmax
@@ -428,6 +438,7 @@ let update_coords t x y =
           do_viewport_orders t.vp t.backend
         )
       )
+  in update (match axes with Some true -> t.vp.axes_ranges | _ -> t.vp.ranges)
 
 
 
@@ -450,6 +461,8 @@ struct
         scalings_hist = Stack.create();
         vp_device = coord;
         user_device = coord2;
+        axes_fitting = {Axes.left = 0.;right = 0.; top = 0.; bottom = 0.};
+        axes_ranges= None;
         stored = false;
       }
 
@@ -801,8 +814,8 @@ let xyf t ?color ?nsamples ?min_step
     t.only_immediate <- false;
     Backend.restore t.backend;
   in
-  update_coords t ranges.Axes.xmin ranges.Axes.ymin;
-  update_coords t ranges.Axes.xmax ranges.Axes.ymax;
+  update_coords t ~axes:true ranges.Axes.xmin ranges.Axes.ymin;
+  update_coords t ~axes:true ranges.Axes.xmax ranges.Axes.ymax;
   t.only_extents <- true;
   fct (fun () -> do_with t) ();
   finish t;
@@ -830,8 +843,8 @@ let xy t ?axes ?(mark = "X") ?(do_with = (xy_mark mark)) iter =
     t.only_immediate <- false;
   in
   let extents = Iterator.extents iter in
-  update_coords t extents.Axes.xmin extents.Axes.ymin;
-  update_coords t extents.Axes.xmax extents.Axes.ymax;
+  update_coords t ~axes:true extents.Axes.xmin extents.Axes.ymin;
+  update_coords t ~axes:true extents.Axes.xmax extents.Axes.ymax;
   t.only_extents <- true;
   iterate do_with;
   t.only_extents <- false;
@@ -839,6 +852,21 @@ let xy t ?axes ?(mark = "X") ?(do_with = (xy_mark mark)) iter =
 
 let make_xaxis = Axes.make_xaxis
 let make_yaxis = Axes.make_yaxis
+
+let direct_axes t ?color type_axes ?type_axes_printer ?axes_meeting ?print_tic
+    xaxis yaxis ranges =
+  let print_axes = type_axes_printer in
+  let scalings = t.vp.scalings in
+  let font_size = Sizes.get_ts scalings in
+  let lines = Sizes.get_lw scalings
+  and marks = Sizes.get_marks scalings in
+  let ctm = Coordinate.use t.backend t.vp.vp_device in
+  let margins =
+    Axes.axes t.backend ~normalization:t.normalized ~lines ~marks ~font_size
+      ?color type_axes ?print_axes ?axes_meeting ?print_tic xaxis yaxis ranges
+  in
+  t.vp.axes_fitting <- margins;
+  Coordinate.restore t.backend ctm
 
 let axes t ?(color = Color.black) type_axes ?type_axes_printer ?axes_meeting
     ?print_tic xaxis yaxis ranges =
@@ -898,5 +926,7 @@ let axes t ?(color = Color.black) type_axes ?type_axes_printer ?axes_meeting
   else  (* Labels take too big margins to plot correctly => no scaling.*)
     Printf.printf
       "Archimedes.Handle -- warning: the axes labels have too big margins.\n%!"
+
+
 let current_vp t = t.vp
 

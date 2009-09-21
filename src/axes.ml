@@ -569,7 +569,10 @@ let get_position loc labels =
                  let t = (v -. ranges.y1) /. diffy in
                  let w = ranges.x1 +. t *. diffx in
                  0.,t, Some label
-             in make_list (data::list) (i+1)
+             in
+             (* This is necessary to treat particular case 'constant'. *)
+             if v > vmin then make_list (data::list) (i+1)
+             else list
            else list
          in make_list [] 0
       )
@@ -723,5 +726,71 @@ let print t ~normalization ~lines ~marks ~font_size ~ranges
   print_tics t.xaxis ranges y print_tic normalization marks font_size backend;
   (*X axis*)
   Printf.printf "Y%!";
-  print_tics t.yaxis ranges x print_tic normalization marks font_size backend;
+  print_tics t.yaxis ranges x print_tic normalization marks font_size backend
   (*Y axis*)
+
+
+let axes backend ~normalization ~lines ~marks ~font_size
+    ?(color = Color.black) type_axes ?(print_axes = print_axes)
+    ?(axes_meeting = axes_meeting) ?(print_tic = print_tic) xaxis yaxis
+    ranges =
+  let axes = make type_axes xaxis yaxis in
+  let xmargin, ymargin =
+    get_margins axes ~axes_meeting ~normalization
+      ~lines ~marks ~font_size ranges backend
+  in
+  let xx1 = xmargin.left
+  and xx2 = xmargin.right
+  and xy1 = xmargin.bottom
+  and xy2 = xmargin.top
+  and yx1 = ymargin.left
+  and yx2 = ymargin.right
+  and yy1 = ymargin.bottom
+  and yy2 = ymargin.top
+  in
+  let left = max xx1 yx1
+  and right = max xx2 yx2
+  and top = max xy2 yy2
+  and bottom = max xy1 yy1 in
+  let xlen = 1. -. (left +. right)
+  and ylen = 1. -. (top +. bottom) in
+  let margins_ok = xlen > 0. && ylen > 0. in
+  if margins_ok then
+    (Backend.save backend;
+     Backend.translate backend left bottom;
+     Backend.scale backend xlen ylen)
+      (*
+        (let vp = Viewport.make t left (1. -.right) bottom (1. -.top) in
+        Viewport.use vp;
+      (* t.only_immediate <- true; *)
+      (* rectangle t 0. 0. 1. 1.; *)
+      (* set_color t (Color.make ~a:0.2 0. 0. 1.); *)
+      (* fill t; *)
+      (* t.only_immediate <- false; *)*)
+
+  else  (* Labels take too big margins to plot correctly => no scaling.*)
+    (Printf.printf
+       "Archimedes.Handle -- warning: \
+  the axes labels have too big margins.\n%!");
+  Backend.save backend;
+  Backend.set_color backend color;
+  (* Makes backend into user coords: *)
+  let diffx =
+    let x = ranges.x2 -. ranges.x1 in
+    if x = 0. then 1. else x
+  and diffy =
+    let y = ranges.y2 -. ranges.y1 in
+    if y = 0. then 1. else y
+  in
+  Backend.scale backend (1. /. diffx) (1. /. diffy);
+  Backend.translate backend (-.ranges.x1) (-.ranges.y1);
+  let m = Backend.get_matrix backend in
+  Printf.printf "Axes print: matrix %f %f %f %f %f %f"
+    m.Matrix.xx m.Matrix.xy m.Matrix.yx m.Matrix.yy m.Matrix.x0 m.Matrix.y0;
+  print axes ~normalization
+    ~lines ~marks ~font_size ~ranges
+    ~print_axes ~axes_meeting ~print_tic backend;
+  Backend.restore backend;
+  if margins_ok then Backend.restore backend;
+  (* Returns the transformation on which [0,1]^2 is the space allowed to fit the axes. *)
+  {left = left; right = right; top = top; bottom = bottom}

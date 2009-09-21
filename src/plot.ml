@@ -99,11 +99,12 @@ struct
       in
       (* FIXME: The ranges determination must be false *)
       let _, ranges, _ = Functions.samplefxy f ?nsamples b a in
-      Handle.update_coords p.h ranges.Axes.xmin ranges.Axes.ymin;
-      Handle.update_coords p.h ranges.Axes.xmax ranges.Axes.ymax;
+      (*Handle.update_coords p.h ranges.Axes.xmin ranges.Axes.ymin;
+      Handle.update_coords p.h ranges.Axes.xmax ranges.Axes.ymax;*)
       let r = { Axes.x1 = ranges.Axes.xmin; x2 = ranges.Axes.xmax;
                 y1 = ranges.Axes.ymin; y2 = ranges.Axes.ymax } in
-      Handle.axes p.h (`Rectangle(true,true)) x y r
+      Printf.printf "Axes %!";
+      Handle.direct_axes p.h (`Rectangle(true,true)) x y r
     );
     let do_with, finish =
       if fill then
@@ -126,6 +127,7 @@ struct
          ))
       else
         ((fun p (x,y) -> Handle.line_to p x y),  Handle.stroke) in
+    Printf.printf "xyf %!";
     Handle.xyf p.h ?color ?nsamples ~do_with ~finish f a b;
     (* Add marks if requested *)
     match mark with
@@ -135,7 +137,7 @@ struct
           Handle.move_to p x y;
           Handle.render p mark
         and finish _ = () in
-        Handle.xyf p.h ?color ?nsamples~do_with ~finish f a b
+        Handle.xyf p.h ?color ?nsamples ~do_with ~finish f a b
   ;;
 
   let id x y = (x, y)
