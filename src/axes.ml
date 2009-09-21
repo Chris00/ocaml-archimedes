@@ -573,8 +573,8 @@ let get_position loc labels =
              in
              (* This is necessary to treat particular case 'constant'. *)
              if v > vmin then make_list (data::list) (i+1)
-             else list
-           else data::list
+             else data::list
+           else list
          in make_list [] 0
       )
   | _ -> raise Not_available
