@@ -979,7 +979,7 @@ let axes t ?(color = Color.black) type_axes ?type_axes_printer ?axes_meeting
        Backend.save t.backend;
        Backend.set_color t.backend color;
        Axes.print axes ~normalization:t.normalized
-         ~lines ~marks ~font_size ~ranges
+         ~lines ~marks:def_marks ~font_size ~ranges
          ~print_axes ?axes_meeting ~print_tic t.backend;
        Backend.restore t.backend
      in
