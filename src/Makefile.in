@@ -12,29 +12,38 @@ DOC_DIR = $(ROOT)/doc/html/
 
 # Native code versions must be installed if and only if make opt was
 # called previously (i.e. the files exist):
-INSTALL_FILES = $(wildcard *.mli *.cmi *.cma *.cmx *.a *.cmxa)
+INSTALL_FILES = $(addprefix archimedes, .mli .cmi .cma .cmx .a .cmxa)
 
 ifneq "@OCAML_PKG_cairo2@" "no"
   PLUGINS += archimedes_cairo.ml
+  INSTALL_FILES += archimedes_cairo.dep archimedes_cairo.cmo \
+		$(wildcard archimedes_cairo.cmxs)
 endif
 ifneq "@OCAML_PKG_graphics@" "no"
   PLUGINS += archimedes_graphics.ml
+  INSTALL_FILES += archimedes_graphics.dep archimedes_graphics.cmo \
+	$(wildcard archimedes_graphics.cmxs) \
+	archimedes_toploop.cma
+  TOPLOOP = archimedes_toploop.cma
 endif
 
 PLUGINS += archimedes_tikz.ml
+INSTALL_FILES += archimedes_tikz.cmo $(wildcard archimedes_tikz.cmxs)
 
 .PHONY: default all opt byte native
 default: @OCAMLBEST@
 all: byte native
 opt: native
-byte: archimedes.cma $(PLUGINS:.ml=.cmo)
+byte: archimedes.cma $(PLUGINS:.ml=.cmo) $(TOPLOOP)
 native: archimedes.cmxa $(PLUGINS:.ml=.cmxs)
 
-ARCHIMEDES_FILES = string_utils.ml color.ml matrix.ml backend.ml coordinate.ml \
-   pointstyle.ml axes.ml functions.ml iterator.ml handle.ml plot.ml
+ARCHIMEDES_FILES = conf.ml string_utils.ml color.ml matrix.ml backend.ml \
+  coordinate.ml pointstyle.ml axes.ml functions.ml iterator.ml handle.ml \
+  plot.ml
 
 archimedes.cma: archimedes.cmo
 archimedes.cmxa: archimedes.cmx
+archimedes_toploop.cma: archimedes_toploop.cmo
 
 archimedes.cmo: $(ARCHIMEDES_FILES:.ml=.cmo) archimedes.cmi
 	$(OCAMLC) -o $@ $(OCAMLC_FLAGS) -pack $(filter-out archimedes.cmi,$^)

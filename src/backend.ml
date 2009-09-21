@@ -350,8 +350,7 @@ let get_dependencies dirs basename =
 
 let loaded_dependencies = ref []
 
-let make ?(dirs=[]) b width height =
-  (* FIXME: must always include several system dirs detected at compile time *)
+let make ?(dirs=[Conf.plugins_dir]) b width height =
   let backend, options = backend_options b in
   let make =
     try M.find backend !registry (* backend already loaded *)

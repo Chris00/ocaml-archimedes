@@ -106,31 +106,55 @@ module type T = sig
 
   module Array : sig
     include COMMON
+
+    val x : t -> ?color: Color.t -> ?mark:string -> ?n0:int ->
+      float array -> unit
+
+    val xy : t -> ?color: Color.t -> ?mark:string ->
+      float array -> float array -> unit
   end
 
   module List : sig
     include COMMON
 
+    val x : t -> ?color: Color.t -> ?mark:string -> ?n0:int ->
+      float list -> unit
+
+    val xy : t -> ?color: Color.t -> ?mark:string ->
+      float list -> float list -> unit
   end
 
   module Fortran : sig
     include COMMON
+    open Bigarray
+    type vec = (float, float64_elt, fortran_layout) Bigarray.Array1.t
 
+    val x : t -> ?color: Color.t -> ?mark:string -> ?n0:int ->
+      vec -> unit
+
+    val xy : t -> ?color: Color.t -> ?mark:string ->
+      vec -> vec -> unit
   end
 
   module C : sig
     include COMMON
+    open Bigarray
+    type vec = (float, float64_elt, c_layout) Bigarray.Array1.t
 
+    val x : t -> ?color: Color.t -> ?mark:string -> ?n0:int ->
+      vec -> unit
+
+    val xy : t -> ?color: Color.t -> ?mark:string ->
+      vec -> vec -> unit
   end
 
   module Generic : sig
     include COMMON
 
     val x : t -> ?color: Color.t -> ?mark:string -> ?n0:int ->
-      iter:((float -> unit) -> 'a -> unit) -> 'a -> unit
+      ((float -> unit) -> 'a -> unit) -> 'a -> unit
 
     val xy : t -> ?color: Color.t -> ?mark:string ->
-      iter:((float -> float -> unit) -> 'a -> unit) -> 'a -> unit
-
+      ((float -> float -> unit) -> 'a -> unit) -> 'a -> unit
   end
 end

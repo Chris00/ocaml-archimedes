@@ -519,7 +519,8 @@ let get_position loc labels =
            vmin vmax diff significant_digit order;
          let distances =
            (* Note: 9 is also allowed! *)
-           if significant_digit < 0 || significant_digit > 9 then []
+           (* But not zero!!!  You REALLY must take care! -- ChriS *)
+           if significant_digit <= 0 || significant_digit > 9 then []
            else distances.(significant_digit - 1) in
          (*In this list, find the smallest number for which the
            texts won't overlap; and return the corresponding step to use.*)

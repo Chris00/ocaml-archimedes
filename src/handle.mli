@@ -107,6 +107,7 @@ val xyf :
   (float -> float * float) -> float -> float -> unit
 val xy :
   t ->
+  ?color: Color.t ->
   ?axes:([> Axes.axes ],[> Axes.tic]) Axes.t ->
   ?mark:string -> ?do_with:(t -> float -> float -> unit) ->
   Iterator.t -> unit

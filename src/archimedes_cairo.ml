@@ -71,7 +71,6 @@ struct
     set_matrix t.cr m'
 
   let get_matrix t =
-    Printf.printf "get_matrix%!";
     let m = get_matrix t.cr in
     { M.xx = m.Cairo.xx;  xy = m.Cairo.xy;
       yx = m.Cairo.yx; yy = m.Cairo.yy;

@@ -830,7 +830,7 @@ let xy_mark mark t x y =
 
 let xy_finish t = ()
 
-let xy t ?axes ?(mark = "X") ?(do_with = (xy_mark mark)) iter =
+let xy t ?color ?axes ?(mark = "X") ?(do_with = (xy_mark mark)) iter =
   let rec iterate do_with =
     match Iterator.next iter with
       None -> xy_finish t
@@ -839,10 +839,15 @@ let xy t ?axes ?(mark = "X") ?(do_with = (xy_mark mark)) iter =
         iterate do_with
   in
   let f () =
+    Backend.save t.backend;
+    (match color with
+       Some color -> Backend.set_color t.backend color
+     | None -> ());
     t.only_immediate <- true;
     Iterator.reset iter;
     iterate do_with;
     t.only_immediate <- false;
+    Backend.restore t.backend;
   in
   let extents = Iterator.extents iter in
 (* Note: graph coordinates have been already determined... by ranges. *)
