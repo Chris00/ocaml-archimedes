@@ -20,7 +20,7 @@ if test "$OCAMLFIND" = "no"; then
   AC_MSG_ERROR([You must install OCaml findlib (the ocamlfind command)])
 fi
 
-DESTDIR=`$OCAMLFIND printconf destdir`
+DESTDIR=`$OCAMLFIND printconf destdir | sed -e 's|\\\\|/|'`
 AC_SUBST(DESTDIR)
 
 AC_CHECK_OCAML_OS_TYPE
