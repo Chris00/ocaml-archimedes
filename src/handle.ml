@@ -223,6 +223,13 @@ type viewport =
       graph_device: Coordinate.t;
       (*Flag indicating if this viewport has been stored in the handle.*)
       mutable stored : bool;
+      (* Automatic or manual ranges settings *)
+      mutable xmin : float;
+      mutable xmax: float;
+      mutable xauto: bool;
+      mutable ymin : float;
+      mutable ymax: float;
+      mutable yauto: bool;
     }
 (*Handle to work with.*)
 and t =
@@ -306,6 +313,12 @@ let make ~dirs name w h =
      axes_fitting = {Axes.left = 0.;right = 0.;top = 0.;bottom=0.};
      graph_device = Coordinate.copy coord2;
      stored = true;(*will be... in the end of [make].*)
+     xmin = nan;
+     xmax = nan;
+     xauto = true;
+     ymin = nan;
+     ymax = nan;
+     yauto = true;
     }
   and handle =
     {backend=backend;
@@ -384,6 +397,16 @@ let immediate t b =
   if b then do_orders t true;
   t.immediate_drawing <- b
 
+let xmanual t xmin xmax =
+  t.vp.xauto <- false;
+  t.vp.xmin <- xmin;
+  t.vp.xmax <- xmax
+
+let ymanual t ymin ymax=
+  t.vp.yauto <- false;
+  t.vp.ymin <- ymin;
+  t.vp.ymax <- ymax
+
 (*Easy update Axes.ranges options and coordinates*)
 let update_coords t x y =
   match t.vp.ranges with
@@ -405,12 +428,21 @@ let update_coords t x y =
         and xmax = max x xmax
         and ymin = min y ymin
         and ymax = max y ymax in
+        (* Update viewport values *)
+        if t.vp.xauto then
+          (t.vp.xmin <- min t.vp.xmin xmin;
+           t.vp.xmax <- max t.vp.xmax xmax);
+        if t.vp.yauto then
+          (t.vp.ymin <- min t.vp.ymin ymin;
+           t.vp.ymax <- max t.vp.ymax ymax);
         let scalx, tr_x =
-          if xmin = xmax then initial_scale, -.xmin -. initial_scale /. 2.
-          else 1. /. (xmax -. xmin), -.xmin
+          if t.vp.xmin = t.vp.xmax then
+            initial_scale, -.t.vp.xmin -. initial_scale /. 2.
+          else 1. /. (t.vp.xmax -. t.vp.xmin), -.t.vp.xmin
         and scaly, tr_y =
-          if ymin = ymax then initial_scale, -.ymin -. initial_scale /. 2.
-          else 1. /. (ymax -. ymin), -.ymin
+          if t.vp.ymin = t.vp.ymax then
+            initial_scale, -.t.vp.ymin -. initial_scale /. 2.
+          else 1. /. (t.vp.ymax -. t.vp.ymin), -.t.vp.ymin
         in
         let new_matrix =
           Matrix.make_scale scalx scaly
@@ -418,7 +450,8 @@ let update_coords t x y =
         Matrix.translate new_matrix tr_x tr_y;
         Coordinate.transform t.vp.user_device new_matrix;
 
-        (*In case of immediate drawing, needs to replot everything for this viewport.*)
+        (*In case of immediate drawing, needs to replot everything
+          for this viewport.*)
         if t.immediate_drawing then (
           (*Deletes the drawing by covering.*)
           (*FIXME: how to manage with transparent backgrounds?*)
@@ -440,24 +473,30 @@ module Viewport =
 struct
   let inner_make handle coord =
     let coord2 = Coordinate.make_scale coord initial_scale initial_scale in
-      { handle = handle;
-        (*Line width and text and mark sizes are preserved, but are new ones,
-          depending on the previous ones.*)
-        scalings = Sizes.child handle.vp.scalings 1. 1. 1.;
-        (*No drawings yet on this viewport.*)
-        ranges = None;
-        axes = None;
-        current_pt = None;
-        vp_orders = Queue.create ();
-        graph_orders = Queue.create ();
-        (*Not in use*)
-        scalings_hist = Stack.create();
-        vp_device = coord;
-        user_device = coord2;
-        axes_fitting = {Axes.left = 0.;right = 0.; top = 0.; bottom = 0.};
-        graph_device = Coordinate.copy coord2;
-        stored = false;
-      }
+    { handle = handle;
+      (*Line width and text and mark sizes are preserved, but are new ones,
+        depending on the previous ones.*)
+      scalings = Sizes.child handle.vp.scalings 1. 1. 1.;
+      (*No drawings yet on this viewport.*)
+      ranges = None;
+      axes = None;
+      current_pt = None;
+      vp_orders = Queue.create ();
+      graph_orders = Queue.create ();
+      (*Not in use*)
+      scalings_hist = Stack.create();
+      vp_device = coord;
+      user_device = coord2;
+      axes_fitting = {Axes.left = 0.;right = 0.; top = 0.; bottom = 0.};
+      graph_device = Coordinate.copy coord2;
+      stored = false;
+      xmin = nan;
+      xmax = nan;
+      xauto = true;
+      ymin = nan;
+      ymax = nan;
+      yauto = true;
+    }
 
   let sub_rect vp ~x ~y ~w ~h =
     let ndrawings = Coordinate.make_translate vp.vp_device x y in
@@ -867,7 +906,7 @@ let direct_axes t ?color type_axes ?type_axes_printer ?axes_meeting ?print_tic
   and marks = Sizes.get_marks scalings in
   let ctm = Coordinate.use t.backend t.vp.vp_device in
   let margins =
-    Axes.axes t.backend ~normalization:t.normalized ~lines ~marks ~font_size
+    Axes.axes t.backend ~normalization:t.normalized ~lines ~marks:def_marks ~font_size
       ?color type_axes ?print_axes ?axes_meeting ?print_tic xaxis yaxis ranges
   in
   Coordinate.restore t.backend ctm;
@@ -909,7 +948,7 @@ let axes t ?(color = Color.black) type_axes ?type_axes_printer ?axes_meeting
   let ctm = Coordinate.use t.backend t.vp.vp_device in
   let xmargin, ymargin =
     Axes.get_margins axes ?axes_meeting ~normalization:t.normalized
-      ~lines ~marks ~font_size ranges t.backend
+      ~lines ~marks:def_marks ~font_size ranges t.backend
   in
   Coordinate.restore t.backend ctm;
   let xx1 = xmargin.Axes.left
@@ -940,7 +979,7 @@ let axes t ?(color = Color.black) type_axes ?type_axes_printer ?axes_meeting
        Backend.save t.backend;
        Backend.set_color t.backend color;
        Axes.print axes ~normalization:t.normalized
-         ~lines ~marks ~font_size ~ranges
+         ~lines ~marks:def_marks ~font_size ~ranges
          ~print_axes ?axes_meeting ~print_tic t.backend;
        Backend.restore t.backend
      in
