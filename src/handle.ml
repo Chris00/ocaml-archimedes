@@ -407,9 +407,6 @@ let update_coords t x y =
           Matrix.make_scale scalx scaly
         in
         Matrix.translate new_matrix tr_x tr_y;
-        (*Printf.printf ">New user_vp: %f %f %f %f %f %f\n%!"
-          new_matrix.xx new_matrix.xy new_matrix.yx new_matrix.yy
-          new_matrix.x0 new_matrix.y0;*)
         Coordinate.transform t.vp.user_device new_matrix;
 
         (*In case of immediate drawing, needs to replot everything for this viewport.*)
