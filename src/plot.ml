@@ -104,7 +104,7 @@ struct
       let r = { Axes.x1 = ranges.Axes.xmin; x2 = ranges.Axes.xmax;
                 y1 = ranges.Axes.ymin; y2 = ranges.Axes.ymax } in
       Printf.printf "Axes %!";
-      Handle.direct_axes p.h (`Rectangle(true,true)) x y r
+      Handle.axes p.h (`Rectangle(true,true)) x y r
     );
     let do_with, finish =
       if fill then
