@@ -22,7 +22,9 @@ endif
 ifneq "@OCAML_PKG_graphics@" "no"
   PLUGINS += archimedes_graphics.ml
   INSTALL_FILES += archimedes_graphics.dep archimedes_graphics.cmo \
-	$(wildcard archimedes_graphics.cmxs)
+	$(wildcard archimedes_graphics.cmxs) \
+	archimedes_toploop.cma
+  TOPLOOP = archimedes_toploop.cma
 endif
 
 PLUGINS += archimedes_tikz.ml
@@ -32,7 +34,7 @@ INSTALL_FILES += archimedes_tikz.cmo $(wildcard archimedes_tikz.cmxs)
 default: @OCAMLBEST@
 all: byte native
 opt: native
-byte: archimedes.cma $(PLUGINS:.ml=.cmo)
+byte: archimedes.cma $(PLUGINS:.ml=.cmo) $(TOPLOOP)
 native: archimedes.cmxa $(PLUGINS:.ml=.cmxs)
 
 ARCHIMEDES_FILES = conf.ml string_utils.ml color.ml matrix.ml backend.ml \
@@ -41,6 +43,7 @@ ARCHIMEDES_FILES = conf.ml string_utils.ml color.ml matrix.ml backend.ml \
 
 archimedes.cma: archimedes.cmo
 archimedes.cmxa: archimedes.cmx
+archimedes_toploop.cma: archimedes_toploop.cmo
 
 archimedes.cmo: $(ARCHIMEDES_FILES:.ml=.cmo) archimedes.cmi
 	$(OCAMLC) -o $@ $(OCAMLC_FLAGS) -pack $(filter-out archimedes.cmi,$^)
