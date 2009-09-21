@@ -15,11 +15,12 @@
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the file
    LICENSE for more details. *)
 
+open Bigarray
 
 (* FIXME: IMHO, Handle should eventually disappear and everything
    should be done in this module. *)
 type t = { h: Handle.t;
-           mutable axes_set: bool; (* wether the user set exes *)
+           mutable axes_set: bool; (* whether the user set axes *)
          }
 
 
@@ -65,7 +66,7 @@ module type COMMON = sig
 end
 
 
-module Common : COMMON =
+module Common =
 struct
   type viewport = Handle.viewport
 
@@ -91,21 +92,28 @@ struct
 
   let set_color p c = Handle.set_color p.h c
 
-  let plot_f p ?color ?nsamples ?mark ?(fill=false) f a b fill0 fill1 =
-    if p.axes_set then () (* FIXME: todo *)
+  let draw_axes p get_ranges =
+    if p.axes_set then ( (* FIXME: todo *)
+      
+    )
     else (
       let x = Handle.make_xaxis (`P "|") `Number CB (`P "tic_up") `Auto_linear
       and y = Handle.make_yaxis (`P "-") `Number LC (`P "tic_left") `Auto_linear
       in
       let axes = Handle.make_axes (`Rectangle(true,true)) x y in
       (* FIXME: The ranges determination must be false *)
-      let _, ranges, _ = Functions.samplefxy f ?nsamples b a in
+      let ranges = get_ranges() in
       Handle.update_coords p.h ranges.Axes.xmin ranges.Axes.ymin;
       Handle.update_coords p.h ranges.Axes.xmax ranges.Axes.ymax;
       let r = { Axes.x1 = ranges.Axes.xmin; x2 = ranges.Axes.xmax;
                 y1 = ranges.Axes.ymin; y2 = ranges.Axes.ymax } in
       ignore(Handle.print_axes p.h axes r);
-    );
+    )
+
+  let plot_f p ?color ?nsamples ?mark ?(fill=false) f a b fill0 fill1 =
+    draw_axes p (fun () ->
+                   let _, ranges, _ = Functions.samplefxy f ?nsamples b a in
+                   ranges);
     let do_with, finish =
       if fill then
         let x_last = ref nan
@@ -143,7 +151,7 @@ struct
   let xyf p ?color ?nsamples ?mark ?(fill=false) f a b =
     plot_f p ?color ?nsamples ?mark ~fill f a b id id
 
-  let pr_x x y = (x, 0.)
+  let pr_x x _ = (x, 0.)
   let f p ?color ?nsamples ?mark ?(fill=false) f a b =
     plot_f p ?color ?nsamples ?mark ~fill (fun x -> (x, f x)) a b pr_x pr_x
 
@@ -153,61 +161,97 @@ struct
 end
 
 (************************************************************************)
-module Generic =
-struct
-  include Common
-
-  let x p ?color ?(mark="") ?(n0=0) ~iter data =
-    let n = ref n0 in
-    let plot x =
-      if !n = n0 then ( (* 1st point *)
-        Handle.move_to p.h (float n0) x;
-        Handle.render p.h mark;
-      )
-      else (
-        Handle.line_to p.h (float !n) x;
-        Handle.render p.h mark;
-      );
-      incr n;
-    in
-    iter plot data
-
-  let xy p ?color ?(mark="") ~iter data =
-    let first = ref true in
-    let plot x y =
-      if !first then (
-        Handle.move_to p.h x y;
-        Handle.render p.h mark;
-        first := false;
-      )
-      else (
-        Handle.line_to p.h x y;
-        Handle.render p.h mark;
-      );
-    in
-    iter plot data
-end
 
 module Array =
 struct
   include Common
 
+  let x p ?color ?mark ?(n0=0) x =
+    let n = Array.init (Array.length x) (fun i -> float(n0 + i)) in
+    let iter = Iterator.of_arrays n x in
+    draw_axes p (fun () -> Iterator.extents iter);
+    Handle.xy p.h ?color ?mark iter
+
+  let xy p ?color ?mark x y =
+    let iter = Iterator.of_arrays x y in
+    draw_axes p (fun () -> Iterator.extents iter);
+    Handle.xy p.h ?color ?mark iter
 end
 
+module L = List
 module List =
 struct
   include Common
 
+  let x p ?color ?mark ?(n0=0) x =
+    let i = ref (n0-1) in
+    let n = List.map (fun _ -> incr i; float(!i)) x in
+    let iter = Iterator.of_lists n x in
+    draw_axes p (fun () -> Iterator.extents iter);
+    Handle.xy p.h ?color ?mark iter
+
+  let xy p ?color ?mark x y =
+    let iter = Iterator.of_lists x y in
+    draw_axes p (fun () -> Iterator.extents iter);
+    Handle.xy p.h ?color ?mark iter
+end
+
+module Generic =
+struct
+  include Common
+
+  (* Ugly, temporary solution *)
+  let x p ?color ?mark ?(n0=0) iter data =
+    let x = ref [] in
+    iter (fun xi -> x := xi :: !x) data;
+    List.x p ?color ?mark ~n0 (L.rev !x)
+
+  let xy p ?color ?mark iter data =
+    let x = ref [] in
+    let y = ref [] in
+    iter (fun xi yi -> x := xi :: !x; y := yi :: !y) data;
+    List.xy p ?color ?mark (L.rev !x) (L.rev !y)
 end
 
 module Fortran =
 struct
   include Common
+  type vec = (float, float64_elt, fortran_layout) Array1.t
 
+  let x p ?color ?mark ?(n0=1) x =
+    let dim = Array1.dim x in
+    let n = Array1.create float64 fortran_layout dim in
+    for i = 1 to dim do
+      n.{i} <- float(n0 + i);
+    done;
+    let iter = Iterator.of_bigarrays n x ~xclayout:false ~yclayout:false in
+    draw_axes p (fun () -> Iterator.extents iter);
+    Handle.xy p.h ?color ?mark iter
+
+  let xy p ?color ?mark x y =
+    let iter = Iterator.of_bigarrays x y ~xclayout:false ~yclayout:false in
+    draw_axes p (fun () -> Iterator.extents iter);
+    Handle.xy p.h ?color ?mark iter
 end
 
 module C =
 struct
   include Common
+  type vec = (float, float64_elt, c_layout) Array1.t
+
+  let x p ?color ?mark ?(n0=1) x =
+    let dim = Array1.dim x in
+    let n = Array1.create float64 c_layout dim in
+    for i = 1 to dim do
+      n.{i} <- float(n0 + i);
+    done;
+    let iter = Iterator.of_bigarrays n x ~xclayout:true ~yclayout:true in
+    draw_axes p (fun () -> Iterator.extents iter);
+    Handle.xy p.h ?color ?mark iter
+
+  let xy p ?color ?mark x y =
+    let iter = Iterator.of_bigarrays x y ~xclayout:true ~yclayout:true in
+    draw_axes p (fun () -> Iterator.extents iter);
+    Handle.xy p.h ?color ?mark iter
 
 end
