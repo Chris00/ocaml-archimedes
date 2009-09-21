@@ -1,5 +1,5 @@
 open Archimedes
-module P = Plot.Generic
+module P = Plot.List
 
 (* The names of all implemented markers. *)
 let markers =
@@ -16,17 +16,8 @@ let draw backend =
   let p = P.make backend 250. 150. ~dirs:[ "../src"; "./src"] in
   P.set_mark_size p 10.;
   P.set_line_width p 10.;
-  (* P.rectangle p (-1.) (-1.) 10. 6.; *)
-  (* P.stroke p; *)
   for i = 0 to Array.length markers - 1 do
-    let i1 = i / 8 in
-    let i2 = i - (i1 * 8) in
-    let data = [(float i2),(float i1)] in
-    let iter plot data =
-      let x,y = List.hd data in
-      plot x y
-    in
-    P.xy p ~iter data
+    P.xy p [float(i mod 8)] [float(i / 8)] ~mark:markers.(i)
   done;
   P.close p
 
@@ -34,10 +25,10 @@ let draw backend =
 let () =
   let bk =
     if Array.length Sys.argv > 1 then [Sys.argv.(1)]
-    else [ "tikz functions.tex";
+    else [ "tikz marks.tex";
            "graphics hold";
-           "cairo PNG functions.png";
-           "cairo PDF functions.pdf" ]
+           "cairo PNG marks.png";
+           "cairo PDF marks.pdf" ]
   in
   try List.iter draw bk
   with Backend.Error e ->

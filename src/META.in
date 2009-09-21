@@ -1,4 +1,4 @@
-# Findlib META file for cairo                                       -*-conf-*-
+# Findlib META file for Archimedes                                 -*-conf-*-
 name = "archimedes"
 version = "@PACKAGE_VERSION@"
 description = "A 2D scientific plotting library"

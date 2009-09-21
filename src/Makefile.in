@@ -12,16 +12,19 @@ DOC_DIR = $(ROOT)/doc/html/
 
 # Native code versions must be installed if and only if make opt was
 # called previously (i.e. the files exist):
-INSTALL_FILES = $(wildcard *.mli *.cmi *.cma *.cmx *.a *.cmxa)
+INSTALL_FILES = $(addprefix archimedes, .mli .cmi .cma .cmx .a .cmxa)
 
 ifneq "@OCAML_PKG_cairo2@" "no"
   PLUGINS += archimedes_cairo.ml
+  INSTALL_FILES += $(wildcard archimedes_cairo.cmo archimedes_cairo.cmxs)
 endif
 ifneq "@OCAML_PKG_graphics@" "no"
   PLUGINS += archimedes_graphics.ml
+  INSTALL_FILES += $(wildcard archimedes_graphics.cmo archimedes_graphics.cmxs)
 endif
 
 PLUGINS += archimedes_tikz.ml
+INSTALL_FILES += $(wildcard archimedes_tikz.cmo archimedes_tikz.cmxs)
 
 .PHONY: default all opt byte native
 default: @OCAMLBEST@
