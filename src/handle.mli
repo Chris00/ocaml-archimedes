@@ -148,4 +148,4 @@ val current_vp: t -> viewport
   (** Returns the current viewport of the handle. *)
 
 (**/**)
-val update_coords : t -> ?axes:bool -> float -> float -> unit
+val update_coords : t -> float -> float -> unit

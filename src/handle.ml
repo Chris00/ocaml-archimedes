@@ -213,13 +213,14 @@ type viewport =
       (*What has to be plotted in this viewport. Mutable so that if we
         want to do the orders but preserve the queue, we replace it by a
         (created and updated) copy.*)
-      mutable orders: (unit -> unit) Queue.t;
+      mutable vp_orders: (unit -> unit) Queue.t;
+      mutable graph_orders: (unit -> unit) Queue.t;
       (*For saving and restoring states*)
       scalings_hist : (float * float * float) Stack.t;
       vp_device:Coordinate.t;
       user_device:Coordinate.t;
       mutable axes_fitting:Axes.margins;
-      mutable axes_ranges: Axes.fixed_ranges option;
+      graph_device: Coordinate.t;
       (*Flag indicating if this viewport has been stored in the handle.*)
       mutable stored : bool;
     }
@@ -297,12 +298,13 @@ let make ~dirs name w h =
      ranges = None;
      axes = None;
      current_pt = None;
-     orders = Queue.create ();
+     vp_orders = Queue.create ();
+     graph_orders = Queue.create ();
      scalings_hist = Stack.create ();
      vp_device = coord;
      user_device = coord2;
      axes_fitting = {Axes.left = 0.;right = 0.;top = 0.;bottom=0.};
-     axes_ranges = None;
+     graph_device = Coordinate.copy coord2;
      stored = true;(*will be... in the end of [make].*)
     }
   and handle =
@@ -332,25 +334,29 @@ let do_viewport_orders ?orders_queue vp backend =
   match vp.ranges with
     None -> () (*No ranges, so no drawings *)
   | Some ranges ->
-      let ctm = Coordinate.use backend vp.user_device in
-      (* Axes drawing if necessary *)
-      (match vp.axes with
-         None -> ()
-       | Some axes -> axes ());
-      let rec make_orders orders =
+      let rec make_orders vporders orders =
         if not (Queue.is_empty orders) then (
           let order = Queue.pop orders in
           order ();
           (match orders_queue with None -> ()
            | Some q -> Queue.push order q);
-          make_orders orders)
+          make_orders vporders orders)
         else match orders_queue with
           None -> ()
-        | Some q -> vp.orders <- q;
+        | Some q ->
+            if vporders then vp.vp_orders <- q
+            else vp.graph_orders <- q
       in
-      make_orders vp.orders;
+      let ctm = Coordinate.use backend vp.user_device in
+      (* Axes drawing if necessary *)
+      (match vp.axes with
+         None -> ()
+       | Some axes -> axes ());
+      make_orders true vp.vp_orders;
+      Coordinate.restore backend ctm;
+      let ctm = Coordinate.use backend vp.graph_device in
+      make_orders false vp.graph_orders;
       Coordinate.restore backend ctm
-
 
 let do_orders t preserve =
   let vp_storing_queue = Queue.create () in
@@ -379,28 +385,21 @@ let immediate t b =
   t.immediate_drawing <- b
 
 (*Easy update Axes.ranges options and coordinates*)
-let update_coords t ?axes x y =
-  let update ranges =
-  match ranges with
+let update_coords t x y =
+  match t.vp.ranges with
     None ->
-      (match axes with
-        None
-      | Some false ->
-          t.vp.ranges <- Some (Axes.FixedRanges.make x y);
-          Coordinate.translate t.vp.user_device
-            (x+.initial_scale/.2.) (y+.initial_scale/.2.);
-      | Some true ->
-          t.vp.axes_ranges <- Some (Axes.FixedRanges.make x y);
-      (*Printf.printf "Init_update %f %f\n%!" x y*))
+      t.vp.ranges <- Some (Axes.FixedRanges.make x y);
+      Coordinate.translate t.vp.user_device
+        (x+.initial_scale/.2.) (y+.initial_scale/.2.);
   | Some ranges ->
       let xmin = ranges.Axes.xmin
       and xmax = ranges.Axes.xmax
       and ymin = ranges.Axes.ymin
       and ymax = ranges.Axes.ymax in
-(*      let one_point = xmin = xmax && ymin = ymax in*)
+      (*      let one_point = xmin = xmax && ymin = ymax in*)
       (*Printf.printf "update %f %f and %f %f; %f %f%!" xmin ymax ymin ymax x y;*)
       let updated = Axes.FixedRanges.update ranges x y in
-      if updated && (axes <> Some true) then (
+      if updated then (
         (*Coordinate changement*)
         let xmin = min x xmin
         and xmax = max x xmax
@@ -438,10 +437,6 @@ let update_coords t ?axes x y =
           do_viewport_orders t.vp t.backend
         )
       )
-  in update (match axes with Some true -> t.vp.axes_ranges | _ -> t.vp.ranges)
-
-
-
 
 
 module Viewport =
@@ -456,13 +451,14 @@ struct
         ranges = None;
         axes = None;
         current_pt = None;
-        orders = Queue.create ();
+        vp_orders = Queue.create ();
+        graph_orders = Queue.create ();
         (*Not in use*)
         scalings_hist = Stack.create();
         vp_device = coord;
         user_device = coord2;
         axes_fitting = {Axes.left = 0.;right = 0.; top = 0.; bottom = 0.};
-        axes_ranges= None;
+        graph_device = Coordinate.copy coord2;
         stored = false;
       }
 
@@ -578,11 +574,17 @@ let from_backend f t = f t.backend
 
 (* Backend primitives (not overriden by viewport system)
  **********************************************************************)
-let add_order f t =
+let add_order ?graph f t =
   if not t.only_extents then (
     if t.only_immediate then f ()
-    else ( Queue.add f t.vp.orders;
-           if t.immediate_drawing then f ()))
+    else (
+      let queue =
+        match graph with
+          Some true -> t.vp.graph_orders
+        | _ -> t.vp.vp_orders
+      in
+      Queue.add f queue;
+      if t.immediate_drawing then f ()))
 
 let get_current_pt t = match t.vp.current_pt with
     None -> raise No_current_point
@@ -814,13 +816,13 @@ let xyf t ?color ?nsamples ?min_step
     t.only_immediate <- false;
     Backend.restore t.backend;
   in
-  update_coords t ~axes:true ranges.Axes.xmin ranges.Axes.ymin;
-  update_coords t ~axes:true ranges.Axes.xmax ranges.Axes.ymax;
+ (* update_coords t ranges.Axes.xmin ranges.Axes.ymin;
+  update_coords t ranges.Axes.xmax ranges.Axes.ymax;
   t.only_extents <- true;
   fct (fun () -> do_with t) ();
   finish t;
-  t.only_extents <- false;
-  add_order f t
+  t.only_extents <- false;*)
+  add_order ~graph:true f t
 
 let xy_mark mark t x y =
   move_to t x y;
@@ -843,12 +845,13 @@ let xy t ?axes ?(mark = "X") ?(do_with = (xy_mark mark)) iter =
     t.only_immediate <- false;
   in
   let extents = Iterator.extents iter in
-  update_coords t ~axes:true extents.Axes.xmin extents.Axes.ymin;
-  update_coords t ~axes:true extents.Axes.xmax extents.Axes.ymax;
+(* Note: graph coordinates have been already determined... by ranges. *)
+  (*update_coords t extents.Axes.xmin extents.Axes.ymin;
+  update_coords t extents.Axes.xmax extents.Axes.ymax;
   t.only_extents <- true;
   iterate do_with;
-  t.only_extents <- false;
-  add_order f t
+  t.only_extents <- false;*)
+  add_order ~graph:true f t
 
 let make_xaxis = Axes.make_xaxis
 let make_yaxis = Axes.make_yaxis
@@ -865,8 +868,25 @@ let direct_axes t ?color type_axes ?type_axes_printer ?axes_meeting ?print_tic
     Axes.axes t.backend ~normalization:t.normalized ~lines ~marks ~font_size
       ?color type_axes ?print_axes ?axes_meeting ?print_tic xaxis yaxis ranges
   in
+  Coordinate.restore t.backend ctm;
   t.vp.axes_fitting <- margins;
-  Coordinate.restore t.backend ctm
+  (* With the aid of margins and ranges, compute the graph_device
+     coordinate transformation. *)
+  let matrix = Matrix.make_translate margins.Axes.left margins.Axes.bottom in
+  Matrix.scale matrix
+    (1. -. margins.Axes.left -. margins.Axes.right)
+    (1. -. margins.Axes.top -. margins.Axes.bottom);
+  (* Matrix now translates the graph zone as square [0,1]^2. Now go to user coords. *)
+  let diffx =
+    let x = ranges.Axes.x2 -. ranges.Axes.x1 in
+    if x = 0. then 1. else x
+  and diffy =
+    let y = ranges.Axes.y2 -. ranges.Axes.y1 in
+    if y = 0. then 1. else y
+  in
+  Matrix.scale matrix (1. /. diffx) (1. /. diffy);
+  Matrix.translate matrix (-.ranges.Axes.x1) (-.ranges.Axes.y1);
+  Coordinate.transform t.vp.graph_device matrix
 
 let axes t ?(color = Color.black) type_axes ?type_axes_printer ?axes_meeting
     ?print_tic xaxis yaxis ranges =
@@ -930,3 +950,5 @@ let axes t ?(color = Color.black) type_axes ?type_axes_printer ?axes_meeting
 
 let current_vp t = t.vp
 
+(* Throw away the option. *)
+let update_coords t f = update_coords t f
