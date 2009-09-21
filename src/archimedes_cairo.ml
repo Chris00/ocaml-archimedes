@@ -62,7 +62,7 @@ struct
   let get_dash t = get_dash t.cr
 
   let set_matrix t m =
-(*    Gc.compact ();*)
+    Gc.compact ();
     let m' = { Cairo.xx = m.M.xx; xy = m.M.xy;
                     yx = m.M.yx; yy = m.M.yy;
                     x0 = m.M.x0; y0 = m.M.y0;}
@@ -71,6 +71,7 @@ struct
     set_matrix t.cr m'
 
   let get_matrix t =
+    Gc.compact ();
     let m = get_matrix t.cr in
     { M.xx = m.Cairo.xx;  xy = m.Cairo.xy;
       yx = m.Cairo.yx; yy = m.Cairo.yy;
