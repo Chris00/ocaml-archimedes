@@ -548,7 +548,8 @@ let set_global_line_width t w =
     (if w <= 0. then def_lw else w /. usr_lw *. t.square_side)
 let set_global_mark_size t m =
   Sizes.set_abs_marks t.initial_vp.scalings
-    (if m <= 0. then def_marks else m /. usr_marks *. t.square_side)
+    (if m <= 0. then def_marks else m /. usr_marks)
+    (* NOTE: Remind that marks scales need not be premultiplied. *)
 let set_global_font_size t s =
   Sizes.set_abs_ts t.initial_vp.scalings
     (if s <= 0. then def_ts else s /. usr_ts  *. t.square_side)
@@ -740,17 +741,22 @@ let text_extents t txt =
 
 let render t name =
   let marks = Sizes.get_marks t.vp.scalings in
-  let marks = marks /. t.square_side in
   let f () =
     let ctm = Coordinate.use t.backend t.normalized in
     Backend.scale t.backend marks marks;
     Pointstyle.render name t.backend;
     Coordinate.restore t.backend ctm;
   in
-  let extents = Pointstyle.extents name in
-  update_coords t (extents.Matrix.x *. marks) (extents.Matrix.y *. marks);
-  update_coords t ((extents.Matrix.x +. extents.Matrix.w) *. marks)
-    ((extents.Matrix.y +.extents.Matrix.h) *. marks);
+  (* FIXME: extents are expressed in "marks-normalized" coords. We need
+     to have it in user coords in order to determine the extents. *)
+  (* let extents = Pointstyle.extents name in
+     let marks' = marks *. t.square_side in
+     let x',y' = get_current_pt t in
+     Printf.printf "initial marks: %f %f %f %f %f" marks t.square_side marks' x' y';
+     let axpmw x w = x +. w *. marks' in
+     update_coords t (axpmw x' extents.Matrix.x) (axpmw y' extents.Matrix.y);
+     update_coords t (axpmw x' (extents.Matrix.x +. extents.Matrix.w))
+     (axpmw y' (extents.Matrix.y +.extents.Matrix.h));*)
   add_order f t
 
 (*

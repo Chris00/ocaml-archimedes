@@ -14,8 +14,8 @@ let markers =
 
 let draw backend =
   let p = P.make backend 250. 150. ~dirs:[ "../src"; "./src"] in
-  P.set_mark_size p 10.;
-  P.set_line_width p 10.;
+  (*P.set_mark_size p 10.;
+  P.set_line_width p 10.;*)
   (* P.rectangle p (-1.) (-1.) 10. 6.; *)
   (* P.stroke p; *)
   for i = 0 to Array.length markers - 1 do
@@ -26,7 +26,7 @@ let draw backend =
       let x,y = List.hd data in
       plot x y
     in
-    P.xy p ~iter data
+    P.xy p ~mark:markers.(i) ~iter data;
   done;
   P.close p
 
@@ -36,8 +36,8 @@ let () =
     if Array.length Sys.argv > 1 then [Sys.argv.(1)]
     else [ "tikz functions.tex";
            "graphics hold";
-           "cairo PNG functions.png";
-           "cairo PDF functions.pdf" ]
+           "cairo PNG marks.png";
+           "cairo PDF marks.pdf" ]
   in
   try List.iter draw bk
   with Backend.Error e ->

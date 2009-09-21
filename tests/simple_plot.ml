@@ -25,6 +25,6 @@ let () =
 
 
 (* Local Variables: *)
-(* compile-command: "make -kB test_function.exe" *)
+(* compile-command: "make -kB simple_plot.exe" *)
 (* End: *)
 
