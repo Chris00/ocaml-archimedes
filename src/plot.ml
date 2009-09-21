@@ -70,9 +70,11 @@ module Common =
 struct
   type viewport = Handle.viewport
 
-  let make ?(dirs=[Conf.plugins_dir]) backend w h = {
-    h = Handle.make ?dirs backend w h;
-    axes_set = false }
+  let make ?(dirs=[Conf.plugins_dir]) backend w h =
+    let h = Handle.make ?dirs backend w h in
+    if !Sys.interactive then Handle.immediate h true;
+    Handle.set_color h (Color.rgb 0.8 0. 0.);
+    { h = h;  axes_set = false }
   let close p = Handle.close p.h
 
   module Viewport = struct

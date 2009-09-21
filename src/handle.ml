@@ -416,9 +416,6 @@ let update_coords t x y =
           Matrix.make_scale scalx scaly
         in
         Matrix.translate new_matrix tr_x tr_y;
-        (*Printf.printf ">New user_vp: %f %f %f %f %f %f\n%!"
-          new_matrix.xx new_matrix.xy new_matrix.yx new_matrix.yy
-          new_matrix.x0 new_matrix.y0;*)
         Coordinate.transform t.vp.user_device new_matrix;
 
         (*In case of immediate drawing, needs to replot everything for this viewport.*)
@@ -816,13 +813,13 @@ let xyf t ?color ?nsamples ?min_step
     t.only_immediate <- false;
     Backend.restore t.backend;
   in
- (* update_coords t ranges.Axes.xmin ranges.Axes.ymin;
+  update_coords t ranges.Axes.xmin ranges.Axes.ymin;
   update_coords t ranges.Axes.xmax ranges.Axes.ymax;
   t.only_extents <- true;
   fct (fun () -> do_with t) ();
   finish t;
-  t.only_extents <- false;*)
-  add_order ~graph:true f t
+  t.only_extents <- false;
+  add_order f t
 
 let xy_mark mark t x y =
   move_to t x y;
@@ -851,12 +848,12 @@ let xy t ?color ?axes ?(mark = "X") ?(do_with = (xy_mark mark)) iter =
   in
   let extents = Iterator.extents iter in
 (* Note: graph coordinates have been already determined... by ranges. *)
-  (*update_coords t extents.Axes.xmin extents.Axes.ymin;
+  update_coords t extents.Axes.xmin extents.Axes.ymin;
   update_coords t extents.Axes.xmax extents.Axes.ymax;
   t.only_extents <- true;
   iterate do_with;
-  t.only_extents <- false;*)
-  add_order ~graph:true f t
+  t.only_extents <- false;
+  add_order f t
 
 let make_xaxis = Axes.make_xaxis
 let make_yaxis = Axes.make_yaxis
