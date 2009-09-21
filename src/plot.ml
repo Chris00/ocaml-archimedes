@@ -70,8 +70,8 @@ module Common =
 struct
   type viewport = Handle.viewport
 
-  let make ?(dirs=[]) backend w h = {
-    h = Handle.make ~dirs backend w h;
+  let make ?(dirs=[Conf.plugins_dir]) backend w h = {
+    h = Handle.make ?dirs backend w h;
     axes_set = false }
   let close p = Handle.close p.h
 

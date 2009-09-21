@@ -16,15 +16,17 @@ INSTALL_FILES = $(addprefix archimedes, .mli .cmi .cma .cmx .a .cmxa)
 
 ifneq "@OCAML_PKG_cairo2@" "no"
   PLUGINS += archimedes_cairo.ml
-  INSTALL_FILES += $(wildcard archimedes_cairo.cmo archimedes_cairo.cmxs)
+  INSTALL_FILES += archimedes_cairo.dep archimedes_cairo.cmo \
+		$(wildcard archimedes_cairo.cmxs)
 endif
 ifneq "@OCAML_PKG_graphics@" "no"
   PLUGINS += archimedes_graphics.ml
-  INSTALL_FILES += $(wildcard archimedes_graphics.cmo archimedes_graphics.cmxs)
+  INSTALL_FILES += archimedes_graphics.dep archimedes_graphics.cmo \
+	$(wildcard archimedes_graphics.cmxs)
 endif
 
 PLUGINS += archimedes_tikz.ml
-INSTALL_FILES += $(wildcard archimedes_tikz.cmo archimedes_tikz.cmxs)
+INSTALL_FILES += archimedes_tikz.cmo $(wildcard archimedes_tikz.cmxs)
 
 .PHONY: default all opt byte native
 default: @OCAMLBEST@
@@ -33,8 +35,9 @@ opt: native
 byte: archimedes.cma $(PLUGINS:.ml=.cmo)
 native: archimedes.cmxa $(PLUGINS:.ml=.cmxs)
 
-ARCHIMEDES_FILES = string_utils.ml color.ml matrix.ml backend.ml coordinate.ml \
-   pointstyle.ml axes.ml functions.ml iterator.ml handle.ml plot.ml
+ARCHIMEDES_FILES = conf.ml string_utils.ml color.ml matrix.ml backend.ml \
+  coordinate.ml pointstyle.ml axes.ml functions.ml iterator.ml handle.ml \
+  plot.ml
 
 archimedes.cma: archimedes.cmo
 archimedes.cmxa: archimedes.cmx

@@ -20,6 +20,9 @@ if test "$OCAMLFIND" = "no"; then
   AC_MSG_ERROR([You must install OCaml findlib (the ocamlfind command)])
 fi
 
+DESTDIR=`$OCAMLFIND printconf destdir`
+AC_SUBST(DESTDIR)
+
 AC_CHECK_OCAML_OS_TYPE
 
 AC_CHECK_OCAML_PKG([graphics])
@@ -46,6 +49,7 @@ AC_CONFIG_FILES([Makefile.ocaml],[chmod a-w Makefile.ocaml])
 AC_CONFIG_FILES([src/META])
 AC_CONFIG_FILES([Makefile], [chmod a-w Makefile])
 AC_CONFIG_FILES([src/Makefile], [chmod a-w src/Makefile])
+AC_CONFIG_FILES([src/conf.ml], [chmod a-w src/conf.ml])
 AC_CONFIG_FILES([src/archimedes_graphics.dep])
 AC_CONFIG_FILES([src/archimedes_cairo.dep])
 AC_OUTPUT
