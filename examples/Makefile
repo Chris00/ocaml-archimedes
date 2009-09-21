@@ -6,9 +6,10 @@ OCAMLINCLUDES = $(ROOT)/src
 LIBS_CMA = dynlink.cma bigarray.cma archimedes.cma
 LIBS_CMXA = dynlink.cmxa bigarray.cmxa archimedes.cmxa
 
-EXAMPLES = simple.ml
+EXAMPLES = simple.ml three_graphs.ml spiral.ml
 
 all: byte native
+opt: native
 byte: $(EXAMPLES:.ml=.exe)
 native: $(EXAMPLES:.ml=.com)
 
