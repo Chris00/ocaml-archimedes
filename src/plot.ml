@@ -96,19 +96,19 @@ struct
 
   let draw_axes p get_ranges =
     if p.axes_set then ( (* FIXME: todo *)
-      
     )
     else (
       let x = Handle.make_xaxis (`P "|") `Number CB (`P "tic_up") `Auto_linear
       and y = Handle.make_yaxis (`P "-") `Number LC (`P "tic_left") `Auto_linear
       in
       (* FIXME: The ranges determination must be false *)
+
       let ranges = get_ranges() in
       Handle.update_coords p.h ranges.Axes.xmin ranges.Axes.ymin;
       Handle.update_coords p.h ranges.Axes.xmax ranges.Axes.ymax;
       let r = { Axes.x1 = ranges.Axes.xmin; x2 = ranges.Axes.xmax;
                 y1 = ranges.Axes.ymin; y2 = ranges.Axes.ymax } in
-      ignore(Handle.axes p.h (`Rectangle(true,true)) x y r);
+      Handle.axes p.h (`Rectangle(true,true)) x y r
     )
 
   let plot_f p ?color ?nsamples ?mark ?(fill=false) f a b fill0 fill1 =
@@ -136,6 +136,7 @@ struct
          ))
       else
         ((fun p (x,y) -> Handle.line_to p x y),  Handle.stroke) in
+    Printf.printf "xyf %!";
     Handle.xyf p.h ?color ?nsamples ~do_with ~finish f a b;
     (* Add marks if requested *)
     match mark with
@@ -145,7 +146,7 @@ struct
           Handle.move_to p x y;
           Handle.render p mark
         and finish _ = () in
-        Handle.xyf p.h ?color ?nsamples~do_with ~finish f a b
+        Handle.xyf p.h ?color ?nsamples ~do_with ~finish f a b
   ;;
 
   let id x y = (x, y)

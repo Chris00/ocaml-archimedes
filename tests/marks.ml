@@ -19,6 +19,9 @@ let draw backend =
   for i = 0 to Array.length markers - 1 do
     P.xy p [float(i mod 8)] [float(i / 8)] ~mark:markers.(i)
   done;
+  P.set_line_width p 1.;
+  P.f p (fun _ -> -1.) (-1.) 8.;
+  P.f p (fun _ -> 8.) (-1.) 8.;
   P.close p
 
 

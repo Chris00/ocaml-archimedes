@@ -159,5 +159,17 @@ val print :
   ?print_axes:('a -> ranges -> Backend.t -> unit) ->
   ?axes_meeting:('a -> ranges -> float * float) ->
   ?print_tic:(Backend.t -> 'b -> unit) -> Backend.t -> unit
-    (**Prints axes, following the parameters stored in [t] and the
-       optional arguments, if given.*)
+  (**Prints axes, following the parameters stored in [t] and the
+     optional arguments, if given.*)
+
+val axes:  Backend.t ->  normalization:Coordinate.t ->
+  lines:float ->
+  marks:float ->
+  font_size:float ->
+  ?color: Color.t ->
+  ([> axes] as 'a) ->
+  ?print_axes:('a -> ranges -> Backend.t -> unit) ->
+  ?axes_meeting:('a -> ranges -> float * float) ->
+  ?print_tic:(Backend.t -> 'b -> unit) ->
+  ([> tic] as 'b) axis -> 'b axis ->
+  ranges -> margins

@@ -139,6 +139,12 @@ val axes : t -> ?color:Color.t  -> ([>Axes.axes] as 'a) ->
      current viewport is maintained. In this latter case, the axes are
      not guaranteed to fit in the viewport. *)
 
+val direct_axes : t -> ?color:Color.t  -> ([>Axes.axes] as 'a) ->
+  ?type_axes_printer:('a -> Axes.ranges -> Backend.t -> unit) ->
+  ?axes_meeting:('a -> Axes.ranges -> float * float) ->
+  ?print_tic:(Backend.t -> ([> Axes.tic] as 'b) -> unit) ->
+  'b Axes.axis -> 'b Axes.axis -> Axes.ranges -> unit
+
 val current_vp: t -> viewport
   (** Returns the current viewport of the handle. *)
 
