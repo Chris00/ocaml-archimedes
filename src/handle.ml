@@ -410,44 +410,50 @@ let ymax t = t.vp.ymax
 (*Easy update Axes.ranges options and coordinates*)
 let update_coords t x y =
   let vp = t.vp in
+  let updated = ref false in
   (* Update viewport values *)
   if vp.xmin_auto then
-    if is_nan_or_inf vp.xmin || x < vp.xmin then vp.xmin <- x;
+    if is_nan_or_inf vp.xmin || x < vp.xmin then
+      (vp.xmin <- x; updated := true);
   if vp.xmax_auto then
-    if is_nan_or_inf vp.xmax || x > vp.xmax then vp.xmax <- x;
+    if is_nan_or_inf vp.xmax || x > vp.xmax then
+      (vp.xmax <- x; updated := true);
   if vp.ymin_auto then
-    if is_nan_or_inf vp.ymin || y < vp.ymin then vp.ymin <- y;
+    if is_nan_or_inf vp.ymin || y < vp.ymin then
+      (vp.ymin <- y; updated := true);
   if vp.ymax_auto then
-    if is_nan_or_inf vp.ymax || y > vp.ymax then vp.ymax <- y;
-  let scalx, tr_x =
-    if vp.xmin = vp.xmax then
-      initial_scale, -. vp.xmin -. 0.5 *. initial_scale
-    else 1. /. (vp.xmax -. vp.xmin), -. vp.xmin
-  and scaly, tr_y =
-    if vp.ymin = vp.ymax then
-      initial_scale, -. vp.ymin -. 0.5 *. initial_scale
-    else 1. /. (vp.ymax -. vp.ymin), -. vp.ymin
-  in
-  let data_to_graph = Matrix.make_scale scalx scaly in
-  Matrix.translate data_to_graph tr_x tr_y;
-  Coordinate.transform vp.data_coord data_to_graph;
+    if is_nan_or_inf vp.ymax || y > vp.ymax then
+      (vp.ymax <- y; updated := true);
+  if !updated then (
+    let scalx, tr_x =
+      if vp.xmin = vp.xmax then
+        initial_scale, -. vp.xmin -. 0.5 *. initial_scale
+      else 1. /. (vp.xmax -. vp.xmin), -. vp.xmin
+    and scaly, tr_y =
+      if vp.ymin = vp.ymax then
+        initial_scale, -. vp.ymin -. 0.5 *. initial_scale
+      else 1. /. (vp.ymax -. vp.ymin), -. vp.ymin
+    in
+    let data_to_graph = Matrix.make_scale scalx scaly in
+    Matrix.translate data_to_graph tr_x tr_y;
+    Coordinate.transform vp.data_coord data_to_graph;
 
-  (*In case of immediate drawing, needs to replot everything
-    for this viewport.*)
-  if t.immediate_drawing then (
-    (*Deletes the drawing by covering.*)
-    (*FIXME: how to manage with transparent backgrounds?*)
-    let ctm = Coordinate.use t.backend t.vp.vp_device in
-    Backend.save t.backend;
-    (*FIXME: viewport's background?*)
-    Backend.set_color t.backend Color.white;
-    Backend.rectangle t.backend 0. 0. 1. 1.;
-    Backend.fill t.backend;
-    Backend.restore t.backend;
-    Coordinate.restore t.backend ctm;
-    (*Now, replot in the new coordinates.*)
-    do_viewport_orders t.vp t.backend
-  )
+    (*In case of immediate drawing, needs to replot everything
+      for this viewport.*)
+    if t.immediate_drawing then (
+      (*Deletes the drawing by covering.*)
+      (*FIXME: how to manage with transparent backgrounds?*)
+      let ctm = Coordinate.use t.backend t.vp.vp_device in
+      Backend.save t.backend;
+      (*FIXME: viewport's background?*)
+      Backend.set_color t.backend Color.white;
+      Backend.rectangle t.backend 0. 0. 1. 1.;
+      Backend.fill t.backend;
+      Backend.restore t.backend;
+      Coordinate.restore t.backend ctm;
+      (*Now, replot in the new coordinates.*)
+      do_viewport_orders t.vp t.backend
+    ))
 
 
 
@@ -583,7 +589,7 @@ let set_global_font_size t s =
 
 (*Getters*)
 let get_line_width t = (Sizes.get_lw t.vp.scalings) *. usr_lw/.t.square_side
-let get_mark_size t = (Sizes.get_marks t.vp.scalings) *. usr_marks/.t.square_side
+let get_mark_size t = (Sizes.get_marks t.vp.scalings) *. usr_marks
 let get_font_size t = (Sizes.get_ts t.vp.scalings) *. usr_ts/.t.square_side
 
 

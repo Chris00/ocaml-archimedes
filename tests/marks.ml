@@ -14,8 +14,8 @@ let markers =
 
 let draw backend =
   let p = P.make backend 250. 150. ~dirs:[ "../src"; "./src"] in
- (* P.set_mark_size p 10.;
-  P.set_line_width p 10.;*)
+  P.set_mark_size p 10.;
+  P.set_line_width p 10.;
   for i = 0 to Array.length markers - 1 do
     P.xy p [float(i mod 8)] [float(i / 8)] ~mark:markers.(i)
   done;
