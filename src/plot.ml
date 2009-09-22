@@ -101,14 +101,12 @@ struct
       let x = Handle.make_xaxis (`P "|") `Number CB (`P "tic_up") `Auto_linear
       and y = Handle.make_yaxis (`P "-") `Number LC (`P "tic_left") `Auto_linear
       in
+      let axes = Axes.make (`Rectangle(true,true)) x y in
       (* FIXME: The ranges determination must be false *)
-
       let ranges = get_ranges() in
       Handle.update_coords p.h ranges.Axes.xmin ranges.Axes.ymin;
       Handle.update_coords p.h ranges.Axes.xmax ranges.Axes.ymax;
-      let r = { Axes.x1 = ranges.Axes.xmin; x2 = ranges.Axes.xmax;
-                y1 = ranges.Axes.ymin; y2 = ranges.Axes.ymax } in
-      Handle.axes p.h (`Rectangle(true,true)) x y r
+      Handle.axes p.h axes
     )
 
   let plot_f p ?color ?nsamples ?mark ?(fill=false) f a b fill0 fill1 =
