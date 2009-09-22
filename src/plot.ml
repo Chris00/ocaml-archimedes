@@ -42,6 +42,9 @@ module type COMMON = sig
   val set_mark_size : t -> float -> unit
   val set_color : t -> Color.t -> unit
 
+  val xrange : t -> float -> float -> unit
+  val yrange : t -> float -> float -> unit
+
   val f : t -> ?color: Color.t -> ?nsamples: int -> ?mark:string -> ?fill:bool ->
     (float -> float) -> float -> float -> unit
   val xyf : t -> ?color: Color.t -> ?nsamples: int -> ?mark:string ->
@@ -94,6 +97,9 @@ struct
 
   let set_color p c = Handle.set_color p.h c
 
+  let xrange p x1 x2 = Handle.xrange p.h x1 x2
+  let yrange p y1 y2 = Handle.yrange p.h y1 y2
+
   let draw_axes p =
     if p.axes_set then ( (* FIXME: todo *)
     )
@@ -140,7 +146,6 @@ struct
          (fun p ->
             Handle.stroke p;
             first := true)) in
-    Printf.printf "xyf %!";
     Handle.xyf p.h ?color ?nsamples ~do_with ~finish f a b;
     (* Add marks if requested *)
     match mark with
