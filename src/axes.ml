@@ -541,9 +541,9 @@ let get_position loc labels =
 
                  then the space is at least equal to the space
                  occupied by the boxes in this interval.  *)
-               Printf.printf
+               (* Printf.printf
                  "dist %f current %d ddist %f test %f dist_curr %f\n"
-                 dist d ddist test_value dist_curr;
+                 dist d ddist test_value dist_curr;*)
                if (ddist > (dist_curr +. dist_min)) then ddist
                else find_minimal_dist dists
          in
@@ -616,17 +616,14 @@ let print_tics axis ranges v print_tic normalization marks font_size backend =
             v, ranges.y1 +. y *. (ranges.y2 -. ranges.y1)
         in
         Backend.move_to backend x' y';
-        Printf.printf "*%!";
         let user_coords = Coordinate.use backend normalization in
         Backend.scale backend marks marks;
         (
           match label with
             None ->
-              Printf.printf "m%!";
               print_tic backend axis.minor;
               Coordinate.restore backend user_coords
           | Some label ->
-              Printf.printf "M%!";
               print_tic backend axis.major;
               Coordinate.restore backend user_coords;
               let x1, y1 =
@@ -635,29 +632,22 @@ let print_tics axis ranges v print_tic normalization marks font_size backend =
               in
               let x1' = ranges.x1 +. x1 *. (ranges.x2 -. ranges.x1)
               and y1' = ranges.y1 +. y1 *. (ranges.y2 -. ranges.y1) in
-              Printf.printf
-                "l: ranges %f %f %f %f; val: %f; \
-init (%f,%f)>%f %f ; translated_tic: (%f,%f) > %f %f\n%!"
-               ranges.x1 ranges.x2 ranges.y1 ranges.y2 v x y x' y' x1 y1 x1' y1';
-              (*Backend.move_to backend x1' y1';
+               (*Backend.move_to backend x1' y1';
               Backend.arc backend 0.1 0. 7.;
               Backend.fill backend;*)
               label.action x1' y1' axis.label_position backend);
-        Printf.printf "-%!";
         print l
   in
   Backend.set_font_size backend font_size;
-  Printf.printf ">%!";
   print (axis.positions ranges axis.x_axis backend)
 
 let axis_margins normalization marks font_size ranges backend axis =
   Backend.set_font_size backend font_size;
   let list = axis.positions ranges axis.x_axis backend in
   let rec make_margins list left right top bottom =
-    Printf.printf "M %f %f %f %f\n%!" left right top bottom;
+   (* Printf.printf "M %f %f %f %f\n%!" left right top bottom;*)
     match list with
-      [] -> Printf.printf "ok\n%!";
-        {left = left; right = right; top = top; bottom = bottom}
+      [] -> {left = left; right = right; top = top; bottom = bottom}
     | (x,y,label)::l ->
         let x' = ranges.x1 +. x *. (ranges.x2 -. ranges.x1)
         and y' = ranges.y1 +. y *. (ranges.y2 -. ranges.y1) in
@@ -675,8 +665,6 @@ let axis_margins normalization marks font_size ranges backend axis =
             axis.label_position backend
         in
         (*Coordinate.restore backend ctm;*)
-        Printf.printf "data: L%f R%f B%f T%f\n%!"
-          extents.left extents.right extents.bottom extents.top;
         let xmin = max left extents.left
         and ymin = max bottom extents.bottom in
         let xmax = max extents.right right
