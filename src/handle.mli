@@ -127,11 +127,11 @@ val make_yaxis :
   ?tic_extents:('a -> Matrix.rectangle) ->
   'c -> 'a Axes.axis
 
-val axes : t -> ?color:Color.t  -> ([>Axes.axes] as 'a) ->
-  ?type_axes_printer:('a -> Axes.ranges -> t -> unit) ->
+val axes : t -> ?color:Color.t ->
+  ?type_axes_printer:(([> Axes.axes ] as 'a) -> Axes.ranges -> t -> unit) ->
   ?axes_meeting:('a -> Axes.ranges -> float * float) ->
   ?print_tic:(t -> ([> Axes.tic] as 'b) -> unit) ->
-  'b Axes.axis -> 'b Axes.axis -> Axes.ranges -> unit
+  ('a, 'b) Axes.t -> unit
   (** Says that axes are required and should be in the current viewport
      of [t], following the given parameters. Note that this function creates a new
      viewport and sets the handle's current viewport to it. But if the
@@ -147,6 +147,16 @@ val direct_axes : t -> ?color:Color.t  -> ([>Axes.axes] as 'a) ->
 
 val current_vp: t -> viewport
   (** Returns the current viewport of the handle. *)
+
+
+val xrange : t -> float -> float -> unit
+val yrange : t -> float -> float -> unit
+
+(** The computed ranges (after update) for the current viewport. *)
+val xmin : t -> float
+val xmax : t -> float
+val ymin : t -> float
+val ymax : t -> float
 
 (**/**)
 val update_coords : t -> float -> float -> unit

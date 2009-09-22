@@ -198,6 +198,8 @@ end
 
 exception No_current_point
 
+let is_nan_or_inf (x:float) = x <> x || 1. /. x = 0.
+
 (*Viewport data*)
 type viewport =
     {
@@ -209,7 +211,7 @@ type viewport =
       mutable ranges: Axes.fixed_ranges option;
       (*To update the ranges correctly, we need the current point.*)
       mutable current_pt: (float * float) option;
-      mutable axes: (unit -> unit) option;
+      mutable axes: viewport -> unit;
       (*What has to be plotted in this viewport. Mutable so that if we
         want to do the orders but preserve the queue, we replace it by a
         (created and updated) copy.*)
@@ -223,13 +225,11 @@ type viewport =
       graph_device: Coordinate.t;
       (*Flag indicating if this viewport has been stored in the handle.*)
       mutable stored : bool;
-      (* Automatic or manual ranges settings *)
-      mutable xmin : float;
-      mutable xmax: float;
-      mutable xauto: bool;
-      mutable ymin : float;
-      mutable ymax: float;
-      mutable yauto: bool;
+      (* Automatic or manual ranges settings.  *)
+      mutable xmin : float;     mutable xmin_auto: bool;
+      mutable xmax: float;      mutable xmax_auto: bool;
+      mutable ymin : float;     mutable ymin_auto: bool;
+      mutable ymax: float;      mutable ymax_auto: bool;
     }
 (*Handle to work with.*)
 and t =
@@ -303,7 +303,7 @@ let make ~dirs name w h =
      scalings = Sizes.make_root square_side def_lw def_ts def_marks;
      (*No drawings yet*)
      ranges = None;
-     axes = None;
+     axes = (fun _ -> ());
      current_pt = None;
      vp_orders = Queue.create ();
      graph_orders = Queue.create ();
@@ -313,12 +313,10 @@ let make ~dirs name w h =
      axes_fitting = {Axes.left = 0.;right = 0.;top = 0.;bottom=0.};
      graph_device = Coordinate.copy coord2;
      stored = true;(*will be... in the end of [make].*)
-     xmin = nan;
-     xmax = nan;
-     xauto = true;
-     ymin = nan;
-     ymax = nan;
-     yauto = true;
+     xmin = nan;    xmin_auto = true;
+     xmax = nan;    xmax_auto = true;
+     ymin = nan;    ymin_auto = true;
+     ymax = nan;    ymax_auto = true;
     }
   and handle =
     {backend=backend;
@@ -361,10 +359,8 @@ let do_viewport_orders ?orders_queue vp backend =
             else vp.graph_orders <- q
       in
       let ctm = Coordinate.use backend vp.user_device in
-      (* Axes drawing if necessary *)
-      (match vp.axes with
-         None -> ()
-       | Some axes -> axes ());
+      (* Axes drawing (if necessary, possibly does nothing) *)
+      vp.axes vp;
       make_orders true vp.vp_orders;
       Coordinate.restore backend ctm;
       let ctm = Coordinate.use backend vp.graph_device in
@@ -397,15 +393,20 @@ let immediate t b =
   if b then do_orders t true;
   t.immediate_drawing <- b
 
-let xmanual t xmin xmax =
-  t.vp.xauto <- false;
-  t.vp.xmin <- xmin;
-  t.vp.xmax <- xmax
+let xrange t xmin xmax =
+  let vp = t.vp in
+  vp.xmin <- xmin;    vp.xmin_auto <- is_nan_or_inf xmin;
+  vp.xmax <- xmax;    vp.xmax_auto <- is_nan_or_inf xmax
 
-let ymanual t ymin ymax=
-  t.vp.yauto <- false;
-  t.vp.ymin <- ymin;
-  t.vp.ymax <- ymax
+let yrange t ymin ymax=
+  let vp = t.vp in
+  vp.ymin <- ymin;    vp.ymin_auto <- is_nan_or_inf ymin;
+  vp.ymax <- ymax;    vp.ymax_auto <- is_nan_or_inf ymax
+
+let xmin t = t.vp.xmin
+let xmax t = t.vp.xmax
+let ymin t = t.vp.ymin
+let ymax t = t.vp.ymax
 
 (*Easy update Axes.ranges options and coordinates*)
 let update_coords t x y =
@@ -421,32 +422,29 @@ let update_coords t x y =
       and ymax = ranges.Axes.ymax in
       (*      let one_point = xmin = xmax && ymin = ymax in*)
       (*Printf.printf "update %f %f and %f %f; %f %f%!" xmin ymax ymin ymax x y;*)
-      let updated = Axes.FixedRanges.update ranges x y in
-      if updated then (
+      let range_larger = Axes.FixedRanges.update ranges x y in
+      if range_larger then (
+        let vp = t.vp in
         (*Coordinate changement*)
         let xmin = min x xmin
         and xmax = max x xmax
         and ymin = min y ymin
         and ymax = max y ymax in
         (* Update viewport values *)
-        if t.vp.xauto then
-          (t.vp.xmin <- min t.vp.xmin xmin;
-           t.vp.xmax <- max t.vp.xmax xmax);
-        if t.vp.yauto then
-          (t.vp.ymin <- min t.vp.ymin ymin;
-           t.vp.ymax <- max t.vp.ymax ymax);
+        if vp.xmin_auto then vp.xmin <- min vp.xmin xmin;
+        if vp.xmax_auto then vp.xmax <- max vp.xmax xmax;
+        if vp.ymin_auto then vp.ymin <- min vp.ymin ymin;
+        if vp.ymax_auto then vp.ymax <- max vp.ymax ymax;
         let scalx, tr_x =
-          if t.vp.xmin = t.vp.xmax then
-            initial_scale, -.t.vp.xmin -. initial_scale /. 2.
-          else 1. /. (t.vp.xmax -. t.vp.xmin), -.t.vp.xmin
+          if vp.xmin = vp.xmax then
+            initial_scale, -. vp.xmin -. 0.5 *. initial_scale
+          else 1. /. (vp.xmax -. vp.xmin), -. vp.xmin
         and scaly, tr_y =
-          if t.vp.ymin = t.vp.ymax then
-            initial_scale, -.t.vp.ymin -. initial_scale /. 2.
-          else 1. /. (t.vp.ymax -. t.vp.ymin), -.t.vp.ymin
+          if vp.ymin = vp.ymax then
+            initial_scale, -. vp.ymin -. 0.5 *. initial_scale
+          else 1. /. (vp.ymax -. vp.ymin), -. vp.ymin
         in
-        let new_matrix =
-          Matrix.make_scale scalx scaly
-        in
+        let new_matrix = Matrix.make_scale scalx scaly in
         Matrix.translate new_matrix tr_x tr_y;
         Coordinate.transform t.vp.user_device new_matrix;
 
@@ -479,7 +477,7 @@ struct
       scalings = Sizes.child handle.vp.scalings 1. 1. 1.;
       (*No drawings yet on this viewport.*)
       ranges = None;
-      axes = None;
+      axes = (fun _ -> ());
       current_pt = None;
       vp_orders = Queue.create ();
       graph_orders = Queue.create ();
@@ -490,12 +488,10 @@ struct
       axes_fitting = {Axes.left = 0.;right = 0.; top = 0.; bottom = 0.};
       graph_device = Coordinate.copy coord2;
       stored = false;
-      xmin = nan;
-      xmax = nan;
-      xauto = true;
-      ymin = nan;
-      ymax = nan;
-      yauto = true;
+      xmin = nan;   xmin_auto = true;
+      xmax = nan;   xmax_auto = true;
+      ymin = nan;   ymin_auto = true;
+      ymax = nan;   ymax_auto = true;
     }
 
   let sub_rect vp ~x ~y ~w ~h =
@@ -929,9 +925,8 @@ let direct_axes t ?color type_axes ?type_axes_printer ?axes_meeting ?print_tic
   Matrix.translate matrix (-.ranges.Axes.x1) (-.ranges.Axes.y1);
   Coordinate.transform t.vp.graph_device matrix
 
-let axes t ?(color = Color.black) type_axes ?type_axes_printer ?axes_meeting
-    ?print_tic xaxis yaxis ranges =
-  let axes = Axes.make type_axes xaxis yaxis in
+let axes t ?(color = Color.black) ?type_axes_printer ?axes_meeting
+    ?print_tic axes =
   let print_axes =
     match type_axes_printer with
       None -> Axes.print_axes
@@ -941,53 +936,57 @@ let axes t ?(color = Color.black) type_axes ?type_axes_printer ?axes_meeting
       None -> Axes.print_tic
     | Some f -> fun _ -> f t
   in
-  let scalings = t.vp.scalings in
-  let font_size = Sizes.get_ts scalings in
-  let lines = Sizes.get_lw scalings
-  and marks = Sizes.get_marks scalings in
-  let ctm = Coordinate.use t.backend t.vp.vp_device in
-  let xmargin, ymargin =
-    Axes.get_margins axes ?axes_meeting ~normalization:t.normalized
-      ~lines ~marks:def_marks ~font_size ranges t.backend
+  let draw_axes vp =
+    match vp.ranges with
+    | None -> ()
+    | Some ranges ->
+        let scalings = vp.scalings in
+        let font_size = Sizes.get_ts scalings in
+        let lines = Sizes.get_lw scalings
+        and marks = Sizes.get_marks scalings in
+        let ctm = Coordinate.use t.backend vp.vp_device in
+        let ranges = { Axes.x1 = ranges.Axes.xmin; x2 = ranges.Axes.xmax;
+                       y1 = ranges.Axes.ymin; y2 = ranges.Axes.ymax } in
+        let xmargin, ymargin =
+          Axes.get_margins axes ?axes_meeting ~normalization:t.normalized
+            ~lines ~marks:def_marks ~font_size ranges t.backend
+        in
+        Coordinate.restore t.backend ctm;
+        let xx1 = xmargin.Axes.left
+        and xx2 = xmargin.Axes.right
+        and xy1 = xmargin.Axes.bottom
+        and xy2 = xmargin.Axes.top
+        and yx1 = ymargin.Axes.left
+        and yx2 = ymargin.Axes.right
+        and yy1 = ymargin.Axes.bottom
+        and yy2 = ymargin.Axes.top
+        in
+        let left = max xx1 yx1
+        and right = max xx2 yx2
+        and top = max xy2 yy2
+        and bottom = max xy1 yy1 in
+        let margin_x = left +. right
+        and margin_y = top +. bottom in
+        let margins_ok = margin_x < 1. && margin_y < 1. in
+        if margins_ok then (
+          let vp_graph = Viewport.make t left (1. -. right) bottom (1. -. top) in
+          Viewport.use vp_graph;
+          (* t.only_immediate <- true; *)
+          (* rectangle t 0. 0. 1. 1.; *)
+          (* set_color t (Color.make ~a:0.2 0. 0. 1.); *)
+          (* fill t; *)
+          (* t.only_immediate <- false; *)
+          Backend.save t.backend;
+          Backend.set_color t.backend color;
+          Axes.print axes ~normalization:t.normalized
+            ~lines ~marks:def_marks ~font_size ~ranges
+            ~print_axes ?axes_meeting ~print_tic t.backend;
+          Backend.restore t.backend
+        )
+        else  (* Labels take too big margins to plot correctly => no scaling.*)
+          failwith "Archimedes.Handle.axes: the tics labels are too large."
   in
-  Coordinate.restore t.backend ctm;
-  let xx1 = xmargin.Axes.left
-  and xx2 = xmargin.Axes.right
-  and xy1 = xmargin.Axes.bottom
-  and xy2 = xmargin.Axes.top
-  and yx1 = ymargin.Axes.left
-  and yx2 = ymargin.Axes.right
-  and yy1 = ymargin.Axes.bottom
-  and yy2 = ymargin.Axes.top
-  in
-  let left = max xx1 yx1
-  and right = max xx2 yx2
-  and top = max xy2 yy2
-  and bottom = max xy1 yy1 in
-  let margin_x = left +. right
-  and margin_y = top +. bottom in
-  let margins_ok = margin_x < 1. && margin_y < 1. in
-  if margins_ok then
-    (let vp = Viewport.make t left (1. -.right) bottom (1. -.top) in
-     Viewport.use vp;
-     (* t.only_immediate <- true; *)
-     (* rectangle t 0. 0. 1. 1.; *)
-     (* set_color t (Color.make ~a:0.2 0. 0. 1.); *)
-     (* fill t; *)
-     (* t.only_immediate <- false; *)
-     let f () =
-       Backend.save t.backend;
-       Backend.set_color t.backend color;
-       Axes.print axes ~normalization:t.normalized
-         ~lines ~marks:def_marks ~font_size ~ranges
-         ~print_axes ?axes_meeting ~print_tic t.backend;
-       Backend.restore t.backend
-     in
-     vp.axes <- Some f)
-  else  (* Labels take too big margins to plot correctly => no scaling.*)
-    Printf.printf
-      "Archimedes.Handle -- warning: the axes labels have too big margins.\n%!"
-
+  t.vp.axes <- draw_axes
 
 let current_vp t = t.vp
 
