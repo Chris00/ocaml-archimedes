@@ -467,6 +467,8 @@ struct
         gather_subpath tl coords
   and fill_subpath = function
     | [] | [ _ ] -> ()
+    | [ (x1,y1); (x0,y0) ] ->
+          Graphics.moveto x0 y0;  Graphics.lineto x1 y1
     | coords -> Graphics.fill_poly (Array.of_list coords)
 
   let fill_preserve t =
