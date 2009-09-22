@@ -94,7 +94,7 @@ struct
 
   let set_color p c = Handle.set_color p.h c
 
-  let draw_axes p get_ranges =
+  let draw_axes p =
     if p.axes_set then ( (* FIXME: todo *)
     )
     else (
@@ -102,17 +102,11 @@ struct
       and y = Handle.make_yaxis (`P "-") `Number LC (`P "tic_left") `Auto_linear
       in
       let axes = Axes.make (`Rectangle(true,true)) x y in
-      (* FIXME: The ranges determination must be false *)
-      let ranges = get_ranges() in
-      Handle.update_coords p.h ranges.Axes.xmin ranges.Axes.ymin;
-      Handle.update_coords p.h ranges.Axes.xmax ranges.Axes.ymax;
       Handle.axes p.h axes
     )
 
   let plot_f p ?color ?nsamples ?mark ?(fill=false) f a b fill0 fill1 =
-    draw_axes p (fun () ->
-                   let _, ranges, _ = Functions.samplefxy f ?nsamples b a in
-                   ranges);
+    draw_axes p;
     let do_with, finish =
       if fill then
         let x_last = ref nan
@@ -122,8 +116,10 @@ struct
             if !first then (
               let x, y = fill0 x y in
               Handle.move_to p x y;
-              first := false);
-            Handle.line_to p x y;
+              first := false
+            )
+            else
+              Handle.line_to p x y;
             x_last := x;
             y_last := y),
          (fun p ->
@@ -133,7 +129,17 @@ struct
             first := true; (* this set of functions may be run several times *)
          ))
       else
-        ((fun p (x,y) -> Handle.line_to p x y),  Handle.stroke) in
+        let first = ref true in
+        ((fun p (x,y) ->
+            if !first then (
+              Handle.move_to p x y;
+              first := false
+            )
+            else
+              Handle.line_to p x y),
+         (fun p ->
+            Handle.stroke p;
+            first := true)) in
     Printf.printf "xyf %!";
     Handle.xyf p.h ?color ?nsamples ~do_with ~finish f a b;
     (* Add marks if requested *)
@@ -169,12 +175,12 @@ struct
   let x p ?color ?mark ?(n0=0) x =
     let n = Array.init (Array.length x) (fun i -> float(n0 + i)) in
     let iter = Iterator.of_arrays n x in
-    draw_axes p (fun () -> Iterator.extents iter);
+    draw_axes p;
     Handle.xy p.h ?color ?mark iter
 
   let xy p ?color ?mark x y =
     let iter = Iterator.of_arrays x y in
-    draw_axes p (fun () -> Iterator.extents iter);
+    draw_axes p;
     Handle.xy p.h ?color ?mark iter
 end
 
@@ -187,12 +193,12 @@ struct
     let i = ref (n0-1) in
     let n = List.map (fun _ -> incr i; float(!i)) x in
     let iter = Iterator.of_lists n x in
-    draw_axes p (fun () -> Iterator.extents iter);
+    draw_axes p;
     Handle.xy p.h ?color ?mark iter
 
   let xy p ?color ?mark x y =
     let iter = Iterator.of_lists x y in
-    draw_axes p (fun () -> Iterator.extents iter);
+    draw_axes p;
     Handle.xy p.h ?color ?mark iter
 end
 
@@ -225,12 +231,12 @@ struct
       n.{i} <- float(n0 + i);
     done;
     let iter = Iterator.of_bigarrays n x ~xclayout:false ~yclayout:false in
-    draw_axes p (fun () -> Iterator.extents iter);
+    draw_axes p;
     Handle.xy p.h ?color ?mark iter
 
   let xy p ?color ?mark x y =
     let iter = Iterator.of_bigarrays x y ~xclayout:false ~yclayout:false in
-    draw_axes p (fun () -> Iterator.extents iter);
+    draw_axes p;
     Handle.xy p.h ?color ?mark iter
 end
 
@@ -246,12 +252,12 @@ struct
       n.{i} <- float(n0 + i);
     done;
     let iter = Iterator.of_bigarrays n x ~xclayout:true ~yclayout:true in
-    draw_axes p (fun () -> Iterator.extents iter);
+    draw_axes p;
     Handle.xy p.h ?color ?mark iter
 
   let xy p ?color ?mark x y =
     let iter = Iterator.of_bigarrays x y ~xclayout:true ~yclayout:true in
-    draw_axes p (fun () -> Iterator.extents iter);
+    draw_axes p;
     Handle.xy p.h ?color ?mark iter
 
 end
