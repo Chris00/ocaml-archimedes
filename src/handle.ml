@@ -213,8 +213,8 @@ type viewport =
       (*What has to be plotted in this viewport. Mutable so that if we
         want to do the orders but preserve the queue, we replace it by a
         (created and updated) copy.*)
-      mutable vp_orders: (unit -> unit) Queue.t;
-      mutable graph_orders: (unit -> unit) Queue.t;
+      mutable vp_orders: (viewport -> unit) Queue.t;
+      mutable graph_orders: (viewport -> unit) Queue.t;
       (*For saving and restoring states*)
       scalings_hist : (float * float * float) Stack.t;
       vp_device: Coordinate.t;
@@ -346,12 +346,13 @@ let do_viewport_orders ?orders_queue vp backend =
   let rec make_orders vporders orders =
     if not (Queue.is_empty orders) then (
       let order = Queue.pop orders in
-      order ();
-      (match orders_queue with None -> ()
+      order vp;
+      (match orders_queue with
+       | None -> ()
        | Some q -> Queue.push order q);
       make_orders vporders orders)
     else match orders_queue with
-      None -> ()
+    | None -> ()
     | Some q ->
         if vporders then vp.vp_orders <- q
         else vp.graph_orders <- q
@@ -593,7 +594,7 @@ let from_backend f t = f t.backend
  **********************************************************************)
 let add_order ?graph f t =
   if not t.only_extents then (
-    if t.only_immediate then f ()
+    if t.only_immediate then f t.vp
     else (
       let queue =
         match graph with
@@ -601,7 +602,9 @@ let add_order ?graph f t =
         | _ -> t.vp.vp_orders
       in
       Queue.add f queue;
-      if t.immediate_drawing then f ()))
+      if t.immediate_drawing then f t.vp
+    )
+  )
 
 let get_current_pt t = match t.vp.current_pt with
     None -> raise No_current_point
@@ -615,19 +618,19 @@ let set_current_pt t x y =
 let width t = Backend.width t.backend
 let height t = Backend.height t.backend
 let set_color t c =
-  add_order (fun () -> Backend.set_color t.backend c) t;
+  add_order (fun _ -> Backend.set_color t.backend c) t;
   Backend.set_color t.backend c
 
 let set_line_cap t lc =
-  add_order (fun () -> Backend.set_line_cap t.backend lc) t;
+  add_order (fun _ -> Backend.set_line_cap t.backend lc) t;
   Backend.set_line_cap t.backend lc
 
 let set_dash t x y =
-  add_order (fun () -> Backend.set_dash t.backend x y) t;
+  add_order (fun _ -> Backend.set_dash t.backend x y) t;
   Backend.set_dash t.backend x y
 
 let set_line_join t join=
-  add_order (fun () -> Backend.set_line_join t.backend join) t;
+  add_order (fun _ -> Backend.set_line_join t.backend join) t;
   Backend.set_line_join t.backend join
 
 let get_line_cap t = Backend.get_line_cap t.backend
@@ -637,36 +640,36 @@ let get_line_join t = Backend.get_line_join t.backend
 let move_to t ~x ~y =
   set_current_pt t x y;
   update_coords t x y;
-  add_order (fun () -> Backend.move_to t.backend x y) t
+  add_order (fun _ -> Backend.move_to t.backend x y) t
 
 let line_to t ~x ~y =
   set_current_pt t x y;
   update_coords t x y;
-  add_order (fun () -> Backend.line_to t.backend x y) t
+  add_order (fun _ -> Backend.line_to t.backend x y) t
 
 let rel_move_to t ~x ~y =
   let x', y' = get_current_pt t in
   update_coords t (x +. x') (y +. y');
   set_current_pt t (x +. x') (y +. y');
-  add_order (fun () -> Backend.rel_move_to t.backend x y) t
+  add_order (fun _ -> Backend.rel_move_to t.backend x y) t
 
 let rel_line_to t ~x ~y =
   let x', y' = get_current_pt t in
   update_coords t (x +. x') (y +. y');
   set_current_pt t (x +. x') (y +. y');
-  add_order (fun () -> Backend.rel_line_to t.backend x y) t
+  add_order (fun _ -> Backend.rel_line_to t.backend x y) t
 
 let curve_to t ~x1 ~y1 ~x2 ~y2 ~x3 ~y3 =
   update_coords t x1 y1;
   update_coords t x2 y2;
   update_coords t x3 y3;
   set_current_pt t x3 y3;
-  add_order (fun () -> Backend.curve_to t.backend x1 y1 x2 y2 x3 y3) t
+  add_order (fun _ -> Backend.curve_to t.backend x1 y1 x2 y2 x3 y3) t
 
 let rectangle t ~x ~y ~w ~h =
   update_coords t x y;
   update_coords t (x+.w) (y+.h);
-  add_order (fun () -> Backend.rectangle t.backend x y w h) t
+  add_order (fun _ -> Backend.rectangle t.backend x y w h) t
 
 let arc t ~r ~a1 ~a2 =
   (*FIXME: better bounds for the arc can be found.*)
@@ -675,25 +678,25 @@ let arc t ~r ~a1 ~a2 =
   and y' = y -. r *. sin a1 in
   update_coords t (x'+.r) (y'+.r);
   update_coords t (x'-.r) (y'-.r);
-  add_order (fun () -> Backend.arc t.backend r a1 a2) t
+  add_order (fun _ -> Backend.arc t.backend r a1 a2) t
 
 let close_path t =
- add_order (fun () -> Backend.close_path t.backend) t
+ add_order (fun _ -> Backend.close_path t.backend) t
 
 let clear_path t =
- add_order (fun () -> Backend.clear_path t.backend) t
+ add_order (fun _ -> Backend.clear_path t.backend) t
 (*let path_extents t = Backend.path_extents t.backend*)
 
 (*Stroke when using current coordinates.*)
 let stroke_current t =
-  add_order (fun () -> Backend.stroke t.backend) t
+  add_order (fun _ -> Backend.stroke t.backend) t
 let stroke_current_preserve t =
-  add_order (fun () -> Backend.stroke_preserve t.backend) t
+  add_order (fun _ -> Backend.stroke_preserve t.backend) t
 
 
 let stroke t =
   let lw = Sizes.get_lw t.vp.scalings in
-  let f () =
+  let f _ =
     let ctm = Coordinate.use t.backend t.normalized in
     Backend.set_line_width t.backend lw;
     Backend.stroke t.backend;
@@ -703,7 +706,7 @@ let stroke t =
 
 let stroke_preserve t =
   let lw = Sizes.get_lw t.vp.scalings in
-  let f () =
+  let f _ =
     let ctm = Coordinate.use t.backend t.normalized in
     Backend.set_line_width t.backend lw;
     Backend.stroke_preserve t.backend;
@@ -712,45 +715,45 @@ let stroke_preserve t =
   add_order f t
 
 let fill t =
-  add_order (fun () -> Backend.fill t.backend) t
+  add_order (fun _ -> Backend.fill t.backend) t
 let fill_preserve t =
-  add_order (fun () -> Backend.fill_preserve t.backend) t
+  add_order (fun _ -> Backend.fill_preserve t.backend) t
 
 let clip_rectangle t ~x ~y ~w ~h =
-  add_order (fun () -> Backend.clip_rectangle t.backend x y w h) t
+  add_order (fun _ -> Backend.clip_rectangle t.backend x y w h) t
 
 let save_vp t =
-  let f () =
+  let f vp =
     Backend.save t.backend;
     let sizes =
-      Sizes.get_lw t.vp.scalings,
-      Sizes.get_ts t.vp.scalings,
-      Sizes.get_marks t.vp.scalings
+      Sizes.get_lw vp.scalings,
+      Sizes.get_ts vp.scalings,
+      Sizes.get_marks vp.scalings
     in
-    Stack.push sizes t.vp.scalings_hist
+    Stack.push sizes vp.scalings_hist
   in
   add_order f t
 
 let restore_vp t =
-  let f () =
+  let f vp =
     try
-      let lw, ts, marks = Stack.pop t.vp.scalings_hist in
-      Sizes.set_abs_lw t.vp.scalings lw;
-      Sizes.set_abs_ts t.vp.scalings ts;
-      Sizes.set_abs_marks t.vp.scalings marks;
+      let lw, ts, marks = Stack.pop vp.scalings_hist in
+      Sizes.set_abs_lw vp.scalings lw;
+      Sizes.set_abs_ts vp.scalings ts;
+      Sizes.set_abs_marks vp.scalings marks;
       Backend.restore t.backend
     with Stack.Empty -> ()
   in
   add_order f t
 
 let select_font_face t slant weight family =
-  add_order (fun () -> Backend.select_font_face t.backend slant weight family) t
+  add_order (fun _ -> Backend.select_font_face t.backend slant weight family) t
 
 (*FIXME: when [Backend.show_text], the backend temporarily returns to
   raw coordinates -- but converts its input.*)
 let show_text t ~rotate ~x ~y pos txt=
   let font_size = Sizes.get_ts t.vp.scalings in
-  let f () =
+  let f _ =
     Backend.set_font_size t.backend font_size;
     Backend.show_text t.backend ~rotate ~x ~y pos txt;
   in
@@ -773,7 +776,7 @@ let text_extents t txt =
 
 let render t name =
   let marks = Sizes.get_marks t.vp.scalings in
-  let f () =
+  let f vp =
     let ctm = Coordinate.use t.backend t.normalized in
     Backend.scale t.backend marks marks;
     Pointstyle.render name t.backend;
@@ -819,11 +822,12 @@ let f_finish = stroke
 
 let xyf t ?color ?nsamples ?min_step
     ?(do_with = f_line_to) ?(finish = f_finish) f a b =
-  let _, ranges , fct =
-    Functions.samplefxy f ?nsamples ?min_step b a
-  in
-  let f () =
+  let _, ranges , fct = Functions.samplefxy f ?nsamples ?min_step b a in
+  update_coords t ranges.Axes.xmin ranges.Axes.ymin;
+  update_coords t ranges.Axes.xmax ranges.Axes.ymax;
+  let f vp =
     Backend.save t.backend;
+    ignore(Coordinate.use t.backend vp.data_coord);
     (match color with
        Some color -> Backend.set_color t.backend color
      | None -> ());
@@ -833,8 +837,6 @@ let xyf t ?color ?nsamples ?min_step
     t.only_immediate <- false;
     Backend.restore t.backend;
   in
-  update_coords t ranges.Axes.xmin ranges.Axes.ymin;
-  update_coords t ranges.Axes.xmax ranges.Axes.ymax;
   t.only_extents <- true;
   fct (fun () -> do_with t) ();
   finish t;
@@ -855,8 +857,9 @@ let xy t ?color ?axes ?(mark = "X") ?(do_with = (xy_mark mark)) iter =
         do_with t x y;
         iterate do_with
   in
-  let f () =
+  let f vp =
     Backend.save t.backend;
+    ignore(Coordinate.use t.backend vp.data_coord);
     (match color with
        Some color -> Backend.set_color t.backend color
      | None -> ());
@@ -955,6 +958,7 @@ let axes t ?(color = Color.black) ?type_axes_printer ?axes_meeting
           Matrix.yy = 1. -. top -. bottom;
           x0 = left; y0 = bottom };
       (* t.only_immediate <- true; *)
+      (* Coordinate.use t.backend vp.graph_box; *)
       (* rectangle t 0. 0. 1. 1.; *)
       (* set_color t (Color.rgba 0. 0. 1. 0.2); *)
       (* fill t; *)
