@@ -52,6 +52,9 @@ module type T = sig
     val set_mark_size : t -> float -> unit
     val set_color : t -> Color.t -> unit
 
+    val xrange : t -> float -> float -> unit
+    val yrange : t -> float -> float -> unit
+
     (** {3 Plotting} *)
 
     val f : t -> ?color: Color.t -> ?nsamples: int -> ?mark:string ->

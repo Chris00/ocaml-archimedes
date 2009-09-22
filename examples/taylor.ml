@@ -24,14 +24,21 @@ let tsin d =
     !y *. x
 
 let () =
-  let p = P.make "graphics hold" 600. 600. in
+  try
+    let p = P.make "graphics hold" 600. 600. in
 
-  let b = 9. in
-  let f = Array.init 10 tsin in
-  P.f p sin 0. b;
-  P.set_color p Color.blue;
-  for i = 0 to Array.length f - 1 do
-    P.f p f.(i) 0. b;
-  done;
+    let b = 9. in
+    let f = Array.init 10 tsin in
+    P.f p sin 0. b;
+    P.set_color p Color.blue;
+    P.yrange p (-3.) 3.;
+    let len = Array.length f - 1 in
+    for i = 0 to len do
+      let c = (float i /. float len) in
+      P.set_color p (Color.rgb c 0. (1. -. c));
+      P.f p f.(i) 0. b;
+    done;
 
-  P.close p
+    P.close p
+  with Backend.Error e ->
+    Printf.printf "%s\n" (Backend.string_of_error e)
