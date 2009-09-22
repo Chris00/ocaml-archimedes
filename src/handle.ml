@@ -327,7 +327,7 @@ let make ~dirs name w h =
      initial_vp = initial_vp;
      vp = initial_vp;
      used_vp = Queue.create ();
-     immediate_drawing = false;
+     immediate_drawing = true;
      only_immediate = false;
      only_extents = false;
     }
@@ -969,6 +969,17 @@ let axes t ?(color = Color.black) ?type_axes_printer ?axes_meeting
       (* set_color t (Color.rgba 0. 0. 1. 0.2); *)
       (* fill t; *)
       (* t.only_immediate <- false; *)
+      if t.immediate_drawing then (
+        (*Deletes the drawing by covering.*)
+        (*FIXME: how to manage with transparent backgrounds?*)
+        let ctm = Coordinate.use t.backend t.vp.vp_device in
+        Backend.save t.backend;
+        (*FIXME: viewport's background?*)
+        Backend.set_color t.backend Color.white;
+        Backend.rectangle t.backend 0. 0. 1. 1.;
+        Backend.fill t.backend;
+        Backend.restore t.backend;
+        Coordinate.restore t.backend ctm);
       Backend.save t.backend;
       ignore(Coordinate.use t.backend vp.data_coord);
       Backend.set_color t.backend color;
