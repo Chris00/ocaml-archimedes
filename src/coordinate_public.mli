@@ -46,6 +46,10 @@ module type T = sig
         other so will never be updated?  It can be modified however
         (the matrix [m] is copied so no modification will affect [m]). *)
 
+  val make_identity : t -> t
+    (** [make_identity coord] defines a new system of coordinates that
+        initially consist in the identity transformation to [coord]. *)
+
   val make_translate : t -> x:float -> y:float -> t
     (** [make_translate coord x y] defines a new coordinate system that
         consists in moving the origin of [coord] to the point [(x,y)]

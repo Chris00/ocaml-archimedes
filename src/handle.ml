@@ -217,8 +217,14 @@ type viewport =
       mutable graph_orders: (unit -> unit) Queue.t;
       (*For saving and restoring states*)
       scalings_hist : (float * float * float) Stack.t;
-      vp_device:Coordinate.t;
-      user_device:Coordinate.t;
+      vp_device: Coordinate.t;
+      (* Transformation from the viewport (seen as [0,1]²) to the device. *)
+      graph_box: Coordinate.t;
+      (* Tranformation defining the area reserved for the graph (seen
+         as [0,1]²) in terms of the [vp_device] coordinates. *)
+      data_coord: Coordinate.t;
+      (* Coordinates used to plot the data points (depend on the
+         [graph_box] ones) *)
       mutable axes_fitting:Axes.margins;
       graph_device: Coordinate.t;
       (*Flag indicating if this viewport has been stored in the handle.*)
@@ -287,8 +293,11 @@ let backend h = h.backend
 let make ~dirs name w h =
   let backend = Backend.make ~dirs name w h in
   let init = Coordinate.make_root (Backend.backend_to_device backend) in
-  let coord = Coordinate.make_scale init w h in
-  let coord2 = Coordinate.make_scale coord initial_scale initial_scale in
+  let vp_device = Coordinate.make_scale init w h in
+  (* The dependencies of coordinate systems matter! *)
+  let graph_box = Coordinate.make_identity vp_device in
+  let data_coord =
+    Coordinate.make_scale graph_box initial_scale initial_scale in
   let square_side = min w h in
   let norm = Coordinate.make_scale init square_side square_side in
   let rec initial_vp =
@@ -299,10 +308,11 @@ let make ~dirs name w h =
      vp_orders = Queue.create ();
      graph_orders = Queue.create ();
      scalings_hist = Stack.create ();
-     vp_device = coord;
-     user_device = coord2;
+     vp_device = vp_device;
+     graph_box = graph_box;
+     data_coord = data_coord;
      axes_fitting = {Axes.left = 0.;right = 0.;top = 0.;bottom=0.};
-     graph_device = Coordinate.copy coord2;
+     graph_device = Coordinate.copy data_coord;
      stored = true;(*will be... in the end of [make].*)
      xmin = nan;    xmin_auto = true;
      xmax = nan;    xmax_auto = true;
@@ -346,7 +356,7 @@ let do_viewport_orders ?orders_queue vp backend =
         if vporders then vp.vp_orders <- q
         else vp.graph_orders <- q
   in
-  let ctm = Coordinate.use backend vp.user_device in
+  let ctm = Coordinate.use backend vp.data_coord in
   (* Axes drawing (if necessary, possibly does nothing) *)
   vp.axes vp;
   make_orders true vp.vp_orders;
@@ -417,9 +427,9 @@ let update_coords t x y =
       initial_scale, -. vp.ymin -. 0.5 *. initial_scale
     else 1. /. (vp.ymax -. vp.ymin), -. vp.ymin
   in
-  let new_matrix = Matrix.make_scale scalx scaly in
-  Matrix.translate new_matrix tr_x tr_y;
-  Coordinate.transform vp.user_device new_matrix;
+  let data_to_graph = Matrix.make_scale scalx scaly in
+  Matrix.translate data_to_graph tr_x tr_y;
+  Coordinate.transform vp.data_coord data_to_graph;
 
   (*In case of immediate drawing, needs to replot everything
     for this viewport.*)
@@ -442,8 +452,10 @@ let update_coords t x y =
 
 module Viewport =
 struct
-  let inner_make handle coord =
-    let coord2 = Coordinate.make_scale coord initial_scale initial_scale in
+  let inner_make handle vp_device =
+    let graph_box = Coordinate.make_identity vp_device in
+    let data_coord =
+      Coordinate.make_scale graph_box initial_scale initial_scale in
     { handle = handle;
       (*Line width and text and mark sizes are preserved, but are new ones,
         depending on the previous ones.*)
@@ -454,10 +466,11 @@ struct
       graph_orders = Queue.create ();
       (*Not in use*)
       scalings_hist = Stack.create();
-      vp_device = coord;
-      user_device = coord2;
+      vp_device = vp_device;
+      graph_box = graph_box;
+      data_coord = data_coord;
       axes_fitting = {Axes.left = 0.;right = 0.; top = 0.; bottom = 0.};
-      graph_device = Coordinate.copy coord2;
+      graph_device = Coordinate.copy data_coord;
       stored = false;
       xmin = nan;   xmin_auto = true;
       xmax = nan;   xmax_auto = true;
@@ -485,10 +498,11 @@ struct
       the [used_vp] field of the context.*)
     let handle = vp.handle in
     handle.vp <- vp;
-    ignore (Coordinate.use handle.backend vp.user_device);
+    ignore (Coordinate.use handle.backend vp.data_coord);
     if not vp.stored then (
       vp.stored <- true;
-      Queue.push vp handle.used_vp)
+      Queue.push vp handle.used_vp
+    )
 
   (*{2 Convenience functions to create viewports}*)
   let rows handle n =
@@ -936,14 +950,17 @@ let axes t ?(color = Color.black) ?type_axes_printer ?axes_meeting
     and margin_y = top +. bottom in
     let margins_ok = margin_x < 1. && margin_y < 1. in
     if margins_ok then (
-      let vp_graph = Viewport.sub vp left (1. -. right) bottom (1. -. top) in
-      Viewport.use vp_graph;
+      Coordinate.transform vp.graph_box
+        { Matrix.xx = 1. -. right -. left;  xy = 0.;  yx = 0.;
+          Matrix.yy = 1. -. top -. bottom;
+          x0 = left; y0 = bottom };
       (* t.only_immediate <- true; *)
       (* rectangle t 0. 0. 1. 1.; *)
-      (* set_color t (Color.make ~a:0.2 0. 0. 1.); *)
+      (* set_color t (Color.rgba 0. 0. 1. 0.2); *)
       (* fill t; *)
       (* t.only_immediate <- false; *)
       Backend.save t.backend;
+      ignore(Coordinate.use t.backend vp.data_coord);
       Backend.set_color t.backend color;
       Axes.print axes ~normalization:t.normalized
         ~lines ~marks:def_marks ~font_size ~ranges

@@ -113,7 +113,7 @@ let translate_for_tic x y tic_ext marks pos =
     | Backend.LC | Backend.CC | Backend.RC -> y
     | Backend.LB | Backend.CB | Backend.RB -> y +. 2.*.h1
   in
-  Printf.printf "translate_for tic :%f %f > %f %f\n%!" x y x' y';
+  (* Printf.printf "translate_for tic :%f %f > %f %f\n%!" x y x' y'; *)
   x', y'
 
 type axes =
@@ -138,8 +138,7 @@ let print_axes axes ranges backend =
   match axes with
     `None (_,_) -> ()
   | `Rectangle(_, _) ->
-      Backend.rectangle backend
-        xmin ymin (xmax -. xmin) (ymax -. ymin)
+      Backend.rectangle backend xmin ymin (xmax -. xmin) (ymax -. ymin)
   | `Two_lines(x,y) ->
       (*Need to update -before- so that mins/maxs are correctly
         initialized for making the axes lines.*)
@@ -217,8 +216,8 @@ let tic_label_extents tic_ext marks label ofsx ofsy x' y' pos b =
       and y' = final_box.y +. ofsy in
       let x'' = x' +. final_box.w
       and y'' = y' +. final_box.h in
-      Printf.printf "Ext: tic %f %f w%f h%f; label %f, %f to %f, %f\n%!"
-        tic_ext.x tic_ext.y tic_ext.w tic_ext.h x' y' x'' y'';
+      (* Printf.printf "Ext: tic %f %f w%f h%f; label %f, %f to %f, %f\n%!" *)
+      (*   tic_ext.x tic_ext.y tic_ext.w tic_ext.h x' y' x'' y''; *)
       let xtic = tic_ext.x *. marks
       and ytic = tic_ext.y *. marks in
       let xtic' = xtic +. tic_ext.w *. marks
@@ -515,8 +514,8 @@ let get_position loc labels =
          let dist = float (10 * significant_digit) in
          (* FIXME: That thing does not work, I sometimes get
             [significant_digit = -3]!!! -- ChriS *)
-         Printf.printf "Auto_lin: min %f max %f diff %f dig %d ord %f\n%!"
-           vmin vmax diff significant_digit order;
+         (* Printf.printf "Auto_lin: min %f max %f diff %f dig %d ord %f\n%!" *)
+         (*   vmin vmax diff significant_digit order; *)
          let distances =
            (* Note: 9 is also allowed! *)
            (* But not zero!!!  You REALLY must take care! -- ChriS *)
@@ -723,10 +722,8 @@ let print t ~normalization ~lines ~marks ~font_size ~ranges
       (if ranges.y1 < ranges.y2 then min, max else max, min)
     in up1 y ranges.y1, up2 y ranges.y2
   in
-  Printf.printf "X%!";
   print_tics t.xaxis ranges y print_tic normalization marks font_size backend;
   (*X axis*)
-  Printf.printf "Y%!";
   print_tics t.yaxis ranges x print_tic normalization marks font_size backend
   (*Y axis*)
 

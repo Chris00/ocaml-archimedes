@@ -177,17 +177,27 @@ let copy coord =
   }
 
 (* Create a new coordinate system that consists into first applying
-   the transformation [tm] before the one of [coord]. *)
-let make_from_transform coord tm =
+   the transformation [tm] before the one of [coord].  [ctm] must be
+   [coord.ctm * tm] but is is passed to allow an optimization for
+   [make_identity]. *)
+let make_from_transform_with_ctm coord tm ctm =
   let coord' = { depends_on = coord;
                  tm = tm;
-                 ctm = Matrix.mul coord.ctm tm;
+                 ctm = ctm;
                  up_to_date = coord.up_to_date; (* iff [coord] is up to date *)
                  children = W.create 5;
                  monitors = WM.create 2;
                  id = new_id() } in
   W.add coord.children coord';
   coord'
+
+
+let make_identity coord =
+  let id = Matrix.make_identity() in
+  make_from_transform_with_ctm coord id (Matrix.copy coord.ctm)
+
+let make_from_transform coord tm =
+  make_from_transform_with_ctm coord tm (Matrix.mul coord.ctm tm)
 
 let make_translate coord ~x ~y =
   make_from_transform coord (Matrix.make_translate ~x ~y)
