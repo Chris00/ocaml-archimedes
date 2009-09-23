@@ -44,7 +44,8 @@ sync-scm sync_scm:
 
 .PHONY: clean dist-clean
 clean:
-	$(RM) $(wildcard *~ *.pdf *.ps *.png *.svg) cairo.godiva
+	$(RM) $(wildcard *~ *.pdf *.ps *.png *.svg *.tex *.log) cairo.godiva
+	$(RM) -rf aclocal.m4 auto/ autom4te.cache/ config.status
 	$(MAKE) -C src $@
 	$(MAKE) -C tests $@
 	$(MAKE) -C examples $@
