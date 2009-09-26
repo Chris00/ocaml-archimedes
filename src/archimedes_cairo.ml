@@ -30,36 +30,26 @@ struct
   (* identity CTM -- never modified *)
   let id = { Cairo.xx = 1.; xy = 0.;  yx = 0.; yy = 1.;  x0 = 0.; y0 = 0. }
 
-  type t = { cr:Cairo.context; h:float}
-      (* [h] is for height, to make the backend_to_device matrix.*)
-
-  (* let path_extents cr = Cairo.Path.extents cr
-     let close_path cr = Cairo.Path.close cr
-     let clear_path cr = Cairo.Path.clear cr*)
-
-  let backend_to_device t =
-    { M.xx = 1.; xy = 0.; yx = 0.; yy = -1.; x0 = 0.; y0 = t.h }
-
+  type t = Cairo.context
 
   (* Same type (same internal representation), just in different modules *)
-  let set_line_cap t c = set_line_cap t.cr (Obj.magic c : Cairo.line_cap)
-  let get_line_cap t = (Obj.magic(get_line_cap t.cr) : Backend.line_cap)
+  let set_line_cap t c = set_line_cap t (Obj.magic c : Cairo.line_cap)
+  let get_line_cap t = (Obj.magic(get_line_cap t) : Backend.line_cap)
 
-  let set_line_join t j = set_line_join t.cr (Obj.magic j : Cairo.line_join)
-  let get_line_join t = (Obj.magic(get_line_join t.cr) : Backend.line_join)
+  let set_line_join t j = set_line_join t (Obj.magic j : Cairo.line_join)
+  let get_line_join t = (Obj.magic(get_line_join t) : Backend.line_join)
 
   (*Get needed functions which are in submodule Path*)
-  let path_extents t = (Obj.magic(Cairo.Path.extents t.cr): M.rectangle)
-  let close_path t = Cairo.Path.close t.cr
-  let clear_path t = Cairo.Path.clear t.cr
+  let path_extents t = (Obj.magic(Cairo.Path.extents t): M.rectangle)
+  let close_path t = Cairo.Path.close t
+  let clear_path t = Cairo.Path.clear t
 
+  let set_line_width t = set_line_width t
 
-  let set_line_width t = set_line_width t.cr
+  let get_line_width t = get_line_width t
 
-  let get_line_width t = get_line_width t.cr
-
-  let set_dash t ofs arr = set_dash t.cr ~ofs arr
-  let get_dash t = get_dash t.cr
+  let set_dash t ofs arr = set_dash t ~ofs arr
+  let get_dash t = get_dash t
 
   let set_matrix t m =
     Gc.compact ();
@@ -68,68 +58,61 @@ struct
                     x0 = m.M.x0; y0 = m.M.y0;}
       (*(Obj.magic m : Cairo.matrix)*)
     in
-    set_matrix t.cr m'
+    set_matrix t m'
 
   let get_matrix t =
     Gc.compact ();
-    let m = get_matrix t.cr in
+    let m = get_matrix t in
     { M.xx = m.Cairo.xx;  xy = m.Cairo.xy;
       yx = m.Cairo.yx; yy = m.Cairo.yy;
       x0 = m.Cairo.x0; y0 = m.Cairo.y0;}
     (*(Obj.magic (get_matrix cr) : Backend.matrix)*)
-  let translate t = translate t.cr
-  let scale t = scale t.cr
-  let rotate t = rotate t.cr
+  let translate t = translate t
+  let scale t = scale t
+  let rotate t = rotate t
+  let flipy _ = true
 
   let set_color t c =
     let r,g,b,a = Archimedes.Color.get_rgba c in
-    Cairo.set_source_rgba t.cr r g b a
+    Cairo.set_source_rgba t r g b a
 
-  let move_to t = move_to t.cr
-  let line_to t = line_to t.cr
-  let rel_move_to t = rel_move_to t.cr
-  let rel_line_to t = rel_line_to t.cr
-  let curve_to t = curve_to t.cr
-  let rectangle t = rectangle t.cr
+  let move_to t = move_to t
+  let line_to t = line_to t
+  let rel_move_to t = rel_move_to t
+  let rel_line_to t = rel_line_to t
+  let curve_to t = curve_to t
+  let rectangle t = rectangle t
 
   let arc t ~r ~a1 ~a2 =
-    let x,y = Cairo.Path.get_current_point t.cr in
+    let x,y = Cairo.Path.get_current_point t in
     let x = x -. r *. cos a1
     and y = y -. r *. sin a1 in
-    arc t.cr ~x ~y ~r ~a1 ~a2
+    arc t ~x ~y ~r ~a1 ~a2
 
   let stroke t =
     (* FIXME: Do we really want this? are we not supposed to always
        draw in a nice coordinate system? *)
-    let m = Cairo.get_matrix t.cr in
-    Cairo.set_matrix t.cr id; (* to avoid the lines being deformed by [m] *)
-    stroke t.cr;
-    Cairo.set_matrix t.cr m
+    let m = Cairo.get_matrix t in
+    Cairo.set_matrix t id; (* to avoid the lines being deformed by [m] *)
+    stroke t;
+    Cairo.set_matrix t m
 
   let stroke_preserve t =
-    Cairo.save t.cr;
-    Cairo.set_matrix t.cr id;
-    stroke_preserve t.cr;
-    Cairo.restore t.cr
+    Cairo.save t;
+    Cairo.set_matrix t id;
+    stroke_preserve t;
+    Cairo.restore t
 
-  let fill t = fill t.cr
-  let fill_preserve t = fill_preserve t.cr
+  let fill t = fill t
+  let fill_preserve t = fill_preserve t
 
   let clip_rectangle t ~x ~y ~w ~h =
-    Cairo.Path.clear t.cr;
-    Cairo.rectangle t.cr ~x ~y ~w ~h;
-    Cairo.clip t.cr
+    Cairo.Path.clear t;
+    Cairo.rectangle t ~x ~y ~w ~h;
+    Cairo.clip t
 
-  let save t = save t.cr
-  let restore t = restore t.cr
-
-(*
-  (* FIXME: must be reworked *)
-  let text cr ~size ~x ~y txt =
-    Cairo.move_to cr ~x ~y;
-    Cairo.set_font_size cr size;
-    Cairo.show_text cr txt
-*)
+  let save t = save t
+  let restore t = restore t
 
   (* FIXME: better error message for options *)
   let make ~options width height =
@@ -148,10 +131,10 @@ struct
     (* Round line caps are the only option currently offered by
        graphics.  Be coherent with that. *)
     Cairo.set_line_cap cr Cairo.ROUND;
-    {cr = cr; h=height}
+    cr
 
   let close ~options t =
-    let surface = Cairo.get_target t.cr in
+    let surface = Cairo.get_target t in
     (match options with
      | ["PNG"; fname] -> PNG.write surface fname;
      | _ -> ());
@@ -166,14 +149,14 @@ struct
     and weight = match weight with
       | Backend.Normal -> Cairo.Normal
       | Backend.Bold -> Cairo.Bold in
-    Cairo.select_font_face t.cr ~slant ~weight family
+    Cairo.select_font_face t ~slant ~weight family
 
-  let set_font_size t = set_font_size t.cr
+  let set_font_size t = set_font_size t
 
   let show_text t ~rotate ~x ~y pos text =
     (* Compute the angle between the desired direction and the X axis
        in the device coord. system. *)
-    let cr = t.cr in
+    let cr = t in
     let dx, dy = user_to_device_distance cr (cos rotate) (sin rotate) in
     let angle = atan2 dy dx in
     Cairo.save cr;
@@ -203,14 +186,14 @@ struct
     Cairo.restore cr
 
   let text_extents t text =
-    let te = Cairo.text_extents t.cr text in
+    let te = Cairo.text_extents t text in
     (*An extents is always expressed in current coordinates; however,
       show_text switches to device coordinates before "making the
       text". So we need to go to user coordinates.*)
     (*Note: The following transformations assume that the coordinates
       are orthogonal.*)
-    (*let x,y = Cairo.device_to_user_distance t.cr te.x_bearing te.y_bearing in
-    let w,h = Cairo.device_to_user_distance t.cr te.width te.height in
+    (*let x,y = Cairo.device_to_user_distance t te.x_bearing te.y_bearing in
+    let w,h = Cairo.device_to_user_distance t te.width te.height in
     { M.x = x; y = -.y; w = w; h = -.h}*)
     { M.x = te.x_bearing; y = te.y_bearing;
       w = te.width; h = te.height}
