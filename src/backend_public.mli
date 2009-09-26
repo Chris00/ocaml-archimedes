@@ -1,6 +1,6 @@
-(** Module managing the dynamic loading of the backends.  This modules
-    is only useful to create new backends and should not be used for
-    plotting data. *)
+(** Module providing a uniform interface and managing the dynamic
+    loading of the backends.  This modules is only useful to create
+    new backends and should not be used for plotting data. *)
 module type T = sig
   type line_cap =
     | BUTT  (** start(stop) the line exactly at the start(end) point *)
@@ -25,24 +25,32 @@ module type T = sig
     | RT  (** align right horizontally and top vertically *)
     | RB  (** align right horizontally and bottom vertically *)
 
+
+  (** Specifies variants of a font face based on their slant. *)
   type slant = Upright | Italic
-    (** Specifies variants of a font face based on their slant. *)
 
+  (** Specifies variants of a font face based on their weight. *)
   type weight = Normal | Bold
-    (** Specifies variants of a font face based on their weight. *)
 
-  (** To be able to register a given backend, it must provide an
-      implementation for all these functions. *)
+  (** The interface that backends must provide to be registered. *)
   module type T =
   sig
     type t
       (** Handle to a backend. *)
 
     val set_color : t -> Color.t -> unit
+      (** [set_color bk c] sets the color of the backend [bk] to [c]. *)
     val set_line_width : t -> float -> unit
+      (** [set_line_width bk w] sets the line width of the backend
+          [bk] to [w].  The line width is expressed in the current
+          backend coordinates (at the time of stroking). *)
     val set_line_cap : t -> line_cap -> unit
+      (** [set_line_cap bk c] sets the line cap for the backend [bk] to [c]. *)
     val set_dash : t -> float -> float array -> unit
+      (** [set_dash bk ofs pattern] *)
     val set_line_join : t -> line_join -> unit
+      (** [set_line_join bk j] sets the line join for the backend [bk]
+          to [j]. *)
 
     val get_line_width: t -> float
     val get_line_cap: t -> line_cap
@@ -58,14 +66,17 @@ module type T = sig
       x1:float -> y1:float ->
       x2:float -> y2:float ->
       x3:float -> y3:float -> unit
-      (** [curve_to x1 y1 x2 y2 x3 y3] adds an Bezier curve to the
+      (** [curve_to bk x1 y1 x2 y2 x3 y3] adds an Bezier curve to the
           path, starting at the current point, ending at point
           [(x3,y3)], with control points [(x1,y1)] and [(x2,y2)]. *)
 
     val rectangle : t -> x:float -> y:float -> w:float -> h:float -> unit
+      (** [rectangle bk x y w h] adds to the current path of [bk] a
+          rectangle whose lower left corner is at [(x,y)] and width
+          and height are respectively [w] and [h]. *)
 
     val arc : t -> r:float -> a1:float -> a2:float -> unit
-      (** [arc b r a1 a2] add an arc to the current path starting from
+      (** [arc bk r a1 a2] add an arc to the current path starting from
           the current point with a radius [r], starting at angle [a1]
           and going clockwise to angle [a2]. *)
 
@@ -110,12 +121,9 @@ module type T = sig
     val get_matrix : t -> Matrix.t
       (** Return the current transformation matrix.  Modifying this
           matrix should not affect the matrix held in [t]. *)
-    val backend_to_device : t -> Matrix.t
-      (** The returned matrix is the one which transforms the backend
-          coordinates (those for which the origin is at the lower left
-          corner of the surface, with unit square 1px x 1px) to the
-          device coordinates (that is, the original coordinates which
-          naturally come with the surface). *)
+    val flipy : t -> bool
+      (** [true] iff this kind of device has its Y axis pointing
+          downwards. *)
 
     val select_font_face : t -> slant -> weight -> string -> unit
       (** [select_font_face t slant weight family] selects a family
@@ -175,7 +183,6 @@ module type T = sig
 
   val width : t -> float
     (** Returns the height of the backend canvas. *)
-
 
 
   val registered: unit -> string list

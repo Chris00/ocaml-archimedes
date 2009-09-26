@@ -4,7 +4,7 @@
 
      Bertrand Desmons <Bertrand.Desmons@umons.ac.be>
      Christophe Troestler <Christophe.Troestler@umons.ac.be>
-     WWW: http://math.umh.ac.be/an/software/
+     WWW: http://math.umons.ac.be/an/software/
 
    This library is free software; you can redistribute it and/or modify
    it under the terms of the GNU Lesser General Public License version 3 or
@@ -103,7 +103,7 @@ sig
   val rotate : t -> angle:float -> unit
   val set_matrix : t -> Matrix.t -> unit
   val get_matrix : t -> Matrix.t
-  val backend_to_device : t -> Matrix.t
+  val flipy : t -> bool
 
   val select_font_face : t -> slant -> weight -> string -> unit
   val set_font_size : t -> float -> unit
@@ -122,8 +122,6 @@ type t = {
   width: float;  (* width of the backend canvas in its original units *)
   height: float; (* height of the backend canvas in its original units *)
   close: unit -> unit;
-  backend_to_device: Matrix.t;
-  device_to_backend: Matrix.t;
 
   set_color : Color.t -> unit;
   set_line_width : float -> unit;
@@ -163,6 +161,7 @@ type t = {
   rotate : angle:float -> unit;
   set_matrix : Matrix.t -> unit;
   get_matrix : unit -> Matrix.t;
+  flipy : bool;
 
   select_font_face: slant -> weight -> string -> unit;
   set_font_size: float -> unit;
@@ -194,12 +193,7 @@ struct
   if not(M.mem B.name !registry) then
     let make options w h =
       let handle = B.make options w h in
-      let backend_to_device = B.backend_to_device handle in
-      let device_to_backend = Matrix.copy backend_to_device in
-      Matrix.invert device_to_backend;
       { width = w;  height = h;
-        backend_to_device = backend_to_device;
-        device_to_backend = device_to_backend;
         close = (fun () -> B.close ~options handle);
         set_color = B.set_color handle;
         set_line_width = B.set_line_width handle;
@@ -235,6 +229,7 @@ struct
         rotate = B.rotate handle;
         set_matrix = B.set_matrix handle;
         get_matrix = (fun () -> B.get_matrix handle);
+        flipy = B.flipy handle;
 
         select_font_face = B.select_font_face handle;
         set_font_size = B.set_font_size handle;
@@ -254,8 +249,6 @@ end
 let width t = t.width
 let height t = t.height
 let close t = t.close()
-let backend_to_device t = Matrix.copy t.backend_to_device
-let device_to_backend t = Matrix.copy t.device_to_backend
 let set_color t = t.set_color
 let set_line_width t = t.set_line_width
 let set_line_cap t = t.set_line_cap
@@ -287,6 +280,7 @@ let scale t = t.scale
 let rotate t = t.rotate
 let set_matrix t = t.set_matrix (*(Matrix.mul t.backend_to_device m)*)
 let get_matrix t = (*Matrix.mul t.device_to_backend *) t.get_matrix()
+let flipy t = t.flipy
 let select_font_face t = t.select_font_face
 let set_font_size t = t.set_font_size
 let text_extents t = t.text_extents
