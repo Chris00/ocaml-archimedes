@@ -27,9 +27,6 @@ struct
 
   let name = "cairo"
 
-  (* identity CTM -- never modified *)
-  let id = { Cairo.xx = 1.; xy = 0.;  yx = 0.; yy = 1.;  x0 = 0.; y0 = 0. }
-
   type t = Cairo.context
 
   (* Same type (same internal representation), just in different modules *)
@@ -59,12 +56,7 @@ struct
   let close_path t = Cairo.Path.close t
   let clear_path t = Cairo.Path.clear t
 
-  let set_line_width t = set_line_width t
-
-  let get_line_width t = get_line_width t
-
   let set_dash t ofs arr = set_dash t ~ofs arr
-  let get_dash t = get_dash t
 
   let set_matrix t m =
     (* let m' = (Obj.magic m : Cairo.matrix) in *)
@@ -79,27 +71,21 @@ struct
     { M.xx = m.Cairo.xx;  xy = m.Cairo.xy;
       yx = m.Cairo.yx; yy = m.Cairo.yy;
       x0 = m.Cairo.x0; y0 = m.Cairo.y0 }
-  let translate t = translate t
-  let scale t = scale t
-  let rotate t = rotate t
+
   let flipy _ = true
 
   let set_color t c =
     let r,g,b,a = Archimedes.Color.get_rgba c in
     Cairo.set_source_rgba t r g b a
 
-  let move_to t = move_to t
-  let line_to t = line_to t
-  let rel_move_to t = rel_move_to t
-  let rel_line_to t = rel_line_to t
-  let curve_to t = curve_to t
-  let rectangle t = rectangle t
-
   let arc t ~r ~a1 ~a2 =
     let x,y = Cairo.Path.get_current_point t in
     let x = x -. r *. cos a1
     and y = y -. r *. sin a1 in
     arc t ~x ~y ~r ~a1 ~a2
+
+  (* identity CTM -- never modified *)
+  let id = { Cairo.xx = 1.; xy = 0.;  yx = 0.; yy = 1.;  x0 = 0.; y0 = 0. }
 
   let stroke t =
     (* FIXME: Do we really want this? are we not supposed to always
@@ -115,16 +101,10 @@ struct
     stroke_preserve t;
     Cairo.restore t
 
-  let fill t = fill t
-  let fill_preserve t = fill_preserve t
-
   let clip_rectangle t ~x ~y ~w ~h =
     Cairo.Path.clear t;
     Cairo.rectangle t ~x ~y ~w ~h;
     Cairo.clip t
-
-  let save t = save t
-  let restore t = restore t
 
   (* FIXME: better error message for options *)
   let make ~options width height =
@@ -162,8 +142,6 @@ struct
       | Backend.Normal -> Cairo.Normal
       | Backend.Bold -> Cairo.Bold in
     Cairo.select_font_face t ~slant ~weight family
-
-  let set_font_size t = set_font_size t
 
   let show_text t ~rotate ~x ~y pos text =
     (* Compute the angle between the desired direction and the X axis
