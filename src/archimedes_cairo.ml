@@ -33,14 +33,29 @@ struct
   type t = Cairo.context
 
   (* Same type (same internal representation), just in different modules *)
-  let set_line_cap t c = set_line_cap t (Obj.magic c : Cairo.line_cap)
-  let get_line_cap t = (Obj.magic(get_line_cap t) : Backend.line_cap)
+  let set_line_cap t c =
+    set_line_cap t (match c with
+                    | Backend.BUTT -> Cairo.BUTT
+                    | Backend.ROUND -> Cairo.ROUND
+                    | Backend.SQUARE -> Cairo.SQUARE)
+  let get_line_cap t = (match get_line_cap t with
+                        | Cairo.BUTT -> Backend.BUTT
+                        | Cairo.ROUND -> Backend.ROUND
+                        | Cairo.SQUARE -> Backend.SQUARE)
+  let set_line_join t j =
+    set_line_join t (match j with
+                     | Backend.JOIN_MITER -> Cairo.JOIN_MITER
+                     | Backend.JOIN_ROUND -> Cairo.JOIN_ROUND
+                     | Backend.JOIN_BEVEL -> Cairo.JOIN_BEVEL)
+  let get_line_join t = (match get_line_join t with
+                         | Cairo.JOIN_MITER -> Backend.JOIN_MITER
+                         | Cairo.JOIN_ROUND -> Backend.JOIN_ROUND
+                         | Cairo.JOIN_BEVEL -> Backend.JOIN_BEVEL)
 
-  let set_line_join t j = set_line_join t (Obj.magic j : Cairo.line_join)
-  let get_line_join t = (Obj.magic(get_line_join t) : Backend.line_join)
-
-  (*Get needed functions which are in submodule Path*)
-  let path_extents t = (Obj.magic(Cairo.Path.extents t): M.rectangle)
+  let path_extents t =
+    (* (Obj.magic(Cairo.Path.extents t): M.rectangle) *)
+    let e = Cairo.Path.extents t in
+    { M.x = e.Cairo.x;  y = e.Cairo.y;  w = e.Cairo.w;  h = e.Cairo.h }
   let close_path t = Cairo.Path.close t
   let clear_path t = Cairo.Path.clear t
 
@@ -52,21 +67,18 @@ struct
   let get_dash t = get_dash t
 
   let set_matrix t m =
-    Gc.compact ();
+    (* let m' = (Obj.magic m : Cairo.matrix) in *)
     let m' = { Cairo.xx = m.M.xx; xy = m.M.xy;
-                    yx = m.M.yx; yy = m.M.yy;
-                    x0 = m.M.x0; y0 = m.M.y0;}
-      (*(Obj.magic m : Cairo.matrix)*)
-    in
+               yx = m.M.yx; yy = m.M.yy;
+               x0 = m.M.x0; y0 = m.M.y0 } in
     set_matrix t m'
 
   let get_matrix t =
-    Gc.compact ();
+    (* (Obj.magic (get_matrix cr) : Backend.matrix) *)
     let m = get_matrix t in
     { M.xx = m.Cairo.xx;  xy = m.Cairo.xy;
       yx = m.Cairo.yx; yy = m.Cairo.yy;
-      x0 = m.Cairo.x0; y0 = m.Cairo.y0;}
-    (*(Obj.magic (get_matrix cr) : Backend.matrix)*)
+      x0 = m.Cairo.x0; y0 = m.Cairo.y0 }
   let translate t = translate t
   let scale t = scale t
   let rotate t = rotate t
