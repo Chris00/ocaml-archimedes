@@ -123,12 +123,15 @@ module type T = sig
           matrix should not affect the matrix held in [t]. *)
     val flipy : t -> bool
       (** [true] iff this kind of device has its Y axis pointing
-          downwards. *)
+          downwards.
+          FIXME: really needed ?  Beware that on some devices, the font
+          display happens in the current coordinates. *)
 
     val select_font_face : t -> slant -> weight -> string -> unit
       (** [select_font_face t slant weight family] selects a family
           and style of font from a simplified description as a family
-          name, slant and weight.  Family names are bakend dependent.  *)
+          name, slant and weight.  Family names are bakend dependent.
+          Raise an exception if the face is not supported. *)
     val set_font_size : t -> float -> unit
       (** Set the scaling of the font. *)
     val text_extents : t -> string -> Matrix.rectangle

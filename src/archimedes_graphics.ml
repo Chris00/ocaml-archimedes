@@ -129,6 +129,9 @@ struct
     (* The extent of the current path, in device coordinates. *)
     mutable ctm : Matrix.t; (* current transformation matrix from the
                                user coordinates to the device ones. *)
+    mutable font_slant: Backend.slant;
+    mutable font_weight: Backend.weight;
+    mutable font_family: string;
     mutable font_size : float;
   }
 
@@ -198,6 +201,9 @@ struct
       dash = [| |]; (* no dash *)
       (* Identity transformation matrix *)
       ctm = Matrix.make_identity();
+      font_slant = Backend.Upright;
+      font_weight = Backend.Normal;
+      font_family = "courier 10 pitch";
       font_size = 10.;
     } in
     { closed = false;
@@ -496,13 +502,29 @@ struct
 
   let get_matrix t = Matrix.copy (get_state t).ctm
 
-  let select_font_face _t _slant _weight family =
-    (* FIXME: can we be more clever and try some *)
-    Graphics.set_font family
+  (* FIXME: What about win32 and mac ? *)
+  let string_of_font st =
+    let slant = match st.font_slant with
+      | Backend.Upright -> 'r'
+      | Backend.Italic -> 'i' in
+    let weight = match st.font_weight with
+      | Backend.Normal -> "medium"
+      | Backend.Bold -> "bold" in
+    sprintf "-*-%s-%s-%c-normal--%i-*-*-*-*-*-iso10646-*"
+      st.font_family weight slant (round st.font_size)
+
+  let select_font_face t slant weight family =
+    let st = get_state t in
+    st.font_slant <- slant;
+    st.font_weight <- weight;
+    st.font_family <- family;
+    Graphics.set_font (string_of_font st)
 
   let set_font_size t size =
-    (get_state t).font_size <- size;
-    Graphics.set_text_size (round size)
+    let st = get_state t in
+    st.font_size <- size;
+    (* Graphics.set_text_size (round size) *) (* no effect on unix *)
+    Graphics.set_font (string_of_font st)
 
   let text_extents t txt =
     check_valid_handle t;
@@ -545,6 +567,8 @@ struct
          the text along the desired direction. *)
       (* FIXME: rotations *)
     )
+
+  let flipy _t = false
 end
 
 let () =
