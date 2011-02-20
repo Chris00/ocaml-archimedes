@@ -78,7 +78,7 @@ archimedes_tikz.cmxs: archimedes_tikz.ml
 
 .PHONY: doc
 OCAMLDOC_FLAGS += $(if $(OCAMLINCLUDES), $(addprefix -I , $(OCAMLINCLUDES)))
-doc:
+doc: $(DOC_FILES)
 	if [ ! -d "$(DOC_DIR)" ]; then mkdir -p $(DOC_DIR); fi
 	$(OCAMLDOC) -html -d $(DOC_DIR) $(OCAMLDOC_FLAGS) $(DOC_FILES)
 
