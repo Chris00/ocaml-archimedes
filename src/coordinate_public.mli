@@ -1,18 +1,21 @@
 (** Affine systems of coordinates relative to other coordinate systems
-    with automatic updates. *)
+    with automatic updates.  The automatic update refers to the fact
+    that, if a coordinate system is upated, all coordinate systems
+    which depend on it (possibly through several intermediate
+    coordinate systems), they will use the updated version. *)
 module type T = sig
   type t
-    (** Mutable affine coordinate system. *)
+  (** Mutable affine coordinate system. *)
 
   type ctm
-    (** Current transformation matrix of the backend (to be able to
-        restore it with {!Coordinate.restore}. *)
+  (** Current transformation matrix of the backend (to be able to
+      restore it with {!Coordinate.restore}. *)
 
   val use : Backend.t -> t -> ctm
-    (** After a call to [use b c], all backend operations will be
-        performed in the corrdinates [c].  It returns the current
-        coordinate system so one can restore it with
-        {!Coordinate.restore}. *)
+  (** After a call to [use b c], all backend operations will be
+      performed in the corrdinates [c].  It returns the current
+      coordinate system so one can restore it with
+      {!Coordinate.restore}. *)
 
   val restore : Backend.t -> ctm -> unit
     (** [restore b c] restore the coordinate transformation matrix [ctm]
@@ -22,20 +25,21 @@ module type T = sig
   (** {2 Transforming coordinates} *)
 
   val to_device : t -> x:float -> y:float -> float * float
-    (**[to_device coord x y] returns the location of the point [(x,y)]
-       in device coordinates.*)
+  (** [to_device coord x y] returns the location of the point [(x,y)]
+      in device coordinates.*)
 
   val to_device_distance : t -> dx:float -> dy:float -> float * float
-    (**[to_device coord dx dy] returns the distance of [(dx,dy)]
-       in device coordinates.*)
+  (** [to_device coord dx dy] returns the distance [(dx,dy)] in device
+      coordinates (i.e. the translation in [coord] is ignored).  *)
 
   val to_coord : t -> x:float -> y:float -> float * float
-    (**[to_coord coord x y] converts the (device) point [(x,y)] into
-       the corresponding point, expressed in [coord] coordinates.*)
+  (** [to_coord coord x y] converts the (device) point [(x,y)] into
+      the corresponding point, expressed in [coord] coordinates. *)
 
   val to_coord_distance : t -> dx:float -> dy:float -> float * float
-    (**[to_coord coord x y] converts the (device) distance [(dx,dy)] into
-       the corresponding distance, expressed in [coord] coordinates.*)
+  (** [to_coord coord x y] converts the (device) distance [(dx,dy)]
+      into the corresponding distance, expressed in [coord]
+      coordinates. *)
 
 
   (** {2 Creating new coordinate systems} *)

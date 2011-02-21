@@ -24,7 +24,7 @@ type ctm = Matrix.t
 module Monitor =
 struct
   type t = int ref
-      (* The  low bit (2**0) is used as a boolean, the other bits as id. *)
+  (* The low bit (2**0) is used as a boolean, the other bits as id. *)
 
   let equal m1 m2 = m1 == m2 (* physical equality *)
   let hash m = !m lsr 1
@@ -43,7 +43,7 @@ module WM = Weak.Make(Monitor)
 
    tm1 -> tm2 -> ... -> tmN
 
-   which correspond the tranforming a point [x] in the device
+   which corresponds to tranforming a point [x] into the device
    coordinates [tmN * ... * tm2 * tm1 * x].  We could recompute the
    composition of affine transformations at each use but, as an
    optimization, we store [tmN * ... * tm2 * tm1] into [ctm].  Now, of
