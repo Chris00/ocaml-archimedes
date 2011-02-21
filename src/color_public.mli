@@ -1,5 +1,5 @@
 
-(** Representation of colors.*)
+(** Abstract representation of colors.*)
 module type T = sig
   type t
     (**The type for colors*)

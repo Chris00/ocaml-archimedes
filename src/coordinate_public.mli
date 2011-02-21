@@ -47,7 +47,7 @@ module type T = sig
   val make_root : Matrix.t -> t
     (** [make_from m] make a system of coordinates which, when used,
         amounts to use [m].  This coordinate system depends on no
-        other so will never be updated?  It can be modified however
+        other  so will never be updated.  It can be modified however
         (the matrix [m] is copied so no modification will affect [m]). *)
 
   val make_identity : t -> t
