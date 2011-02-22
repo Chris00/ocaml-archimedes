@@ -7,8 +7,8 @@ OCAMLDOC   = @OCAMLDOC@
 OCAMLMKLIB = @OCAMLMKLIB@
 OCAMLLIB   = @OCAMLLIB@
 
-OCAMLC_FLAGS ?= -dtypes -g
-OCAMLOPT_FLAGS ?= -dtypes -inline 3 -w DEFPSVYZX
+OCAMLC_FLAGS ?= -annot -g
+OCAMLOPT_FLAGS ?= -annot -inline 3 -w DEFPSVYZX
 PP_FLAGS = $(if $(PP), -pp "$(PP)")
 
 OCAML_PACKAGES = $(if $(OCAMLPACKS), -package $(OCAMLPACKS))
@@ -16,37 +16,41 @@ LINKPKG = $(if $(OCAMLPACKS), -linkpkg)
 OCAMLC_FLAGS += $(if $(OCAMLINCLUDES), $(addprefix -I , $(OCAMLINCLUDES)))
 OCAMLOPT_FLAGS += $(if $(OCAMLINCLUDES), $(addprefix -I , $(OCAMLINCLUDES)))
 
+OCAMLFIND_OCAMLC = $(if $(OCAMLFIND), $(OCAMLFIND) ocamlc, $(OCAMLC))
+OCAMLFIND_OCAMLOPT = $(if $(OCAMLFIND), $(OCAMLFIND) ocamlopt, $(OCAMLOPT))
+OCAMLFIND_OCAMLDEP = $(if $(OCAMLFIND), $(OCAMLFIND) ocamldep, $(OCAMLDEP))
+
 %.cmi: %.mli
-	$(OCAMLC) $(PP_FLAGS) $(OCAMLC_FLAGS) $(OCAML_PACKAGES) -c $<
+	$(OCAMLFIND_OCAMLC) $(PP_FLAGS) $(OCAMLC_FLAGS) $(OCAML_PACKAGES) -c $<
 
 %.cmi: %.ml
-	$(OCAMLC) $(PP_FLAGS) $(OCAMLC_FLAGS) $(OCAML_PACKAGES) -c $<
+	$(OCAMLFIND_OCAMLC) $(PP_FLAGS) $(OCAMLC_FLAGS) $(OCAML_PACKAGES) -c $<
 
 %.cmo: %.ml
-	$(OCAMLC) $(PP_FLAGS) $(OCAMLC_FLAGS) $(OCAML_PACKAGES) -c $<
+	$(OCAMLFIND_OCAMLC) $(PP_FLAGS) $(OCAMLC_FLAGS) $(OCAML_PACKAGES) -c $<
 
 %.cma:
-	$(OCAMLC) $(PP_FLAGS) -a -o $@ $(OCAMLC_FLAGS) $^
+	$(OCAMLFIND_OCAMLC) $(PP_FLAGS) -a -o $@ $(OCAMLC_FLAGS) $^
 
 %.cmx: %.ml
-	$(OCAMLOPT) $(PP_FLAGS) $(OCAMLOPT_FLAGS) $(OCAML_PACKAGES) -c $<
+	$(OCAMLFIND_OCAMLOPT) $(PP_FLAGS) $(OCAMLOPT_FLAGS) $(OCAML_PACKAGES) -c $<
 
 %.cmxa:
-	$(OCAMLOPT) $(PP_FLAGS) -a -o $@ $(OCAMLOPT_FLAGS) $^
+	$(OCAMLFIND_OCAMLOPT) $(PP_FLAGS) -a -o $@ $(OCAMLOPT_FLAGS) $^
 
 %.exe: %.cmo
-	$(OCAMLC) -o $@ $(PP_FLAGS) $(OCAMLC_FLAGS) \
+	$(OCAMLFIND_OCAMLC) -o $@ $(PP_FLAGS) $(OCAMLC_FLAGS) \
 	  $(LIBS_CMA) $(filter %.cmo %.cma,$(filter-out $<,$+)) \
 	  $(OCAML_PACKAGES) $(LINKPKG) $<
 
 %.com: %.cmx
-	$(OCAMLOPT) -o $@ $(PP_FLAGS) $(OCAMLOPT_FLAGS) \
+	$(OCAMLFIND_OCAMLOPT) -o $@ $(PP_FLAGS) $(OCAMLOPT_FLAGS) \
 	  $(LIBS_CMXA) $(filter %.cmx %.cmxa,$(filter-out $<,$+)) \
 	  $(OCAML_PACKAGES) $(LINKPKG) $<
 
 .depend.ocaml: $(wildcard *.ml) $(wildcard *.mli)
 	@echo "Building $@ ... "
-	-@test -z "$^" || $(OCAMLDEP) $(PP_FLAGS) $(SYNTAX_OPTS) $^ > $@
+	-@test -z "$^" || $(OCAMLFIND_OCAMLDEP) $(PP_FLAGS) $(SYNTAX_OPTS) $^ > $@
 # If we do not force inclusion (e.g. with "-" prefix), then it is not
 # recreated and taken into account properly.
 include .depend.ocaml
