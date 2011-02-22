@@ -5,6 +5,9 @@ include $(ROOT)/Makefile.conf
 OCAMLPACKS = dynlink,bigarray
 OCAMLINCLUDES = $(ROOT)/src
 
+LIBS_CMA = archimedes.cma
+LIBS_CMXA = archimedes.cmxa
+
 TESTS = backend_text.ml backend_path.ml backend_line.ml \
   text.ml marks.ml functions.ml simple_plot.ml
 #viewports.ml 
@@ -13,10 +16,6 @@ all: byte native
 opt: native
 byte: $(TESTS:.ml=.exe)
 native: $(TESTS:.ml=.com)
-
-backend_path.exe: LIBS_CMA = string_utils.cmo conf.cmo color.cmo backend.cmo
-backend_path.com: LIBS_CMXA = string_utils.cmx conf.cmx color.cmx backend.cmx
-
 
 
 include $(ROOT)/Makefile.ocaml

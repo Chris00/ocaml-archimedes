@@ -5,7 +5,6 @@ let pi = 4. *. atan 1.
 
 let draw bk =
   let bk = Backend.make bk 800. 700. ~dirs:[ "./src"; "../src" ] in
-  Backend.set_matrix bk (Backend.backend_to_device bk);
 
   (* Only the size at the time of stroking is important. *)
   Backend.set_line_width bk 1.;

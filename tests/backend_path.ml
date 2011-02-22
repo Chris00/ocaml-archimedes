@@ -4,8 +4,11 @@ open Archimedes
 let pi = 4. *. atan 1.
 
 let draw bk =
-  let bk = Backend.make bk 800. 700. ~dirs:[ "./src"; "../src" ] in
-  Backend.set_matrix bk (Backend.backend_to_device bk);
+  let bk =
+    try Backend.make bk 800. 700. ~dirs:[ "./src"; "../src" ]
+    with Backend.Error e ->
+      eprintf "ERROR: %s\n" (Backend.string_of_error e);
+      exit 1 in
   Backend.scale bk 1.5 1.5;
 
   Backend.move_to bk 500. 300.;
@@ -85,9 +88,10 @@ let draw bk =
   Backend.close bk
 
 let () =
-  List.iter draw [ "cairo PDF backend_path.pdf";
+  List.iter draw [ "graphics hold";
+                   "cairo PDF backend_path.pdf";
                    "tikz backend_path.tex";
-                   "graphics hold" ]
+                 ]
 
 
 (* Local Variables: *)

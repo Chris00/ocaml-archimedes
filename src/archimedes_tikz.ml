@@ -624,6 +624,8 @@ http://www.tac.dk/cgi-bin/info2www?%28latex%29Low-level%20font%20commands:
     fprintf t.fh "\\node[inner sep=0pt, %s, %s, anchor=%s,rotate=%f] \
       at (%.10f,%.10f) {%s};"
       st.color st.opacity pos (180. *. angle /. pi) x' y' txt
+
+  let flipy _ = false
 end
 
 let () =

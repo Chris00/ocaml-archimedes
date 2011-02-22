@@ -292,7 +292,7 @@ let backend h = h.backend
 
 let make ~dirs name w h =
   let backend = Backend.make ~dirs name w h in
-  let init = Coordinate.make_root (Backend.backend_to_device backend) in
+  let init = Coordinate.make_root (Backend.get_matrix backend) in
   let vp_device = Coordinate.make_scale init w h in
   (* The dependencies of coordinate systems matter! *)
   let graph_box = Coordinate.make_identity vp_device in

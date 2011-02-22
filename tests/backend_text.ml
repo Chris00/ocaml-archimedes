@@ -9,7 +9,6 @@ let () =
     try
       let dirs = [ "./src"; "../src" ] in
       let b = Backend.make s 200. 100. ~dirs in
-      Backend.set_matrix b (Backend.backend_to_device b);
       (try Backend.select_font_face b Backend.Upright Backend.Normal "times"
        with _ -> ()); (* keep the default font if it fails *)
       Backend.show_text b ~x:50. ~y:20. ~rotate:half_pi Backend.CC "Joy";
