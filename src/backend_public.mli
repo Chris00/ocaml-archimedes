@@ -86,8 +86,9 @@ module type T = sig
           passed to {!Archimedes.Backend.T.move_to}) and closes this
           sub-path. *)
     val clear_path : t -> unit
-      (** Clears the current path. After this call there will be no path.
-          Nothing is guaranteed about the current point. *)
+    (** Clears the current path. After this call there will be no
+        path.  Nothing is guaranteed about the current point (it may
+        ne be preserved). *)
     val path_extents : t -> Matrix.rectangle
 
     val stroke : t -> unit
@@ -96,8 +97,8 @@ module type T = sig
     val fill_preserve : t -> unit
 
     val clip_rectangle : t -> x:float -> y:float -> w:float -> h:float -> unit
-      (** Establishes a new clip rectangle by intersecting the current
-          clip rectangle.  This {i may clear} the current path. *)
+    (** Establishes a new clip rectangle by intersecting the current
+        clip rectangle.  This {i may clear} the current path. *)
 
     val save : t -> unit
       (** Save the current state of the backend.  Note that
@@ -120,7 +121,7 @@ module type T = sig
           transorming user to device coordinates. *)
     val get_matrix : t -> Matrix.t
       (** Return the current transformation matrix.  Modifying this
-          matrix should not affect the matrix held in [t]. *)
+          matrix does not affect the matrix held in [t]. *)
     val flipy : t -> bool
       (** [true] iff this kind of device has its Y axis pointing
           downwards.
@@ -170,12 +171,12 @@ module type T = sig
 
   val make : ?dirs:string list -> string -> float -> float -> t
     (** [make backend width height] creates a new backend of the given
-        dimensions.
+        dimensions.  The units of the dimensions are backend dependent.
 
         [backend] is the name of the underlying engine, followed by one
         or several options separated by spaces.  For example, "Graphics"
         for the graphics backend or "Cairo PNG filename" for the Cairo
-        backend, using a PNG surface to be saved in [filename]. *)
+        backend, using a PNG surface to be saved to [filename]. *)
 
   val close : t -> unit
     (** Close the handle.  For some backends, the output will not be
