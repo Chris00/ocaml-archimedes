@@ -93,4 +93,4 @@ uninstall:
 include $(ROOT)/Makefile.ocaml
 
 dist-clean::
-	$(RM) META Makefile $(wildward *.dep)
+	$(RM) META Makefile $(wildcard *.dep)
