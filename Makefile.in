@@ -1,15 +1,16 @@
 ROOT=.
 include Makefile.conf
 
-.PHONY: default all opt byte native install uninstall htdoc doc examples tests
+.PHONY: default all opt byte native install uninstall htdoc doc examples \
+		tests unittests
 OCAML_ALL = byte $(filter-out byte, @OCAMLBEST@)
 default: $(OCAML_ALL)
-all: byte native tests
+all: byte native tests unittests
 opt: native
 htdoc: doc
 byte native install uninstall doc:
 	$(MAKE) -C src $@
-examples tests: default
+examples tests unittests: default
 	$(MAKE) -C $@ $(OCAML_ALL)
 
 # Depends on the version number set in delimited_overloading.mli :
