@@ -13,7 +13,7 @@ module type T = sig
 
   val use : Backend.t -> t -> ctm
   (** After a call to [use b c], all backend operations will be
-      performed in the corrdinates [c].  It returns the current
+      performed in the coordinates [c].  It returns the current
       coordinate system so one can restore it with
       {!Coordinate.restore}. *)
 
@@ -45,7 +45,7 @@ module type T = sig
   (** {2 Creating new coordinate systems} *)
 
   val make_root : Matrix.t -> t
-    (** [make_from m] make a system of coordinates which, when used,
+    (** [make_root m] make a system of coordinates which, when used,
         amounts to use [m].  This coordinate system depends on no
         other  so will never be updated.  It can be modified however
         (the matrix [m] is copied so no modification will affect [m]). *)
