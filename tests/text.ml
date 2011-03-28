@@ -72,4 +72,4 @@ let () =
        ["cairo PDF text.pdf";
         "cairo PNG text.png";
         "tikz text.tex draw";
-        "graphics"]
+        "graphics hold"]

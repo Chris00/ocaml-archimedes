@@ -1,7 +1,7 @@
 module B = Backend
 
-(*let pi = 4.*. atan 1.*)
-let two_pi = 8.*. atan 1.
+(*let pi = 4. *. atan 1.*)
+let two_pi = 8. *. atan 1.
 
 (*Registering point styles.*)
 module M = Map.Make(String)

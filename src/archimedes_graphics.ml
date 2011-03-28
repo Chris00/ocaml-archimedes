@@ -203,7 +203,7 @@ struct
       ctm = Matrix.make_identity();
       font_slant = Backend.Upright;
       font_weight = Backend.Normal;
-      font_family = "courier 10 pitch";
+      font_family = "*";
       font_size = 10.;
     } in
     { closed = false;

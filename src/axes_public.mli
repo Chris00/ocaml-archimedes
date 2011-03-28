@@ -1,5 +1,26 @@
 (** Axes maker and convenient ways to create axes. *)
 module type T = sig
+  type labels =
+    | Text of string array * float
+    | Number
+    | Expnumber of float
+    | Expnumber_named of float * string
+    | Custom of (float -> string)
+
+  type tics =
+    | Fixed of float list
+    | Fixed_norm of float list
+    | Equidistants of int * int
+    | Auto
+
+  type axis = {
+    mutable x0: float;
+    mutable xend: float;
+    tics: tics;
+    logarithmic: bool
+  }
+
+  type axes_system = ...
 
   (** A data structure holding ranges.*)
   type ranges = { x1:float; x2:float; y1:float; y2:float}
