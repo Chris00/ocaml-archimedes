@@ -88,7 +88,7 @@ module type T = sig
     val clear_path : t -> unit
     (** Clears the current path. After this call there will be no
         path.  Nothing is guaranteed about the current point (it may
-        ne be preserved). *)
+        not be preserved). *)
     val path_extents : t -> Matrix.rectangle
 
     val stroke : t -> unit
