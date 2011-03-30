@@ -121,5 +121,8 @@ and Viewport = struct
       current_point = (0., 0.);
       instructions = [];
       immediate_drawing = false;
-    }
+    } in
+    let root = {real_root with sizes = ...; parent = real_root} in (* TODO Change sizes *)
+      real_root.children <- [root];
+      root
 end
