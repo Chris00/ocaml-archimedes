@@ -13,15 +13,15 @@ let markers =
      "tic_down"; "tic_left"; "tic_right"; "" |]
 
 let draw backend =
-  let p = P.make backend 250. 150. ~dirs:[ "../src"; "./src"] in
-  P.set_mark_size p 10.;
-  P.set_line_width p 10.;
+  let p = P.make backend 800. 600. ~dirs:[ "../src"; "./src"] in
+  (*P.set_mark_size p 10.;
+  P.set_line_width p 10.;*)
   for i = 0 to Array.length markers - 1 do
     P.xy p [float(i mod 8)] [float(i / 8)] ~mark:markers.(i)
   done;
-  P.set_line_width p 1.;
+  (*P.set_line_width p 1.;
   P.f p (fun _ -> -1.) (-1.) 8.;
-  P.f p (fun _ -> 8.) (-1.) 8.;
+  P.f p (fun _ -> 8.) (-1.) 8.;*)
   P.close p
 
 
@@ -29,9 +29,9 @@ let () =
   let bk =
     if Array.length Sys.argv > 1 then [Sys.argv.(1)]
     else [ "tikz marks.tex";
-           "graphics hold";
            "cairo PNG marks.png";
-           "cairo PDF marks.pdf" ]
+           "cairo PDF marks.pdf";
+           "graphics hold" ]
   in
   try List.iter draw bk
   with Backend.Error e ->

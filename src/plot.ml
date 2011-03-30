@@ -180,12 +180,12 @@ struct
   let x p ?color ?mark ?(n0=0) x =
     let n = Array.init (Array.length x) (fun i -> float(n0 + i)) in
     let iter = Iterator.of_arrays n x in
-    draw_axes p;
+    (*draw_axes p;*)
     Handle.xy p.h ?color ?mark iter
 
   let xy p ?color ?mark x y =
     let iter = Iterator.of_arrays x y in
-    draw_axes p;
+    (*draw_axes p;*)
     Handle.xy p.h ?color ?mark iter
 end
 
@@ -198,12 +198,12 @@ struct
     let i = ref (n0-1) in
     let n = List.map (fun _ -> incr i; float(!i)) x in
     let iter = Iterator.of_lists n x in
-    draw_axes p;
+    (*draw_axes p;*)
     Handle.xy p.h ?color ?mark iter
 
   let xy p ?color ?mark x y =
     let iter = Iterator.of_lists x y in
-    draw_axes p;
+    (*draw_axes p;*)
     Handle.xy p.h ?color ?mark iter
 end
 
@@ -236,12 +236,12 @@ struct
       n.{i} <- float(n0 + i);
     done;
     let iter = Iterator.of_bigarrays n x ~xclayout:false ~yclayout:false in
-    draw_axes p;
+    (*draw_axes p;*)
     Handle.xy p.h ?color ?mark iter
 
   let xy p ?color ?mark x y =
     let iter = Iterator.of_bigarrays x y ~xclayout:false ~yclayout:false in
-    draw_axes p;
+    (*draw_axes p;*)
     Handle.xy p.h ?color ?mark iter
 end
 
@@ -257,12 +257,12 @@ struct
       n.{i} <- float(n0 + i);
     done;
     let iter = Iterator.of_bigarrays n x ~xclayout:true ~yclayout:true in
-    draw_axes p;
+    (*draw_axes p;*)
     Handle.xy p.h ?color ?mark iter
 
   let xy p ?color ?mark x y =
     let iter = Iterator.of_bigarrays x y ~xclayout:true ~yclayout:true in
-    draw_axes p;
+    (*draw_axes p;*)
     Handle.xy p.h ?color ?mark iter
 
 end

@@ -8,7 +8,7 @@ OCAMLINCLUDES = $(ROOT)/src
 LIBS_CMA = archimedes.cma
 LIBS_CMXA = archimedes.cmxa
 
-TESTS = backend_text.ml backend_path.ml backend_line.ml \
+TESTS = arrays.ml backend_text.ml backend_path.ml backend_line.ml \
   text.ml marks.ml functions.ml simple_plot.ml
 #viewports.ml 
 .PHONY: all byte opt native
