@@ -39,8 +39,8 @@ struct
   }
 
   type dim = {
-    mutable x0: float;
-    mutable xend: float;
+    mutable x0: float;     mutable auto_x0: bool;
+    mutable xend: float;   mutable auto_xend: bool;
     mutable log: bool;
     mutable orientation: sign;
     mutable axes: axis list
@@ -81,7 +81,7 @@ and Viewport = struct
     (* An instruction is a "thing" to plot on the device, we memorize
        their order to replot in case of necessity *)
     mutable instructions: (unit -> unit) Queue.t;
-    
+
     (* Draw immediately or wait for closing ? *)
     mutable immediate_drawing: bool
   }
@@ -89,8 +89,8 @@ and Viewport = struct
   let make_root backend =
     let size0 = min backend.width backend.height in
     let dim = {
-      Axis.x0 = neg_infinity;
-      Axis.xend = infinity;
+      Axis.x0 = -1.; Axis.auto_x0 = true;
+      Axis.xend = 1.; Axis.auto_xend = true;
       Axis.log = false;
       Axis.orientation = Axis.Positive;
       Axis.axes = []
@@ -104,7 +104,7 @@ and Viewport = struct
       backend = backend;
       parent = real_root;
       children = [];
-      
+
       (* TODO Complete that *)
       coord_device = ...;
       coord_graph = ...;
@@ -114,9 +114,9 @@ and Viewport = struct
       axes_system = axes_system;
 
       sizes = {
-	Sizes.line_width = Sizes.Absolute size0;
-	Sizes.text_size = Sizes.Absolute size0;
-	Sizes.mark_size = Sizes.Absolute 42. (* TODO Check this *)
+        Sizes.line_width = Sizes.Absolute size0;
+        Sizes.text_size = Sizes.Absolute size0;
+        Sizes.mark_size = Sizes.Absolute 42. (* TODO Check this *)
       };
       current_point = (0., 0.);
       instructions = [];
