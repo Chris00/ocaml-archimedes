@@ -58,6 +58,7 @@ and Viewport = struct
     backend: Backend.t;
 
     parent: t;
+    depends_on: Coordinate.t;
     mutable children: t list;
 
     (* (A,B,C,E) indicate "1" for a particulate (see below) coordinate system
@@ -69,8 +70,8 @@ and Viewport = struct
     *)
     mutable coord_device: Coordinate.t; (* AA *)
     mutable coord_graph: Coordinate.t; (* BB *)
-    mutable coord_data: Coordinate.t; (* CC *)
     mutable coord_normalized: Coordinate.t; (* BE *)
+    mutable coord_data: Coordinate.t; (* CC *)
 
     (* Axes system associated to the viewport *)
     mutable axes_system: Axes.t;
@@ -86,7 +87,7 @@ and Viewport = struct
     mutable immediate_drawing: bool
   }
 
-  let make_root backend =
+  let make_root ?(lines=0.002) ?(text=0.024) ?(marks=0.01) backend =
     let size0 = min backend.width backend.height in
     let dim = {
       Axis.x0 = -1.; Axis.auto_x0 = true;
@@ -100,29 +101,30 @@ and Viewport = struct
       dimy = {dim with Axis.x0 = dim.Axis.x0};
       viewports = []
     } in
+    let coord_root = Coordinate.make_root (Backend.get_matrix backend) in
     let rec real_root = {
       backend = backend;
       parent = real_root;
+      depends_on = coord_root;
       children = [];
-
-      (* TODO Complete that *)
-      coord_device = ...;
-      coord_graph = ...;
-      coord_data = ...;
-      coord_normalized = ...;
-
+      coord_device = coord_root;
+      coord_graph = coord_root;
+      coord_normalized = coord_root;
+      coord_data = coord_root;
       axes_system = axes_system;
-
       sizes = {
         Sizes.line_width = Sizes.Absolute size0;
         Sizes.text_size = Sizes.Absolute size0;
-        Sizes.mark_size = Sizes.Absolute 42. (* TODO Check this *)
-      };
+        Sizes.mark_size = Sizes.Absolute size0 };
       current_point = (0., 0.);
       instructions = [];
       immediate_drawing = false;
     } in
-    let root = {real_root with sizes = ...; parent = real_root} in (* TODO Change sizes *)
+    let root_sizes = {
+      Sizes.line_width = Sizes.Rel_updated (lines, lines *. size0);
+      Sizes.text_size = Sizes.Rel_updated (text, text *. size0);
+      Sizes.mark_size = Sizes.Rel_updated (marks, marks *. size0) } in
+    let root = {real_root with sizes = root_sizes; parent = real_root} in
       real_root.children <- [root];
       root
 end

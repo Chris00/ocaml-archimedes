@@ -18,8 +18,6 @@
 module Sizes:
 sig
   type t
-  val make_root: float -> float -> float -> float -> t
-  val child: t -> float -> float -> float -> t
   val get_lw: t -> float
   val get_ts: t -> float
   val get_marks: t -> float
@@ -38,11 +36,9 @@ struct
     | Rel_updated of float * float
 
   type t =
-      { parent: t;
-        mutable lw: size; (* Line width *)
+      { mutable lw: size; (* Line width *)
         mutable ts: size; (* Text size *)
-        mutable ms: size; (* Marks size *)
-        mutable children: t list }
+        mutable ms: size; (* Marks size *) }
 
   (* A node is 'up to date' (concerning a style) if "style".global is of
      the form [Some _].
