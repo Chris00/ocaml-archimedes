@@ -198,6 +198,9 @@ end
   type t = {
     backend: Backend.t;
 
+    parent: t;
+    mutable children: t list;
+
     (* (A,B,C,E) indicate "1" for a particular (see below) coordinate system
        A---------device--------+
        | B--------graph------+ |
@@ -221,7 +224,15 @@ end
     mutable instructions: (unit -> unit) Queue.t;
 
     (* Draw immediately or wait for closing ? *)
-    mutable immediate_drawing: bool
+    mutable immediate_drawing: bool;
+
+    (* Viewport' position; in _NORMALIZED_ values *)
+    mutable x: float;
+    mutable y: float;
+    mutable w: float;
+    mutable h: float;
+
+    redim: float -> float -> unit;
   }
 
   type coord_name = Device | Graph | Data | Orthonormal
@@ -235,6 +246,8 @@ end
     let rec axes_system = Axes.default_axes_system [viewport]
     and viewport = {
       backend = backend;
+      parent = viewport;
+      children = [];
       coord_device = coord_device; coord_graph = coord_graph;
       coord_orthonormal = Coordinate.make_scale coord_device (size0 /. w) (size0 /. h);
       (* We don't care; will be updated as soon as points are added or we change axes. *)
@@ -244,6 +257,8 @@ end
       current_point = (0., 0.);
       instructions = Queue.create ();
       immediate_drawing = false;
+      x = 0.; y = 0.; w = 1.; h = 1.;
+      redim = (fun _ _ -> ());
     } in
     viewport
 
@@ -277,6 +292,12 @@ end
       immediate_drawing = false;
     } in
     viewport
+
+  let is_nan_or_inf (x:float) = x <> x || 1. /. x = 0.
+
+  let ensure_point_visible vp x y =
+    if vp.axes_system.x.auto_x0 then
+      
 
   let do_instructions vp = ()
 
