@@ -37,6 +37,9 @@ module rec Sizes : sig
   val make : t -> size -> size -> size -> t
   val make_rel : t -> float -> float -> float -> t
   val make_abs : t -> float -> float -> float -> t
+  val get_line_width : t -> float;
+  val get_text_size : t -> float;
+  val get_mark_size : t -> float;
 end
 = struct
   type size =
@@ -76,6 +79,30 @@ end
 
   let make_abs parent lw ts ms =
     make parent (Absolute lw) (Absolute ts) (Absolute ms)
+
+  (* TODO: update_lw, ...*)
+
+  let get_line_width node =
+    update_lw node;
+    match node.lw with
+      REL_NOT_UPDATED _ -> failwith "get_lw: internal error"
+    | ABSOLUTE x
+    | REL_UPDATED(_,x) -> x
+
+  let get_text_size node =
+    update_ts node;
+    match node.ts with
+      REL_NOT_UPDATED _ -> failwith "get_ts: internal error"
+    | ABSOLUTE x
+    | REL_UPDATED(_,x) -> x
+
+  let get_mark_size node =
+    update_marks node;
+    match node.marks with
+      REL_NOT_UPDATED _ -> failwith "get_marks: internal error"
+    | ABSOLUTE x
+    | REL_UPDATED(_,x) -> x
+
 end
 and Axes : sig
   type labels =
@@ -288,4 +315,114 @@ end
       do_instructions vp;
       Backend.close vp.backend
     end
+
+let arc t ~r ~a1 ~a2 =
+  (*FIXME: better bounds for the arc can be found.*)
+  let x, y = get_current_pt t in
+  let x' = x -. r *. cos a1
+  and y' = y -. r *. sin a1 in
+  update_coords t (x'+.r) (y'+.r);
+  update_coords t (x'-.r) (y'-.r);
+  add_order (fun _ -> Backend.arc t.backend r a1 a2) t
+
+let close_path t =
+ add_order (fun _ -> Backend.close_path t.backend) t
+
+let clear_path t =
+ add_order (fun _ -> Backend.clear_path t.backend) t
+(*let path_extents t = Backend.path_extents t.backend*)
+
+(*Stroke when using current coordinates.*)
+let stroke_current t =
+  add_order (fun _ -> Backend.stroke t.backend) t
+let stroke_current_preserve t =
+  add_order (fun _ -> Backend.stroke_preserve t.backend) t
+
+let stroke t =
+  let lw = Sizes.get_lw t.vp.scalings in
+  let f _ =
+    let ctm = Coordinate.use t.backend t.normalized in
+    Backend.set_line_width t.backend lw;
+    Backend.stroke t.backend;
+    Coordinate.restore t.backend ctm
+  in
+  add_order f t
+
+(* IM HERE -->> *)
+let stroke_preserve vp =
+  let lw = Sizes.get_lw vp.scalings in
+  let f () =
+    let ctm = Coordinate.use vp.backend vp.normalized in
+    Backend.set_line_width vp.backend lw;
+    Backend.stroke_preserve vp.backend;
+    Coordinate.restore vp.backend ctm
+  in
+  add_order f vp
+
+let fill vp =
+  add_order (fun () -> Backend.fill vp.backend) vp
+
+let fill_preserve t =
+  add_order (fun () -> Backend.fill_preserve vp.backend) vp
+
+let clip_rectangle vp ~x ~y ~w ~h =
+  add_order (fun () -> Backend.clip_rectangle vp.backend x y w h) vp
+
+(* TODO: Check what is it used for ? *)
+let save_vp t =
+  let f vp =
+    Backend.save t.backend;
+    let sizes =
+      Sizes.get_lw vp.scalings,
+      Sizes.get_ts vp.scalings,
+      Sizes.get_marks vp.scalings
+    in
+    Stack.push sizes vp.scalings_hist
+  in
+  add_order f t
+
+(* TODO: Check what is it used for ? *)
+let restore_vp t =
+  let f vp =
+    try
+      let lw, ts, marks = Stack.pop vp.scalings_hist in
+      Sizes.set_abs_lw vp.scalings lw;
+      Sizes.set_abs_ts vp.scalings ts;
+      Sizes.set_abs_marks vp.scalings marks;
+      Backend.restore t.backend
+    with Stack.Empty -> ()
+  in
+  add_order f t
+
+let select_font_face vp slant weight family =
+  let f () = Backend.select_font_face vp.backend slant weight family
+  add_order f vp
+
+(* TODO: val show_text. *)
+
+(* TODO: Check how do we specify the position where we draw the mark ? *)
+let render_mark vp name =
+  let mark_size = Sizes.get_marks vp.sizes in
+  let f () =
+    let ctm = Coordinate.use vp.backend vp.coord_orthonormal in
+    (* FIXME: We should either translate the coor to the current point and
+       change Pointstyle to use [move_to] instead of [rel_move_to], or we
+       should update the current point. *)
+    Backend.scale vp.backend marks marks;
+    Pointstyle.render name vp.backend;
+    Coordinate.restore vp.backend ctm;
+  in
+  (* FIXME : what are extents ? *)
+  (* FIXME: extents are expressed in "marks-normalized" coords. We need
+     to have it in user coords in order to determine the extents. *)
+  (* let extents = Pointstyle.extents name in
+     let marks' = marks *. t.square_side in
+     let x',y' = get_current_pt t in
+     Printf.printf "initial marks: %f %f %f %f %f" marks t.square_side marks' x' y';
+     let axpmw x w = x +. w *. marks' in
+     update_coords t (axpmw x' extents.Matrix.x) (axpmw y' extents.Matrix.y);
+     update_coords t (axpmw x' (extents.Matrix.x +. extents.Matrix.w))
+     (axpmw y' (extents.Matrix.y +.extents.Matrix.h));*)
+  add_order f vp
+
 end

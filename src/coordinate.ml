@@ -119,12 +119,13 @@ let rec update coord =
 
 
 
-(* Just replace the current CTM with the one of the transformation *)
+(* Replace the CTM with the one of the transformation and return it for
+   future restoration. *)
 let use b coord =
   update coord;
-  let curr_ctm = Backend.get_matrix b in
+  let saved_ctm = Backend.get_matrix b in
   Backend.set_matrix b coord.ctm;
-  curr_ctm
+  save_ctm
 
 let restore b ctm = Backend.set_matrix b ctm
 
