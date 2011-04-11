@@ -18,93 +18,7 @@
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the file
    LICENSE for more details. *)
 
-module rec Sizes : sig
-  type size =
-    | Absolute of float
-    | Rel_not_updated of float
-    | Rel_updated of float * float
-
-  type t = {
-    parent: t;
-    children: t list;
-
-    mutable line_width: size;
-    mutable text_size: size;
-    mutable mark_size: size
-  }
-
-  val make_root : size -> size -> size -> t
-  val make : t -> size -> size -> size -> t
-  val make_rel : t -> float -> float -> float -> t
-  val make_abs : t -> float -> float -> float -> t
-  val get_line_width : t -> float;
-  val get_text_size : t -> float;
-  val get_mark_size : t -> float;
-end
-= struct
-  type size =
-    | Absolute of float
-    | Rel_not_updated of float
-    | Rel_updated of float * float
-
-  type t = {
-    parent: t;
-    children: t list;
-
-    mutable line_width: size;
-    mutable text_size: size;
-    mutable mark_size: size
-  }
-
-  let make_root lw ts ms =
-    let rec root =
-      { parent = root;
-        children = [];
-        line_width = lw; text_size = ts; mark_size = ms }
-    in
-    root
-
-  let make parent lw ts ms =
-    let sizes =
-      { parent = parent;
-        children = [];
-        line_width = lw;
-        text_size = ts;
-        mark_size = ms } in
-    parent.children <- sizes :: parent.children;
-    sizes
-
-  let make_rel parent lw ts ms =
-    make parent (Rel_not_updated lw) (Rel_not_updated ts) (Rel_not_updated ms)
-
-  let make_abs parent lw ts ms =
-    make parent (Absolute lw) (Absolute ts) (Absolute ms)
-
-  (* TODO: update_lw, ...*)
-
-  let get_line_width node =
-    update_lw node;
-    match node.lw with
-      REL_NOT_UPDATED _ -> failwith "get_lw: internal error"
-    | ABSOLUTE x
-    | REL_UPDATED(_,x) -> x
-
-  let get_text_size node =
-    update_ts node;
-    match node.ts with
-      REL_NOT_UPDATED _ -> failwith "get_ts: internal error"
-    | ABSOLUTE x
-    | REL_UPDATED(_,x) -> x
-
-  let get_mark_size node =
-    update_marks node;
-    match node.marks with
-      REL_NOT_UPDATED _ -> failwith "get_marks: internal error"
-    | ABSOLUTE x
-    | REL_UPDATED(_,x) -> x
-
-end
-and Axes : sig
+module rec Axes : sig
   type labels =
     | Text of string array * float
     | Number
@@ -170,7 +84,7 @@ end
 
   type graph_axis = {
     tics: tics;
-    offset: float;
+    offset: offset;
     tics_position: sign
   }
 
@@ -199,22 +113,8 @@ end
       viewports = viewports }
 end
 and Viewport : sig
-  type t = {
-    backend: Backend.t;
-    mutable coord_device: Coordinate.t; (* AA *)
-    mutable coord_graph: Coordinate.t; (* BB *)
-    mutable coord_orthonormal: Coordinate.t; (* AE *)
-    mutable coord_data: Coordinate.t; (* CC *)
-
-    mutable axes_system: Axes.t;
-    mutable sizes: Sizes.t;
-    mutable current_point: float * float;
-    mutable instructions: (unit -> unit) Queue.t;
-    mutable immediate_drawing: bool
-  }
-
+  type t
   type coord_name = Device | Graph | Data | Orthonormal
-
   val get_coord_from_name : viewport -> coord_name -> Coordinate.t
   val init : ?lines:float -> ?text:float -> ?marks:float -> ?w:int -> ?h:int ->
     dirs:string list -> string -> viewport
@@ -255,7 +155,12 @@ end
 
   type coord_name = Device | Graph | Data | Orthonormal
 
-  let init ?(lines=0.002) ?(text=0.024) ?(marks=0.01) ?(w=640) ?(h=480) ~dirs backend_name =
+  let def_lw, def_ts, def_ms = 0.002, 0.024, 0.01
+
+  (* TODO: doc *)
+  let usr_lw, usr_ts, usr_ms = 500., 500., 100.
+
+  let init ?(lines=def_lw) ?(text=def_ts) ?(marks=def_ms) ?(w=640) ?(h=480) ~dirs backend_name =
     let backend = Backend.make ~dirs backend_name w h in
     let coord_root = Coordinate.make_root (Backend.get_matrix backend) in
     let size0 = min w h in
@@ -283,7 +188,7 @@ end
     | Data -> vp.coord_data
     | Orthonormal -> vp.coord_orthonormal
 
-  let make ?(lines=0.002) ?(text=0.024) ?(marks=0.01) vp coord_name xmin xmax ymin ymax =
+  let make ?(axes_sys=false) ?(lines=def_lw) ?(text=def_ts) ?(marks=def_ms) vp coord_name xmin xmax ymin ymax =
     let w, h, size0 =
       let xmax', ymax' = Coordinate.to_device coord xmax ymax
       and xmin', ymin' = Coordinate.to_device coord xmin ymin in
@@ -300,7 +205,9 @@ end
       coord_orthonormal = Coordinate.make_scale coord_device (size0 /. w) (size0 /. h);
       (* We don't care; will be updated as soon as points are added or we change axes. *)
       coord_data = Coordinate.make_identity coord_graph;
-      axes_system = Axes.default_axes_system [viewport];
+      axes_system =
+        if axes_sys then vp.axes_system
+        else axes_system = Axes.default_axes_system [viewport];
       sizes = Sizes.make_rel vp.sizes lines text marks;
       current_point = (0., 0.);
       instructions = [];
@@ -316,150 +223,226 @@ end
     let xaxis = vp.axes_system.x
     and yaxis = vp.axes_system.y in
     let updated = ref false in
-      if xaxis.auto_x0 then
-	if is_nan_or_inf xaxis.x0 || x < xaxis.x0 then
-	  (xaxis.x0 <- x; updated := true);
-      if xaxis.auto_xend then
-	if is_nan_or_inf xaxis.xend || x > xaxis.xend then
-	  (xaxis.xend <- x; updated := true);
-      if yaxis.auto_x0 then
-	if is_nan_or_inf yaxis.x0 || y < yaxis.x0 then
-	  (yaxis.x0 <- y; updated := true);
-      if yaxis.auto_xend then
-	if is_nan_or_inf yaxis.xend || y > yaxis.xend then
-	  (yaxis.xend <- y; updated := true);
-      if !updated then begin
-	let scalx, tr_x =
-	  if xaxis.x0 = xaxis.xend then
-	    initial_scale, -. xaxis.x0 -. 0.5 *. initial_scale
-	  else 1. /. (xaxis.xend -. xaxis.x0), -. xaxis.x0
-	and scaly, tr_y =
-	  if yaxis.x0 = yaxis.xend then
-	    initial_scale, -. yaxis.x0 -. 0.5 *. initial_scale
-	  else 1. /. (yaxis.xend -. yaxis.x0), -. yaxis.x0
-	in
-	  (* TODO Finish that *)
-      end
-      
+    if xaxis.auto_x0 then
+      if is_nan_or_inf xaxis.x0 || x < xaxis.x0 then
+        (xaxis.x0 <- x; updated := true);
+    if xaxis.auto_xend then
+      if is_nan_or_inf xaxis.xend || x > xaxis.xend then
+        (xaxis.xend <- x; updated := true);
+    if yaxis.auto_x0 then
+      if is_nan_or_inf yaxis.x0 || y < yaxis.x0 then
+        (yaxis.x0 <- y; updated := true);
+    if yaxis.auto_xend then
+      if is_nan_or_inf yaxis.xend || y > yaxis.xend then
+        (yaxis.xend <- y; updated := true);
+    if !updated then begin
+      let scalx, tr_x =
+        if xaxis.x0 = xaxis.xend then
+          initial_scale, -. xaxis.x0 -. 0.5 *. initial_scale
+        else 1. /. (xaxis.xend -. xaxis.x0), -. xaxis.x0
+      and scaly, tr_y =
+        if yaxis.x0 = yaxis.xend then
+          initial_scale, -. yaxis.x0 -. 0.5 *. initial_scale
+        else 1. /. (yaxis.xend -. yaxis.x0), -. yaxis.x0
+      in
+    (* TODO Finish that *)
+    end
 
   let do_instructions vp = ()
 
-  let close vp =
+(*  let close vp =
     let parent = vp.coord_device.Coordinate.parent in
     parent.children <- List.filter (( <> ) vp) parent.children
     (* TODO do we need to do instructions ? *)
     if parent == parent.Coordinate.parent then begin
       do_instructions vp;
-      Backend.close vp.backend
-    end
+      Backend.close vp.backend*)
 
-let arc t ~r ~a1 ~a2 =
-  (*FIXME: better bounds for the arc can be found.*)
-  let x, y = get_current_pt t in
-  let x' = x -. r *. cos a1
-  and y' = y -. r *. sin a1 in
-  update_coords t (x'+.r) (y'+.r);
-  update_coords t (x'-.r) (y'-.r);
-  add_order (fun _ -> Backend.arc t.backend r a1 a2) t
+  let rows ?(axes_sys=false) vp n =
+    let step = 1. /. (float n) in
+    let f i =
+      let y_min = float i *. step in
+      make ~axes_sys:axes_sys vp Device 0. 1. y_min (y_min +. step) in
+    Array.init n f
 
-let close_path t =
- add_order (fun _ -> Backend.close_path t.backend) t
+  let columns ?(axes_sys=false) vp n =
+    let step = 1. /. (float n) in
+    let f i =
+      let x_min = float i *. step in
+      make ~axes_sys:axes_sys vp Device x_min (x_min +. step) 0. 1. in
+    Array.init n f
 
-let clear_path t =
- add_order (fun _ -> Backend.clear_path t.backend) t
-(*let path_extents t = Backend.path_extents t.backend*)
 
-(*Stroke when using current coordinates.*)
-let stroke_current t =
-  add_order (fun _ -> Backend.stroke t.backend) t
-let stroke_current_preserve t =
-  add_order (fun _ -> Backend.stroke_preserve t.backend) t
+  let grid ?(axes_sys=false) vp n m =
+    let stepx = 1. /. (float n)
+    and stepy = 1. /. (float m) in
+    let f i j =
+      let x_min, y_min = float i *. step, float j *. step in
+      make ~axes_sys:axes_sys vp Device x_min (x_min +. step)
+        y_min (y_min +. step) in
+    let make_row i = Array.init m (f i) in
+    Array.init n make_row
 
-let stroke t =
-  let lw = Sizes.get_lw t.vp.scalings in
-  let f _ =
-    let ctm = Coordinate.use t.backend t.normalized in
-    Backend.set_line_width t.backend lw;
-    Backend.stroke t.backend;
-    Coordinate.restore t.backend ctm
-  in
-  add_order f t
+(* ..........................................................................*)
+  let set_line_width vp lw =
+    let size =
+      if lw <= 0. then def_lw *. vp.coord_orthonormal
+      else lw /. usr_lw *. vp.coord_orthonormal in
+    Size.set_abs_lw vp.size size
 
-(* IM HERE -->> *)
-let stroke_preserve vp =
-  let lw = Sizes.get_lw vp.scalings in
-  let f () =
-    let ctm = Coordinate.use vp.backend vp.normalized in
-    Backend.set_line_width vp.backend lw;
-    Backend.stroke_preserve vp.backend;
-    Coordinate.restore vp.backend ctm
-  in
-  add_order f vp
+  let set_font_size vp ts =
+    let size =
+      if ts <= 0. then def_ts *. vp.coord_orthonormal
+      else ts /. usr_ts *. vp.coord_orthonormal in
+    Size.set_abs_ts vp.size size
 
-let fill vp =
-  add_order (fun () -> Backend.fill vp.backend) vp
+  let set_mark_size vp ms =
+    let size =
+      if ms <= 0. then def_marks *. vp.coord_orthonormal
+      else ms /. usr_ms *. vp.coord_orthonormal in
+    Size.set_abs_ms vp.size size
 
-let fill_preserve t =
-  add_order (fun () -> Backend.fill_preserve vp.backend) vp
+  let set_rel_line_width vp lw =
+    Size.set_rel_line_width vp.size (if lw <= 0. then 1. else lw)
 
-let clip_rectangle vp ~x ~y ~w ~h =
-  add_order (fun () -> Backend.clip_rectangle vp.backend x y w h) vp
+  (* FIXME: Fix names text, font? *)
+  let set_rel_font_size vp ts =
+  Size.set_text_size vp.size (if ts <= Graphics0. then 1. else ts)
 
-(* TODO: Check what is it used for ? *)
-let save_vp t =
-  let f vp =
-    Backend.save t.backend;
-    let sizes =
-      Sizes.get_lw vp.scalings,
-      Sizes.get_ts vp.scalings,
-      Sizes.get_marks vp.scalings
+  let set_rel_mark_size vp ms =
+  Size.set_rel_mark_size vp.size (if ms <= 0. then 1. else ms)
+
+  let get_line_width vp =
+    (Size.get_line_width vp.size) *. usr_lw /. vp.coord_orthonormal
+  let get_font_size vp =
+   (Size.get_text_size vp.size) *. usr_ts /. vp.coord_orthonormal
+  let get_mark_size vp =
+   (Size.get_mark_size vp.size) *. usr_ms /. vp.coord_orthonormal
+
+
+(* ......................................................................... *)
+
+  let lower_left_corner vp = Coordinate.to_device vp.coord_device (0., 0.)
+
+  let upper_right_corner vp = Coordinate.to_device vp.coord_device (1., 1.)
+
+  let dimensions vp =
+    let x0, y0 = lower_left_corner vp
+    and xend, yend = upper_right_corner vp in
+    (xend -. x0, yend -. y0)
+
+  let set_global_color vp color = Backend.set_color vp.backend
+
+  let arc t ~r ~a1 ~a2 =
+    (*FIXME: better bounds for the arc can be found.*)
+    let x, y = get_current_pt t in
+    let x' = x -. r *. cos a1
+    and y' = y -. r *. sin a1 in
+    update_coords t (x'+.r) (y'+.r);
+    update_coords t (x'-.r) (y'-.r);
+    add_order (fun _ -> Backend.arc t.backend r a1 a2) t
+
+  let close_path t =
+    add_order (fun _ -> Backend.close_path t.backend) t
+
+  let clear_path t =
+    add_order (fun _ -> Backend.clear_path t.backend) t
+  (*let path_extents t = Backend.path_extents t.backend*)
+
+  (*Stroke when using current coordinates.*)
+  let stroke_current t =
+    add_order (fun _ -> Backend.stroke t.backend) t
+  let stroke_current_preserve t =
+    add_order (fun _ -> Backend.stroke_preserve t.backend) t
+
+  let stroke t =
+    let lw = Sizes.get_lw t.vp.scalings in
+    let f _ =
+      let ctm = Coordinate.use t.backend t.normalized in
+      Backend.set_line_width t.backend lw;
+      Backend.stroke t.backend;
+      Coordinate.restore t.backend ctm
     in
-    Stack.push sizes vp.scalings_hist
-  in
-  add_order f t
+    add_order f t
 
-(* TODO: Check what is it used for ? *)
-let restore_vp t =
-  let f vp =
-    try
-      let lw, ts, marks = Stack.pop vp.scalings_hist in
-      Sizes.set_abs_lw vp.scalings lw;
-      Sizes.set_abs_ts vp.scalings ts;
-      Sizes.set_abs_marks vp.scalings marks;
-      Backend.restore t.backend
-    with Stack.Empty -> ()
-  in
-  add_order f t
+  (* IM HERE -->> *)
+  let stroke_preserve vp =
+    let lw = Sizes.get_lw vp.scalings in
+    let f () =
+      let ctm = Coordinate.use vp.backend vp.normalized in
+      Backend.set_line_width vp.backend lw;
+      Backend.stroke_preserve vp.backend;
+      Coordinate.restore vp.backend ctm
+    in
+    add_order f vp
 
-let select_font_face vp slant weight family =
-  let f () = Backend.select_font_face vp.backend slant weight family
-  add_order f vp
+  let fill vp =
+    add_order (fun () -> Backend.fill vp.backend) vp
 
-(* TODO: val show_text. *)
+  let fill_preserve t =
+    add_order (fun () -> Backend.fill_preserve vp.backend) vp
 
-(* TODO: Check how do we specify the position where we draw the mark ? *)
-let render_mark vp name =
-  let mark_size = Sizes.get_marks vp.sizes in
-  let f () =
-    let ctm = Coordinate.use vp.backend vp.coord_orthonormal in
-    (* FIXME: We should either translate the coor to the current point and
-       change Pointstyle to use [move_to] instead of [rel_move_to], or we
-       should update the current point. *)
-    Backend.scale vp.backend marks marks;
-    Pointstyle.render name vp.backend;
-    Coordinate.restore vp.backend ctm;
-  in
-  (* FIXME : what are extents ? *)
-  (* FIXME: extents are expressed in "marks-normalized" coords. We need
-     to have it in user coords in order to determine the extents. *)
-  (* let extents = Pointstyle.extents name in
+  let clip_rectangle vp ~x ~y ~w ~h =
+    add_order (fun () -> Backend.clip_rectangle vp.backend x y w h) vp
+
+  (* TODO: Check what is it used for ? *)
+  let save_vp t =
+    let f vp =
+      Backend.save t.backend;
+      let sizes =
+        Sizes.get_lw vp.scalings,
+        Sizes.get_ts vp.scalings,
+        Sizes.get_marks vp.scalings
+      in
+      Stack.push sizes vp.scalings_hist
+    in
+    add_order f t
+
+  (* TODO: Check what is it used for ? *)
+  let restore_vp t =
+    let f vp =
+      try
+        let lw, ts, marks = Stack.pop vp.scalings_hist in
+        Sizes.set_abs_lw vp.scalings lw;
+        Sizes.set_abs_ts vp.scalings ts;
+        Sizes.set_abs_marks vp.scalings marks;
+        Backend.restore t.backend
+      with Stack.Empty -> ()
+    in
+    add_order f t
+
+  let select_font_face vp slant weight family =
+    let f () = Backend.select_font_face vp.backend slant weight family
+      add_order f vp
+
+  (* TODO: val show_text. *)
+
+  (* TODO: Check how do we specify the position where we draw the
+     mark ? *)
+  let render_mark vp name =
+    let mark_size = Sizes.get_marks vp.sizes in
+    let f () =
+      let ctm = Coordinate.use vp.backend vp.coord_orthonormal in
+      (* FIXME: We should either translate the coor to the current point and
+         change Pointstyle to use [move_to] instead of [rel_move_to], or we
+         should update the current point. *)
+      Backend.scale vp.backend marks marks;
+      Pointstyle.render name vp.backend;
+      Coordinate.restore vp.backend ctm;
+    in
+    (* FIXME : what are extents ? *)
+    (* FIXME: extents are expressed in "marks-normalized" coords. We need
+       to have it in user coords in order to determine the extents. *)
+     (*
+     let extents = Pointstyle.extents name in
      let marks' = marks *. t.square_side in
      let x',y' = get_current_pt t in
      Printf.printf "initial marks: %f %f %f %f %f" marks t.square_side marks' x' y';
-     let axpmw x w = x +. w *. marks' in
-     update_coords t (axpmw x' extents.Matrix.x) (axpmw y' extents.Matrix.y);
-     update_coords t (axpmw x' (extents.Matrix.x +. extents.Matrix.w))
-     (axpmw y' (extents.Matrix.y +.extents.Matrix.h));*)
-  add_order f vp
-
+     let axpmw x w = x +. w *. marks' in update_coords t (axpmw x'
+       extents.Matrix.x) (axpmw y' extents.Matrix.y);
+     update_coords t (axpmw x' (extents.Matrix.x +. extents.Matrix.w)) (axpmw y' (extents.Matrix.y
+                                                                                  +.extents.Matrix.h));
+     *)
+    add_order f vp
 end
+
