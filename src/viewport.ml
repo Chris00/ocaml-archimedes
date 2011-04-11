@@ -198,9 +198,6 @@ end
   type t = {
     backend: Backend.t;
 
-    parent: t;
-    mutable children: t list;
-
     (* (A,B,C,E) indicate "1" for a particular (see below) coordinate system
        A---------device--------+
        | B--------graph------+ |
@@ -226,12 +223,6 @@ end
     (* Draw immediately or wait for closing ? *)
     mutable immediate_drawing: bool;
 
-    (* Viewport' position; in _NORMALIZED_ values *)
-    mutable x: float;
-    mutable y: float;
-    mutable w: float;
-    mutable h: float;
-
     redim: float -> float -> unit;
   }
 
@@ -246,8 +237,6 @@ end
     let rec axes_system = Axes.default_axes_system [viewport]
     and viewport = {
       backend = backend;
-      parent = viewport;
-      children = [];
       coord_device = coord_device; coord_graph = coord_graph;
       coord_orthonormal = Coordinate.make_scale coord_device (size0 /. w) (size0 /. h);
       (* We don't care; will be updated as soon as points are added or we change axes. *)
@@ -257,7 +246,6 @@ end
       current_point = (0., 0.);
       instructions = Queue.create ();
       immediate_drawing = false;
-      x = 0.; y = 0.; w = 1.; h = 1.;
       redim = (fun _ _ -> ());
     } in
     viewport
@@ -295,8 +283,36 @@ end
 
   let is_nan_or_inf (x:float) = x <> x || 1. /. x = 0.
 
+  let initial_scale = 1.
+
   let ensure_point_visible vp x y =
-    if vp.axes_system.x.auto_x0 then
+    let xaxis = vp.axes_system.x
+    and yaxis = vp.axes_system.y in
+    let updated = ref false in
+      if xaxis.auto_x0 then
+	if is_nan_or_inf xaxis.x0 || x < xaxis.x0 then
+	  (xaxis.x0 <- x; updated := true);
+      if xaxis.auto_xend then
+	if is_nan_or_inf xaxis.xend || x > xaxis.xend then
+	  (xaxis.xend <- x; updated := true);
+      if yaxis.auto_x0 then
+	if is_nan_or_inf yaxis.x0 || y < yaxis.x0 then
+	  (yaxis.x0 <- y; updated := true);
+      if yaxis.auto_xend then
+	if is_nan_or_inf yaxis.xend || y > yaxis.xend then
+	  (yaxis.xend <- y; updated := true);
+      if !updated then begin
+	let scalx, tr_x =
+	  if xaxis.x0 = xaxis.xend then
+	    initial_scale, -. xaxis.x0 -. 0.5 *. initial_scale
+	  else 1. /. (xaxis.xend -. xaxis.x0), -. xaxis.x0
+	and scaly, tr_y =
+	  if yaxis.x0 = yaxis.xend then
+	    initial_scale, -. yaxis.x0 -. 0.5 *. initial_scale
+	  else 1. /. (yaxis.xend -. yaxis.x0), -. yaxis.x0
+	in
+	  (* TODO Finish that *)
+      end
       
 
   let do_instructions vp = ()
