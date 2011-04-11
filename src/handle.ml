@@ -994,6 +994,3 @@ let axes t ?(color = Color.black) ?type_axes_printer ?axes_meeting
   t.vp.axes <- draw_axes
 
 let current_vp t = t.vp
-
-(* Throw away the option. *)
-let update_coords t f = update_coords t f

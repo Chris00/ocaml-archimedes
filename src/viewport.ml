@@ -248,7 +248,9 @@ end
     mutable instructions: (unit -> unit) Queue.t;
 
     (* Draw immediately or wait for closing ? *)
-    mutable immediate_drawing: bool
+    mutable immediate_drawing: bool;
+
+    redim: float -> float -> unit;
   }
 
   type coord_name = Device | Graph | Data | Orthonormal
@@ -271,6 +273,7 @@ end
       current_point = (0., 0.);
       instructions = Queue.create ();
       immediate_drawing = false;
+      redim = (fun _ _ -> ());
     } in
     viewport
 
@@ -304,6 +307,40 @@ end
       immediate_drawing = false;
     } in
     viewport
+
+  let is_nan_or_inf (x:float) = x <> x || 1. /. x = 0.
+
+  let initial_scale = 1.
+
+  let ensure_point_visible vp x y =
+    let xaxis = vp.axes_system.x
+    and yaxis = vp.axes_system.y in
+    let updated = ref false in
+      if xaxis.auto_x0 then
+	if is_nan_or_inf xaxis.x0 || x < xaxis.x0 then
+	  (xaxis.x0 <- x; updated := true);
+      if xaxis.auto_xend then
+	if is_nan_or_inf xaxis.xend || x > xaxis.xend then
+	  (xaxis.xend <- x; updated := true);
+      if yaxis.auto_x0 then
+	if is_nan_or_inf yaxis.x0 || y < yaxis.x0 then
+	  (yaxis.x0 <- y; updated := true);
+      if yaxis.auto_xend then
+	if is_nan_or_inf yaxis.xend || y > yaxis.xend then
+	  (yaxis.xend <- y; updated := true);
+      if !updated then begin
+	let scalx, tr_x =
+	  if xaxis.x0 = xaxis.xend then
+	    initial_scale, -. xaxis.x0 -. 0.5 *. initial_scale
+	  else 1. /. (xaxis.xend -. xaxis.x0), -. xaxis.x0
+	and scaly, tr_y =
+	  if yaxis.x0 = yaxis.xend then
+	    initial_scale, -. yaxis.x0 -. 0.5 *. initial_scale
+	  else 1. /. (yaxis.xend -. yaxis.x0), -. yaxis.x0
+	in
+	  (* TODO Finish that *)
+      end
+      
 
   let do_instructions vp = ()
 
