@@ -33,8 +33,6 @@ module rec Sizes : sig
     mutable mark_size: size
   }
 
-  val make_root : size -> size -> size -> t
-  val make : t -> size -> size -> size -> t
   val make_rel : t -> float -> float -> float -> t
   val make_abs : t -> float -> float -> float -> t
 end
@@ -102,26 +100,29 @@ and Viewport : sig
   val get_coord_from_name : viewport -> coord_name -> Coordinate.t
   val init : ?lines:float -> ?text:float -> ?marks:float -> ?w:int -> ?h:int ->
     dirs:string list -> string -> viewport
-  val make : ?lines:float -> ?text:float -> ?marks:float -> viewport ->
+  val make : ?axes_sys:bool -> ?lines:float -> ?text:float -> ?marks:float -> viewport ->
     coord_name -> float -> float -> float -> float -> viewport
 
-  val rows : t -> int -> viewport array
+  val rows : ?axes_sys:bool -> t -> int -> viewport array
   val columns : t -> int -> viewport array
   val grid : t -> int -> int -> viewport array array
 
   val set_line_width : t -> float -> unit
-  val set_mark_size : t -> float -> unit
   val set_font_size : t -> float -> unit
+  val set_mark_size : t -> float -> unit
   val set_rel_line_width : t -> float -> unit
-  val set_rel_mark_size : t -> float -> unit
   val set_rel_font_size : t -> float -> unit
+  val set_rel_mark_size : t -> float -> unit
   val get_line_width : t -> float
-  val get_mark_size : t -> float
   val get_font_size : t -> float
+  val get_mark_size : t -> float
 
-  val width : t -> float
-  val height : t -> float
-  val set_color : t -> Color.t -> unit
+  val lower_left_corner : t -> float * float
+  val upper_right_corner : t -> float * float
+  val dimensions : t -> float * float (* returns (w, h) *)
+  val set_global_color : t -> Color.t -> unit
+    (* set color of backend then of all viewports *)
+  val set_line_cap : t -> Backend.line_cap -> unit
   val set_dash : t -> float -> float array -> unit
   val set_line_join : t -> Backend.line_join -> unit
   val get_line_width : t -> float

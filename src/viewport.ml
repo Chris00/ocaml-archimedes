@@ -18,66 +18,7 @@
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the file
    LICENSE for more details. *)
 
-module rec Sizes : sig
-  type size =
-    | Absolute of float
-    | Rel_not_updated of float
-    | Rel_updated of float * float
-
-  type t = {
-    parent: t;
-    children: t list;
-
-    mutable line_width: size;
-    mutable text_size: size;
-    mutable mark_size: size
-  }
-
-  val make_root : size -> size -> size -> t
-  val make : t -> size -> size -> size -> t
-  val make_rel : t -> float -> float -> float -> t
-  val make_abs : t -> float -> float -> float -> t
-end
-= struct
-  type size =
-    | Absolute of float
-    | Rel_not_updated of float
-    | Rel_updated of float * float
-
-  type t = {
-    parent: t;
-    children: t list;
-
-    mutable line_width: size;
-    mutable text_size: size;
-    mutable mark_size: size
-  }
-
-  let make_root lw ts ms =
-    let rec root =
-      { parent = root;
-        children = [];
-        line_width = lw; text_size = ts; mark_size = ms }
-    in
-    root
-
-  let make parent lw ts ms =
-    let sizes =
-      { parent = parent;
-        children = [];
-        line_width = lw;
-        text_size = ts;
-        mark_size = ms } in
-    parent.children <- sizes :: parent.children;
-    sizes
-
-  let make_rel parent lw ts ms =
-    make parent (Rel_not_updated lw) (Rel_not_updated ts) (Rel_not_updated ms)
-
-  let make_abs parent lw ts ms =
-    make parent (Absolute lw) (Absolute ts) (Absolute ms)
-end
-and Axes : sig
+module rec Axes : sig
   type labels =
     | Text of string array * float
     | Number
@@ -143,7 +84,7 @@ end
 
   type graph_axis = {
     tics: tics;
-    offset: float;
+    offset: offset;
     tics_position: sign
   }
 
@@ -172,22 +113,8 @@ end
       viewports = viewports }
 end
 and Viewport : sig
-  type t = {
-    backend: Backend.t;
-    mutable coord_device: Coordinate.t; (* AA *)
-    mutable coord_graph: Coordinate.t; (* BB *)
-    mutable coord_orthonormal: Coordinate.t; (* AE *)
-    mutable coord_data: Coordinate.t; (* CC *)
-
-    mutable axes_system: Axes.t;
-    mutable sizes: Sizes.t;
-    mutable current_point: float * float;
-    mutable instructions: (unit -> unit) Queue.t;
-    mutable immediate_drawing: bool
-  }
-
+  type t
   type coord_name = Device | Graph | Data | Orthonormal
-
   val get_coord_from_name : viewport -> coord_name -> Coordinate.t
   val init : ?lines:float -> ?text:float -> ?marks:float -> ?w:int -> ?h:int ->
     dirs:string list -> string -> viewport
@@ -226,7 +153,12 @@ end
 
   type coord_name = Device | Graph | Data | Orthonormal
 
-  let init ?(lines=0.002) ?(text=0.024) ?(marks=0.01) ?(w=640) ?(h=480) ~dirs backend_name =
+  let def_lw, def_ts, def_ms = 0.002, 0.024, 0.01
+
+  (* TODO: doc *)
+  let usr_lw, usr_ts, usr_ms = 500., 500., 100.
+
+  let init ?(lines=def_lw) ?(text=def_ts) ?(marks=def_ms) ?(w=640) ?(h=480) ~dirs backend_name =
     let backend = Backend.make ~dirs backend_name w h in
     let coord_root = Coordinate.make_root (Backend.get_matrix backend) in
     let size0 = min w h in
@@ -253,7 +185,7 @@ end
     | Data -> vp.coord_data
     | Orthonormal -> vp.coord_orthonormal
 
-  let make ?(lines=0.002) ?(text=0.024) ?(marks=0.01) vp coord_name xmin xmax ymin ymax =
+  let make ?(axes_sys=false) ?(lines=def_lw) ?(text=def_ts) ?(marks=def_ms) vp coord_name xmin xmax ymin ymax =
     let w, h, size0 =
       let xmax', ymax' = Coordinate.to_device coord xmax ymax
       and xmin', ymin' = Coordinate.to_device coord xmin ymin in
@@ -270,7 +202,9 @@ end
       coord_orthonormal = Coordinate.make_scale coord_device (size0 /. w) (size0 /. h);
       (* We don't care; will be updated as soon as points are added or we change axes. *)
       coord_data = Coordinate.make_identity coord_graph;
-      axes_system = Axes.default_axes_system [viewport];
+      axes_system =
+        if axes_sys then vp.axes_system
+        else axes_system = Axes.default_axes_system [viewport];
       sizes = Sizes.make_rel vp.sizes lines text marks;
       current_point = (0., 0.);
       instructions = [];
@@ -280,12 +214,90 @@ end
 
   let do_instructions vp = ()
 
-  let close vp =
+(*  let close vp =
     let parent = vp.coord_device.Coordinate.parent in
     parent.children <- List.filter (( <> ) vp) parent.children
     (* TODO do we need to do instructions ? *)
     if parent == parent.Coordinate.parent then begin
       do_instructions vp;
-      Backend.close vp.backend
-    end
+      Backend.close vp.backend*)
+
+  let rows ?(axes_sys=false) vp n =
+    let step = 1. /. (float n) in
+    let f i =
+      let y_min = float i *. step in
+      make ~axes_sys:axes_sys vp Device 0. 1. y_min (y_min +. step) in
+    Array.init n f
+
+  let columns ?(axes_sys=false) vp n =
+    let step = 1. /. (float n) in
+    let f i =
+      let x_min = float i *. step in
+      make ~axes_sys:axes_sys vp Device x_min (x_min +. step) 0. 1. in
+    Array.init n f
+
+
+  let grid ?(axes_sys=false) vp n m =
+    let stepx = 1. /. (float n)
+    and stepy = 1. /. (float m) in
+    let f i j =
+      let x_min, y_min = float i *. step, float j *. step in
+      make ~axes_sys:axes_sys vp Device x_min (x_min +. step)
+        y_min (y_min +. step) in
+    let make_row i = Array.init m (f i) in
+    Array.init n make_row
+
+(* ..........................................................................*)
+  let set_line_width vp lw =
+    let size =
+      if lw <= 0. then def_lw *. vp.coord_orthonormal
+      else lw /. usr_lw *. vp.coord_orthonormal in
+    Size.set_abs_lw vp.size size
+
+  let set_font_size vp ts =
+    let size =
+      if ts <= 0. then def_ts *. vp.coord_orthonormal
+      else ts /. usr_ts *. vp.coord_orthonormal in
+    Size.set_abs_ts vp.size size
+
+  let set_mark_size vp ms =
+    let size =
+      if ms <= 0. then def_marks *. vp.coord_orthonormal
+      else ms /. usr_ms *. vp.coord_orthonormal in
+    Size.set_abs_ms vp.size size
+
+  let set_rel_line_width vp lw =
+    Size.set_rel_line_width vp.size (if lw <= 0. then 1. else lw)
+
+  (* FIXME: Fix names text, font? *)
+  let set_rel_font_size vp ts =
+  Size.set_text_size vp.size (if ts <= Graphics0. then 1. else ts)
+
+  let set_rel_mark_size vp ms =
+  Size.set_rel_mark_size vp.size (if ms <= 0. then 1. else ms)
+
+  let get_line_width vp =
+    (Size.get_line_width vp.size) *. usr_lw /. vp.coord_orthonormal
+  let get_font_size vp =
+   (Size.get_text_size vp.size) *. usr_ts /. vp.coord_orthonormal
+  let get_mark_size vp =
+   (Size.get_mark_size vp.size) *. usr_ms /. vp.coord_orthonormal
+
+
+(* ......................................................................... *)
+
+  let lower_left_corner vp = Coordinate.to_device vp.coord_device (0., 0.)
+
+  let upper_right_corner vp = Coordinate.to_device vp.coord_device (1., 1.)
+
+  let dimensions vp =
+    let x0, y0 = lower_left_corner vp
+    and xend, yend = upper_right_corner vp in
+    (xend -. x0, yend -. y0)
+
+  let set_global_color vp color = Backend.set_color vp.backend
+
+
+
 end
+
