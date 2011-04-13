@@ -132,6 +132,10 @@ let restore b ctm = Backend.set_matrix b ctm
 (* Transforming coordinates
  ***********************************************************************)
 
+let to_parent coord ~x ~y =
+  update coord;
+  Matrix.transform_point coord.tm ~x ~y
+
 let to_device coord ~x ~y =
   update coord;
   Matrix.transform_point coord.ctm ~x ~y
