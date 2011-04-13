@@ -118,7 +118,7 @@ and Viewport : sig
   val get_coord_from_name : viewport -> coord_name -> Coordinate.t
   val init : ?lines:float -> ?text:float -> ?marks:float -> ?w:int -> ?h:int ->
     dirs:string list -> string -> viewport
-  val make : ?lines:float -> ?text:float -> ?marks:float -> viewport ->
+  val make : ?axes_sys:bool -> ?lines:float -> ?text:float -> ?marks:float -> viewport ->
     coord_name -> float -> float -> float -> float -> viewport
 end
 = struct
@@ -258,6 +258,8 @@ end
       do_instructions vp;
       Backend.close vp.backend*)
 
+
+  (* TODO: change param *)
   let rows ?(axes_sys=false) vp n =
     let step = 1. /. (float n) in
     let f i =
@@ -284,40 +286,42 @@ end
     Array.init n make_row
 
 (* ..........................................................................*)
+
+
   let set_line_width vp lw =
     let size =
       if lw <= 0. then def_lw *. vp.coord_orthonormal
       else lw /. usr_lw *. vp.coord_orthonormal in
-    Size.set_abs_lw vp.size size
+    Sizes.set_abs_lw vp.size size
 
   let set_font_size vp ts =
     let size =
       if ts <= 0. then def_ts *. vp.coord_orthonormal
       else ts /. usr_ts *. vp.coord_orthonormal in
-    Size.set_abs_ts vp.size size
+    Sizes.set_abs_ts vp.size size
 
   let set_mark_size vp ms =
     let size =
       if ms <= 0. then def_marks *. vp.coord_orthonormal
-      else ms /. usr_ms *. vp.coord_orthonormal in
-    Size.set_abs_ms vp.size size
+      else ms /. usr_ms in
+    Sizes.set_abs_ms vp.size size
 
   let set_rel_line_width vp lw =
-    Size.set_rel_line_width vp.size (if lw <= 0. then 1. else lw)
+    Sizes.set_rel_line_width vp.size (if lw <= 0. then 1. else lw)
 
   (* FIXME: Fix names text, font? *)
   let set_rel_font_size vp ts =
-  Size.set_text_size vp.size (if ts <= Graphics0. then 1. else ts)
+  Sizes.set_text_size vp.size (if ts <= Graphics0. then 1. else ts)
 
   let set_rel_mark_size vp ms =
-  Size.set_rel_mark_size vp.size (if ms <= 0. then 1. else ms)
+  Sizes.set_rel_mark_size vp.size (if ms <= 0. then 1. else ms)
 
   let get_line_width vp =
-    (Size.get_line_width vp.size) *. usr_lw /. vp.coord_orthonormal
+    (Sizes.get_line_width vp.size) *. usr_lw /. vp.coord_orthonormal
   let get_font_size vp =
-   (Size.get_text_size vp.size) *. usr_ts /. vp.coord_orthonormal
+   (Sizes.get_text_size vp.size) *. usr_ts /. vp.coord_orthonormal
   let get_mark_size vp =
-   (Size.get_mark_size vp.size) *. usr_ms /. vp.coord_orthonormal
+   (Sizes.get_mark_size vp.size) *. usr_ms
 
 
 (* ......................................................................... *)
@@ -331,7 +335,26 @@ end
     and xend, yend = upper_right_corner vp in
     (xend -. x0, yend -. y0)
 
-  let set_global_color vp color = Backend.set_color vp.backend
+  let set_global_color vp c =
+    add_order vp (fun () -> Backend.set_color vp.backend c);
+    Backend.set_color vp.backend c
+
+  let set_global_line_cap vp lc =
+    add_order vp (fun () -> Backend.set_line_cap vp.backend lc);
+    Backend.set_line_cap vp.backend lc
+
+  let set_global_dash vp x y =
+    add_order vp (fun () -> Backend.set_dash vp.backend x y);
+    Backend.set_dash vp.backend x y
+
+  let set_global_line_join vp join =
+    add_order vp (fun () -> Backend.set_line_join vp.backend join);
+    Backend.set_line_join vp.backend join
+
+  let get_line_cap vp = Backend.get_line_cap vp.backend
+  let get_dash vp = Backend.get_dash vp.backend
+  let get_line_join vp = Backend.get_line_join vp.backend
+
 
   let arc t ~r ~a1 ~a2 =
     (*FIXME: better bounds for the arc can be found.*)
