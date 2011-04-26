@@ -73,9 +73,16 @@ and Viewport : sig
   val make : ?axes_sys:bool -> ?lines:float -> ?text:float -> ?marks:float -> viewport ->
     coord_name -> float -> float -> float -> float -> viewport
 
-  val rows : ?axes_sys:bool -> t -> int -> viewport array
-  val columns : ?axes_sys:bool -> t -> int -> viewport array
-  val grid : ?axes_sys:bool -> t -> int -> int -> viewport array array
+  val layout_grid : ?axes_sys:bool -> t -> int -> int -> viewport array array
+  val layout_rows : ?axes_sys:bool -> t -> int -> viewport array
+  val layout_columns : ?axes_sys:bool -> t -> int -> viewport array
+  val fixed_left : ?axes_sys:bool -> float -> t -> viewport * viewport
+  val fixed_right : ?axes_sys:bool -> float -> t -> viewport * viewport
+  val fixed_top : ?axes_sys:bool -> float -> t -> viewport * viewport
+  val fixed_bottom : ?axes_sys:bool -> float -> t -> viewport * viewport
+  val layout_borders : ?north:float -> ?south:float -> ?west:float ->
+    ?east:float -> ?axes_sys:bool -> t ->
+    viewport * viewport * viewport * viewport * viewport
 
   val set_line_width : t -> float -> unit
   val set_font_size : t -> float -> unit

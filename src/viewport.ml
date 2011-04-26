@@ -283,7 +283,8 @@ end
       let coord = vp_fixed.coord_device in
       Coordinate.scale coord (1. /. xfactor) 1.;
     end
-    and vp_fixed = make ~axes_sys vp Device 0. initial_proportion 0. 1. redim_fixed in
+    and vp_fixed =
+      make ~axes_sys vp Device 0. initial_proportion 0. 1. redim_fixed in
     let rec redim xfactor yfactor = begin
       let coord = vp.coord_device in
       Coordinate.scale coord (1. /. xfactor) 1.;
@@ -298,9 +299,11 @@ end
     let rec redim_fixed xfactor _ = begin
       let coord = vp_fixed.coord_device in
       Coordinate.scale coord (1. /. xfactor) 1.;
-      Coordinate.translate coord (-. (fst (Coordinate.to_parent coord ~x:1. ~y:0.))) 0.
+      Coordinate.translate
+	coord (-. (fst (Coordinate.to_parent coord ~x:1. ~y:0.))) 0.
     end
-    and vp_fixed = make ~axes_sys vp Device initial_proportion 1. 0. 1. redim_fixed in
+    and vp_fixed =
+      make ~axes_sys vp Device initial_proportion 1. 0. 1. redim_fixed in
     let rec redim xfactor _ = begin
       let coord = vp.coord_device in
       Coordinate.scale coord (1. /. xfactor) 1.
@@ -313,7 +316,9 @@ end
       let coord = vp_fixed.coord_device in
       Coordinate.scale coord 1. (1. /. yfactor);
     end
-    and vp_fixed = make ~axes_sys vp Device 0. 1. 0. initial_proportion redim_fixed in
+    and vp_fixed =
+      make ~axes_sys vp Device 0. 1. 0. initial_proportion redim_fixed
+    in
     let rec redim _ yfactor = begin
       let coord = vp.coord_device in
       Coordinate.scale coord 1. (1. ./ yfactor);
@@ -328,9 +333,11 @@ end
     let rec redim_fixed _ yfactor = begin
       let coord = vp_fixed.coord_device in
       Coordinate.scale coord 1. (1. /. yfactor);
-      Coordinate.translate coord 0. (-. (snd (Coordinate.to_parent coord ~x:0. ~y:1.)))
+      Coordinate.translate
+	coord 0. (-. (snd (Coordinate.to_parent coord ~x:0. ~y:1.)))
     end
-    and vp_fixed = make ~axes_sys vp Device 0. 1. initial_proportion 1. redim_fixed in
+    and vp_fixed =
+      make ~axes_sys vp Device 0. 1. initial_proportion 1. redim_fixed in
     let rec redim _ yfactor = begin
       let coord = vp.coord_device in
       Coordinate.scale coord 1. (1. /. yfactor)
@@ -339,11 +346,20 @@ end
     (vp_fixed, vp)
 
   (* Des layouts sur les bords, des tailles désirées *)
-  let layout_borders ?(north=0.) ?(south=0.) ?(west=0.) ?(east=0.) ?(axes_sys=false) vp =
-    let east, vp = if east > 0. then fixed_right ~axes_sys (1. -. east) vp else vp, vp in
-    let west, vp = if west > 0. then fixed_left ~axes_sys west vp else vp, vp in
-    let south, vp = if south > 0. then fixed_bottom ~axes_sys (1. -. south) vp else vp, vp in
-    let north, center = if north > 0. then fixed_top ~axes_sys north vp else vp, vp in
+  let layout_borders ?(north=0.) ?(south=0.) ?(west=0.) ?(east=0.)
+      ?(axes_sys=false) vp =
+    let east, vp =
+      if east > 0. then fixed_right ~axes_sys (1. -. east) vp else vp, vp
+    in
+    let west, vp =
+      if west > 0. then fixed_left ~axes_sys west vp else vp, vp
+    in
+    let south, vp =
+      if south > 0. then fixed_bottom ~axes_sys (1. -. south) vp else vp, vp
+    in
+    let north, center =
+      if north > 0. then fixed_top ~axes_sys north vp else vp, vp
+    in
     (north, south, west, east, center)
 
 (* ..........................................................................*)
