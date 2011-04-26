@@ -160,21 +160,25 @@ end
 
   let def_lw, def_ts, def_ms = 0.002, 0.024, 0.01
 
-  (* TODO: doc *)
+  (* Multiplier to get "user-friendly" values (e.g. 12pt instead of 0.024) *)
   let usr_lw, usr_ts, usr_ms = 500., 500., 100.
 
-  let init ?(lines=def_lw) ?(text=def_ts) ?(marks=def_ms) ?(w=640) ?(h=480) ~dirs backend_name =
+  let init ?(lines=def_lw) ?(text=def_ts) ?(marks=def_ms) ?(w=640) ?(h=480)
+      ~dirs backend_name =
     let backend = Backend.make ~dirs backend_name w h in
     let coord_root = Coordinate.make_root (Backend.get_matrix backend) in
     let size0 = min w h in
     let coord_device = Coordinate.make_identity coord_root in
-    let coord_graph = Coordinate.make_scale (Coordinate.make_translate coord_device 0.1 0.1) 0.8 0.8 in
+    let coord_graph = Coordinate.make_scale
+	(Coordinate.make_translate coord_device 0.1 0.1) 0.8 0.8 in
     let rec axes_system = Axes.default_axes_system [viewport]
     and viewport = {
       backend = backend;
       coord_device = coord_device; coord_graph = coord_graph;
-      coord_orthonormal = Coordinate.make_scale coord_device (size0 /. w) (size0 /. h);
-      (* We don't care; will be updated as soon as points are added or we change axes. *)
+      coord_orthonormal =
+      Coordinate.make_scale coord_device (size0 /. w) (size0 /. h);
+      (* We don't care; will be updated as soon as points are added or we
+	 change axes. *)
       coord_data = Coordinate.make_identity coord_graph;
       axes_system = axes_system;
       sizes = Sizes.make (Sizes.make_root size0 size0 1.) lines text marks;
@@ -191,7 +195,8 @@ end
     | Data -> vp.coord_data
     | Orthonormal -> vp.coord_orthonormal
 
-  let make ?(axes_sys=false) ?(lines=def_lw) ?(text=def_ts) ?(marks=def_ms) vp coord_name xmin xmax ymin ymax redim =
+  let make ?(axes_sys=false) ?(lines=def_lw) ?(text=def_ts) ?(marks=def_ms)
+      vp coord_name xmin xmax ymin ymax redim =
     let w, h, size0 =
       let xmax', ymax' = Coordinate.to_device coord xmax ymax
       and xmin', ymin' = Coordinate.to_device coord xmin ymin in
@@ -199,14 +204,21 @@ end
       w, h, min w h
     in
     let coord_parent = get_coord_from_name vp coord_name in
-    let coord_device = Coordinate.make_translation
-      (Coordinate.make_scale coord_parent (xmax -. xmin) (ymax -. ymin)) xmin ymin in
-    let coord_graph = Coordinate.make_scale (Coordinate.make_translate coord_device 0.1 0.1) 0.8 0.8 in
+    let coord_device =
+      Coordinate.make_translation
+	(Coordinate.make_scale coord_parent (xmax -. xmin) (ymax -. ymin))
+	xmin ymin
+    in
+    let coord_graph =
+      Coordinate.make_scale
+	(Coordinate.make_translate coord_device 0.1 0.1) 0.8 0.8 in
     let rec viewport = {
       backend = vp.backend;
       coord_device = coord_device; coord_graph = coord_graph;
-      coord_orthonormal = Coordinate.make_scale coord_device (size0 /. w) (size0 /. h);
-      (* We don't care; will be updated as soon as points are added or we change axes. *)
+      coord_orthonormal =
+      Coordinate.make_scale coord_device (size0 /. w) (size0 /. h);
+      (* We don't care; will be updated as soon as points are added or we
+	 change axes. *)
       coord_data = Coordinate.make_identity coord_graph;
       axes_system =
         if axes_sys then vp.axes_system
@@ -449,13 +461,15 @@ end
     add_order (fun _ -> Backend.clear_path t.backend) t
   (*let path_extents t = Backend.path_extents t.backend*)
 
+  (* IM HERE -->> *)
   (*Stroke when using current coordinates.*)
   let stroke_current t =
     add_order (fun _ -> Backend.stroke t.backend) t
   let stroke_current_preserve t =
     add_order (fun _ -> Backend.stroke_preserve t.backend) t
 
-  let stroke t =
+  let stroke ?(coord=Orthonormal) t =
+    (* TODO: call auto_fit with path extents. *)
     let lw = Sizes.get_lw t.vp.scalings in
     let f _ =
       let ctm = Coordinate.use t.backend t.normalized in
@@ -465,8 +479,8 @@ end
     in
     add_order f t
 
-  (* IM HERE -->> *)
   let stroke_preserve vp =
+    (* TODO: call auto_fit with path extents. *)
     let lw = Sizes.get_lw vp.scalings in
     let f () =
       let ctm = Coordinate.use vp.backend vp.normalized in
@@ -485,7 +499,7 @@ end
   let clip_rectangle vp ~x ~y ~w ~h =
     add_order (fun () -> Backend.clip_rectangle vp.backend x y w h) vp
 
-  (* TODO: Check what is it used for ? *)
+  (* TODO: Check what is it used for ? (drop it ?) *)
   let save_vp t =
     let f vp =
       Backend.save t.backend;
@@ -498,7 +512,7 @@ end
     in
     add_order f t
 
-  (* TODO: Check what is it used for ? *)
+  (* TODO: Check what is it used for ? (drop it ?) *)
   let restore_vp t =
     let f vp =
       try
@@ -517,20 +531,14 @@ end
 
   (* TODO: val show_text. *)
 
-  (* TODO: Check how do we specify the position where we draw the
-     mark ? *)
   let render_mark vp name =
     let mark_size = Sizes.get_marks vp.sizes in
     let f () =
       let ctm = Coordinate.use vp.backend vp.coord_orthonormal in
-      (* FIXME: We should either translate the coor to the current point and
-         change Pointstyle to use [move_to] instead of [rel_move_to], or we
-         should update the current point. *)
       Backend.scale vp.backend marks marks;
       Pointstyle.render name vp.backend;
       Coordinate.restore vp.backend ctm;
     in
-    (* FIXME : what are extents ? *)
     (* FIXME: extents are expressed in "marks-normalized" coords. We need
        to have it in user coords in order to determine the extents. *)
      (*
@@ -544,5 +552,9 @@ end
                                                                                   +.extents.Matrix.h));
      *)
     add_order f vp
+
+  (* TODO: maintain extents for current path instead of calling auto_fit
+     after each call to functions modifying path (e.g arc and rectangle)*)
+
 end
 
