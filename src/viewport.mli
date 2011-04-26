@@ -18,25 +18,7 @@
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the file
    LICENSE for more details. *)
 
-module rec Sizes : sig
-  type size =
-    | Absolute of float
-    | Rel_not_updated of float
-    | Rel_updated of float * float
-
-  type t = {
-    parent: t;
-    children: t list;
-
-    mutable line_width: size;
-    mutable text_size: size;
-    mutable mark_size: size
-  }
-
-  val make_rel : t -> float -> float -> float -> t
-  val make_abs : t -> float -> float -> float -> t
-end
-and Axes : sig
+module rec Axes : sig
   type labels =
     | Text of string array * float
     | Number
@@ -82,6 +64,7 @@ and Axes : sig
 end
 and Viewport : sig
   type t
+
   type coord_name = Device | Graph | Data | Orthonormal
 
   val get_coord_from_name : viewport -> coord_name -> Coordinate.t
