@@ -24,6 +24,10 @@ module type T = sig
 
   (** {2 Transforming coordinates} *)
 
+  val to_parent : t -> x:float -> y:float -> float * float
+  (** [to_parent coord x y] returns the location of the point [(x,y)]
+      in parent's coordinates.*)
+
   val to_device : t -> x:float -> y:float -> float * float
   (** [to_device coord x y] returns the location of the point [(x,y)]
       in device coordinates.*)

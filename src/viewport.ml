@@ -150,6 +150,9 @@ end
     (* Draw immediately or wait for closing ? *)
     mutable immediate_drawing: bool;
 
+    (* Redimension function: when the parent viewport grows of x and y,
+       what should subsequent coordinates become ? This function must set
+       them correctly *)
     redim: float -> float -> unit;
   }
 
@@ -188,7 +191,7 @@ end
     | Data -> vp.coord_data
     | Orthonormal -> vp.coord_orthonormal
 
-  let make ?(axes_sys=false) ?(lines=def_lw) ?(text=def_ts) ?(marks=def_ms) vp coord_name xmin xmax ymin ymax =
+  let make ?(axes_sys=false) ?(lines=def_lw) ?(text=def_ts) ?(marks=def_ms) vp coord_name xmin xmax ymin ymax redim =
     let w, h, size0 =
       let xmax', ymax' = Coordinate.to_device coord xmax ymax
       and xmin', ymin' = Coordinate.to_device coord xmin ymin in
@@ -212,6 +215,7 @@ end
       current_point = (0., 0.);
       instructions = [];
       immediate_drawing = false;
+      redim = redim;
     } in
     viewport
 
@@ -219,7 +223,7 @@ end
 
   let initial_scale = 1.
 
-  let ensure_point_visible vp x y =
+  let auto_fit vp x y =
     let xaxis = vp.axes_system.x
     and yaxis = vp.axes_system.y in
     let updated = ref false in
@@ -258,32 +262,89 @@ end
       do_instructions vp;
       Backend.close vp.backend*)
 
+  (* Grille uniforme; redim: identité *)
+  let layout_grid ?(axes_sys=false) vp rows cols =
+    let redim _ _ = () in
+    let xstep = 1. /. (float cols) and ystep = 1. /. (float rows) in
+    let init_viewport i =
+      let xmin = float (i / cols) *. xstep
+      and ymin = float (i mod cols) *. ystep in
+      let xmax = xmin +. xstep
+      and ymax = ymin +. ystep in
+      make ~axes_sys vp Device xmin xmax ymin ymax redim
+    in
+    Array.init (rows * cols) init_viewport in
 
-  (* TODO: change param *)
-  let rows ?(axes_sys=false) vp n =
-    let step = 1. /. (float n) in
-    let f i =
-      let y_min = float i *. step in
-      make ~axes_sys:axes_sys vp Device 0. 1. y_min (y_min +. step) in
-    Array.init n f
+  let layout_rows ?(axes_sys=false) vp n = grid ~axes_sys vp n 1
+  let layout_columns ?(axes_sys=false) vp n = grid ~axes_sys vp 1 n
 
-  let columns ?(axes_sys=false) vp n =
-    let step = 1. /. (float n) in
-    let f i =
-      let x_min = float i *. step in
-      make ~axes_sys:axes_sys vp Device x_min (x_min +. step) 0. 1. in
-    Array.init n f
+  let fixed_left ?(axes_sys=false) initial_proportion vp =
+    let rec redim_fixed xfactor yfactor = begin
+      let coord = vp_fixed.coord_device in
+      Coordinate.scale coord (1. /. xfactor) 1.;
+    end
+    and vp_fixed = make ~axes_sys vp Device 0. initial_proportion 0. 1. redim_fixed in
+    let rec redim xfactor yfactor = begin
+      let coord = vp.coord_device in
+      Coordinate.scale coord (1. /. xfactor) 1.;
+      let fixed_right = fst (Coordinate.to_parent vp_fixed ~x:1. ~y:0.) in
+      let vp_left = fst (Coordinate.to_parent vp ~x:0. ~y:0.) in
+      Coordinate.translate coord (vp_left -. fixed_right) 0.
+    end
+    and vp = make ~axes_sys vp Device initial_proportion 1. 0. 1. redim in
+    (vp_fixed, vp)
 
+  let fixed_right ?(axes_sys=false) initial_proportion vp =
+    let rec redim_fixed xfactor _ = begin
+      let coord = vp_fixed.coord_device in
+      Coordinate.scale coord (1. /. xfactor) 1.;
+      Coordinate.translate coord (-. (fst (Coordinate.to_parent coord ~x:1. ~y:0.))) 0.
+    end
+    and vp_fixed = make ~axes_sys vp Device initial_proportion 1. 0. 1. redim_fixed in
+    let rec redim xfactor _ = begin
+      let coord = vp.coord_device in
+      Coordinate.scale coord (1. /. xfactor) 1.
+    end
+    and vp = make ~axes_sys vp Device 0. initial_proportion 0. 1. redim in
+    (vp_fixed, vp)
 
-  let grid ?(axes_sys=false) vp n m =
-    let stepx = 1. /. (float n)
-    and stepy = 1. /. (float m) in
-    let f i j =
-      let x_min, y_min = float i *. step, float j *. step in
-      make ~axes_sys:axes_sys vp Device x_min (x_min +. step)
-        y_min (y_min +. step) in
-    let make_row i = Array.init m (f i) in
-    Array.init n make_row
+  let fixed_top ?(axes_sys=false) initial_proportion vp =
+    let rec redim_fixed _ yfactor = begin
+      let coord = vp_fixed.coord_device in
+      Coordinate.scale coord 1. (1. /. yfactor);
+    end
+    and vp_fixed = make ~axes_sys vp Device 0. 1. 0. initial_proportion redim_fixed in
+    let rec redim _ yfactor = begin
+      let coord = vp.coord_device in
+      Coordinate.scale coord 1. (1. ./ yfactor);
+      let fixed_bottom = snd (Coordinate.to_parent vp_fixed ~x:0. ~y:1.) in
+      let vp_top = snd (Coordinate.to_parent vp ~x:0. ~y:0.) in
+      Coordinate.translate coord (vp_top -. fixed_bottom) 0.
+    end
+    and vp = make ~axes_sys vp Device 0. initial_proportion 0. 1. redim in
+    (vp_fixed, vp)
+
+  let fixed_bottom ?(axes_sys=false) initial_proportion vp =
+    let rec redim_fixed _ yfactor = begin
+      let coord = vp_fixed.coord_device in
+      Coordinate.scale coord 1. (1. /. yfactor);
+      Coordinate.translate coord 0. (-. (snd (Coordinate.to_parent coord ~x:0. ~y:1.)))
+    end
+    and vp_fixed = make ~axes_sys vp Device 0. 1. initial_proportion 1. redim_fixed in
+    let rec redim _ yfactor = begin
+      let coord = vp.coord_device in
+      Coordinate.scale coord 1. (1. /. yfactor)
+    end
+    and vp = make ~axes_sys vp Device 0. 1. 0. initial_proportion redim in
+    (vp_fixed, vp)
+
+  (* Des layouts sur les bords, des tailles désirées *)
+  let layout_borders ?(north=0.) ?(south=0.) ?(west=0.) ?(east=0.) ?(axes_sys=false) vp =
+    let east, vp = if east > 0. then fixed_right ~axes_sys (1. -. east) vp else vp, vp in
+    let west, vp = if west > 0. then fixed_left ~axes_sys west vp else vp, vp in
+    let south, vp = if south > 0. then fixed_bottom ~axes_sys (1. -. south) vp else vp, vp in
+    let north, center = if north > 0. then fixed_top ~axes_sys north vp else vp, vp in
+    (north, south, west, east, center)
 
 (* ..........................................................................*)
 
