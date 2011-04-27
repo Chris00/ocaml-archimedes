@@ -188,6 +188,8 @@ end
 = struct
   type t = {
     backend: Backend.t;
+    parent: viewport;
+    mutable children: viewport list;
 
     (* (A,B,C,E) indicate "1" for a particular (see below) coordinate system
        A---------device--------+
@@ -238,6 +240,8 @@ end
     let rec axes_system = Axes.default_axes_system [viewport]
     and viewport = {
       backend = backend;
+      parent = viewport;
+      children = [];
       coord_device = coord_device; coord_graph = coord_graph;
       coord_orthonormal =
       Coordinate.make_scale coord_device (size0 /. w) (size0 /. h);
@@ -277,8 +281,10 @@ end
     let coord_graph =
       Coordinate.make_scale
         (Coordinate.make_translate coord_device 0.1 0.1) 0.8 0.8 in
-    let rec viewport = {
+    let viewport = {
       backend = vp.backend;
+      parent = vp;
+      children = [];
       coord_device = coord_device; coord_graph = coord_graph;
       coord_orthonormal =
       Coordinate.make_scale coord_device (size0 /. w) (size0 /. h);
@@ -294,6 +300,7 @@ end
       immediate_drawing = false;
       redim = redim;
     } in
+    vp.children := viewport :: vp.children;
     viewport
 
   let is_nan_or_inf (x:float) = x <> x || 1. /. x = 0.
@@ -326,10 +333,26 @@ end
           initial_scale, -. yaxis.x0 -. 0.5 *. initial_scale
         else 1. /. (yaxis.xend -. yaxis.x0), -. yaxis.x0
       in
-    (* TODO Finish that *)
+      let data_to_graph = Matrix.make_scale scalx scaly in
+      Matrix.translate data_to_graph tr_x tr_y;
+      Coordinate.transform vp.coord_data data_to_graph;
+      if immediate_drawing then do_instructions vp
     end
 
-  let do_instructions vp = ()
+  let blank vp =
+    let ctm Coordinate.use vp.backend vp.coord_device in
+    Backend.save vp.backend;
+    Backend.clear_path vp.backend;
+    Backend.set_color vp.backend Color.white;
+    Backend.rectangle vp.backend 0. 0. 1. 1.;
+    Backend.fill vp.backend;
+    Backend.restore vp.backend;
+    Coordinate.restore vp.backend ctm
+
+  let rec do_instructions vp =
+    blank vp;
+    (* TODO *)
+    List.iter do_instructions vp.children
 
 (*  let close vp =
     let parent = vp.coord_device.Coordinate.parent in
