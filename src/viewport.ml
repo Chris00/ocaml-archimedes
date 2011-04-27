@@ -454,30 +454,32 @@ end
     update_coords t (x'-.r) (y'-.r);
     add_order (fun _ -> Backend.arc t.backend r a1 a2) t
 
-  let close_path t =
-    add_order (fun _ -> Backend.close_path t.backend) t
+  let close_path vp =
+    add_order (fun () -> Backend.close_path t.backend) vp
 
-  let clear_path t =
-    add_order (fun _ -> Backend.clear_path t.backend) t
-  (*let path_extents t = Backend.path_extents t.backend*)
+  let clear_path () =
+    add_order (fun vp -> Backend.clear_path t.backend) vp
 
-  (* IM HERE -->> *)
-  (*Stroke when using current coordinates.*)
-  let stroke_current t =
-    add_order (fun _ -> Backend.stroke t.backend) t
-  let stroke_current_preserve t =
-    add_order (fun _ -> Backend.stroke_preserve t.backend) t
+  (* FIXME: this doesn't handle the choice of coordinates.
+     We need to reimplement the path to handle the path extents. *)
+  let path_extents vp = Backend.path_extents vp.backend
 
-  let stroke ?(coord=Orthonormal) t =
+  (* Stroke when using current coordinates. *)
+  let stroke_current vp =
+    add_order (fun () -> Backend.stroke vp.backend) vp
+  let stroke_current_preserve vp =
+    add_order (fun () -> Backend.stroke_preserve vp.backend) vp
+
+  let stroke vp =
     (* TODO: call auto_fit with path extents. *)
-    let lw = Sizes.get_lw t.vp.scalings in
-    let f _ =
-      let ctm = Coordinate.use t.backend t.normalized in
-      Backend.set_line_width t.backend lw;
-      Backend.stroke t.backend;
-      Coordinate.restore t.backend ctm
+    let lw = Sizes.get_lw vp.scalings in
+    let f () =
+      let ctm = Coordinate.use vp.backend  in
+      Backend.set_line_width vp.backend lw;
+      Backend.stroke vp.backend;
+      Coordinate.restore vp.backend ctm
     in
-    add_order f t
+    add_order f vp
 
   let stroke_preserve vp =
     (* TODO: call auto_fit with path extents. *)
@@ -493,16 +495,16 @@ end
   let fill vp =
     add_order (fun () -> Backend.fill vp.backend) vp
 
-  let fill_preserve t =
+  let fill_preserve vp =
     add_order (fun () -> Backend.fill_preserve vp.backend) vp
 
   let clip_rectangle vp ~x ~y ~w ~h =
     add_order (fun () -> Backend.clip_rectangle vp.backend x y w h) vp
 
   (* TODO: Check what is it used for ? (drop it ?) *)
-  let save_vp t =
-    let f vp =
-      Backend.save t.backend;
+  let save_vp vp =
+    let f () =
+      Backend.save vp.backend;
       let sizes =
         Sizes.get_lw vp.scalings,
         Sizes.get_ts vp.scalings,
@@ -510,20 +512,20 @@ end
       in
       Stack.push sizes vp.scalings_hist
     in
-    add_order f t
+    add_order f vp
 
   (* TODO: Check what is it used for ? (drop it ?) *)
-  let restore_vp t =
-    let f vp =
+  let restore_vp vp =
+    let f () =
       try
         let lw, ts, marks = Stack.pop vp.scalings_hist in
         Sizes.set_abs_lw vp.scalings lw;
         Sizes.set_abs_ts vp.scalings ts;
         Sizes.set_abs_marks vp.scalings marks;
-        Backend.restore t.backend
+        Backend.restore vp.backend
       with Stack.Empty -> ()
     in
-    add_order f t
+    add_order f vp
 
   let select_font_face vp slant weight family =
     let f () = Backend.select_font_face vp.backend slant weight family
