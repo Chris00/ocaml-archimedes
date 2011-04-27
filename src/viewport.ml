@@ -119,7 +119,71 @@ and Viewport : sig
   val init : ?lines:float -> ?text:float -> ?marks:float -> ?w:int -> ?h:int ->
     dirs:string list -> string -> viewport
   val make : ?axes_sys:bool -> ?lines:float -> ?text:float -> ?marks:float -> viewport ->
-    coord_name -> float -> float -> float -> float -> viewport
+    coord_name -> float -> float -> float -> float -> float -> float -> unit -> viewport
+
+  val layout_grid : ?axes_sys:bool -> t -> int -> int -> viewport array array
+  val layout_rows : ?axes_sys:bool -> t -> int -> viewport array
+  val layout_columns : ?axes_sys:bool -> t -> int -> viewport array
+  val fixed_left : ?axes_sys:bool -> float -> t -> viewport * viewport
+  val fixed_right : ?axes_sys:bool -> float -> t -> viewport * viewport
+  val fixed_top : ?axes_sys:bool -> float -> t -> viewport * viewport
+  val fixed_bottom : ?axes_sys:bool -> float -> t -> viewport * viewport
+  val layout_borders : ?north:float -> ?south:float -> ?west:float ->
+    ?east:float -> ?axes_sys:bool -> t ->
+    viewport * viewport * viewport * viewport * viewport
+
+  val set_line_width : t -> float -> unit
+  val set_font_size : t -> float -> unit
+  val set_mark_size : t -> float -> unit
+  val set_rel_line_width : t -> float -> unit
+  val set_rel_font_size : t -> float -> unit
+  val set_rel_mark_size : t -> float -> unit
+  val get_line_width : t -> float
+  val get_font_size : t -> float
+  val get_mark_size : t -> float
+
+  val lower_left_corner : t -> float * float
+  val upper_right_corner : t -> float * float
+  val dimensions : t -> float * float (* returns (w, h) *)
+    (* set_global_param set param of backend and then of all viewports *)
+  val set_global_color : t -> Color.t -> unit
+  val set_global_line_cap : t -> Backend.line_cap -> unit
+  val set_global_dash : t -> float -> float array -> unit
+  val set_global_line_join : t -> Backend.line_join -> unit
+  val get_global_line_width : t -> float
+  val get_line_cap : t -> Backend.line_cap
+  val get_dash : t -> float array * float
+  val get_line_join : t -> Backend.line_join
+  val move_to : t -> x:float -> y:float -> unit
+  val line_to : t -> x:float -> y:float -> unit
+  val rel_move_to : t -> x:float -> y:float -> unit
+  val rel_line_to : t -> x:float -> y:float -> unit
+  val curve_to :
+    t ->
+    x1:float ->
+    y1:float -> x2:float -> y2:float -> x3:float -> y3:float -> unit
+  val rectangle : t -> x:float -> y:float -> w:float -> h:float -> unit
+  val arc : t -> r:float -> a1:float -> a2:float -> unit
+  val close_path : t -> unit
+  val clear_path : t -> unit
+    (*val path_extents : t -> rectangle*)
+  val stroke_current : t -> unit
+  val stroke_current_preserve : t -> unit
+  val stroke : t -> unit
+  val stroke_preserve : t -> unit
+  val fill : t -> unit
+  val fill_preserve : t -> unit
+  val clip_rectangle : t -> x:float -> y:float -> w:float -> h:float -> unit
+  val save_vp : t -> unit
+  val restore_vp : t -> unit
+  val select_font_face : t -> Backend.slant -> Backend.weight -> string -> unit
+  val show_text :
+    t ->
+    rotate:float ->
+    x:float -> y:float -> Backend.text_position -> string -> unit
+    (*  val text_extents : t -> string -> rectangle*)
+  val render : t -> string -> unit
+    (* val mark_extents : t -> string -> rectangle *)
 end
 = struct
   type t = {
@@ -197,21 +261,20 @@ end
 
   let make ?(axes_sys=false) ?(lines=def_lw) ?(text=def_ts) ?(marks=def_ms)
       vp coord_name xmin xmax ymin ymax redim =
-    let w, h, size0 =
-      let xmax', ymax' = Coordinate.to_device coord xmax ymax
-      and xmin', ymin' = Coordinate.to_device coord xmin ymin in
+   let coord_parent = get_coord_from_name vp coord_name in
+   let w, h, size0 =
+      let xmax', ymax' = Coordinate.to_device coord_parent xmax ymax
+      and xmin', ymin' = Coordinate.to_device coord_parent xmin ymin in
       let w = xmax' -. xmin' and h = ymax' -. ymin' in
       w, h, min w h
-    in
-    let coord_parent = get_coord_from_name vp coord_name in
-    let coord_device =
-      Coordinate.make_translation
-	(Coordinate.make_scale coord_parent (xmax -. xmin) (ymax -. ymin))
-	xmin ymin
-    in
-    let coord_graph =
-      Coordinate.make_scale
-	(Coordinate.make_translate coord_device 0.1 0.1) 0.8 0.8 in
+   in
+   let coord_device = Coordinate.make_translation
+      (Coordinate.make_scale coord_parent (xmax -. xmin) (ymax -. ymin))
+      xmin ymin
+   in
+   let coord_graph =
+     Coordinate.make_scale
+       (Coordinate.make_translate coord_device 0.1 0.1) 0.8 0.8 in
     let rec viewport = {
       backend = vp.backend;
       coord_device = coord_device; coord_graph = coord_graph;
@@ -312,7 +375,7 @@ end
       let coord = vp_fixed.coord_device in
       Coordinate.scale coord (1. /. xfactor) 1.;
       Coordinate.translate
-	coord (-. (fst (Coordinate.to_parent coord ~x:1. ~y:0.))) 0.
+        coord (-. (fst (Coordinate.to_parent coord ~x:1. ~y:0.))) 0.
     end
     and vp_fixed =
       make ~axes_sys vp Device initial_proportion 1. 0. 1. redim_fixed in
@@ -346,7 +409,7 @@ end
       let coord = vp_fixed.coord_device in
       Coordinate.scale coord 1. (1. /. yfactor);
       Coordinate.translate
-	coord 0. (-. (snd (Coordinate.to_parent coord ~x:0. ~y:1.)))
+        coord 0. (-. (snd (Coordinate.to_parent coord ~x:0. ~y:1.)))
     end
     and vp_fixed =
       make ~axes_sys vp Device 0. 1. initial_proportion 1. redim_fixed in
@@ -374,7 +437,9 @@ end
     in
     (north, south, west, east, center)
 
-(* ..........................................................................*)
+
+(* Data that depends directly on viewports
+ ***********************************************************************)
 
 
   let set_line_width vp lw =
@@ -415,50 +480,96 @@ end
 
 (* ......................................................................... *)
 
-  let lower_left_corner vp = Coordinate.to_device vp.coord_device (0., 0.)
+  let lower_left_corner vp = Coordinate.to_device vp.coord_device ~x:0. ~y:0.
 
-  let upper_right_corner vp = Coordinate.to_device vp.coord_device (1., 1.)
+  let upper_right_corner vp = Coordinate.to_device vp.coord_device ~x:1. ~y:1.
 
-  let dimensions vp =
-    let x0, y0 = lower_left_corner vp
-    and xend, yend = upper_right_corner vp in
-    (xend -. x0, yend -. y0)
+  let dimensions vp = Coordinate.to_device_distance vp.coord_device ~dx:1. ~dy:1.
 
   let set_global_color vp c =
-    add_order vp (fun () -> Backend.set_color vp.backend c);
+    add_order (fun () -> Backend.set_color vp.backend c) vp;
     Backend.set_color vp.backend c
 
   let set_global_line_cap vp lc =
-    add_order vp (fun () -> Backend.set_line_cap vp.backend lc);
+    add_order (fun () -> Backend.set_line_cap vp.backend lc) vp;
     Backend.set_line_cap vp.backend lc
 
   let set_global_dash vp x y =
-    add_order vp (fun () -> Backend.set_dash vp.backend x y);
+    add_order (fun () -> Backend.set_dash vp.backend x y) vp;
     Backend.set_dash vp.backend x y
 
   let set_global_line_join vp join =
-    add_order vp (fun () -> Backend.set_line_join vp.backend join);
+    add_order (fun () -> Backend.set_line_join vp.backend join) vp;
     Backend.set_line_join vp.backend join
 
   let get_line_cap vp = Backend.get_line_cap vp.backend
   let get_dash vp = Backend.get_dash vp.backend
   let get_line_join vp = Backend.get_line_join vp.backend
 
+  let move_to vp ~x ~y =
+    vp.current_point <- (x, y);
+    auto_fit vp x y;
+    add_order (fun () -> Backend.move_to vp.backend x y) vp
 
-  let arc t ~r ~a1 ~a2 =
-    (*FIXME: better bounds for the arc can be found.*)
-    let x, y = get_current_pt t in
-    let x' = x -. r *. cos a1
-    and y' = y -. r *. sin a1 in
-    update_coords t (x'+.r) (y'+.r);
-    update_coords t (x'-.r) (y'-.r);
-    add_order (fun _ -> Backend.arc t.backend r a1 a2) t
+  let line_to vp ~x ~y =
+    vp.current_point <- (x, y);
+    auto_fit vp x y;
+    add_order (fun () -> Backend.line_to vp.backend x y) vp
+
+  let rel_move_to vp ~x ~y =
+    let x', y' = vp.current_point in
+    vp.current_point <- (x' +. x, y' +. y);
+    auto_fit vp (x' +. x) (y' +. y);
+    add_order (fun () -> Backend.rel_move_to vp.backend x y) vp
+
+  let rel_line_to vp ~x ~y =
+    let x', y' = vp.current_point in
+    vp.current_point <- (x' +. x, y' +. y);
+    auto_fit vp (x' +. x) (y' +. y);
+    add_order (fun () -> Backend.rel_line_to vp.backend x y) vp
+
+  let curve_to vp ~x1 ~y1 ~x2 ~y2 ~x3 ~y3 =
+    vp.current.point <- x3, y3;
+    auto_fit vp x1 y1;
+    auto_fit vp x2 y2;
+    auto_fit vp x3 y3;
+    add_order (fun () -> Backend.curve_to vp.backend x1 y1 x2 y2 x3 y3) vp
+
+  let rectangle vp ~x ~y ~w ~h =
+    auto_fit vp x y;
+    auto_fit vp (x +. w) (y +. h);
+    add_order (fun () -> Backend.rectangle vp.backend x y w h) vp
+
+  let arc vp ~r ~a1 ~a2 =
+    let pi = acos (1.) in
+    let x, y = get_current_pt t
+    and a1', a2' = mod b1 (2. *. pi) in
+    let a2' = if a1' > a2' then a2' +. 2. *. pi in
+     let x_left =
+      if (a1' < pi) && (pi < a2') then x' -. r
+      else x' +. r *. max (cos a1') (cos a2')
+    and y_lower =
+      let p = 3. /. 2. *. pi in
+      if (a1' < p) && (p < a2') then y' -. r
+      else y' +. r  *. min (sin a1') (sin a2')
+    and x_right =
+      let p = 2. *. pi in
+      if (a1' < p) && (p < a2') then x' +. r
+      else x' +. r *. max (cos a1') (cos a2')
+    and y_upper =
+      let p = pi /. 2. in
+      if (a1' < p) && (p < a2') then y' +. r
+      else y' +. r  *. min (sin a1') (sin a2')
+    in
+    auto_fit x_left y_lower;
+    auto_fit x_right y_upper;
+    add_order (fun () -> Backend.arc vp.backend r a1 a2) vp
 
   let close_path vp =
     add_order (fun () -> Backend.close_path t.backend) vp
 
   let clear_path () =
-    add_order (fun vp -> Backend.clear_path t.backend) vp
+    add_order (fun () -> Backend.clear_path vp.backend) vp
 
   (* FIXME: this doesn't handle the choice of coordinates.
      We need to reimplement the path to handle the path extents. *)
@@ -501,7 +612,7 @@ end
   let clip_rectangle vp ~x ~y ~w ~h =
     add_order (fun () -> Backend.clip_rectangle vp.backend x y w h) vp
 
-  (* TODO: Check what is it used for ? (drop it ?) *)
+(* (* TODO: Check what is it used for ? (drop it ?) *)
   let save_vp vp =
     let f () =
       Backend.save vp.backend;
@@ -525,7 +636,7 @@ end
         Backend.restore vp.backend
       with Stack.Empty -> ()
     in
-    add_order f vp
+    add_order f vp *)
 
   let select_font_face vp slant weight family =
     let f () = Backend.select_font_face vp.backend slant weight family
