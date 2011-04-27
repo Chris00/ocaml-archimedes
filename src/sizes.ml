@@ -115,7 +115,7 @@ let get_marks node =
   | Absolute ms | Rel_update _, ms -> ms
   | Rel_not_update _ -> assert false (* check *)
 
-let outdate_lw node =
+let rec outdate_lw node =
   let need_iter =
     match node.line_width with
     | Absolute _ -> true
@@ -123,8 +123,10 @@ let outdate_lw node =
         node.line_width <- Rel_not_update lw;
         true
     | Rel_not_update _ -> false
+  in
+  if need_iter then List.iter outdate_lw node.children
 
-let outdate_ts node =
+let rec outdate_ts node =
   let need_iter =
     match node.text_size with
     | Absolute _ -> true
@@ -132,8 +134,10 @@ let outdate_ts node =
         node.line_width <- Rel_not_update ts;
         true
     | Rel_not_update _ -> false
+  in
+  if need_iter then List.iter outdate_ts node.children
 
-let outdate_ms node =
+let rec outdate_ms node =
   let need_iter =
     match node.mark_size with
     | Absolute _ -> true
@@ -141,6 +145,8 @@ let outdate_ms node =
         node.line_width <- Rel_not_update ms;
         true
     | Rel_not_update _ -> false
+  in
+  if need_iter then List.iter outdate_ms node.children
 
 let set_rel_lw node size =
   node.line_width <- Rel_not_update size;

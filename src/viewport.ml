@@ -337,6 +337,7 @@ end
       Matrix.translate data_to_graph tr_x tr_y;
       Coordinate.transform vp.coord_data data_to_graph;
       if immediate_drawing then do_instructions vp
+        (* TODO Finish that *)
     end
 
   let blank vp =

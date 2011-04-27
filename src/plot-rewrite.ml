@@ -14,7 +14,7 @@
    WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the file
    LICENSE for more details. *)
-
+(*
 module Sizes:
 sig
   type t
@@ -213,3 +213,4 @@ struct
 end
 
 type t = ...    +axes_set
+*)

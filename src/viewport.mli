@@ -217,12 +217,12 @@ and Viewport : sig
     (* val mark_extents : t -> string -> rectangle *)
 
   (* TODO Complete *)
-  val fx
+(*  val fx
   val xy
   val add_xaxis
   val add_yaxis
   val box_axes
-  val centered_axes
+  val centered_axes*)
 
   val xrange : t -> float -> float -> unit
   val yrange : t -> float -> float -> unit

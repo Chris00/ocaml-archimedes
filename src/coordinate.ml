@@ -125,7 +125,7 @@ let use b coord =
   update coord;
   let saved_ctm = Backend.get_matrix b in
   Backend.set_matrix b coord.ctm;
-  save_ctm
+  saved_ctm
 
 let restore b ctm = Backend.set_matrix b ctm
 
