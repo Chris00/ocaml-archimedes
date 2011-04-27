@@ -300,7 +300,7 @@ end
       let coord = vp_fixed.coord_device in
       Coordinate.scale coord (1. /. xfactor) 1.;
       Coordinate.translate
-	coord (-. (fst (Coordinate.to_parent coord ~x:1. ~y:0.))) 0.
+        coord (-. (fst (Coordinate.to_parent coord ~x:1. ~y:0.))) 0.
     end
     and vp_fixed =
       make ~axes_sys vp Device initial_proportion 1. 0. 1. redim_fixed in
@@ -334,7 +334,7 @@ end
       let coord = vp_fixed.coord_device in
       Coordinate.scale coord 1. (1. /. yfactor);
       Coordinate.translate
-	coord 0. (-. (snd (Coordinate.to_parent coord ~x:0. ~y:1.)))
+        coord 0. (-. (snd (Coordinate.to_parent coord ~x:0. ~y:1.)))
     end
     and vp_fixed =
       make ~axes_sys vp Device 0. 1. initial_proportion 1. redim_fixed in
@@ -362,7 +362,9 @@ end
     in
     (north, south, west, east, center)
 
-(* ..........................................................................*)
+
+(* Data that depends directly on viewports
+ ***********************************************************************)
 
 
   let set_line_width vp lw =
@@ -413,47 +415,96 @@ end
     (xend -. x0, yend -. y0)
 
   let set_global_color vp c =
-    add_order vp (fun () -> Backend.set_color vp.backend c);
+    add_order (fun () -> Backend.set_color vp.backend c) vp;
     Backend.set_color vp.backend c
 
   let set_global_line_cap vp lc =
-    add_order vp (fun () -> Backend.set_line_cap vp.backend lc);
+    add_order (fun () -> Backend.set_line_cap vp.backend lc) vp;
     Backend.set_line_cap vp.backend lc
 
   let set_global_dash vp x y =
-    add_order vp (fun () -> Backend.set_dash vp.backend x y);
+    add_order (fun () -> Backend.set_dash vp.backend x y) vp;
     Backend.set_dash vp.backend x y
 
   let set_global_line_join vp join =
-    add_order vp (fun () -> Backend.set_line_join vp.backend join);
+    add_order (fun () -> Backend.set_line_join vp.backend join) vp;
     Backend.set_line_join vp.backend join
 
   let get_line_cap vp = Backend.get_line_cap vp.backend
   let get_dash vp = Backend.get_dash vp.backend
   let get_line_join vp = Backend.get_line_join vp.backend
 
+  let move_to vp ~x ~y =
+    vp.current_point <- (x, y);
+    auto_fit vp x y;
+    add_order (fun () -> Backend.move_to vp.backend x y) vp
 
-  let arc t ~r ~a1 ~a2 =
-    (*FIXME: better bounds for the arc can be found.*)
-    let x, y = get_current_pt t in
-    let x' = x -. r *. cos a1
-    and y' = y -. r *. sin a1 in
-    update_coords t (x'+.r) (y'+.r);
-    update_coords t (x'-.r) (y'-.r);
-    add_order (fun _ -> Backend.arc t.backend r a1 a2) t
+  let line_to vp ~x ~y =
+    vp.current_point <- (x, y);
+    auto_fit vp x y;
+    add_order (fun () -> Backend.line_to vp.backend x y) vp
 
-  let close_path t =
-    add_order (fun _ -> Backend.close_path t.backend) t
+  let rel_move_to vp ~x ~y =
+    let x', y' = vp.current_point in
+    vp.current_point <- (x' +. x, y' +. y);
+    auto_fit vp (x' +. x) (y' +. y);
+    add_order (fun () -> Backend.rel_move_to vp.backend x y) vp
 
-  let clear_path t =
-    add_order (fun _ -> Backend.clear_path t.backend) t
+  let rel_line_to vp ~x ~y =
+    let x', y' = vp.current_point in
+    vp.current_point <- (x' +. x, y' +. y);
+    auto_fit vp (x' +. x) (y' +. y);
+    add_order (fun () -> Backend.rel_line_to vp.backend x y) vp
+
+  let curve_to vp ~x1 ~y1 ~x2 ~y2 ~x3 ~y3 =
+    vp.current.point <- x3, y3;
+    auto_fit vp x1 y1;
+    auto_fit vp x2 y2;
+    auto_fit vp x3 y3;
+    add_order (fun () -> Backend.curve_to vp.backend x1 y1 x2 y2 x3 y3) vp
+
+  let rectangle vp ~x ~y ~w ~h =
+    auto_fit vp x y;
+    auto_fit vp (x +. w) (y +. h);
+    add_order (fun () -> Backend.rectangle vp.backend x y w h) vp
+
+  let arc vp ~r ~a1 ~a2 =
+    let pi = acos (1.) in
+    let x, y = get_current_pt t
+    and a1', a2' = mod b1 (2. *. pi) in
+    let a2' = if a1' > a2' then a2' +. 2. *. pi in
+    let x_left =
+      if (a1' < pi) && (pi < a2') then x' -. r
+      else x' +. r *. min (cos a1') (cos a2')
+    and y_lower =
+      let p = 3. /. 2. *. pi in
+      if (a1' < p) && (p < a2') then y' -. r
+      else y' +. r  *. min (sin a1') (sin a2')
+    and x_right =
+      let p = 2. *. pi in
+      if (a1' < p) && (p < a2') then x' +. r
+      else x' +. r *. max (cos a1') (cos a2')
+    and y_upper =
+      let p = pi /. 2. in
+      if (a1' < p) && (p < a2') then y' +. r
+      else y' +. r  *. min (sin a1') (sin a2')
+    in
+    auto_fit x_left y_lower;
+    auto_fit x_right y_upper;
+    add_order (fun () -> Backend.arc vp.backend r a1 a2) vp
+
+  let close_path vp =
+    add_order (fun () -> Backend.close_path t.backend) vp
+
+  let clear_path vp =
+    add_order (fun () -> Backend.clear_path t.backend) vp
   (*let path_extents t = Backend.path_extents t.backend*)
 
   (*Stroke when using current coordinates.*)
-  let stroke_current t =
-    add_order (fun _ -> Backend.stroke t.backend) t
-  let stroke_current_preserve t =
-    add_order (fun _ -> Backend.stroke_preserve t.backend) t
+  let stroke_current vp =
+    add_order (fun () -> Backend.stroke vp.backend) vp
+  let stroke_current_preserve vp =
+    add_order (fun () -> Backend.stroke_preserve vp.backend) vp
 
   let stroke t =
     let lw = Sizes.get_lw t.vp.scalings in
