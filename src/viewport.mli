@@ -68,21 +68,96 @@ and Viewport : sig
   type coord_name = Device | Graph | Data | Orthonormal
 
   val get_coord_from_name : viewport -> coord_name -> Coordinate.t
+  (** [get_coord_from_name viewport coord_name] returns one of the
+      coordinate systems of the viewport *)
+
+  (** {2 Create new viewports} *)
   val init : ?lines:float -> ?text:float -> ?marks:float -> ?w:int -> ?h:int ->
     dirs:string list -> string -> viewport
-  val make : ?axes_sys:bool -> ?lines:float -> ?text:float -> ?marks:float -> viewport ->
-    coord_name -> float -> float -> float -> float -> float -> float -> unit -> viewport
+  (** [init backend_name] initializes the whole Archimedes stuff,
+      returning a main viewport using the backend given
+
+      @param lines the width of the lines (default: 1. corresponds to
+      fullfilling a biggest square of the viewport with 500 lines)
+
+      @param text the size of the text in (default: 12. corresponds to
+      fullfilling a biggest square of the viewport with about 42 lines of
+      text)
+
+      @param marks the size of the marks in pixels (default:
+      1. corresponds to fullfilling a biggest square the viewport with 100
+      "lines of marks")
+
+      @param w the width of the main viewport (in backend's unit)
+
+      @param h the height of the main viewport (in backend's unit)
+
+      @param dirs a list of output files, useful for backends supporting
+      several output formats (e.g. ["mytest.eps", "tex/mytest.tex"])
+  *)
+  val make : ?axes_sys:bool -> ?lines:float -> ?text:float -> ?marks:float ->
+    viewport -> coord_name -> float -> float -> float -> float -> viewport
+  (** [make parent coord_name xmin xmax ymin ymax] creates and returns a
+      viewport on top of [parent] with top left corner (xmin, ymin) and
+      bottom right corner (xmax, ymax) using parent's [coord_name]
+      coordinate system.
+
+      @param axes_sys should we draw the axis system ?
+
+      @param lines see {!init}
+
+      @param text see {!init}
+
+      @param marks see {!init}
+  *)
 
   val layout_grid : ?axes_sys:bool -> t -> int -> int -> viewport array array
+  (** [layout_grid parent n_cols n_rows] creates [n_cols] * [n_rows]
+      viewports layouted in a grid and returns them in a matrix of
+      viewports
+
+      @param axes_sys see {!make}
+  *)
   val layout_rows : ?axes_sys:bool -> t -> int -> viewport array
+  (** [layout_rows parent n_rows] creates [n_rows] viewports layouted in
+      a column and returns them in an array of viewpors
+
+      @param axes_sys see {!make}
+  *)
   val layout_columns : ?axes_sys:bool -> t -> int -> viewport array
-  val fixed_left : ?axes_sys:bool -> float -> t -> viewport * viewport
+  (** [layout_cols parent n_cols] creates [n_cols] viewports layouted in
+      a row and returns them in an array of viewports
+
+      @param axes_sys see {!make}
+  *)
+  (* not in public interface *)
+  (*val fixed_left : ?axes_sys:bool -> float -> t -> viewport * viewport
   val fixed_right : ?axes_sys:bool -> float -> t -> viewport * viewport
   val fixed_top : ?axes_sys:bool -> float -> t -> viewport * viewport
-  val fixed_bottom : ?axes_sys:bool -> float -> t -> viewport * viewport
+  val fixed_bottom : ?axes_sys:bool -> float -> t -> viewport * viewport*)
   val layout_borders : ?north:float -> ?south:float -> ?west:float ->
     ?east:float -> ?axes_sys:bool -> t ->
     viewport * viewport * viewport * viewport * viewport
+    (** [layout_borders parent] returns a 5-uple of viewports where the 4
+        first viewports are fixed in size towards the center while the fifth
+        one is extensible. The viewports are north, south, west, east, center
+        and are placed conformally to their names.
+
+        @param north the size of the north's viewport; if zero (default),
+        this viewport is unused (the north viewport will be the same as
+        the center one)
+
+        @param south the size of the south's viewport; same behaviour as
+        north if zero
+
+        @param west the size of the west's viewport; same behaviour as
+        north if zero
+
+        @param east the size of the east's viewport; same behaviour as
+        north if zero
+
+        @axes_sys see {!make}
+    *)
 
   val set_line_width : t -> float -> unit
   val set_font_size : t -> float -> unit
@@ -94,10 +169,14 @@ and Viewport : sig
   val get_font_size : t -> float
   val get_mark_size : t -> float
 
-  val lower_left_corner : t -> float * float
+  val lower_left_corner  : t -> float * float
+  (** The device's coordinates of the viewport's lower left corner *)
   val upper_right_corner : t -> float * float
-  val dimensions : t -> float * float (* returns (w, h) *)
-    (* set_global_param set param of backend and then of all viewports *)
+  (** The device's coordinates of the viewport's upper right corner *)
+  val dimensions : t -> float * float
+  (** The device's width and height of the viewport *)
+
+  (* set_global_param set param of backend and then of all viewports *)
   val set_global_color : t -> Color.t -> unit
   val set_global_line_cap : t -> Backend.line_cap -> unit
   val set_global_dash : t -> float -> float array -> unit
