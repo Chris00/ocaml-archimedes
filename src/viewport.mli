@@ -71,7 +71,7 @@ and Viewport : sig
   val init : ?lines:float -> ?text:float -> ?marks:float -> ?w:int -> ?h:int ->
     dirs:string list -> string -> viewport
   val make : ?axes_sys:bool -> ?lines:float -> ?text:float -> ?marks:float -> viewport ->
-    coord_name -> float -> float -> float -> float -> viewport
+    coord_name -> float -> float -> float -> float -> float -> float -> unit -> viewport
 
   val layout_grid : ?axes_sys:bool -> t -> int -> int -> viewport array array
   val layout_rows : ?axes_sys:bool -> t -> int -> viewport array
