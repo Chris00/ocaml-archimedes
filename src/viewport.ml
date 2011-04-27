@@ -163,14 +163,14 @@ end
   (* Multiplier to get "user-friendly" values (e.g. 12pt instead of 0.024) *)
   let usr_lw, usr_ts, usr_ms = 500., 500., 100.
 
-  let init ?(lines=def_lw) ?(text=def_ts) ?(marks=def_ms) ?(w=640) ?(h=480)
-      ~dirs backend_name =
+  let init ?(lines=def_lw *. usr_lw) ?(text=def_ts *. usr_ts)
+      ?(marks=def_ms *. usr_ms) ?(w=640) ?(h=480) ~dirs backend_name =
     let backend = Backend.make ~dirs backend_name w h in
     let coord_root = Coordinate.make_root (Backend.get_matrix backend) in
     let size0 = min w h in
     let coord_device = Coordinate.make_identity coord_root in
     let coord_graph = Coordinate.make_scale
-	(Coordinate.make_translate coord_device 0.1 0.1) 0.8 0.8 in
+      (Coordinate.make_translate coord_device 0.1 0.1) 0.8 0.8 in
     let rec axes_system = Axes.default_axes_system [viewport]
     and viewport = {
       backend = backend;
@@ -206,12 +206,12 @@ end
     let coord_parent = get_coord_from_name vp coord_name in
     let coord_device =
       Coordinate.make_translation
-	(Coordinate.make_scale coord_parent (xmax -. xmin) (ymax -. ymin))
-	xmin ymin
+        (Coordinate.make_scale coord_parent (xmax -. xmin) (ymax -. ymin))
+        xmin ymin
     in
     let coord_graph =
       Coordinate.make_scale
-	(Coordinate.make_translate coord_device 0.1 0.1) 0.8 0.8 in
+        (Coordinate.make_translate coord_device 0.1 0.1) 0.8 0.8 in
     let rec viewport = {
       backend = vp.backend;
       coord_device = coord_device; coord_graph = coord_graph;
@@ -287,8 +287,10 @@ end
     in
     Array.init (rows * cols) init_viewport in
 
-  let layout_rows ?(axes_sys=false) vp n = grid ~axes_sys vp n 1
-  let layout_columns ?(axes_sys=false) vp n = grid ~axes_sys vp 1 n
+  let layout_rows ?(axes_sys=false) vp n =
+    Array.map (fun x -> x.(0)) (grid ~axes_sys vp n 1)
+  let layout_columns ?(axes_sys=false) vp n =
+    (grid ~axes_sys vp 1 n).(0)
 
   let fixed_left ?(axes_sys=false) initial_proportion vp =
     let rec redim_fixed xfactor yfactor = begin
@@ -312,7 +314,7 @@ end
       let coord = vp_fixed.coord_device in
       Coordinate.scale coord (1. /. xfactor) 1.;
       Coordinate.translate
-	coord (-. (fst (Coordinate.to_parent coord ~x:1. ~y:0.))) 0.
+        coord (-. (fst (Coordinate.to_parent coord ~x:1. ~y:0.))) 0.
     end
     and vp_fixed =
       make ~axes_sys vp Device initial_proportion 1. 0. 1. redim_fixed in
@@ -346,7 +348,7 @@ end
       let coord = vp_fixed.coord_device in
       Coordinate.scale coord 1. (1. /. yfactor);
       Coordinate.translate
-	coord 0. (-. (snd (Coordinate.to_parent coord ~x:0. ~y:1.)))
+        coord 0. (-. (snd (Coordinate.to_parent coord ~x:0. ~y:1.)))
     end
     and vp_fixed =
       make ~axes_sys vp Device 0. 1. initial_proportion 1. redim_fixed in
