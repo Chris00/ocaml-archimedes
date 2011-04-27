@@ -130,10 +130,11 @@ and Viewport : sig
 
       @param axes_sys see {!make}
   *)
-  val fixed_left : ?axes_sys:bool -> float -> t -> viewport * viewport
+  (* not in public interface *)
+  (*val fixed_left : ?axes_sys:bool -> float -> t -> viewport * viewport
   val fixed_right : ?axes_sys:bool -> float -> t -> viewport * viewport
   val fixed_top : ?axes_sys:bool -> float -> t -> viewport * viewport
-  val fixed_bottom : ?axes_sys:bool -> float -> t -> viewport * viewport
+  val fixed_bottom : ?axes_sys:bool -> float -> t -> viewport * viewport*)
   val layout_borders : ?north:float -> ?south:float -> ?west:float ->
     ?east:float -> ?axes_sys:bool -> t ->
     viewport * viewport * viewport * viewport * viewport
@@ -142,13 +143,18 @@ and Viewport : sig
         one is extensible. The viewports are north, south, west, east, center
         and are placed conformally to their names.
 
-        @param north the size of the north's viewport
+        @param north the size of the north's viewport; if zero (default),
+        this viewport is unused (the north viewport will be the same as
+        the center one)
 
-        @param south the size of the south's viewport
+        @param south the size of the south's viewport; same behaviour as
+        north if zero
 
-        @param west the size of the west's viewport
+        @param west the size of the west's viewport; same behaviour as
+        north if zero
 
-        @param east the size of the east's viewport
+        @param east the size of the east's viewport; same behaviour as
+        north if zero
 
         @axes_sys see {!make}
     *)
@@ -164,7 +170,7 @@ and Viewport : sig
   val get_mark_size : t -> float
 
   val lower_left_corner  : t -> float * float
-    (** The device's coordinates of the viewport's lower left corner *)
+  (** The device's coordinates of the viewport's lower left corner *)
   val upper_right_corner : t -> float * float
   (** The device's coordinates of the viewport's upper right corner *)
   val dimensions : t -> float * float
