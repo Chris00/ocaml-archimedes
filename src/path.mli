@@ -28,8 +28,23 @@ type path_data =
 
 type t = path_data list
 
-val empty: unit -> t
-val move_to: t -> float -> float -> unit
+val make: unit -> t
 
 val clear: t -> unit
+
+val move_to: t -> x:float -> y:float -> unit
+
+val line_to: t -> x:float -> y:float -> unit
+
+val rel_move_to: t -> x:float -> y:float -> unit
+
+val rel_line_to: t -> x:float -> y:float -> unit
+
+val rectangle: t -> x:float -> y:float -> w:float -> h:float -> unit
+
+val curve_to: t -> x1:float -> y1:float -> x2:float -> y2:float ->
+  x3:float -> y3:float -> unit
+
+val arc: t -> r:float -> a1:float -> a2:float -> unit
+
 val close: t -> unit

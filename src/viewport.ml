@@ -207,8 +207,7 @@ end
     mutable axes_system: Axes.t;
     (* For sizing texts, tics, etc. *)
     mutable sizes: Sizes.t;
-    (* The last point drawn *)
-    mutable current_point: float * float;
+    path: Path.t;
     (* An instruction is a "thing" to plot on the device, we memorize
        their order to replot in case of necessity *)
     mutable instructions: (unit -> unit) Queue.t;
@@ -250,7 +249,7 @@ end
       coord_data = Coordinate.make_identity coord_graph;
       axes_system = axes_system;
       sizes = Sizes.make (Sizes.make_root size0 size0 1.) lines text marks;
-      current_point = (0., 0.);
+      path = Path.make ();
       instructions = Queue.create ();
       immediate_drawing = false;
       redim = (fun _ _ -> ());
@@ -295,7 +294,7 @@ end
         if axes_sys then vp.axes_system
         else axes_system = Axes.default_axes_system [viewport];
       sizes = Sizes.make_rel vp.sizes lines text marks;
-      current_point = (0., 0.);
+      path = Path.make ();
       instructions = [];
       immediate_drawing = false;
       redim = redim;
@@ -535,8 +534,7 @@ end
   let get_line_join vp = Backend.get_line_join vp.backend
 
   let move_to vp ~x ~y =
-    vp.current_point <- (x, y);
-    auto_fit vp x y;
+    Path.move_to vp.path ~x ~y;
     add_order (fun () -> Backend.move_to vp.backend x y) vp
 
   let line_to vp ~x ~y =

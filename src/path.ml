@@ -29,19 +29,24 @@ type data =
 type t = {
   mutable path: data list;
   mutable extents: Matrix.rectangle;
-  mutable current_point: float * float;
+  mutable x: float;
+  mutable y: float;
+  mutable curr_pt: bool;
 }
 
-let empty () = {
-  path = [];
-  extents = { Matrix.x = 0.; y = 0.; w = 0.; h = 0. };
-  current_point = (0., 0.)
-}
+let make () =
+  { path = [];
+    extents = { Matrix.x = 0.; y = 0.; w = 0.; h = 0. };
+    x = 0.;
+    y = 0.;
+    curr_pt <- false }
 
 let clear p =
   p.path <- [];
   p.extents <- { Matrix.x = 0.; y = 0.; w = 0.; h = 0. };
-  p.current_point <- (0., 0.) (* TODO Support current_point in below functions *)
+  x = 0.;
+  y = 0.;
+  curr_pt <- false
 
 let beginning_of_subpath p =
   let rec aux = function
@@ -53,7 +58,7 @@ let beginning_of_subpath p =
   in
   aux p.path
 
-let update_extents e x0 y0 x1 y1 =
+let update_rectangle e x0 y0 x1 y1 =
   let x = min e.Matrix.x (min x0 x1)
   and y = min e.Matrix.y (min y0 y1)
   and x' = max (e.Matrix.x +. e.Matrix.w) (max x0 x1)
@@ -61,29 +66,140 @@ let update_extents e x0 y0 x1 y1 =
   { Matrix.x = x; y = y; w = x' -. x; h = y' -. y }
 
 let move_to p ~x ~y =
-  p.path <- Move_to (x, y) :: p.path
+  p.path <- Move_to (x, y) :: p.path;
+  p.x <- x;
+  p.y <- y;
+  p.curr_pt <- true
 
 let line_to p ~x ~y =
-  let x0, y0 = beginning_of_subpath p in
-  p.path <- Line_to (x, y) :: p.path;
-  p.extents <- update_extents p x0 y0 x y
+  if curr_pt then begin
+    p.path <- Line_to (x, y) :: p.path;
+    p.extents <- update_rectangle p.x p.y x y;
+    p.x <- x;
+    p.y <- y
+  end else move_to p ~x ~y
 
 let rel_move_to p ~x ~y =
-  let x', y' = beginning_of_subpath p in
-  move_to p ~x:(x' + x) ~y:(y' + y)
+  move_to p ~x:(p.x + x) ~y:(p.y + y)
 
 let rel_line_to p ~x ~y =
-  let x', y' = beginning_of_subpath p in
-  line_to p ~x:(x' + x) ~y:(y' + y)
+  line_to p ~x:(p.x + x) ~y:(p.y + y)
 
 let rectangle p ~x ~y ~w ~h =
   p.path <- Rectangle (x, y, w, h) :: p.path;
-  p.extents <- update_extents x y (x +. w) (y +. h)
+  p.extents <- update_rectangle x y (x +. w) (y +. h);
+  p.x <- x;
+  p.y <- y;
+  p.curr_pt <- true
+
+(** Returns the range of the function f = t -> (1-t)**3 x0 + 3
+    (1-t)**2 t x1 + 3 (1-t) t**2 x2 + t**3 x3, 0 <= t <= 1, under the
+    form of an interval [xmin, xmax] *)
+let range_bezier x0 x1 x2 x3 =
+  let f t =
+    let t' = 1. -. t in
+    let t2 = t *. t in
+    t' *. (t' *. (t' *. x0 +. 3. *. t *. x1) +. 3. *. t2 *. x2)
+    +. t2 *. t *. x3 in
+  let a = x3 -. 3. *. x2 +. 3. *. x1 -. x0
+  and b = 2. *. x2 -. 4. *. x1 +. 2. *. x0
+  and c = x1 -. x0 in
+  if a = 0. then
+    if b = 0. then min x0 x3, max x0 x3 (* deg 1 (=> monotone) *)
+    else
+      let root = -. c /. b in
+      if 0. < root && root < 1. then
+        let x = f root in min x (min x0 x3), max x (max x0 x3)
+      else min x0 x3, max x0 x3         (* monotone for t in [0,1] *)
+  else
+    let delta = b *. b -. 4. *. a *. c in
+    if delta < 0. then min x0 x3, max x0 x3 (* monotone *)
+    else if delta = 0. then
+      let root = -. b /. (2. *. a) in
+      if 0. < root && root < 1. then
+        let x = f root in min x (min x0 x3), max x (max x0 x3)
+      else min x0 x3, max x0 x3         (* monotone for t in [0,1] *)
+    else (* delta > 0. *)
+      let root1 = (if b >= 0. then -. b -. sqrt delta
+                   else -. b +. sqrt delta) /. (2. *. a) in
+      let root2 = c /. (a *. root1) in
+      if 0. < root1 && root1 < 1. then
+        let f1 = f root1 in
+        if 0. < root2 && root2 < 1. then
+          let f2 = f root2 in
+          min (min f1 f2) (min x0 x3), max (max f1 f2) (max x0 x3)
+        else min f1 (min x0 x3), max f1 (max x0 x3)
+      else (* root1 outside [0,1] *)
+        if 0. < root2 && root2 < 1. then
+          let f2 = f root2 in
+          min f2 (min x0 x3), max f2 (max x0 x3)
+        else min x0 x3, max x0 x3
+
+(** Return the smaller rectangle containing [r] and the Bézier curve
+    given by the control points. *)
+let update_curve e x0 y0 x1 y1 x2 y2 x3 y3 =
+  let xmin, xmax = range_bezier x0 x1 x2 x3 in
+  let xmin = min xmin e.Matrix.x in
+  let w = max xmax (e.Matrix.x +. e.Matrix.w) -. xmin in
+  let ymin, ymax = range_bezier y0 y1 y2 y3 in
+  let ymin = min ymin e.Matrix.y in
+  let h = max ymax (e.Matrix.y +. e.Matrix.h) -. ymin in
+  { Matrix.x = xmin;  y = ymin; w = w; h = h }
 
 let internal_curve_to p ~x1 ~y1 ~x2 ~y2 ~x3 ~y3 =
   let x0, y0 =
-    if 
-
+    if t.curr_pt then p.x, p.y
+    else begin
+      p.path <- MOVE_TO(x1, y1) :: t.current_path;
+      p.curr_pt <- true;
+      (x1, y1)
+    end
+  in
+  p.path <-
+    Curve_to(x0, y0, x1, y1, x2, y2, x3, y3) :: p.path;
+  (* Update the current point and extents *)
+  p.extents <-
+    update_curve p.extents x0 y0 x1 y1 x2 y2 x3 y3;
+  p.x <- x3;
+  p.y <- y3
 
 let curve_to p ~x1 ~y1 ~x2 ~y2 ~x3 ~y3 =
-  internal
+  internal_curve_to p ~x1 ~y1 ~x2 ~y2 ~x3 ~y3
+
+(* Constant to determine the control points so that the bezier curve
+   passes by middle point of the arc. *)
+let arc_control = 4. /. 3. (* (1 - cos(b))/(sin b),  b = (a1 - a2)/2 *)
+
+let rec bezier_arc p x0 y0 r a1 a2 =
+  let da = 0.5 *. (a2 -. a1) in
+  if abs_float(da) <= fourth_pi then
+    let k = arc_control *. (1. -. cos da) /. sin da in
+    let rcos_a1 = r *. cos a1 and rsin_a1 = r *. sin a1 in
+    let rcos_a2 = r *. cos a2 and rsin_a2 = r *. sin a2 in
+    let x3 = x0 -. rcos_a1 +. rcos_a2
+    and y3 = y0 -. rsin_a1 +. rsin_a2 in
+    let x1 = x0 -. k *. rsin_a1
+    and y1 = y0 +. k *. rcos_a1 in
+    let x2 = x3 +. k *. rsin_a2
+    and y2 = y3 -. k *. rcos_a2 in
+    internal_curve_to p x1 y1 x2 y2 x3 y3;
+    x3, y3
+  else (* several Bezier curves are needed. *)
+    let mid = 0.5 *. (a1 +. a2) in
+    let x0, y0 = bezier_arc p x0 y0 r a1 mid in
+    bezier_arc p x0 y0 r mid a2
+
+let arc p ~r ~a1 ~a2 =
+  (* Approximate the arc by Bezier curves to allow for arbitrary affine
+     transformations. *)
+  if not p.curr_pt then failwith "archimedes_graphics.arc: no current point";
+  ignore(bezier_arc p st p.x p.y r a1 a2)
+
+let close p =
+  if p.curr_pt then begin
+    (* Search for the beginning of the current sub-path, if any *)
+    let x, y = beginning_of_subpath p.current_path in
+    p.current_path <- CLOSE_PATH(x, y) :: p.current_path;
+    p.x <- x;
+    p.y <- y
+  end
