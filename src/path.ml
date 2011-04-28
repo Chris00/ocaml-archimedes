@@ -39,17 +39,17 @@ let make () =
     extents = { Matrix.x = 0.; y = 0.; w = 0.; h = 0. };
     x = 0.;
     y = 0.;
-    curr_pt <- false }
+    curr_pt = false }
 
 let clear p =
   p.path <- [];
   p.extents <- { Matrix.x = 0.; y = 0.; w = 0.; h = 0. };
-  x = 0.;
-  y = 0.;
-  curr_pt <- false
+  p.x <- 0.;
+  p.y <- 0.;
+  p.curr_pt <- false
 
 let extents p =
-  Matrix.copy p.extents
+  { p.extents with Matrix.x = p.extents.Matrix.x }
 
 let beginning_of_subpath p =
   let rec aux = function
@@ -61,12 +61,13 @@ let beginning_of_subpath p =
   in
   aux p.path
 
-let update_rectangle e x0 y0 x1 y1 =
+let update_rectangle p x0 y0 x1 y1 =
+  let e = p.extents in
   let x = min e.Matrix.x (min x0 x1)
   and y = min e.Matrix.y (min y0 y1)
   and x' = max (e.Matrix.x +. e.Matrix.w) (max x0 x1)
   and y' = max (e.Matrix.y +. e.Matrix.h) (max y0 y1) in
-  { Matrix.x = x; y = y; w = x' -. x; h = y' -. y }
+  p.extents <- { Matrix.x = x; y = y; w = x' -. x; h = y' -. y }
 
 let move_to p ~x ~y =
   p.path <- Move_to (x, y) :: p.path;
@@ -75,22 +76,22 @@ let move_to p ~x ~y =
   p.curr_pt <- true
 
 let line_to p ~x ~y =
-  if curr_pt then begin
+  if p.curr_pt then begin
     p.path <- Line_to (x, y) :: p.path;
-    p.extents <- update_rectangle p.x p.y x y;
+    update_rectangle p p.x p.y x y;
     p.x <- x;
     p.y <- y
   end else move_to p ~x ~y
 
 let rel_move_to p ~x ~y =
-  move_to p ~x:(p.x + x) ~y:(p.y + y)
+  move_to p ~x:(p.x +. x) ~y:(p.y +. y)
 
 let rel_line_to p ~x ~y =
-  line_to p ~x:(p.x + x) ~y:(p.y + y)
+  line_to p ~x:(p.x +. x) ~y:(p.y +. y)
 
 let rectangle p ~x ~y ~w ~h =
   p.path <- Rectangle (x, y, w, h) :: p.path;
-  p.extents <- update_rectangle x y (x +. w) (y +. h);
+  update_rectangle p x y (x +. w) (y +. h);
   p.x <- x;
   p.y <- y;
   p.curr_pt <- true
@@ -151,9 +152,9 @@ let update_curve e x0 y0 x1 y1 x2 y2 x3 y3 =
 
 let internal_curve_to p ~x1 ~y1 ~x2 ~y2 ~x3 ~y3 =
   let x0, y0 =
-    if t.curr_pt then p.x, p.y
+    if p.curr_pt then p.x, p.y
     else begin
-      p.path <- Move_to(x1, y1) :: t.current_path;
+      p.path <- Move_to(x1, y1) :: p.path;
       p.curr_pt <- true;
       (x1, y1)
     end
@@ -172,6 +173,8 @@ let curve_to p ~x1 ~y1 ~x2 ~y2 ~x3 ~y3 =
 (* Constant to determine the control points so that the bezier curve
    passes by middle point of the arc. *)
 let arc_control = 4. /. 3. (* (1 - cos(b))/(sin b),  b = (a1 - a2)/2 *)
+
+let fourth_pi = atan 1.
 
 let rec bezier_arc p x0 y0 r a1 a2 =
   let da = 0.5 *. (a2 -. a1) in
@@ -196,25 +199,26 @@ let arc p ~r ~a1 ~a2 =
   (* Approximate the arc by Bezier curves to allow for arbitrary affine
      transformations. *)
   if not p.curr_pt then failwith "archimedes_graphics.arc: no current point";
-  ignore(bezier_arc p st p.x p.y r a1 a2)
+  ignore (bezier_arc p p.x p.y r a1 a2)
 
 let close p =
   if p.curr_pt then begin
     (* Search for the beginning of the current sub-path, if any *)
-    let x, y = beginning_of_subpath p.current_path in
-    p.current_path <- CLOSE_PATH(x, y) :: p.current_path;
+    let x, y = beginning_of_subpath p in
+    p.path <- Close (x, y) :: p.path;
     p.x <- x;
     p.y <- y
   end
 
 let stroke_on_backend p b =
   Backend.clear_path b;
-  List.iter begin function
-  | Move_to (x, y) -> Backend.move_to b x y
-  | Line_to (x, y) -> Backend.line_to b x y
-  | Rectangle (x, y, w, h) -> Backend.rectangle b x y w h
-  | Curve_to (_, _, x1, y1, x2, y2, x3, y3) ->
-      Backend.curve_to b x1 y1 x2 y2 x3 y3
-  | Close_path (x, y) -> Backend.close_path b x y
-  end (List.rev p.current_path);
+  let f = function
+    | Move_to (x, y) -> Backend.move_to b x y
+    | Line_to (x, y) -> Backend.line_to b x y
+    | Rectangle (x, y, w, h) -> Backend.rectangle b x y w h
+    | Curve_to (_, _, x1, y1, x2, y2, x3, y3) ->
+        Backend.curve_to b x1 y1 x2 y2 x3 y3
+    | Close (_, _) -> Backend.close_path b
+  in
+  List.iter f (List.rev p.path);
   Backend.stroke b

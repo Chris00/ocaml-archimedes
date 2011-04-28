@@ -572,7 +572,7 @@ struct
 end
 
 let () =
-  let module U = Backend.Register(B)  in
+  let module U = Backend.Register(B) in
   if Sys.os_type = "Win32" then (
     (* Set offsets so the actual surface is of the requested size. *)
     Graphics.open_graph " 100x100";
