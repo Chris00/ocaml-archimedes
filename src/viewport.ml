@@ -537,82 +537,34 @@ end
   let get_dash vp = Backend.get_dash vp.backend
   let get_line_join vp = Backend.get_line_join vp.backend
 
-  (* TODO *)
-  let move_to vp ?(coord_name=Data) ~x ~y =
-    let path = get_path_from_name vp coord_name in
-    let f () =
-      Path.move_to path ~x ~y;
-    in add_order f vp
+  let move_to vp ~x ~y =
+    add_order (fun () -> Path.move_to vp.path ~x ~y)
 
   let line_to vp ~x ~y =
-    vp.current_point <- (x, y);
-    auto_fit vp x y;
-    add_order (fun () -> Backend.line_to vp.backend x y) vp
+    add_order (fun () -> Path.line_to vp.path ~x ~y)
 
   let rel_move_to vp ~x ~y =
-    let x', y' = vp.current_point in
-    vp.current_point <- (x' +. x, y' +. y);
-    auto_fit vp (x' +. x) (y' +. y);
-    add_order (fun () -> Backend.rel_move_to vp.backend x y) vp
+    add_order (fun () -> Path.rel_move_to vp.path ~x ~y)
 
   let rel_line_to vp ~x ~y =
-    let x', y' = vp.current_point in
-    vp.current_point <- (x' +. x, y' +. y);
-    auto_fit vp (x' +. x) (y' +. y);
-    add_order (fun () -> Backend.rel_line_to vp.backend x y) vp
+    add_order (fun () -> Path.rel_line_to vp.path ~x ~y)
 
   let curve_to vp ~x1 ~y1 ~x2 ~y2 ~x3 ~y3 =
-    vp.current.point <- x3, y3;
-    auto_fit vp x1 y1;
-    auto_fit vp x2 y2;
-    auto_fit vp x3 y3;
-    add_order (fun () -> Backend.curve_to vp.backend x1 y1 x2 y2 x3 y3) vp
+    add_order (fun () -> Path.curve_to vp.path ~x1 ~y1 ~x2 ~y2 ~x3 ~y3)
 
   let rectangle vp ~x ~y ~w ~h =
-    auto_fit vp x y;
-    auto_fit vp (x +. w) (y +. h);
-    add_order (fun () -> Backend.rectangle vp.backend x y w h) vp
+    add_order (fun () -> Path.rectangle vp.path ~x ~y ~w ~h)
 
   let arc vp ~r ~a1 ~a2 =
-    let pi = acos (1.) in
-    let x, y = get_current_pt t
-    and a1', a2' = mod b1 (2. *. pi) in
-    let a2' = if a1' > a2' then a2' +. 2. *. pi in
-     let x_left =
-      if (a1' < pi) && (pi < a2') then x' -. r
-      else x' +. r *. max (cos a1') (cos a2')
-    and y_lower =
-      let p = 3. /. 2. *. pi in
-      if (a1' < p) && (p < a2') then y' -. r
-      else y' +. r  *. min (sin a1') (sin a2')
-    and x_right =
-      let p = 2. *. pi in
-      if (a1' < p) && (p < a2') then x' +. r
-      else x' +. r *. max (cos a1') (cos a2')
-    and y_upper =
-      let p = pi /. 2. in
-      if (a1' < p) && (p < a2') then y' +. r
-      else y' +. r  *. min (sin a1') (sin a2')
-    in
-    auto_fit x_left y_lower;
-    auto_fit x_right y_upper;
-    add_order (fun () -> Backend.arc vp.backend r a1 a2) vp
+    add_order (fun () -> Path.arc vp.path ~r ~a1 ~a2)
 
   let close_path vp =
-    add_order (fun () -> Backend.close_path t.backend) vp
+    add_order (fun () -> Path.close vp.path)
 
   let clear_path () =
-    add_order (fun () -> Backend.clear_path vp.backend) vp
+    add_order (fun () -> Path.clear vp.path)
 
-  (* FIXME: this doesn't handle the choice of coordinates.
-     We need to reimplement the path to handle the path extents. *)
-  let path_extents vp = Backend.path_extents vp.backend
-
-  (* Stroke when using current coordinates. *)
-  let stroke_current vp =
-    add_order (fun () -> Backend.stroke vp.backend) vp
-  let stroke_current_preserve vp =
-    add_order (fun () -> Backend.stroke_preserve vp.backend) vp
+  let path_extents vp = Path.extents vp.path
 
   let stroke_preserve ?path vp coord_name =
     let coord = get_coord_from_name vp coord_name in
