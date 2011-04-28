@@ -245,8 +245,7 @@ end
     let coord_device = Coordinate.make_identity coord_root in
     let coord_graph = Coordinate.make_scale
       (Coordinate.make_translate coord_device 0.1 0.1) 0.8 0.8 in
-    let rec axes_system = Axes.default_axes_system [viewport]
-    and viewport = {
+    let rec viewport = {
       backend = backend;
       parent = viewport;
       children = [];
@@ -257,13 +256,14 @@ end
 	 change axes. *)
       coord_data = Coordinate.make_identity coord_graph;
       path = Path.make ();
-      axes_system = axes_system;
+      axes_system = Axes.default_axes_system [];
       sizes = Sizes.make_rel (Sizes.make_root size0 1. 1. 1.) lines text marks;
       instructions = Queue.create ();
       immediate_drawing = false;
       redim = (fun _ _ _ -> ());
       square_side = size0;
     } in
+    viewport.axes_system.Axes.viewports <- [viewport];
     viewport
 
   let get_coord_from_name vp = function
@@ -290,7 +290,7 @@ end
     let coord_graph =
       Coordinate.make_scale
         (Coordinate.make_translate coord_device 0.1 0.1) 0.8 0.8 in
-    let rec viewport = {
+    let viewport = {
       backend = vp.backend;
       parent = vp;
       children = [];
@@ -303,13 +303,14 @@ end
       path = Path.make ();
       axes_system =
         if axes_sys then vp.axes_system
-        else Axes.default_axes_system [viewport];
+        else Axes.default_axes_system [];
       sizes = Sizes.make_rel vp.sizes lines text marks;
       instructions = Queue.create ();
       immediate_drawing = false;
       redim = redim;
       square_side = size0;
     } in
+    if not axes_sys then viewport.axes_system.Axes.viewports <- [viewport];
     vp.children <- viewport :: vp.children;
     viewport
 
