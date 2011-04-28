@@ -48,6 +48,9 @@ let clear p =
   y = 0.;
   curr_pt <- false
 
+let extents p =
+  Matrix.copy p.extents
+
 let beginning_of_subpath p =
   let rec aux = function
     | [] -> failwith "Archimedes: No subpath"
@@ -150,7 +153,7 @@ let internal_curve_to p ~x1 ~y1 ~x2 ~y2 ~x3 ~y3 =
   let x0, y0 =
     if t.curr_pt then p.x, p.y
     else begin
-      p.path <- MOVE_TO(x1, y1) :: t.current_path;
+      p.path <- Move_to(x1, y1) :: t.current_path;
       p.curr_pt <- true;
       (x1, y1)
     end
@@ -203,3 +206,15 @@ let close p =
     p.x <- x;
     p.y <- y
   end
+
+let stroke_on_backend p b =
+  Backend.clear_path b;
+  List.iter begin function
+  | Move_to (x, y) -> Backend.move_to b x y
+  | Line_to (x, y) -> Backend.line_to b x y
+  | Rectangle (x, y, w, h) -> Backend.rectangle b x y w h
+  | Curve_to (_, _, x1, y1, x2, y2, x3, y3) ->
+      Backend.curve_to b x1 y1 x2 y2 x3 y3
+  | Close_path (x, y) -> Backend.close_path b x y
+  end (List.rev p.current_path);
+  Backend.stroke b

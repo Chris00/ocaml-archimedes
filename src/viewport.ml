@@ -203,11 +203,12 @@ end
     mutable coord_orthonormal: Coordinate.t; (* AE *)
     mutable coord_data: Coordinate.t; (* CC *)
 
+    path: Path.t
+
     (* Axes system associated to the viewport *)
     mutable axes_system: Axes.t;
     (* For sizing texts, tics, etc. *)
     mutable sizes: Sizes.t;
-    path: Path.t;
     (* An instruction is a "thing" to plot on the device, we memorize
        their order to replot in case of necessity *)
     mutable instructions: (unit -> unit) Queue.t;
@@ -247,9 +248,9 @@ end
       (* We don't care; will be updated as soon as points are added or we
 	 change axes. *)
       coord_data = Coordinate.make_identity coord_graph;
+      path = Path.make ();
       axes_system = axes_system;
       sizes = Sizes.make (Sizes.make_root size0 size0 1.) lines text marks;
-      path = Path.make ();
       instructions = Queue.create ();
       immediate_drawing = false;
       redim = (fun _ _ -> ());
@@ -290,11 +291,11 @@ end
       (* We don't care; will be updated as soon as points are added or we
 	 change axes. *)
       coord_data = Coordinate.make_identity coord_graph;
+      path = Path.make ();
       axes_system =
         if axes_sys then vp.axes_system
         else axes_system = Axes.default_axes_system [viewport];
       sizes = Sizes.make_rel vp.sizes lines text marks;
-      path = Path.make ();
       instructions = [];
       immediate_drawing = false;
       redim = redim;
@@ -306,22 +307,26 @@ end
 
   let initial_scale = 1.
 
-  let auto_fit vp x y =
+  let auto_fit vp x0 y0 x1 y1 =
     let xaxis = vp.axes_system.x
     and yaxis = vp.axes_system.y in
+    let x0' = min x0 x1 (* TODO can we skip those tests ? (x|y)(0|1)' *)
+    and x1' = max x0 x1
+    and y0' = min y0 y1
+    and y1' = max y0 y1 in
     let updated = ref false in
     if xaxis.auto_x0 then
-      if is_nan_or_inf xaxis.x0 || x < xaxis.x0 then
-        (xaxis.x0 <- x; updated := true);
+      if is_nan_or_inf xaxis.x0 || x0' < xaxis.x0 then
+        (xaxis.x0 <- x0'; updated := true);
     if xaxis.auto_xend then
-      if is_nan_or_inf xaxis.xend || x > xaxis.xend then
-        (xaxis.xend <- x; updated := true);
+      if is_nan_or_inf xaxis.xend || x1' > xaxis.xend then
+        (xaxis.xend <- x1'; updated := true);
     if yaxis.auto_x0 then
-      if is_nan_or_inf yaxis.x0 || y < yaxis.x0 then
-        (yaxis.x0 <- y; updated := true);
+      if is_nan_or_inf yaxis.x0 || y0' < yaxis.x0 then
+        (yaxis.x0 <- y0'; updated := true);
     if yaxis.auto_xend then
-      if is_nan_or_inf yaxis.xend || y > yaxis.xend then
-        (yaxis.xend <- y; updated := true);
+      if is_nan_or_inf yaxis.xend || y1' > yaxis.xend then
+        (yaxis.xend <- y1'; updated := true);
     if !updated then begin
       let scalx, tr_x =
         if xaxis.x0 = xaxis.xend then
@@ -332,11 +337,10 @@ end
           initial_scale, -. yaxis.x0 -. 0.5 *. initial_scale
         else 1. /. (yaxis.xend -. yaxis.x0), -. yaxis.x0
       in
-      let data_to_graph = Matrix.make_scale scalx scaly in
-      Matrix.translate data_to_graph tr_x tr_y;
-      Coordinate.transform vp.coord_data data_to_graph;
+      let data_transform = Matrix.make_scale scalx scaly in
+      Matrix.translate data_transform tr_x tr_y;
+      Coordinate.transform vp.coord_data data_transform;
       if immediate_drawing then do_instructions vp
-        (* TODO Finish that *)
     end
 
   let blank vp =
@@ -351,16 +355,16 @@ end
 
   let rec do_instructions vp =
     blank vp;
-    (* TODO *)
+    Queue.iter (fun f -> f ()) vp.instructions;
     List.iter do_instructions vp.children
 
-(*  let close vp =
-    let parent = vp.coord_device.Coordinate.parent in
-    parent.children <- List.filter (( <> ) vp) parent.children
-    (* TODO do we need to do instructions ? *)
-    if parent == parent.Coordinate.parent then begin
+  let close vp =
+    let parent = vp.parent in
+    parent.children <- List.filter (( <> ) vp) parent.children;
+    if parent == parent.parent then begin
       do_instructions vp;
-      Backend.close vp.backend*)
+      Backend.close vp.backend
+    end
 
   (* Grille uniforme; redim: identité *)
   let layout_grid ?(axes_sys=false) vp rows cols =
@@ -533,9 +537,12 @@ end
   let get_dash vp = Backend.get_dash vp.backend
   let get_line_join vp = Backend.get_line_join vp.backend
 
-  let move_to vp ~x ~y =
-    Path.move_to vp.path ~x ~y;
-    add_order (fun () -> Backend.move_to vp.backend x y) vp
+  (* TODO *)
+  let move_to vp ?(coord_name=Data) ~x ~y =
+    let path = get_path_from_name vp coord_name in
+    let f () =
+      Path.move_to path ~x ~y;
+    in add_order f vp
 
   let line_to vp ~x ~y =
     vp.current_point <- (x, y);
@@ -607,27 +614,28 @@ end
   let stroke_current_preserve vp =
     add_order (fun () -> Backend.stroke_preserve vp.backend) vp
 
-  let stroke vp =
-    (* TODO: call auto_fit with path extents. *)
-    let lw = Sizes.get_lw vp.scalings in
+  let stroke_preserve ?path vp coord_name =
+    let coord = get_coord_from_name vp coord_name in
+    let path = match path with
+      | None -> vp.path
+      | Some p -> p
+    in
+    let e = path.extents in
+    let x0 = e.Matrix.x
+    and y0 = e.Matrix.y
+    and x1 = x0 +. e.Matrix.w
+    and y1 = y0 +. e.Matrix.h in
+    auto_fit vp x0 y0 x1 y1;
     let f () =
-      let ctm = Coordinate.use vp.backend  in
-      Backend.set_line_width vp.backend lw;
-      Backend.stroke vp.backend;
+      let ctm = Coordinate.use vp.backend coord in
+      Path.stroke_on_backend path vp.backend;
       Coordinate.restore vp.backend ctm
     in
     add_order f vp
 
-  let stroke_preserve vp =
-    (* TODO: call auto_fit with path extents. *)
-    let lw = Sizes.get_lw vp.scalings in
-    let f () =
-      let ctm = Coordinate.use vp.backend vp.normalized in
-      Backend.set_line_width vp.backend lw;
-      Backend.stroke_preserve vp.backend;
-      Coordinate.restore vp.backend ctm
-    in
-    add_order f vp
+  let stroke ?path vp coord_name =
+    stroke_preserve ?path vp coord_name;
+    if path = None then add_order (fun () -> Path.clear vp.path)
 
   let fill vp =
     add_order (fun () -> Backend.fill vp.backend) vp

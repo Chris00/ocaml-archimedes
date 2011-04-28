@@ -200,8 +200,13 @@ and Viewport : sig
     (*val path_extents : t -> rectangle*)
   val stroke_current : t -> unit
   val stroke_current_preserve : t -> unit
+  val stroke_preserve : ?path:Path.t -> t -> coord_name -> unit
+    (** strokes the path (default: viewport's path) on the specified
+        coordinate system, doesn't clear the viewport's path if no path
+        given *)
   val stroke : t -> unit
-  val stroke_preserve : t -> unit
+    (** strokes the path (default: viewport's path) on the specified
+        coordinate system, does clear the viewport's path if no path given *)
   val fill : t -> unit
   val fill_preserve : t -> unit
   val clip_rectangle : t -> x:float -> y:float -> w:float -> h:float -> unit
