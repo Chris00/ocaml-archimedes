@@ -34,10 +34,10 @@ val of_bigarrays:
   ?xclayout:bool -> (float, 'b, 'c)Bigarray.Array1.t ->
   ?yclayout:bool -> (float, 'b, 'c)Bigarray.Array1.t -> t
 
-val from_sampling :
+(*val from_sampling :
   (float -> float * float) ->
   ?min_step:float -> ?nsamples:int ->
-  float -> float -> t
+  float -> float -> t*)
 
 val next: t -> (float * float) option
 
@@ -45,4 +45,4 @@ val reset : t -> unit
 
 val nb_data : t -> int
 
-val extents : t -> Axes.fixed_ranges
+val extents : t -> Matrix.rectangle

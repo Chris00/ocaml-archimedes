@@ -2,38 +2,55 @@ open Bigarray
 
 type t = {
   data:(float,float64_elt,c_layout) Array2.t;
-  extents: Axes.fixed_ranges;
-  mutable pos: int;len: int
+  mutable extents: Matrix.rectangle;
+  mutable pos: int;
+  len: int
 }
 
-let dummy =
-  {data = Array2.create float64 c_layout 0 0;
-   extents = Axes.FixedRanges.make 0. 0.;
-   pos = 0; len = 0}
+let dummy = {
+  data = Array2.create float64 c_layout 0 0;
+  extents = {Matrix.x = 0.; y = 0.; w = 0.; h = 0.};
+  pos = 0;
+  len = 0
+}
 
+let base_extents x y = {Matrix.x = x; y = y; w = 0.; h = 0.}
+
+let update_extents e px py =
+  let x, w, xupdated =
+    if px < e.Matrix.x then px, e.Matrix.w +. (e.Matrix.x -. px), true
+    else if px > e.Matrix.x +. e.Matrix.w then e.Matrix.x, px -. e.Matrix.x, true
+    else e.Matrix.x, e.Matrix.w, false
+  and y, h, yupdated =
+    if py < e.Matrix.y then py, e.Matrix.h +. (e.Matrix.y -. py), true
+    else if py > e.Matrix.y +. e.Matrix.h then e.Matrix.y, py -. e.Matrix.y, true
+    else e.Matrix.y, e.Matrix.h, false
+  in
+  if xupdated or yupdated then { Matrix.x = x; y = y; w = w; h = h }
+  else e
 
 let of_list = function
-    [] -> dummy
-  | (x,y)::list ->
-      let n = List.length list in
+  | [] -> dummy
+  | (x, y) :: tl ->
+      let n = List.length tl in
       let array = Array2.create float64 c_layout n 2 in
       (*Initialization:*)
-      let extents = Axes.FixedRanges.make x y in
-      array.{0,0} <- x;
-      array.{0,1} <- y;
+      array.{0, 0} <- x;
+      array.{0, 1} <- y;
       (*Recursion*)
-      let rec fill_array i = function
-          [] -> (*Make the iterator*)
-            {data= array;
-             extents = extents;
-             pos = 0; len = n}
-        | (x,y)::l ->
-            ignore (Axes.FixedRanges.update extents x y);
-            array.{i,0} <- x;
-            array.{i,1} <- y;
-            fill_array (i+1) l
+      let rec fill_array i extents = function
+        | [] -> {
+            data = array;
+            extents = extents;
+            pos = 0;
+            len = n
+          }
+        | (x, y) :: l ->
+            array.{i, 0} <- x;
+            array.{i, 1} <- y;
+            fill_array (i + 1) (update_extents extents x y) l
       in
-      fill_array 1 list
+      fill_array 1 (base_extents x y) tl
 
 let of_array array =
   let n = Array.length array in
@@ -41,24 +58,23 @@ let of_array array =
   else (
     let bigarray = Array2.create float64 c_layout n 2 in
     (*Initialisation*)
-    let x,y = array.(0) in
-    let extents = Axes.FixedRanges.make x y in
-    bigarray.{0,0} <- x;
-    bigarray.{0,1} <- y;
+    let x, y = array.(0) in
+    bigarray.{0, 0} <- x;
+    bigarray.{0, 1} <- y;
     (*Recursion*)
-    let rec fill_array i =
+    let rec fill_array i extents =
       if i >= n then
-        {data= bigarray;
-         extents = extents;
-         pos = 0; len = n}
+        { data = bigarray;
+          extents = extents;
+          pos = 0;
+          len = n }
       else
         let x,y = array.(i) in
-        ignore (Axes.FixedRanges.update extents x y);
-        bigarray.{i,0} <- x;
-        bigarray.{i,1} <- y;
-        fill_array (i+1)
+        bigarray.{i, 0} <- x;
+        bigarray.{i, 1} <- y;
+        fill_array (i + 1) (update_extents extents x y)
     in
-    fill_array 1)
+    fill_array 1 (base_extents x y))
 
 
 let of_bigarray2 ?(clayout=true) array =
@@ -71,23 +87,21 @@ let of_bigarray2 ?(clayout=true) array =
       let ofs = if clayout then 0 else 1 in
       let x = array.{ofs, ofs}
       and y = array.{ofs, ofs+1} in
-      let extents = Axes.FixedRanges.make x y in
-      bigarray.{0,0} <- x;
-      bigarray.{0,1} <- y;
-      let rec fill_array i =
+      bigarray.{0, 0} <- x;
+      bigarray.{0, 1} <- y;
+      let rec fill_array i extents =
         if i >= dim then
-          {data= bigarray;
+          {data = bigarray;
            extents = extents;
            pos = 0; len = dim}
         else
           let x = array.{i+ofs, ofs}
           and y = array.{i+ofs, ofs+1} in
-          ignore (Axes.FixedRanges.update extents x y);
           bigarray.{i,0} <- x;
           bigarray.{i,1} <- y;
-          fill_array (i+1)
+          fill_array (i + 1) (update_extents extents x y)
       in
-      fill_array 1
+      fill_array 1 (base_extents x y)
 
 
 let of_lists listx listy =
@@ -95,25 +109,23 @@ let of_lists listx listy =
   if n <> (List.length listy) then invalid_arg "Iterator.of_lists"
   else
     match listx, listy with
-      [], [] -> dummy
-    | (x::listx),(y::listy) ->
+    | [], [] -> dummy
+    | (x :: tlx), (y :: tly) ->
         let array = Array2.create float64 c_layout n 2 in
-        let extents = Axes.FixedRanges.make x y in
         array.{0,0} <- x;
         array.{0,1} <- y;
-        let rec fill_array i = function
-          | (x::l),(y::l') ->
-              ignore (Axes.FixedRanges.update extents x y);
-              array.{i,0} <- x;
-              array.{i,1} <- y;
-              fill_array (i+1) (l,l')
-          | _,_ ->
+        let rec fill_array i extents = function
+          | (x :: lx), (y :: ly) ->
+              array.{i, 0} <- x;
+              array.{i, 1} <- y;
+              fill_array (i + 1) (update_extents extents x y) (lx, ly)
+          | _, _ ->
               (*Condition on lengths ensures that this matches only two
                 empty lists.*)
               {data= array;
                extents = extents;
                pos = 0; len = n}
-        in fill_array 1 (listx, listy)
+        in fill_array 1 (base_extents x y) (tlx, tly)
     | _,_ -> failwith "Iterator.of_lists : internal error"
         (*this cannot happen due to lengths checking.*)
 
@@ -126,22 +138,20 @@ let of_arrays arrayx arrayy =
     let bigarray = Array2.create float64 c_layout n 2 in
     let x = arrayx.(0)
     and y = arrayy.(0) in
-    let extents = Axes.FixedRanges.make x y in
     bigarray.{0,0} <- x;
     bigarray.{0,1} <- y;
-    let rec fill_array i=
+    let rec fill_array i extents =
       if i >= n then
-        {data= bigarray;
+        {data = bigarray;
          extents = extents;
          pos = 0; len = n}
       else
         let x = arrayx.(i)
         and y = arrayy.(i) in
-        ignore (Axes.FixedRanges.update extents x y);
-        bigarray.{i,0} <- x;
-        bigarray.{i,1} <- y;
-        fill_array (i+1)
-    in fill_array 1
+        bigarray.{i, 0} <- x;
+        bigarray.{i, 1} <- y;
+        fill_array (i + 1) (update_extents extents x y)
+    in fill_array 1 (base_extents x y)
 
 let of_bigarrays ?(xclayout=true) arrayx ?(yclayout=true) arrayy =
   let n = Array1.dim arrayx in
@@ -151,24 +161,23 @@ let of_bigarrays ?(xclayout=true) arrayx ?(yclayout=true) arrayy =
   and ofsy = if yclayout then 0 else 1 in
   let x = arrayx.{ofsx}
   and y = arrayy.{ofsy} in
-  let extents = Axes.FixedRanges.make x y in
-  bigarray.{0,0} <- x;
-  bigarray.{0,1} <- y;
-  let rec fill_array i =
+  bigarray.{0, 0} <- x;
+  bigarray.{0, 1} <- y;
+  let rec fill_array i extents =
     if i >= n then
-      {data= bigarray;
+      {data = bigarray;
        extents = extents;
        pos = 0; len = n}
     else
-      let x = arrayx.{i+ofsx}
-      and y = arrayy.{i+ofsy} in
-      ignore (Axes.FixedRanges.update extents x y);
-      bigarray.{i,0} <- x;
-      bigarray.{i,1} <- y;
-      fill_array (i+1)
-  in fill_array 1
+      let x = arrayx.{i + ofsx}
+      and y = arrayy.{i + ofsy} in
+      bigarray.{i, 0} <- x;
+      bigarray.{i, 1} <- y;
+      fill_array (i + 1) (update_extents extents x y)
+  in fill_array 1 (base_extents x y)
 
-let from_sampling f ?min_step ?nsamples a b =
+(* TODO reactivate this ... ? *)
+(*let from_sampling f ?min_step ?nsamples a b =
   let len, extents, fct =
     Functions.samplefxy f ?min_step ?nsamples a b
   in
@@ -182,7 +191,7 @@ let from_sampling f ?min_step ?nsamples a b =
   in
   {data = fct fill_array array;
    extents = extents;
-   pos = 0; len = len}
+   pos = 0; len = len}*)
 
 let next iter =
   let n = iter.pos in
@@ -198,4 +207,4 @@ let reset iter = iter.pos <- 0
 let nb_data iter = iter.len
 
 let extents iter = (*Make a copy*)
-  Axes.FixedRanges.copy iter.extents
+  {iter.extents with Matrix.x = iter.extents.Matrix.x}
