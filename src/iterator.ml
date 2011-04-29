@@ -16,19 +16,6 @@ let dummy = {
 
 let base_extents x y = {Matrix.x = x; y = y; w = 0.; h = 0.}
 
-let update_extents e px py =
-  let x, w, xupdated =
-    if px < e.Matrix.x then px, e.Matrix.w +. (e.Matrix.x -. px), true
-    else if px > e.Matrix.x +. e.Matrix.w then e.Matrix.x, px -. e.Matrix.x, true
-    else e.Matrix.x, e.Matrix.w, false
-  and y, h, yupdated =
-    if py < e.Matrix.y then py, e.Matrix.h +. (e.Matrix.y -. py), true
-    else if py > e.Matrix.y +. e.Matrix.h then e.Matrix.y, py -. e.Matrix.y, true
-    else e.Matrix.y, e.Matrix.h, false
-  in
-  if xupdated or yupdated then { Matrix.x = x; y = y; w = w; h = h }
-  else e
-
 let of_list = function
   | [] -> dummy
   | (x, y) :: tl ->
@@ -48,7 +35,7 @@ let of_list = function
         | (x, y) :: l ->
             array.{i, 0} <- x;
             array.{i, 1} <- y;
-            fill_array (i + 1) (update_extents extents x y) l
+            fill_array (i + 1) (Functions.update_extents extents x y) l
       in
       fill_array 1 (base_extents x y) tl
 
@@ -72,7 +59,7 @@ let of_array array =
         let x,y = array.(i) in
         bigarray.{i, 0} <- x;
         bigarray.{i, 1} <- y;
-        fill_array (i + 1) (update_extents extents x y)
+        fill_array (i + 1) (Functions.update_extents extents x y)
     in
     fill_array 1 (base_extents x y))
 
@@ -99,7 +86,7 @@ let of_bigarray2 ?(clayout=true) array =
           and y = array.{i+ofs, ofs+1} in
           bigarray.{i,0} <- x;
           bigarray.{i,1} <- y;
-          fill_array (i + 1) (update_extents extents x y)
+          fill_array (i + 1) (Functions.update_extents extents x y)
       in
       fill_array 1 (base_extents x y)
 
@@ -118,7 +105,8 @@ let of_lists listx listy =
           | (x :: lx), (y :: ly) ->
               array.{i, 0} <- x;
               array.{i, 1} <- y;
-              fill_array (i + 1) (update_extents extents x y) (lx, ly)
+              let extents = Functions.update_extents extents x y in
+              fill_array (i + 1) extents (lx, ly)
           | _, _ ->
               (*Condition on lengths ensures that this matches only two
                 empty lists.*)
@@ -150,7 +138,7 @@ let of_arrays arrayx arrayy =
         and y = arrayy.(i) in
         bigarray.{i, 0} <- x;
         bigarray.{i, 1} <- y;
-        fill_array (i + 1) (update_extents extents x y)
+        fill_array (i + 1) (Functions.update_extents extents x y)
     in fill_array 1 (base_extents x y)
 
 let of_bigarrays ?(xclayout=true) arrayx ?(yclayout=true) arrayy =
@@ -173,11 +161,10 @@ let of_bigarrays ?(xclayout=true) arrayx ?(yclayout=true) arrayy =
       and y = arrayy.{i + ofsy} in
       bigarray.{i, 0} <- x;
       bigarray.{i, 1} <- y;
-      fill_array (i + 1) (update_extents extents x y)
+      fill_array (i + 1) (Functions.update_extents extents x y)
   in fill_array 1 (base_extents x y)
 
-(* TODO reactivate this ... ? *)
-(*let from_sampling f ?min_step ?nsamples a b =
+let from_sampling f ?min_step ?nsamples a b =
   let len, extents, fct =
     Functions.samplefxy f ?min_step ?nsamples a b
   in
@@ -191,7 +178,7 @@ let of_bigarrays ?(xclayout=true) arrayx ?(yclayout=true) arrayy =
   in
   {data = fct fill_array array;
    extents = extents;
-   pos = 0; len = len}*)
+   pos = 0; len = len}
 
 let next iter =
   let n = iter.pos in
