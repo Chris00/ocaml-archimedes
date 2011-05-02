@@ -18,6 +18,9 @@
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the file
    LICENSE for more details. *)
 
+(* TODO Check that the sizes are correctly handled: get_lw must return the
+   size to be given to the backend. Also check the updates. *)
+
 type size =
   | Absolute of float
   | Rel_not_updated of float

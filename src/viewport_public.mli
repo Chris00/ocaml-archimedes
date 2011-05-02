@@ -97,7 +97,7 @@ module type T = sig
           several output formats (e.g. ["mytest.eps", "tex/mytest.tex"])
       *)
     val make : ?axes_sys:bool -> ?lines:float -> ?text:float -> ?marks:float ->
-      t -> coord_name -> float -> float -> float -> float -> 
+      t -> coord_name -> float -> float -> float -> float ->
       (t -> float -> float -> unit) -> t
       (** [make parent coord_name xmin xmax ymin ymax] creates and returns a
           viewport on top of [parent] with top left corner (xmin, ymin) and
@@ -112,6 +112,8 @@ module type T = sig
 
           @param marks see {!init}
       *)
+
+    val get_backend : t -> Backend.t
 
     val layout_grid : ?axes_sys:bool -> t -> int -> int -> t array
       (** [layout_grid parent n_cols n_rows] creates [n_cols] * [n_rows]

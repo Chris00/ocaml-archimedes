@@ -122,6 +122,8 @@ and Viewport : sig
     t -> coord_name -> float -> float -> float -> float ->
     (t -> float -> float -> unit) -> t
 
+  val get_backend : t -> Backend.t
+
   val layout_grid : ?axes_sys:bool -> t -> int -> int -> t array
   val layout_rows : ?axes_sys:bool -> t -> int -> t array
   val layout_columns : ?axes_sys:bool -> t -> int -> t array
@@ -217,6 +219,7 @@ end
     mutable axes_system: Axes.t;
     (* For sizing texts, tics, etc. *)
     mutable sizes: Sizes.t;
+    mutable mark_size: float;
     (* An instruction is a "thing" to plot on the device, we memorize
        their order to replot in case of necessity *)
     mutable instructions: (unit -> unit) Queue.t;
@@ -242,7 +245,7 @@ end
     let backend = Backend.make ~dirs backend_name w h in
     let coord_root = Coordinate.make_root (Backend.get_matrix backend) in
     let size0 = min w h in
-    let coord_device = Coordinate.make_identity coord_root in
+    let coord_device = Coordinate.make_scale coord_root w h in
     let coord_graph = Coordinate.make_scale
       (Coordinate.make_translate coord_device 0.1 0.1) 0.8 0.8 in
     let rec viewport = {
@@ -258,6 +261,7 @@ end
       path = Path.make ();
       axes_system = Axes.default_axes_system [];
       sizes = Sizes.make_rel (Sizes.make_root size0 1. 1. 1.) lines text marks;
+      mark_size = def_ms;
       instructions = Queue.create ();
       immediate_drawing = false;
       redim = (fun _ _ _ -> ());
@@ -305,6 +309,7 @@ end
         if axes_sys then vp.axes_system
         else Axes.default_axes_system [];
       sizes = Sizes.make_rel vp.sizes lines text marks;
+      mark_size = def_ms;
       instructions = Queue.create ();
       immediate_drawing = false;
       redim = redim;
@@ -313,6 +318,8 @@ end
     if not axes_sys then viewport.axes_system.Axes.viewports <- [viewport];
     vp.children <- viewport :: vp.children;
     viewport
+
+  let get_backend vp = vp.backend
 
   let is_nan_or_inf (x:float) = x <> x || 1. /. x = 0.
 
@@ -373,7 +380,7 @@ end
 
   let close vp =
     let parent = vp.parent in
-    parent.children <- List.filter (( <> ) vp) parent.children;
+    parent.children <- List.filter (fun x -> not (x == vp)) parent.children;
     if parent == parent.parent then begin
       do_instructions vp;
       Backend.close vp.backend
@@ -488,39 +495,39 @@ end
  ***********************************************************************)
 
   let set_line_width vp lw =
-    let size =
-      if lw <= 0. then def_lw *. vp.square_side
-      else lw /. usr_lw *. vp.square_side in
-    Sizes.set_abs_lw vp.sizes size
+    add_instruction (fun () -> Backend.set_line_width vp.backend lw) vp
 
   let set_font_size vp ts =
-    let size =
-      if ts <= 0. then def_ts *. vp.square_side
-      else ts /. usr_ts *. vp.square_side in
-    Sizes.set_abs_ts vp.sizes size
+    add_instruction (fun () -> Backend.set_font_size vp.backend ts) vp
 
   let set_mark_size vp ms =
-    let size =
-      if ms <= 0. then def_ms *. vp.square_side
-      else ms /. usr_ms in
-    Sizes.set_abs_ms vp.sizes size
+    add_instruction (fun () -> vp.mark_size <- ms) vp
 
   let set_rel_line_width vp lw =
-    Sizes.set_rel_lw vp.sizes (if lw <= 0. then 1. else lw)
+    let f () =
+      Backend.set_line_width vp.backend (lw /. usr_lw *. (Sizes.get_lw vp.sizes))
+    in
+    add_instruction f vp
 
   (* FIXME: Fix names text, font? *)
   let set_rel_font_size vp ts =
-    Sizes.set_rel_ts vp.sizes (if ts <= 0. then 1. else ts)
+    let f () =
+      Backend.set_font_size vp.backend (ts /. usr_ts *. (Sizes.get_ts vp.sizes))
+    in
+    add_instruction f vp
 
   let set_rel_mark_size vp ms =
-    Sizes.set_rel_ms vp.sizes (if ms <= 0. then 1. else ms)
+    let f () =
+      vp.mark_size <- (ms /. usr_ms *. (Sizes.get_marks vp.sizes))
+    in
+    add_instruction f vp
 
   let get_line_width vp =
-    (Sizes.get_lw vp.sizes) *. usr_lw /. vp.square_side
+    (Sizes.get_lw vp.sizes) *. usr_lw
   let get_font_size vp =
-   (Sizes.get_ts vp.sizes) *. usr_ts /. vp.square_side
+    (Sizes.get_ts vp.sizes) *. usr_ts
   let get_mark_size vp =
-   (Sizes.get_marks vp.sizes) *. usr_ms
+    (Sizes.get_marks vp.sizes) *. usr_ms
 
 
 (* ......................................................................... *)
