@@ -287,9 +287,9 @@ end
     in
     let coord_parent = get_coord_from_name vp coord_name in
     let coord_device =
-      Coordinate.make_translate
-        (Coordinate.make_scale coord_parent (xmax -. xmin) (ymax -. ymin))
-        xmin ymin
+      Coordinate.make_scale
+        (Coordinate.make_translate coord_parent xmin ymin)
+        (xmax -. xmin) (ymax -. ymin)
     in
     let coord_graph =
       Coordinate.make_scale
@@ -381,7 +381,7 @@ end
   let close vp =
     let parent = vp.parent in
     parent.children <- List.filter (fun x -> not (x == vp)) parent.children;
-    if parent == parent.parent then begin
+    if vp == parent then begin
       do_instructions vp;
       Backend.close vp.backend
     end
@@ -392,7 +392,7 @@ end
     let xstep = 1. /. (float cols) and ystep = 1. /. (float rows) in
     let init_viewport i =
       let xmin = float (i / cols) *. xstep
-      and ymin = float (i mod cols) *. ystep in
+      and ymin = float (i mod rows) *. ystep in
       let xmax = xmin +. xstep
       and ymax = ymin +. ystep in
       make ~axes_sys vp Device xmin xmax ymin ymax redim
