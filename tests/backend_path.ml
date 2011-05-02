@@ -88,9 +88,10 @@ let draw bk =
   Backend.close bk
 
 let () =
-  List.iter draw [ "graphics hold";
-                   "cairo PDF backend_path.pdf";
-                   "tikz backend_path.tex";
+  List.iter draw [ "cairo PDF backend_path.pdf";
+                   "cairo PNG backend_path.png"(*;
+                   "graphics hold";
+                   "tikz backend_path.tex"*)
                  ]
 
 

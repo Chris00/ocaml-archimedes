@@ -299,3 +299,6 @@ let render_extents name =
     let f, rect = M.find name !registry in
     fun b -> (f b; rect)
   with Not_found -> raise (Error name)
+
+let names () =
+  M.fold (fun k _ acc -> k :: acc) !registry []

@@ -38,5 +38,6 @@ let () =
     with Backend.Error e ->
       eprintf "Backend.Error: %s\n" (Backend.string_of_error e)
   in List.iter f [ "cairo PDF backend_text.pdf";
+                   "cairo PNG backend_text.png"(*;
                    "tikz backend_text.tex";
-                   "graphics" ]
+                   "graphics"*) ]

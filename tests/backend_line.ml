@@ -38,8 +38,9 @@ let draw bk =
 
 let () =
   List.iter draw [ "cairo PDF backend_line.pdf";
-                   "tikz backend_line.tex";
-                   "graphics hold" ]
+                   "cairo PNG backend_line.png";
+                   (*"tikz backend_line.tex";
+                   "graphics hold" *)]
 
 
 (* Local Variables: *)

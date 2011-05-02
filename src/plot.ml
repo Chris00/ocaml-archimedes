@@ -23,7 +23,6 @@ type t = { h: Handle.t;
            mutable axes_set: bool; (* whether the user set axes *)
          }
 
-
 type line_cap = Backend.line_cap = BUTT | ROUND | SQUARE
 
 type line_join = Backend.line_join = JOIN_MITER | JOIN_ROUND | JOIN_BEVEL

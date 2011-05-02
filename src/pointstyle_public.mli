@@ -13,4 +13,7 @@ module type T = sig
        [extents]. The behaviour of adding a new point style whose name is
        already used by another is the same as the core [Map.S.add] (that
        is, the previous binding disappears).*)
+
+  val names : unit -> name list
+    (** returns a list of all names declared *)
 end
