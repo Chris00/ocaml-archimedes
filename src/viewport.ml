@@ -505,20 +505,20 @@ end
 
   let set_rel_line_width vp lw =
     let f () =
-      Backend.set_line_width vp.backend (lw /. usr_lw *. (Sizes.get_lw vp.sizes))
+      Backend.set_line_width vp.backend (lw /. usr_lw *. vp.square_side)
     in
     add_instruction f vp
 
   (* FIXME: Fix names text, font? *)
   let set_rel_font_size vp ts =
     let f () =
-      Backend.set_font_size vp.backend (ts /. usr_ts *. (Sizes.get_ts vp.sizes))
+      Backend.set_font_size vp.backend (ts /. usr_ts *. vp.square_side)
     in
     add_instruction f vp
 
   let set_rel_mark_size vp ms =
     let f () =
-      vp.mark_size <- (ms /. usr_ms *. (Sizes.get_marks vp.sizes))
+      vp.mark_size <- (ms /. usr_ms *. vp.square_side)
     in
     add_instruction f vp
 
