@@ -182,7 +182,7 @@ and Viewport : sig
         rotate:float ->
         x:float -> y:float -> Backend.text_position -> string -> unit
     (*  val text_extents : t -> string -> rectangle*)*)
-  val render_mark : t -> string -> unit
+  val render_mark : t -> x:float -> y:float -> string -> unit
     (* val mark_extents : t -> string -> rectangle *)
   val xrange : t -> float -> float -> unit
   val yrange : t -> float -> float -> unit
@@ -651,30 +651,24 @@ end
 
   (* TODO: val show_text. *)
 
-  let render_mark vp name =
-    let mark_size = Sizes.get_marks vp.sizes in
+  let render_mark vp ~x ~y name =
+    let to_parent coord (x, y) = Coordinate.to_parent coord ~x ~y
+    and from_parent coord (x, y) = Coordinate.from_parent coord ~x ~y in
+    let data_to_ortho ~x ~y = from_parent vp.coord_orthonormal
+      (to_parent vp.coord_graph (to_parent vp.coord_data (x, y)))
+    in
     let f () =
-      let ctm = Coordinate.use vp.backend vp.coord_orthonormal in
-      Backend.scale vp.backend mark_size mark_size;
+      let decal = vp.mark_size /. 2. in
+      let x, y = data_to_ortho x y in
+      let coord = Coordinate.make_translate vp.coord_orthonormal
+        (x -. decal) (y -. decal) in
+      Coordinate.scale coord vp.mark_size vp.mark_size;
+      let ctm = Coordinate.use vp.backend coord in
       Pointstyle.render name vp.backend;
       Coordinate.restore vp.backend ctm;
     in
-    (* FIXME: extents are expressed in "marks-normalized" coords. We need
-       to have it in user coords in order to determine the extents. *)
-     (*
-     let extents = Pointstyle.extents name in
-     let marks' = marks *. t.square_side in
-     let x',y' = get_current_pt t in
-     Printf.printf "initial marks: %f %f %f %f %f" marks t.square_side marks' x' y';
-     let axpmw x w = x +. w *. marks' in update_coords t (axpmw x'
-       extents.Matrix.x) (axpmw y' extents.Matrix.y);
-     update_coords t (axpmw x' (extents.Matrix.x +. extents.Matrix.w)) (axpmw y' (extents.Matrix.y
-                                                                                  +.extents.Matrix.h));
-     *)
+    auto_fit vp x y x y; (* TODO we want all the mark to be included *)
     add_instruction f vp
-
-  (* TODO: maintain extents for current path instead of calling auto_fit
-     after each call to functions modifying path (e.g arc and rectangle)*)
 
   let xmin vp = vp.axes_system.Axes.x.Axes.x0
   let xmax vp = vp.axes_system.Axes.x.Axes.xend

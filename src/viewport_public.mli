@@ -219,7 +219,7 @@ module type T = sig
       rotate:float ->
       x:float -> y:float -> Backend.text_position -> string -> unit*)
       (*  val text_extents : t -> string -> rectangle*)
-    val render_mark : t -> string -> unit
+    val render_mark : t -> x:float -> y:float -> string -> unit
       (* val mark_extents : t -> string -> rectangle *)
 
     (* TODO Complete *)

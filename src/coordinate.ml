@@ -136,6 +136,10 @@ let to_parent coord ~x ~y =
   update coord;
   Matrix.transform_point coord.tm ~x ~y
 
+let from_parent coord ~x ~y =
+  update coord;
+  Matrix.inv_transform_point coord.tm ~x ~y
+
 let to_device coord ~x ~y =
   update coord;
   Matrix.transform_point coord.ctm ~x ~y
