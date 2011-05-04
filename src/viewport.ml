@@ -246,8 +246,9 @@ end
     let coord_root = Coordinate.make_root (Backend.get_matrix backend) in
     let size0 = min w h in
     let coord_device = Coordinate.make_scale coord_root w h in
-    let coord_graph = Coordinate.make_scale
-      (Coordinate.make_translate coord_device 0.1 0.1) 0.8 0.8 in
+    let coord_graph =
+      Coordinate.make_translate coord_device 0.1 0.1 in
+    Coordinate.scale coord_graph 0.8 0.8;
     let rec viewport = {
       backend = backend;
       parent = viewport;
@@ -651,11 +652,11 @@ end
       (to_parent vp.coord_graph (to_parent vp.coord_data (x, y)))
     in
     let f () =
-      let decal = vp.mark_size /. 2. in
+      let ms = vp.mark_size /. vp.square_side in
       let x, y = data_to_ortho x y in
       let coord = Coordinate.make_translate vp.coord_orthonormal
-        (x -. decal) (y -. decal) in
-      Coordinate.scale coord vp.mark_size vp.mark_size;
+        (x -. ms /. 2.) (y -. ms /. 2.) in
+      Coordinate.scale coord ms ms;
       let ctm = Coordinate.use vp.backend coord in
       Pointstyle.render name vp.backend;
       Coordinate.restore vp.backend ctm;
@@ -668,26 +669,23 @@ end
   let ymin vp = vp.axes_system.Axes.y.Axes.x0
   let ymax vp = vp.axes_system.Axes.y.Axes.xend
 
-  let update_axis axis x0 xend =
+  let update_axis axis vp x0 xend =
+    (* update axis *)
     axis.Axes.auto_x0 <- is_nan_or_inf x0;
     if not (is_nan_or_inf x0) then axis.Axes.x0 <- x0;
     axis.Axes.auto_xend <- is_nan_or_inf xend;
-    if not (is_nan_or_inf xend) then axis.Axes.xend <- xend
+    if not (is_nan_or_inf xend) then axis.Axes.xend <- xend;
 
-  let xrange vp x0 xend =
-    update_axis vp.axes_system.Axes.x x0 xend;
-    let coord =
-      Coordinate.make_scale vp.coord_graph (1. /. (xend -. x0)) 1. in
-    Coordinate.translate coord x0 0.;
+    (* update coordinate system *)
+    let x0, xend, y0, yend = xmin vp, xmax vp, ymin vp, ymax vp in
+    let coord = Coordinate.make_scale vp.coord_graph
+      (1. /. (xend -. x0)) (1. /. (yend -. y0))
+    in
+    Coordinate.translate coord (-. x0) (-. y0);
     vp.coord_data <- coord;
     if vp.immediate_drawing then do_instructions vp
 
-  let yrange vp y0 yend =
-    update_axis vp.axes_system.Axes.y y0 yend;
-    let coord =
-      Coordinate.make_scale vp.coord_graph 1. (1. /. (yend -. y0)) in
-    Coordinate.translate coord 0. y0;
-    vp.coord_data <- coord;
-    if vp.immediate_drawing then do_instructions vp
+  let xrange vp x0 xend = update_axis vp.axes_system.Axes.x vp x0 xend
+  let yrange vp y0 yend = update_axis vp.axes_system.Axes.y vp y0 yend
 end
 
