@@ -41,7 +41,9 @@ let draw bk =
   V.set_global_color vp Color.yellow;
   V.stroke vp V.Graph;
 
+  V.set_global_color vp Color.black;
   V.add_x_axis vp;
+  V.draw_axes vp;
 
   V.close vp
 

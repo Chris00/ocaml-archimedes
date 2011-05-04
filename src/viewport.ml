@@ -120,16 +120,21 @@ end
     (*TODO*)
     (*Viewport.set_line_cap vp Backend.ARROW;*)
     let path = Path.make () in
+    let b = vp.Viewport.backend in
     match axis.offset with
       | Absolute x -> begin
           Path.move_to path 0. x;
           Path.line_to path 1. x;
-          Viewport.stroke ~path vp Viewport.Graph
+          let ctm = Coordinate.use b vp.Viewport.coord_graph in
+          Path.stroke_on_backend path b;
+          Coordinate.restore b ctm
         end
       | Relative x -> begin
           Path.move_to path x (Viewport.xmin vp);
           Path.line_to path x (Viewport.xmax vp);
-          Viewport.stroke ~path vp Viewport.Data
+          let ctm = Coordinate.use b vp.Viewport.coord_data in
+          Path.stroke_on_backend path b;
+          Coordinate.restore b ctm
         end
     (*Viewport.set_line_cap vp Backend.BUTT;*)
 
@@ -761,7 +766,7 @@ end
   let xrange vp x0 xend = update_axis vp.axes_system.Axes.x vp x0 xend
   let yrange vp y0 yend = update_axis vp.axes_system.Axes.y vp y0 yend
 
-  let add_x_axis ?(tics=Axes.Auto) ?(offset=Axes.Absolute 0.)
+  let add_x_axis ?(tics=Axes.Auto) ?(offset=Axes.Absolute 1.)
       ?(sign=Axes.Positive) vp =
     Axes.add_axis tics offset sign (vp.axes_system.Axes.x)
 
