@@ -310,7 +310,16 @@ end
   let init ?(lines=def_lw *. usr_lw) ?(text=def_ts *. usr_ts)
       ?(marks=def_ms *. usr_ms) ?(w=640.) ?(h=480.) ~dirs backend_name =
     let backend = Backend.make ~dirs backend_name w h in
-    let coord_root = Coordinate.make_root (Backend.get_matrix backend) in
+    let coord_root =
+      if Backend.flipy backend then
+        let flip =
+          { Matrix.xx = -1.; Matrix.yx = 0.;
+            Matrix.xy = 0.;  Matrix.yy = -1. ; Matrix.x0 = w; Matrix.y0 = h }
+        in
+        Coordinate.make_root (Matrix.mul flip (Backend.get_matrix backend))
+      else
+        Coordinate.make_root (Backend.get_matrix backend)
+    in
     let size0 = min w h in
     let coord_device = Coordinate.make_scale coord_root w h in
     let coord_graph =
@@ -322,7 +331,7 @@ end
       children = [];
       coord_device = coord_device; coord_graph = coord_graph;
       coord_orthonormal =
-      Coordinate.make_scale coord_device (size0 /. w) (size0 /. h);
+        Coordinate.make_scale coord_device (size0 /. w) (size0 /. h);
       (* We don't care; will be updated as soon as points are added or we
 	 change axes. *)
       coord_data = Coordinate.make_identity coord_graph;
