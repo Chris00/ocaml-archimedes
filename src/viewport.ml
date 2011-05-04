@@ -104,7 +104,7 @@ end
   }
 
   let default_axis () =
-    { x0 = -1.; xend = 1.; auto_x0 = true; auto_xend = true;
+    { x0 = 0.; xend = 1.; auto_x0 = true; auto_xend = true;
       log = false; orientation = Positive; graph_axes = [] }
 
   let default_axes_system viewports =
@@ -363,18 +363,11 @@ end
       if is_nan_or_inf yaxis.Axes.xend || y1' > yaxis.Axes.xend then
         (yaxis.Axes.xend <- y1'; updated := true);
     if !updated then begin
-      let scalx, tr_x =
-        if xaxis.Axes.x0 = xaxis.Axes.xend then
-          initial_scale, -. xaxis.Axes.x0 -. 0.5 *. initial_scale
-        else 1. /. (xaxis.Axes.xend -. xaxis.Axes.x0), -. xaxis.Axes.x0
-      and scaly, tr_y =
-        if yaxis.Axes.x0 = yaxis.Axes.xend then
-          initial_scale, -. yaxis.Axes.x0 -. 0.5 *. initial_scale
-        else 1. /. (yaxis.Axes.xend -. yaxis.Axes.x0), -. yaxis.Axes.x0
-      in
-      let data_transform = Matrix.make_scale scalx scaly in
-      Matrix.translate data_transform tr_x tr_y;
-      Coordinate.transform vp.coord_data data_transform;
+      let coord = Coordinate.make_translate vp.coord_graph
+        xaxis.Axes.x0 yaxis.Axes.x0 in
+      Coordinate.scale coord (1. /. (xaxis.Axes.xend -. xaxis.Axes.x0))
+        (1. /. (yaxis.Axes.xend -. yaxis.Axes.x0));
+      vp.coord_data <- coord;
       if vp.immediate_drawing then do_instructions vp
     end
 
@@ -675,12 +668,26 @@ end
   let ymin vp = vp.axes_system.Axes.y.Axes.x0
   let ymax vp = vp.axes_system.Axes.y.Axes.xend
 
+  let update_axis axis x0 xend =
+    axis.Axes.auto_x0 <- is_nan_or_inf x0;
+    if not (is_nan_or_inf x0) then axis.Axes.x0 <- x0;
+    axis.Axes.auto_xend <- is_nan_or_inf xend;
+    if not (is_nan_or_inf xend) then axis.Axes.xend <- xend
+
   let xrange vp x0 xend =
-    vp.axes_system.Axes.x.Axes.x0 <- x0;
-    vp.axes_system.Axes.x.Axes.xend <- xend
+    update_axis vp.axes_system.Axes.x x0 xend;
+    let coord =
+      Coordinate.make_scale vp.coord_graph (1. /. (xend -. x0)) 1. in
+    Coordinate.translate coord x0 0.;
+    vp.coord_data <- coord;
+    if vp.immediate_drawing then do_instructions vp
 
   let yrange vp y0 yend =
-    vp.axes_system.Axes.y.Axes.x0 <- y0;
-    vp.axes_system.Axes.y.Axes.xend <- yend
+    update_axis vp.axes_system.Axes.y y0 yend;
+    let coord =
+      Coordinate.make_scale vp.coord_graph 1. (1. /. (yend -. y0)) in
+    Coordinate.translate coord 0. y0;
+    vp.coord_data <- coord;
+    if vp.immediate_drawing then do_instructions vp
 end
 

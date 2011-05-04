@@ -8,8 +8,8 @@ let pi = 4. *. atan 1.
 let draw bk =
   let vp = V.init ~w:1024. ~h:768. ~dirs:["../src"; "./src"] bk in
 
-  V.xrange vp (-5.) 5.;
-  V.yrange vp 0. 10.;
+  V.xrange vp (-100.) 100.;
+  V.yrange vp (-2.) 8.;
 
   (* Create a path *)
   let p = P.make () in
@@ -28,6 +28,11 @@ let draw bk =
   V.render_mark vp 0. 0. "o";
   V.set_global_color vp Color.red;
   V.render_mark vp (-3.) 2. "X";
+
+  V.move_to vp 1. 1.;
+  V.line_to vp 2. 2.;
+  V.set_global_color vp Color.green;
+  V.stroke vp V.Data;
 
   V.close vp
 
