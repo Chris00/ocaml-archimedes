@@ -313,8 +313,8 @@ end
     let coord_root =
       if Backend.flipy backend then
         let flip =
-          { Matrix.xx = -1.; Matrix.yx = 0.;
-            Matrix.xy = 0.;  Matrix.yy = -1. ; Matrix.x0 = w; Matrix.y0 = h }
+          { Matrix.xx = 1.; Matrix.yx = 0.;
+            Matrix.xy = 0.;  Matrix.yy = -1. ; Matrix.x0 = 0.; Matrix.y0 = h }
         in
         Coordinate.make_root (Matrix.mul flip (Backend.get_matrix backend))
       else
