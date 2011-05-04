@@ -32,8 +32,8 @@ let draw bk =
   V.close vp
 
 let () =
-  List.iter draw [ "cairo PNG viewport_path.png"(*;
-                   "graphics hold";
+  List.iter draw [ "cairo PNG viewport_path.png";
+                   "graphics hold"(*;
                    "tikz backend_path.tex"*)
                  ]
 

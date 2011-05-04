@@ -37,10 +37,10 @@ let draw bk =
   Backend.close bk
 
 let () =
-  List.iter draw [ "cairo PDF backend_line.pdf";
-                   "cairo PNG backend_line.png";
-                   (*"tikz backend_line.tex";
-                   "graphics hold" *)]
+  List.iter draw [ (*"cairo PDF backend_line.pdf";
+                   "cairo PNG backend_line.png";*)
+                   (*"tikz backend_line.tex";*)
+                   "graphics hold" ]
 
 
 (* Local Variables: *)

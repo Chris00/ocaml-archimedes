@@ -41,7 +41,7 @@ module type T = sig
 
     type graph_axis = {
       tics: tics;
-      offset: float;
+      offset: offset;
       tics_position: sign
     }
 
@@ -50,18 +50,20 @@ module type T = sig
       mutable xend: float;   mutable auto_xend: bool;
       mutable log: bool;
       mutable orientation: sign;
-      mutable graph_axes: graph_axis list
+      mutable graph_axes: graph_axis list;
+      mutable viewports: Viewport.t list
     }
 
     type t = {
       x: axis;
       y: axis;
-
-      mutable viewports: Viewport.t list
     }
 
     val default_axis: unit -> axis
-    val default_axes_system: Viewport.t list -> t
+    val default_axes_system: unit -> t
+
+    val add_axis: tics -> offset -> sign -> axis -> unit
+    val draw_axes: Viewport.t -> unit
   end
   and Viewport : sig
     type t
@@ -242,5 +244,12 @@ module type T = sig
     val close : t -> unit
 
     val do_instructions : t -> unit
+
+    val add_x_axis: ?tics:Axes.tics -> ?offset:Axes.offset -> ?sign:Axes.sign
+      -> t -> unit
+    val add_y_axis: ?tics:Axes.tics -> ?offset:Axes.offset -> ?sign:Axes.sign
+      -> t -> unit
+    val draw_axes: t -> unit
+
   end
 end

@@ -49,20 +49,19 @@ module rec Axes : sig
     mutable xend: float;   mutable auto_xend: bool;
     mutable log: bool;
     mutable orientation: sign;
-    mutable graph_axes: graph_axis list
+    mutable graph_axes: graph_axis list;
+    mutable viewports: Viewport.t list
   }
 
   type t = {
     x: axis;
     y: axis;
-
-    mutable viewports: Viewport.t list
   }
 
   val default_axis: unit -> axis
-  val default_axes_system: Viewport.t list -> t
+  val default_axes_system: unit -> t
 
-  val add_axis: tics -> offset -> sign -> Viewport.t -> axis -> unit
+  val add_axis: tics -> offset -> sign -> axis -> unit
   val draw_axes: Viewport.t -> unit
 end
 = struct
@@ -96,26 +95,24 @@ end
     mutable xend: float;   mutable auto_xend: bool;
     mutable log: bool;
     mutable orientation: sign;
-    mutable graph_axes: graph_axis list
+    mutable graph_axes: graph_axis list;
+    mutable viewports: Viewport.t list
   }
 
   type t = {
     x: axis;
     y: axis;
-
-    mutable viewports: Viewport.t list
   }
 
   let default_axis () =
     { x0 = 0.; xend = 1.; auto_x0 = true; auto_xend = true;
-      log = false; orientation = Positive; graph_axes = [] }
+      log = false; orientation = Positive; graph_axes = []; viewports = [] }
 
-  let default_axes_system viewports =
+  let default_axes_system () =
     { x = default_axis ();
-      y = default_axis ();
-      viewports = viewports }
+      y = default_axis () }
 
-  let add_axis tics offset sign vp axis =
+  let add_axis tics offset sign axis =
     let graph_axis = { tics=tics; offset=offset; tics_position=sign } in
     axis.graph_axes <- graph_axis :: axis.graph_axes
 
@@ -151,14 +148,28 @@ end
         end
 
   let draw_axes vp =
-    let x0, xend = Viewport.xmin vp, Viewport.xmax vp
-    and y0, yend = Viewport.ymin vp, Viewport.ymax vp in
-    List.iter (draw_x_axis vp x0 xend) (vp.axes_system.Axes.x.Axes.graph_axes);
-    List.iter (draw_y_axis vp y0 yend) (vp.axes_system.Axes.y.Axes.graph_axes)
+    List.iter (draw_x_axis vp) (vp.Viewport.axes_system.x.graph_axes);
+    List.iter (draw_y_axis vp) (vp.Viewport.axes_system.y.graph_axes)
 
 end
 and Viewport : sig
-  type t
+  type t = {
+    backend: Backend.t;
+    parent: t;
+    mutable children: t list;
+    mutable coord_device: Coordinate.t;
+    mutable coord_graph: Coordinate.t;
+    mutable coord_orthonormal: Coordinate.t;
+    mutable coord_data: Coordinate.t;
+    mutable square_side: float;
+    path: Path.t;
+    mutable axes_system: Axes.t;
+    mutable sizes: Sizes.t;
+    mutable mark_size: float;
+    mutable instructions: (unit -> unit) Queue.t;
+    mutable immediate_drawing: bool;
+    redim: t -> float -> float -> unit;
+  }
   type coord_name = Device | Graph | Data | Orthonormal
   val get_coord_from_name : t -> coord_name -> Coordinate.t
   val init : ?lines:float -> ?text:float -> ?marks:float -> ?w:float ->
@@ -238,9 +249,10 @@ and Viewport : sig
   val close : t -> unit
   val do_instructions : t -> unit
 
-  val add_x_axis: ?tics -> ?offset -> ?sign -> t -> unit
-  val add_y_axis: ?tics -> ?offset -> ?sign -> t -> unit
-
+  val add_x_axis: ?tics:Axes.tics -> ?offset:Axes.offset -> ?sign:Axes.sign
+    -> t -> unit
+  val add_y_axis: ?tics:Axes.tics -> ?offset:Axes.offset -> ?sign:Axes.sign
+    -> t -> unit
   val draw_axes: t -> unit
 end
 = struct
@@ -310,7 +322,7 @@ end
 	 change axes. *)
       coord_data = Coordinate.make_identity coord_graph;
       path = Path.make ();
-      axes_system = Axes.default_axes_system [];
+      axes_system = Axes.default_axes_system ();
       sizes = Sizes.make_rel (Sizes.make_root size0 1. 1. 1.) lines text marks;
       mark_size = def_ms;
       instructions = Queue.create ();
@@ -318,7 +330,8 @@ end
       redim = (fun _ _ _ -> ());
       square_side = size0;
     } in
-    viewport.axes_system.Axes.viewports <- [viewport];
+    viewport.axes_system.Axes.x.Axes.viewports <- [viewport];
+    viewport.axes_system.Axes.y.Axes.viewports <- [viewport];
     viewport
 
   let get_coord_from_name vp = function
@@ -358,7 +371,7 @@ end
       path = Path.make ();
       axes_system =
         if axes_sys then vp.axes_system
-        else Axes.default_axes_system [];
+        else Axes.default_axes_system ();
       sizes = Sizes.make_rel vp.sizes lines text marks;
       mark_size = def_ms;
       instructions = Queue.create ();
@@ -366,7 +379,10 @@ end
       redim = redim;
       square_side = size0;
     } in
-    if not axes_sys then viewport.axes_system.Axes.viewports <- [viewport];
+    if not axes_sys then begin
+      viewport.axes_system.Axes.x.Axes.viewports <- [viewport];
+      viewport.axes_system.Axes.y.Axes.viewports <- [viewport]
+    end;
     vp.children <- viewport :: vp.children;
     viewport
 
@@ -420,10 +436,10 @@ end
         (1. /. (yaxis.Axes.xend -. yaxis.Axes.x0));
       vp.coord_data <- coord;
       if vp.immediate_drawing then begin
-        let l1 = vp.axes_system.Axes.x.Axes.children in
-        let l2 = vp.axes_system.Axes.y.Axes.children in
+        let l1 = vp.axes_system.Axes.x.Axes.viewports in
+        let l2 = vp.axes_system.Axes.y.Axes.viewports in
         (* We want to merge the 2 lists without duplicates *)
-        let l2' = List.filter (fun x -> not List.find (( == ) x) l1) l2 in
+        let l2' = List.filter (fun x -> not (List.exists (( == ) x) l1)) l2 in
         List.iter do_instructions (List.rev_append l1 l2')
           (* TODO Is there a way to optimize that bunch of code ? *)
       end
@@ -745,11 +761,13 @@ end
   let xrange vp x0 xend = update_axis vp.axes_system.Axes.x vp x0 xend
   let yrange vp y0 yend = update_axis vp.axes_system.Axes.y vp y0 yend
 
-  let add_x_axis ?(tics=Auto) ?(offset=Absolute 0.) ?(sign=Positive) vp =
-    Axis.add_axis tics offset sign vp (vp.axes_system.Axes.x)
+  let add_x_axis ?(tics=Axes.Auto) ?(offset=Axes.Absolute 0.)
+      ?(sign=Axes.Positive) vp =
+    Axes.add_axis tics offset sign (vp.axes_system.Axes.x)
 
-  let add_y_axis ?(tics=Auto) ?(offset=Absolute 0.) ?(sign=Positive) vp =
-    Axis.add_axis tics offset sign vp (vp.axes_system.Axes.y)
+  let add_y_axis ?(tics=Axes.Auto) ?(offset=Axes.Absolute 0.)
+      ?(sign=Axes.Positive) vp =
+    Axes.add_axis tics offset sign (vp.axes_system.Axes.y)
 
   let draw_axes vp =
     add_instruction (fun () -> Axes.draw_axes vp) vp
