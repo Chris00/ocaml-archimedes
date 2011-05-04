@@ -3,6 +3,6 @@ viewports synchronization
 resizing
 plot functions
 graphics and tikz bug (Stack missing ?!)
-test data
 implement missing functions (show_text, etc.) in viewport.ml
 bug: stroke_path set_color stroke: everything colored
+transparency support

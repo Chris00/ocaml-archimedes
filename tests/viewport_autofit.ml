@@ -41,6 +41,8 @@ let draw bk =
   V.set_global_color vp Color.yellow;
   V.stroke vp V.Graph;
 
+  V.add_x_axis vp;
+
   V.close vp
 
 let () =

@@ -40,7 +40,7 @@ module rec Axes : sig
 
   type graph_axis = {
     tics: tics;
-    offset: float;
+    offset: offset;
     tics_position: sign
   }
 
@@ -61,6 +61,9 @@ module rec Axes : sig
 
   val default_axis: unit -> axis
   val default_axes_system: Viewport.t list -> t
+
+  val add_axis: tics -> offset -> sign -> Viewport.t -> axis -> unit
+  val draw_axes: Viewport.t -> unit
 end
 = struct
   type labels =
@@ -84,7 +87,7 @@ end
 
   type graph_axis = {
     tics: tics;
-    offset: float;
+    offset: offset;
     tics_position: sign
   }
 
@@ -111,6 +114,48 @@ end
     { x = default_axis ();
       y = default_axis ();
       viewports = viewports }
+
+  let add_axis tics offset sign vp axis =
+    let graph_axis = { tics=tics; offset=offset; tics_position=sign } in
+    axis.graph_axes <- graph_axis :: axis.graph_axes
+
+  let draw_x_axis vp axis =
+    (*TODO*)
+    (*Viewport.set_line_cap vp Backend.ARROW;*)
+    let path = Path.make () in
+    match axis.offset with
+      | Absolute x -> begin
+          Path.move_to path 0. x;
+          Path.line_to path 1. x;
+          Viewport.stroke ~path vp Viewport.Graph
+        end
+      | Relative x -> begin
+          Path.move_to path x (Viewport.xmin vp);
+          Path.line_to path x (Viewport.xmax vp);
+          Viewport.stroke ~path vp Viewport.Data
+        end
+    (*Viewport.set_line_cap vp Backend.BUTT;*)
+
+  let draw_y_axis vp axis =
+    let path = Path.make () in
+    match axis.offset with
+      | Absolute x -> begin
+          Path.move_to path x 0.;
+          Path.line_to path x 1.;
+          Viewport.stroke ~path vp Viewport.Graph
+        end
+      | Relative x -> begin
+          Path.move_to path (Viewport.ymin vp) x;
+          Path.line_to path (Viewport.ymax vp) x;
+          Viewport.stroke ~path vp Viewport.Data
+        end
+
+  let draw_axes vp =
+    let x0, xend = Viewport.xmin vp, Viewport.xmax vp
+    and y0, yend = Viewport.ymin vp, Viewport.ymax vp in
+    List.iter (draw_x_axis vp x0 xend) (vp.axes_system.Axes.x.Axes.graph_axes);
+    List.iter (draw_y_axis vp y0 yend) (vp.axes_system.Axes.y.Axes.graph_axes)
+
 end
 and Viewport : sig
   type t
@@ -192,6 +237,11 @@ and Viewport : sig
   val ymax : t -> float
   val close : t -> unit
   val do_instructions : t -> unit
+
+  val add_x_axis: ?tics -> ?offset -> ?sign -> t -> unit
+  val add_y_axis: ?tics -> ?offset -> ?sign -> t -> unit
+
+  val draw_axes: t -> unit
 end
 = struct
   type t = {
@@ -369,7 +419,14 @@ end
       Coordinate.scale coord (1. /. (xaxis.Axes.xend -. xaxis.Axes.x0))
         (1. /. (yaxis.Axes.xend -. yaxis.Axes.x0));
       vp.coord_data <- coord;
-      if vp.immediate_drawing then do_instructions vp
+      if vp.immediate_drawing then begin
+        let l1 = vp.axes_system.Axes.x.Axes.children in
+        let l2 = vp.axes_system.Axes.y.Axes.children in
+        (* We want to merge the 2 lists without duplicates *)
+        let l2' = List.filter (fun x -> not List.find (( == ) x) l1) l2 in
+        List.iter do_instructions (List.rev_append l1 l2')
+          (* TODO Is there a way to optimize that bunch of code ? *)
+      end
     end
 
   let close vp =
@@ -687,5 +744,13 @@ end
 
   let xrange vp x0 xend = update_axis vp.axes_system.Axes.x vp x0 xend
   let yrange vp y0 yend = update_axis vp.axes_system.Axes.y vp y0 yend
-end
 
+  let add_x_axis ?(tics=Auto) ?(offset=Absolute 0.) ?(sign=Positive) vp =
+    Axis.add_axis tics offset sign vp (vp.axes_system.Axes.x)
+
+  let add_y_axis ?(tics=Auto) ?(offset=Absolute 0.) ?(sign=Positive) vp =
+    Axis.add_axis tics offset sign vp (vp.axes_system.Axes.y)
+
+  let draw_axes vp =
+    add_instruction (fun () -> Axes.draw_axes vp) vp
+end
