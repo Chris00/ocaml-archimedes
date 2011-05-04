@@ -33,7 +33,7 @@ let draw bk =
 
 let () =
   List.iter draw [ "cairo PNG viewport_path.png";
-                   "graphics hold"(*;
+                   (*"graphics hold";
                    "tikz backend_path.tex"*)
                  ]
 
