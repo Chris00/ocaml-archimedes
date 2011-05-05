@@ -620,20 +620,16 @@ end
   let dimensions vp = Coordinate.to_device_distance vp.coord_device ~dx:1. ~dy:1.
 
   let set_global_color vp c =
-    add_instruction (fun () -> Backend.set_color vp.backend c) vp;
-    Backend.set_color vp.backend c
+    add_instruction (fun () -> Backend.set_color vp.backend c) vp
 
   let set_global_line_cap vp lc =
-    add_instruction (fun () -> Backend.set_line_cap vp.backend lc) vp;
-    Backend.set_line_cap vp.backend lc
+    add_instruction (fun () -> Backend.set_line_cap vp.backend lc) vp
 
   let set_global_dash vp x y =
-    add_instruction (fun () -> Backend.set_dash vp.backend x y) vp;
-    Backend.set_dash vp.backend x y
+    add_instruction (fun () -> Backend.set_dash vp.backend x y) vp
 
   let set_global_line_join vp join =
-    add_instruction (fun () -> Backend.set_line_join vp.backend join) vp;
-    Backend.set_line_join vp.backend join
+    add_instruction (fun () -> Backend.set_line_join vp.backend join) vp
 
   let get_line_cap vp = Backend.get_line_cap vp.backend
   let get_dash vp = Backend.get_dash vp.backend
