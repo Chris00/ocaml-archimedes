@@ -358,10 +358,11 @@ end
       vp coord_name xmin xmax ymin ymax redim =
    let coord_parent = get_coord_from_name vp coord_name in
    let w, h, size0 =
-      let xmax', ymax' = Coordinate.to_device coord_parent xmax ymax
-      and xmin', ymin' = Coordinate.to_device coord_parent xmin ymin in
-      let w = xmax' -. xmin' and h = ymax' -. ymin' in
-      w, h, min w h
+     (* We can't be sure of the y orientation, so we them in absolute *)
+     let xmax', y2' = Coordinate.to_device coord_parent xmax ymax
+     and xmin', y1' = Coordinate.to_device coord_parent xmin ymin in
+     let w = xmax' -. xmin' and h = abs_float (y2' -. y1') in
+     w, h, min w h
     in
     let coord_parent = get_coord_from_name vp coord_name in
     let coord_device =
