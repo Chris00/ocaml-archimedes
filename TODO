@@ -7,3 +7,4 @@ implement missing functions (show_text, etc.) in viewport.ml
 bug: stroke_path set_color stroke: everything colored
 transparency support
 Add support for orthonormalized autofit and add an orthonormalization routine.
+Can't catch a Cairo.Error.
