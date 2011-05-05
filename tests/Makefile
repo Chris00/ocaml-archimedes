@@ -9,7 +9,7 @@ LIBS_CMA = archimedes.cma
 LIBS_CMXA = archimedes.cmxa
 
 TESTS = backend_line.ml viewport_path.ml marks.ml test_layout.ml \
-  test_custom_layout.ml viewport_autofit.ml
+  test_custom_layout.ml viewport_autofit.ml test_axes.ml
 #TESTS = arrays.ml backend_text.ml backend_path.ml backend_line.ml \
 #  text.ml marks.ml functions.ml simple_plot.ml
 

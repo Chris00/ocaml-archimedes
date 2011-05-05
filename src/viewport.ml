@@ -18,20 +18,9 @@
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the file
    LICENSE for more details. *)
 
+let is_nan_or_inf (x:float) = x <> x || 1. /. x = 0.
+
 module rec Axes : sig
-  type labels =
-    | Text of string array * float
-    | Number
-    | Expnumber of float
-    | Expnumber_named of float * string
-    | Custom of (float -> string)
-
-  type tics =
-    | Fixed of float list
-    | Fixed_norm of float list
-    | Equidistants of int * int
-    | Auto
-
   type sign = Positive | Negative
 
   type offset =
@@ -39,9 +28,10 @@ module rec Axes : sig
     | Absolute of float
 
   type graph_axis = {
-    tics: tics;
+    tics: Tics.t;
     offset: offset;
-    tics_position: sign
+    tics_position: sign;
+    mutable tics_values: Tics.tic list
   }
 
   type axis = {
@@ -61,23 +51,10 @@ module rec Axes : sig
   val default_axis: unit -> axis
   val default_axes_system: unit -> t
 
-  val add_axis: tics -> offset -> sign -> axis -> unit
+  val add_axis: Tics.t -> offset -> sign -> axis -> unit
   val draw_axes: Viewport.t -> unit
 end
 = struct
-  type labels =
-    | Text of string array * float
-    | Number
-    | Expnumber of float
-    | Expnumber_named of float * string
-    | Custom of (float -> string)
-
-  type tics =
-    | Fixed of float list
-    | Fixed_norm of float list
-    | Equidistants of int * int
-    | Auto
-
   type sign = Positive | Negative
 
   type offset =
@@ -85,9 +62,10 @@ end
     | Absolute of float
 
   type graph_axis = {
-    tics: tics;
+    tics: Tics.t;
     offset: offset;
-    tics_position: sign
+    tics_position: sign;
+    mutable tics_values: Tics.tic list
   }
 
   type axis = {
@@ -113,7 +91,12 @@ end
       y = default_axis () }
 
   let add_axis tics offset sign axis =
-    let graph_axis = { tics=tics; offset=offset; tics_position=sign } in
+    let graph_axis = {
+      tics=tics;
+      offset=offset;
+      tics_position=sign;
+      tics_values=Tics.tics axis.Axes.x0 axis.Axes.xend tics
+    } in
     axis.graph_axes <- graph_axis :: axis.graph_axes
 
   let draw_x_axis vp axis =
@@ -122,16 +105,16 @@ end
     let path = Path.make () in
     let b = vp.Viewport.backend in
     match axis.offset with
-      | Absolute x -> begin
-          Path.move_to path 0. x;
-          Path.line_to path 1. x;
+      | Absolute y -> begin
+          Path.move_to path 0. y;
+          Path.line_to path 1. y;
           let ctm = Coordinate.use b vp.Viewport.coord_graph in
           Path.stroke_on_backend path b;
           Coordinate.restore b ctm
         end
-      | Relative x -> begin
-          Path.move_to path x (Viewport.xmin vp);
-          Path.line_to path x (Viewport.xmax vp);
+      | Relative y -> begin
+          Path.move_to path (Viewport.xmin vp) y;
+          Path.line_to path (Viewport.xmax vp) y;
           let ctm = Coordinate.use b vp.Viewport.coord_data in
           Path.stroke_on_backend path b;
           Coordinate.restore b ctm
@@ -140,17 +123,23 @@ end
 
   let draw_y_axis vp axis =
     let path = Path.make () in
+    let b = vp.Viewport.backend in
     match axis.offset with
       | Absolute x -> begin
           Path.move_to path x 0.;
           Path.line_to path x 1.;
-          Viewport.stroke ~path vp Viewport.Graph
+          let ctm = Coordinate.use b vp.Viewport.coord_graph in
+          Path.stroke_on_backend path b;
+          Coordinate.restore b ctm
         end
       | Relative x -> begin
-          Path.move_to path (Viewport.ymin vp) x;
-          Path.line_to path (Viewport.ymax vp) x;
-          Viewport.stroke ~path vp Viewport.Data
+          Path.move_to path x (Viewport.ymin vp);
+          Path.line_to path x (Viewport.ymax vp);
+          let ctm = Coordinate.use b vp.Viewport.coord_data in
+          Path.stroke_on_backend path b;
+          Coordinate.restore b ctm
         end
+
 
   let draw_axes vp =
     List.iter (draw_x_axis vp) (vp.Viewport.axes_system.x.graph_axes);
@@ -254,9 +243,9 @@ and Viewport : sig
   val close : t -> unit
   val do_instructions : t -> unit
 
-  val add_x_axis: ?tics:Axes.tics -> ?offset:Axes.offset -> ?sign:Axes.sign
+  val add_x_axis: ?tics:Tics.t -> ?offset:Axes.offset -> ?sign:Axes.sign
     -> t -> unit
-  val add_y_axis: ?tics:Axes.tics -> ?offset:Axes.offset -> ?sign:Axes.sign
+  val add_y_axis: ?tics:Tics.t -> ?offset:Axes.offset -> ?sign:Axes.sign
     -> t -> unit
   val draw_axes: t -> unit
 end
@@ -302,10 +291,18 @@ end
 
   type coord_name = Device | Graph | Data | Orthonormal
 
-  let def_lw, def_ts, def_ms = 0.002, 0.024, 0.01
-
   (* Multiplier to get "user-friendly" values (e.g. 12pt instead of 0.024) *)
   let usr_lw, usr_ts, usr_ms = 500., 500., 100.
+  let def_lw, def_ts, def_ms = 0.002, 0.024, 0.01
+
+  let get_coord_from_name vp = function
+    | Device -> vp.coord_device
+    | Graph -> vp.coord_graph
+    | Data -> vp.coord_data
+    | Orthonormal -> vp.coord_orthonormal
+
+(* Initialization functions
+ ***********************************************************************)
 
   let init ?(lines=def_lw *. usr_lw) ?(text=def_ts *. usr_ts)
       ?(marks=def_ms *. usr_ms) ?(w=640.) ?(h=480.) ~dirs backend_name =
@@ -347,12 +344,6 @@ end
     viewport.axes_system.Axes.x.Axes.viewports <- [viewport];
     viewport.axes_system.Axes.y.Axes.viewports <- [viewport];
     viewport
-
-  let get_coord_from_name vp = function
-    | Device -> vp.coord_device
-    | Graph -> vp.coord_graph
-    | Data -> vp.coord_data
-    | Orthonormal -> vp.coord_orthonormal
 
   let make ?(axes_sys=false) ?(lines=def_lw) ?(text=def_ts) ?(marks=def_ms)
       vp coord_name xmin xmax ymin ymax redim =
@@ -401,9 +392,10 @@ end
     vp.children <- viewport :: vp.children;
     viewport
 
-  let get_backend vp = vp.backend
+(* Basic functions
+ ***********************************************************************)
 
-  let is_nan_or_inf (x:float) = x <> x || 1. /. x = 0.
+  let get_backend vp = vp.backend
 
   let initial_scale = 1.
 
@@ -419,18 +411,62 @@ end
 
   let add_instruction f vp = Queue.push f vp.instructions
 
+  (* Note: if a vp is synchronized with one of its children, this children
+     will be redrawn two times. *)
   let rec do_instructions vp =
     blank vp;
     Queue.iter (fun f -> f ()) vp.instructions;
     List.iter do_instructions vp.children
 
+  let close vp =
+    let parent = vp.parent in
+    parent.children <- List.filter (fun x -> not (x == vp)) parent.children;
+    if vp == parent then begin
+      do_instructions vp;
+      Backend.close vp.backend
+    end
+
+(* Axes update functions
+ ***********************************************************************)
+
+  let xmin vp = vp.axes_system.Axes.x.Axes.x0
+  let xmax vp = vp.axes_system.Axes.x.Axes.xend
+  let ymin vp = vp.axes_system.Axes.y.Axes.x0
+  let ymax vp = vp.axes_system.Axes.y.Axes.xend
+
+  let update_coordinate_system vp =
+    let x0, xend, y0, yend = xmin vp, xmax vp, ymin vp, ymax vp in
+    let m = Matrix.make_scale
+      (1. /. (xend -. x0)) (1. /. (yend -. y0))
+    in
+    Matrix.translate m (-. x0) (-. y0);
+    Coordinate.transform vp.coord_data m
+
+  let update_tics axis =
+    let f graph_axis =
+      let x0, xend = axis.Axes.x0, axis.Axes.xend in
+      graph_axis.Axes.tics_values <- Tics.tics x0 xend graph_axis.Axes.tics
+    in
+    List.iter f axis.Axes.graph_axes
+
+  (* Utility function for (x|y)range *)
+  let update_axis axis vp x0 xend =
+    axis.Axes.auto_x0 <- is_nan_or_inf x0;
+    if not (is_nan_or_inf x0) then axis.Axes.x0 <- x0;
+    axis.Axes.auto_xend <- is_nan_or_inf xend;
+    if not (is_nan_or_inf xend) then axis.Axes.xend <- xend;
+    update_coordinate_system vp;
+    if vp.immediate_drawing
+    then List.iter do_instructions axis.Axes.viewports
+
+  let xrange vp = update_axis vp.axes_system.Axes.x vp
+  let yrange vp = update_axis vp.axes_system.Axes.y vp
+
   let auto_fit vp x0 y0 x1 y1 =
     let xaxis = vp.axes_system.Axes.x
     and yaxis = vp.axes_system.Axes.y in
-    let x0' = min x0 x1 (* TODO can we skip those tests ? (x|y)(0|1)' *)
-    and x1' = max x0 x1
-    and y0' = min y0 y1
-    and y1' = max y0 y1 in
+    (* TODO can we skip those tests ? (x|y)(0|1)' *)
+    let x0', x1', y0', y1' = min x0 x1, max x0 x1, min y0 y1, max y0 y1 in
     let updated = ref false in
     if xaxis.Axes.auto_x0 then
       if is_nan_or_inf xaxis.Axes.x0 || x0' < xaxis.Axes.x0 then
@@ -445,11 +481,9 @@ end
       if is_nan_or_inf yaxis.Axes.xend || y1' > yaxis.Axes.xend then
         (yaxis.Axes.xend <- y1'; updated := true);
     if !updated then begin
-      let coord = Coordinate.make_translate vp.coord_graph
-        xaxis.Axes.x0 yaxis.Axes.x0 in
-      Coordinate.scale coord (1. /. (xaxis.Axes.xend -. xaxis.Axes.x0))
-        (1. /. (yaxis.Axes.xend -. yaxis.Axes.x0));
-      vp.coord_data <- coord;
+      update_tics xaxis;
+      update_tics yaxis;
+      update_coordinate_system vp;
       if vp.immediate_drawing then begin
         let l1 = vp.axes_system.Axes.x.Axes.viewports in
         let l2 = vp.axes_system.Axes.y.Axes.viewports in
@@ -460,15 +494,10 @@ end
       end
     end
 
-  let close vp =
-    let parent = vp.parent in
-    parent.children <- List.filter (fun x -> not (x == vp)) parent.children;
-    if vp == parent then begin
-      do_instructions vp;
-      Backend.close vp.backend
-    end
+(* Layouts
+ ***********************************************************************)
 
-  (* Grille uniforme; redim: identité *)
+  (* Uniform grid; redim: identity *)
   let layout_grid ?(axes_sys=false) vp rows cols =
     let redim _ _ _ = () in
     let xstep = 1. /. (float cols) and ystep = 1. /. (float rows) in
@@ -555,7 +584,7 @@ end
     let vp' = make ~axes_sys vp Device 0. 1. 0. initial_proportion redim in
     (vp_fixed, vp')
 
-  (* Des layouts sur les bords, des tailles désirées *)
+  (* Border layouts, of desired sizes *)
   let layout_borders ?(north=0.) ?(south=0.) ?(west=0.) ?(east=0.)
       ?(axes_sys=false) vp =
     let east, vp =
@@ -748,38 +777,15 @@ end
     auto_fit vp x y x y; (* TODO we want all the mark to be included *)
     add_instruction f vp
 
-  let xmin vp = vp.axes_system.Axes.x.Axes.x0
-  let xmax vp = vp.axes_system.Axes.x.Axes.xend
-  let ymin vp = vp.axes_system.Axes.y.Axes.x0
-  let ymax vp = vp.axes_system.Axes.y.Axes.xend
-
-  let update_axis axis vp x0 xend =
-    (* update axis *)
-    axis.Axes.auto_x0 <- is_nan_or_inf x0;
-    if not (is_nan_or_inf x0) then axis.Axes.x0 <- x0;
-    axis.Axes.auto_xend <- is_nan_or_inf xend;
-    if not (is_nan_or_inf xend) then axis.Axes.xend <- xend;
-
-    (* update coordinate system *)
-    let x0, xend, y0, yend = xmin vp, xmax vp, ymin vp, ymax vp in
-    let coord = Coordinate.make_scale vp.coord_graph
-      (1. /. (xend -. x0)) (1. /. (yend -. y0))
-    in
-    Coordinate.translate coord (-. x0) (-. y0);
-    vp.coord_data <- coord;
-    if vp.immediate_drawing then do_instructions vp
-
-  let xrange vp x0 xend = update_axis vp.axes_system.Axes.x vp x0 xend
-  let yrange vp y0 yend = update_axis vp.axes_system.Axes.y vp y0 yend
-
-  let add_x_axis ?(tics=Axes.Auto) ?(offset=Axes.Absolute 1.)
+  let add_x_axis ?(tics=Tics.Auto Tics.Number) ?(offset=Axes.Absolute 0.)
       ?(sign=Axes.Positive) vp =
     Axes.add_axis tics offset sign (vp.axes_system.Axes.x)
 
-  let add_y_axis ?(tics=Axes.Auto) ?(offset=Axes.Absolute 0.)
+  let add_y_axis ?(tics=Tics.Auto Tics.Number) ?(offset=Axes.Absolute 0.)
       ?(sign=Axes.Positive) vp =
     Axes.add_axis tics offset sign (vp.axes_system.Axes.y)
 
   let draw_axes vp =
     add_instruction (fun () -> Axes.draw_axes vp) vp
+
 end

@@ -20,19 +20,6 @@
 
 module type T = sig
   module rec Axes : sig
-    type labels =
-      | Text of string array * float
-      | Number
-      | Expnumber of float
-      | Expnumber_named of float * string
-      | Custom of (float -> string)
-
-    type tics =
-      | Fixed of float list
-      | Fixed_norm of float list
-      | Equidistants of int * int
-      | Auto
-
     type sign = Positive | Negative
 
     type offset =
@@ -40,9 +27,10 @@ module type T = sig
       | Absolute of float
 
     type graph_axis = {
-      tics: tics;
+      tics: Tics.t;
       offset: offset;
-      tics_position: sign
+      tics_position: sign;
+      mutable tics_values: Tics.tic list
     }
 
     type axis = {
@@ -62,7 +50,7 @@ module type T = sig
     val default_axis: unit -> axis
     val default_axes_system: unit -> t
 
-    val add_axis: tics -> offset -> sign -> axis -> unit
+    val add_axis: Tics.t -> offset -> sign -> axis -> unit
     val draw_axes: Viewport.t -> unit
   end
   and Viewport : sig
@@ -227,8 +215,6 @@ module type T = sig
     (* TODO Complete *)
     (*  val fx
         val xy
-        val add_xaxis
-        val add_yaxis
         val box_axes
         val centered_axes*)
 
@@ -245,9 +231,9 @@ module type T = sig
 
     val do_instructions : t -> unit
 
-    val add_x_axis: ?tics:Axes.tics -> ?offset:Axes.offset -> ?sign:Axes.sign
+    val add_x_axis: ?tics:Tics.t -> ?offset:Axes.offset -> ?sign:Axes.sign
       -> t -> unit
-    val add_y_axis: ?tics:Axes.tics -> ?offset:Axes.offset -> ?sign:Axes.sign
+    val add_y_axis: ?tics:Tics.t -> ?offset:Axes.offset -> ?sign:Axes.sign
       -> t -> unit
     val draw_axes: t -> unit
 
