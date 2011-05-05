@@ -6,5 +6,6 @@ graphics and tikz bug (Stack missing ?!)
 implement missing functions (show_text, etc.) in viewport.ml
 transparency support
 Add support for orthonormalized autofit and add an orthonormalization routine.
+Add arrow support into backends
 Can't catch a Cairo.Error.
 set_global_color -> set_color (see immediate_drawing!).
