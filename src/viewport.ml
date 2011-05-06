@@ -242,11 +242,11 @@ and Viewport : sig
     (*  val save_vp : t -> unit
         val restore_vp : t -> unit*)
   val select_font_face : t -> Backend.slant -> Backend.weight -> string -> unit
-    (*  val show_text :
-        t ->
-        rotate:float ->
-        x:float -> y:float -> Backend.text_position -> string -> unit
-    (*  val text_extents : t -> string -> rectangle*)*)
+  val show_text :
+    t -> coord_name ->
+    rotate:float ->
+    x:float -> y:float -> Backend.text_position -> string -> unit
+    (*  val text_extents : t -> string -> rectangle*)
   val mark : t -> x:float -> y:float -> string -> unit
     (* val mark_extents : t -> string -> rectangle *)
 
@@ -773,16 +773,59 @@ end
     let f () = Backend.select_font_face vp.backend slant weight family in
       add_instruction f vp
 
-  (* TODO: val show_text. *)
+  let to_parent coord (x, y) = Coordinate.to_parent coord ~x ~y
+  let from_parent coord (x, y) = Coordinate.from_parent coord ~x ~y
+
+  let rec ortho_from vp coord_name pos = match coord_name with
+    | Device -> from_parent vp.coord_orthonormal pos
+    | Graph -> ortho_from vp Device (to_parent vp.coord_graph pos)
+    | Data -> ortho_from vp Graph (to_parent vp.coord_data pos)
+    | Orthonormal -> pos
+
+  let rec data_from vp coord_name pos = match coord_name with
+    | Device -> data_from vp Graph (from_parent vp.coord_graph pos)
+    | Graph -> from_parent vp.coord_data pos
+    | Data -> pos
+    | Orthonormal -> data_from vp Device (to_parent vp.coord_orthonormal pos)
+
+  let show_text_direct vp coord_name ~rotate ~x ~y pos text () =
+    let ctm = Coordinate.use vp.backend vp.coord_orthonormal in
+    let x, y = ortho_from vp coord_name (x, y) in
+    Backend.show_text vp.backend ~rotate ~x ~y pos text;
+    Coordinate.restore vp.backend ctm
+
+  let show_text vp coord_name ~rotate ~x ~y pos text =
+    (* auto_fit if Data *)
+    if coord_name = Data then begin
+      let ctm = Coordinate.use vp.backend vp.coord_orthonormal in
+      let rect = Backend.text_extents vp.backend text in
+      Coordinate.restore vp.backend ctm;
+      let w, h = rect.Matrix.w, rect.Matrix.h in
+      let module B = Backend in
+      let tr_x = match pos with
+        | B.CC | B.CT | B.CB -> w /. 2.
+        | B.LC | B.LT | B.LB -> w
+        | B.RC | B.RT | B.RB -> 0.
+      and tr_y = match pos with
+        | B.CC | B.LC | B.RC -> h /. 2.
+        | B.CT | B.LT | B.RT -> h
+        | B.CB | B.LB | B.RB -> 0.
+      in
+      let mat = Matrix.make_translate (-. tr_x) (-. tr_y) in
+      Matrix.rotate mat rotate;
+      Matrix.translate mat (tr_x -. x) (tr_y -. y);
+      let ext = Matrix.transform_rectangle mat rect in
+      let x, y = ext.Matrix.x, ext.Matrix.y
+      and w, h = ext.Matrix.w, ext.Matrix.h in
+      let x0, y0 = data_from vp Orthonormal (x, y)
+      and xend, yend = data_from vp Orthonormal (x +. w, y +. h) in
+      auto_fit vp x0 y0 xend yend
+    end;
+    add_instruction (show_text_direct vp coord_name ~rotate ~x ~y pos text) vp
 
   let mark_direct vp ~x ~y name () =
-    let to_parent coord (x, y) = Coordinate.to_parent coord ~x ~y
-    and from_parent coord (x, y) = Coordinate.from_parent coord ~x ~y in
-    let data_to_ortho ~x ~y = from_parent vp.coord_orthonormal
-      (to_parent vp.coord_graph (to_parent vp.coord_data (x, y)))
-    in
     let ms = vp.mark_size /. vp.square_side in
-    let x, y = data_to_ortho x y in
+    let x, y = ortho_from vp Data (x, y) in
     let coord = Coordinate.make_translate vp.coord_orthonormal
       (x -. ms /. 2.) (y -. ms /. 2.) in
     Coordinate.scale coord ms ms;
