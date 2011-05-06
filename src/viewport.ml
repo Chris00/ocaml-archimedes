@@ -30,7 +30,8 @@ module rec Axes : sig
   type graph_axis = {
     tics: Tics.t;
     offset: offset;
-    tics_position: sign;
+    major_tics: string * float;
+    minor_tics: string * float;
     mutable tics_values: Tics.tic list
   }
 
@@ -51,7 +52,8 @@ module rec Axes : sig
   val default_axis: unit -> axis
   val default_axes_system: unit -> t
 
-  val add_axis: Tics.t -> offset -> sign -> axis -> unit
+  val add_axis: (string * float) -> (string * float) -> Tics.t -> offset ->
+    sign -> axis -> unit
   val draw_axes: Viewport.t -> unit
 end
 = struct
@@ -66,7 +68,8 @@ end
   type graph_axis = {
     tics: Tics.t;
     offset: offset;
-    tics_position: sign;
+    major_tics: string * float;
+    minor_tics: string * float;
     mutable tics_values: Tics.tic list
   }
 
@@ -92,11 +95,12 @@ end
     { x = default_axis ();
       y = default_axis () }
 
-  let add_axis tics offset sign axis =
+  let add_axis major_tics minor_tics tics offset sign axis =
     let graph_axis = {
       tics=tics;
       offset=offset;
-      tics_position=sign;
+      major_tics=major_tics;
+      minor_tics=minor_tics;
       tics_values=Tics.tics axis.Axes.x0 axis.Axes.xend tics
     } in
     axis.graph_axes <- graph_axis :: axis.graph_axes
@@ -112,19 +116,16 @@ end
     Path.line_to path xend y;
     V.stroke_direct path vp coord ();
     (* draw tics *)
-    let tic_type =
-      if graph_axis.Axes.tics_position = Positive then "tic_up"
-      else "tic_down"
-    in
+    let tic_type, tic_size = graph_axis.Axes.major_tics in
     let draw_tic = function
       | Tics.Major (None, x) ->
-          V.set_rel_mark_size_direct vp 5. ();
+          V.set_rel_mark_size_direct vp tic_size ();
           V.mark_direct vp x y tic_type ()
       | Tics.Major (Some label, x) ->
-          V.set_rel_mark_size_direct vp 5. ();
+          V.set_rel_mark_size_direct vp tic_size ();
           V.mark_direct vp x y tic_type ()(* TODO render_text *)
       | Tics.Minor x ->
-          V.set_rel_mark_size_direct vp 2. ();
+          V.set_rel_mark_size_direct vp tic_size ();
           V.mark_direct vp x y tic_type ()
     in
     List.iter draw_tic graph_axis.tics_values
@@ -139,19 +140,16 @@ end
     Path.line_to path x yend;
     V.stroke_direct path vp coord ();
     (* draw tics *)
-    let tic_type =
-      if graph_axis.Axes.tics_position = Positive then "tic_right"
-      else "tic_left"
-    in
+    let tic_type, tic_size = graph_axis.Axes.major_tics in
     let draw_tic = function
       | Tics.Major (None, y) ->
-          V.set_rel_mark_size_direct vp 5. ();
+          V.set_rel_mark_size_direct vp tic_size ();
           V.mark_direct vp x y tic_type ()
       | Tics.Major (Some label, y) ->
-          V.set_rel_mark_size_direct vp 5. ();
+          V.set_rel_mark_size_direct vp tic_size ();
           V.mark_direct vp x y tic_type ()(* TODO render_text *)
       | Tics.Minor y ->
-          V.set_rel_mark_size_direct vp 2. ();
+          V.set_rel_mark_size_direct vp tic_size ();
           V.mark_direct vp x y tic_type ()
     in
     List.iter draw_tic graph_axis.tics_values
@@ -262,10 +260,10 @@ and Viewport : sig
   val close : t -> unit
   val do_instructions : t -> unit
 
-  val add_x_axis: ?tics:Tics.t -> ?offset:Axes.offset -> ?sign:Axes.sign
-    -> t -> unit
-  val add_y_axis: ?tics:Tics.t -> ?offset:Axes.offset -> ?sign:Axes.sign
-    -> t -> unit
+  val add_x_axis: ?major:(string * float) -> ?minor:(string * float) ->
+    ?tics:Tics.t -> ?offset:Axes.offset -> ?sign:Axes.sign -> t -> unit
+  val add_y_axis: ?major:(string * float) -> ?minor:(string * float) ->
+    ?tics:Tics.t -> ?offset:Axes.offset -> ?sign:Axes.sign -> t -> unit
   val draw_axes: t -> unit
 end
 = struct
@@ -796,13 +794,15 @@ end
     auto_fit vp x y x y; (* TODO we want all the mark to be included *)
     add_instruction (mark_direct vp ~x ~y name) vp
 
-  let add_x_axis ?(tics=Tics.Auto Tics.Number) ?(offset=Axes.Absolute 0.)
+  let add_x_axis ?(major=("tic_up",5.)) ?(minor=("tic_up",2.))
+      ?(tics=Tics.Auto Tics.Number) ?(offset=Axes.Absolute 0.)
       ?(sign=Axes.Positive) vp =
-    Axes.add_axis tics offset sign (vp.axes_system.Axes.x)
+    Axes.add_axis major minor tics offset sign (vp.axes_system.Axes.x)
 
-  let add_y_axis ?(tics=Tics.Auto Tics.Number) ?(offset=Axes.Absolute 0.)
+  let add_y_axis ?(major=("tic_right",5.)) ?(minor=("tic_right",2.))
+      ?(tics=Tics.Auto Tics.Number) ?(offset=Axes.Absolute 0.)
       ?(sign=Axes.Positive) vp =
-    Axes.add_axis tics offset sign (vp.axes_system.Axes.y)
+    Axes.add_axis major minor tics offset sign (vp.axes_system.Axes.y)
 
   let draw_axes vp =
     add_instruction (fun () -> Axes.draw_axes vp) vp

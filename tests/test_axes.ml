@@ -7,7 +7,8 @@ let draw bk =
   V.stroke vp V.Orthonormal;
   V.xrange vp 0. 10.;
   V.yrange vp 0. 5.;
-  V.add_x_axis vp;
+  V.set_line_width vp 1.;
+  V.add_x_axis ~major:("o", 4.2) vp;
   V.add_y_axis vp;
   V.draw_axes vp;
 
