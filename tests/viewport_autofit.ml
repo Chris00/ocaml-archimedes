@@ -26,11 +26,11 @@ let draw bk =
 
   V.set_mark_size vp 1.;
   V.set_line_width vp 1.;
-  V.render_mark vp 0. 0. "o";
+  V.mark vp 0. 0. "o";
 
   V.set_mark_size vp 50.;
   V.set_global_color vp Color.red;
-  V.render_mark vp (-3.) 2. "X";
+  V.mark vp (-3.) 2. "X";
 
   V.move_to vp 1. 1.;
   V.line_to vp 2. 2.;

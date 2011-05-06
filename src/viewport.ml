@@ -101,26 +101,60 @@ end
     } in
     axis.graph_axes <- graph_axis :: axis.graph_axes
 
-  let draw_x_axis vp axis =
+  let draw_x_axis vp graph_axis =
     (* TODO add Backend.ARROW *)
     (*V.set_line_cap vp Backend.ARROW;*)
-    let x0, xend, y, coord = match axis.offset with
+    let x0, xend, y, coord = match graph_axis.offset with
       | Absolute y -> 0., 1., y, V.Graph
       | Relative y -> V.xmin vp, V.xmax vp, y, V.Data
     in
     let path = Path.make_at x0 y in
     Path.line_to path xend y;
-    V.stroke_direct path vp coord
+    V.stroke_direct path vp coord ();
+    (* draw tics *)
+    let tic_type =
+      if graph_axis.Axes.tics_position = Positive then "tic_up"
+      else "tic_down"
+    in
+    let draw_tic = function
+      | Tics.Major (None, x) ->
+          V.set_rel_mark_size_direct vp 5. ();
+          V.mark_direct vp x y tic_type ()
+      | Tics.Major (Some label, x) ->
+          V.set_rel_mark_size_direct vp 5. ();
+          V.mark_direct vp x y tic_type ()(* TODO render_text *)
+      | Tics.Minor x ->
+          V.set_rel_mark_size_direct vp 2. ();
+          V.mark_direct vp x y tic_type ()
+    in
+    List.iter draw_tic graph_axis.tics_values
     (*V.set_line_cap vp Backend.BUTT;*)
 
-  let draw_y_axis vp axis =
-    let y0, yend, x, coord = match axis.offset with
+  let draw_y_axis vp graph_axis =
+    let y0, yend, x, coord = match graph_axis.offset with
       | Absolute x -> 0., 1., x, V.Graph
       | Relative x -> V.ymin vp, V.ymax vp, x, V.Data
     in
     let path = Path.make_at x y0 in
     Path.line_to path x yend;
-    V.stroke_direct path vp coord
+    V.stroke_direct path vp coord ();
+    (* draw tics *)
+    let tic_type =
+      if graph_axis.Axes.tics_position = Positive then "tic_right"
+      else "tic_left"
+    in
+    let draw_tic = function
+      | Tics.Major (None, y) ->
+          V.set_rel_mark_size_direct vp 5. ();
+          V.mark_direct vp x y tic_type ()
+      | Tics.Major (Some label, y) ->
+          V.set_rel_mark_size_direct vp 5. ();
+          V.mark_direct vp x y tic_type ()(* TODO render_text *)
+      | Tics.Minor y ->
+          V.set_rel_mark_size_direct vp 2. ();
+          V.mark_direct vp x y tic_type ()
+    in
+    List.iter draw_tic graph_axis.tics_values
 
   let draw_axes vp =
     List.iter (draw_x_axis vp) (vp.Viewport.axes_system.x.graph_axes);
@@ -174,6 +208,8 @@ and Viewport : sig
   val get_font_size : t -> float
   val get_mark_size : t -> float
 
+  val set_rel_mark_size_direct : t -> float -> unit -> unit
+
   val lower_left_corner : t -> float * float
   val upper_right_corner : t -> float * float
   val dimensions : t -> float * float (* returns (w, h) *)
@@ -199,7 +235,7 @@ and Viewport : sig
   val close_path : t -> unit
   val clear_path : t -> unit
     (*val path_extents : t -> rectangle*)
-  val stroke_direct : Path.t -> t -> coord_name -> unit
+  val stroke_direct : Path.t -> t -> coord_name -> unit -> unit
   val stroke_preserve : ?path:Path.t -> t -> coord_name -> unit
   val stroke : ?path:Path.t -> t -> coord_name -> unit
   val fill : t -> unit
@@ -213,8 +249,10 @@ and Viewport : sig
         rotate:float ->
         x:float -> y:float -> Backend.text_position -> string -> unit
     (*  val text_extents : t -> string -> rectangle*)*)
-  val render_mark : t -> x:float -> y:float -> string -> unit
+  val mark : t -> x:float -> y:float -> string -> unit
     (* val mark_extents : t -> string -> rectangle *)
+
+  val mark_direct : t -> x:float -> y:float -> string -> unit -> unit
   val xrange : t -> float -> float -> unit
   val yrange : t -> float -> float -> unit
   val xmin : t -> float
@@ -608,11 +646,11 @@ end
     in
     add_instruction f vp
 
+  let set_rel_mark_size_direct vp ms () =
+    vp.mark_size <- (ms /. usr_ms *. vp.square_side)
+
   let set_rel_mark_size vp ms =
-    let f () =
-      vp.mark_size <- (ms /. usr_ms *. vp.square_side)
-    in
-    add_instruction f vp
+    add_instruction (set_rel_mark_size_direct vp ms) vp
 
   let get_line_width vp =
     (Sizes.get_lw vp.sizes) *. usr_lw
@@ -675,7 +713,7 @@ end
 
   let path_extents vp = Path.extents vp.path
 
-  let stroke_direct path vp coord_name =
+  let stroke_direct path vp coord_name () =
     let coord = get_coord_from_name vp coord_name in
     let ctm = Coordinate.use vp.backend coord in
     Path.stroke_on_backend path vp.backend;
@@ -692,7 +730,7 @@ end
     let x1 = x0 +. e.Matrix.w
     and y1 = y0 +. e.Matrix.h in
     auto_fit vp x0 y0 x1 y1;
-    add_instruction (fun () -> stroke_direct path vp coord_name) vp
+    add_instruction (stroke_direct path vp coord_name) vp
 
   let stroke ?path vp coord_name =
     stroke_preserve ?path vp coord_name;
@@ -739,24 +777,24 @@ end
 
   (* TODO: val show_text. *)
 
-  let render_mark vp ~x ~y name =
+  let mark_direct vp ~x ~y name () =
     let to_parent coord (x, y) = Coordinate.to_parent coord ~x ~y
     and from_parent coord (x, y) = Coordinate.from_parent coord ~x ~y in
     let data_to_ortho ~x ~y = from_parent vp.coord_orthonormal
       (to_parent vp.coord_graph (to_parent vp.coord_data (x, y)))
     in
-    let f () =
-      let ms = vp.mark_size /. vp.square_side in
-      let x, y = data_to_ortho x y in
-      let coord = Coordinate.make_translate vp.coord_orthonormal
-        (x -. ms /. 2.) (y -. ms /. 2.) in
-      Coordinate.scale coord ms ms;
-      let ctm = Coordinate.use vp.backend coord in
-      Pointstyle.render name vp.backend;
-      Coordinate.restore vp.backend ctm;
-    in
+    let ms = vp.mark_size /. vp.square_side in
+    let x, y = data_to_ortho x y in
+    let coord = Coordinate.make_translate vp.coord_orthonormal
+      (x -. ms /. 2.) (y -. ms /. 2.) in
+    Coordinate.scale coord ms ms;
+    let ctm = Coordinate.use vp.backend coord in
+    Pointstyle.render name vp.backend;
+    Coordinate.restore vp.backend ctm
+
+  let mark vp ~x ~y name =
     auto_fit vp x y x y; (* TODO we want all the mark to be included *)
-    add_instruction f vp
+    add_instruction (mark_direct vp ~x ~y name) vp
 
   let add_x_axis ?(tics=Tics.Auto Tics.Number) ?(offset=Axes.Absolute 0.)
       ?(sign=Axes.Positive) vp =

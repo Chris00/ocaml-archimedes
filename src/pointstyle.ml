@@ -291,15 +291,13 @@ let () =
              B.fill handle)
     {Matrix.x=(-0.5); y=(-0.5); w=1.;h=1.};
   add "tic_up" (fun handle ->
-                  B.move_to handle 0.5 0.5;
-                  B.rel_move_to handle 0. (-0.5);
-                  B.rel_line_to handle 0. 0.5;
+                  B.move_to handle 0.5 1.;
+                  B.line_to handle 0.5 0.5;
                   B.stroke handle)
     {Matrix.x=0.; y=(-0.5); w=0.;h=0.5};
   add "tic_down" (fun handle ->
-                    B.move_to handle 0.5 0.5;
-                    B.rel_move_to handle 0. 0.5;
-                    B.rel_line_to handle 0. (-0.5);
+                    B.move_to handle 0.5 0.;
+                    B.line_to handle 0.5 0.5;
                     B.stroke handle)
     {Matrix.x=0.; y=0.; w=0.;h=0.5};
   add "tic_left" (fun handle ->

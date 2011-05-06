@@ -21,7 +21,7 @@ let draw backend =
   V.set_line_width vp 1.;
   for i = 0 to Array.length markers - 1 do
     let x = float (i mod 8) and y = float (i / 8) in
-    V.render_mark vp x y markers.(i)
+    V.mark vp x y markers.(i)
   done;
   (*V.set_line_width vp 1.;
   V.f vp (fun _ -> -1.) (-1.) 8.;
