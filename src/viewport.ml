@@ -55,6 +55,8 @@ module rec Axes : sig
   val draw_axes: Viewport.t -> unit
 end
 = struct
+  module V = Viewport
+
   type sign = Positive | Negative
 
   type offset =
@@ -100,51 +102,29 @@ end
     axis.graph_axes <- graph_axis :: axis.graph_axes
 
   let draw_x_axis vp axis =
-    (*TODO*)
-    (*Viewport.set_line_cap vp Backend.ARROW;*)
-    let path = Path.make () in
-    let b = vp.Viewport.backend in
-    match axis.offset with
-      | Absolute y -> begin
-          Path.move_to path 0. y;
-          Path.line_to path 1. y;
-          let ctm = Coordinate.use b vp.Viewport.coord_graph in
-          Path.stroke_on_backend path b;
-          Coordinate.restore b ctm
-        end
-      | Relative y -> begin
-          Path.move_to path (Viewport.xmin vp) y;
-          Path.line_to path (Viewport.xmax vp) y;
-          let ctm = Coordinate.use b vp.Viewport.coord_data in
-          Path.stroke_on_backend path b;
-          Coordinate.restore b ctm
-        end
-    (*Viewport.set_line_cap vp Backend.BUTT;*)
+    (* TODO add Backend.ARROW *)
+    (*V.set_line_cap vp Backend.ARROW;*)
+    let x0, xend, y, coord = match axis.offset with
+      | Absolute y -> 0., 1., y, V.Graph
+      | Relative y -> V.xmin vp, V.xmax vp, y, V.Data
+    in
+    let path = Path.make_at x0 y in
+    Path.line_to path xend y;
+    V.stroke_direct path vp coord
+    (*V.set_line_cap vp Backend.BUTT;*)
 
   let draw_y_axis vp axis =
-    let path = Path.make () in
-    let b = vp.Viewport.backend in
-    match axis.offset with
-      | Absolute x -> begin
-          Path.move_to path x 0.;
-          Path.line_to path x 1.;
-          let ctm = Coordinate.use b vp.Viewport.coord_graph in
-          Path.stroke_on_backend path b;
-          Coordinate.restore b ctm
-        end
-      | Relative x -> begin
-          Path.move_to path x (Viewport.ymin vp);
-          Path.line_to path x (Viewport.ymax vp);
-          let ctm = Coordinate.use b vp.Viewport.coord_data in
-          Path.stroke_on_backend path b;
-          Coordinate.restore b ctm
-        end
-
+    let y0, yend, x, coord = match axis.offset with
+      | Absolute x -> 0., 1., x, V.Graph
+      | Relative x -> V.ymin vp, V.ymax vp, x, V.Data
+    in
+    let path = Path.make_at x y0 in
+    Path.line_to path x yend;
+    V.stroke_direct path vp coord
 
   let draw_axes vp =
     List.iter (draw_x_axis vp) (vp.Viewport.axes_system.x.graph_axes);
     List.iter (draw_y_axis vp) (vp.Viewport.axes_system.y.graph_axes)
-
 end
 and Viewport : sig
   type t = {
@@ -219,6 +199,7 @@ and Viewport : sig
   val close_path : t -> unit
   val clear_path : t -> unit
     (*val path_extents : t -> rectangle*)
+  val stroke_direct : Path.t -> t -> coord_name -> unit
   val stroke_preserve : ?path:Path.t -> t -> coord_name -> unit
   val stroke : ?path:Path.t -> t -> coord_name -> unit
   val fill : t -> unit
@@ -694,8 +675,13 @@ end
 
   let path_extents vp = Path.extents vp.path
 
-  let stroke_preserve ?path vp coord_name =
+  let stroke_direct path vp coord_name =
     let coord = get_coord_from_name vp coord_name in
+    let ctm = Coordinate.use vp.backend coord in
+    Path.stroke_on_backend path vp.backend;
+    Coordinate.restore vp.backend ctm
+
+  let stroke_preserve ?path vp coord_name =
     let path = match path with
       | None -> vp.path
       | Some p -> p
@@ -706,12 +692,7 @@ end
     let x1 = x0 +. e.Matrix.w
     and y1 = y0 +. e.Matrix.h in
     auto_fit vp x0 y0 x1 y1;
-    let f () =
-      let ctm = Coordinate.use vp.backend coord in
-      Path.stroke_on_backend path vp.backend;
-      Coordinate.restore vp.backend ctm
-    in
-    add_instruction f vp
+    add_instruction (fun () -> stroke_direct path vp coord_name) vp
 
   let stroke ?path vp coord_name =
     stroke_preserve ?path vp coord_name;

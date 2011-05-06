@@ -75,6 +75,11 @@ let move_to p ~x ~y =
   p.y <- y;
   p.curr_pt <- true
 
+let make_at x y =
+  let p = make () in
+  move_to p x y;
+  p
+
 let line_to p ~x ~y =
   if p.curr_pt then begin
     p.path <- Line_to (x, y) :: p.path;

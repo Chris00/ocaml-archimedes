@@ -5,6 +5,8 @@ let draw bk =
   let vp = V.init ~w:1024. ~h:600. ~dirs:["../src"; "./src"] bk in
   V.rectangle vp 0. 0. 1. 1.;
   V.stroke vp V.Orthonormal;
+  V.xrange vp 0. 10.;
+  V.yrange vp 0. 5.;
   V.add_x_axis vp;
   V.add_y_axis vp;
   V.draw_axes vp;
