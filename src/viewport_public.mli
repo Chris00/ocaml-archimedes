@@ -208,7 +208,7 @@ module type T = sig
     val select_font_face : t -> Backend.slant -> Backend.weight -> string -> unit
     val show_text :
       t -> coord_name ->
-      rotate:float ->
+      ?rotate:float ->
       x:float -> y:float -> Backend.text_position -> string -> unit
       (*  val text_extents : t -> string -> rectangle*)
     val mark : t -> x:float -> y:float -> string -> unit

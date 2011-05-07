@@ -61,6 +61,10 @@ end
 
   type sign = Positive | Negative
 
+  (* FIXME: offset might benefit from better variant names such as Data |
+     Graph. And, it doesn't support other coord_names. Maybe we should use
+     polymorphic variant types shared between Axes and Viewport instead of
+     redefining local ones as Axes.Data and Axes.Graph. *)
   type offset =
     | Relative of float
     | Absolute of float
@@ -242,11 +246,17 @@ and Viewport : sig
     (*  val save_vp : t -> unit
         val restore_vp : t -> unit*)
   val select_font_face : t -> Backend.slant -> Backend.weight -> string -> unit
+  val show_text_direct :
+    t -> coord_name ->
+    ?rotate:float ->
+    x:float -> y:float -> Backend.text_position -> string -> unit -> unit
   val show_text :
     t -> coord_name ->
-    rotate:float ->
+    ?rotate:float ->
     x:float -> y:float -> Backend.text_position -> string -> unit
     (*  val text_extents : t -> string -> rectangle*)
+  val ortho_from : t -> coord_name -> float * float -> float * float
+  val data_from : t -> coord_name -> float * float -> float * float
   val mark : t -> x:float -> y:float -> string -> unit
     (* val mark_extents : t -> string -> rectangle *)
 
@@ -788,13 +798,13 @@ end
     | Data -> pos
     | Orthonormal -> data_from vp Device (to_parent vp.coord_orthonormal pos)
 
-  let show_text_direct vp coord_name ~rotate ~x ~y pos text () =
+  let show_text_direct vp coord_name ?(rotate=0.) ~x ~y pos text () =
     let ctm = Coordinate.use vp.backend vp.coord_orthonormal in
     let x, y = ortho_from vp coord_name (x, y) in
     Backend.show_text vp.backend ~rotate ~x ~y pos text;
     Coordinate.restore vp.backend ctm
 
-  let show_text vp coord_name ~rotate ~x ~y pos text =
+  let show_text vp coord_name ?(rotate=0.) ~x ~y pos text =
     (* auto_fit if Data *)
     if coord_name = Data then begin
       let ctm = Coordinate.use vp.backend vp.coord_orthonormal in

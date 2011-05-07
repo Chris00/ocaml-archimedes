@@ -19,7 +19,7 @@
    LICENSE for more details. *)
 
 type labels =
-  | Text of string array * float
+  | Text of (string * float) array
   | Number
   | Expnumber of float
   | Expnumber_named of float * string
