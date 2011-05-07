@@ -49,10 +49,14 @@ let draw bk =
   V.close vp
 
 let () =
-  List.iter draw [ "cairo PNG test_layout.png";
-                   (*"graphics hold";
-                   "tikz backend_path.tex"*)
-                 ]
+  try
+    List.iter draw [ "cairo PNG test_layout.png";
+                     "graphics hold";
+                     "tikz backend_path.tex"
+                   ]
+  with Backend.Error e as exn ->
+    Printf.printf "Backend.Error %s\n%!" (Backend.string_of_error e);
+    raise exn
 
 
 (* Local Variables: *)
