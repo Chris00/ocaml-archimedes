@@ -1,5 +1,4 @@
 axes
-viewports synchronization
 resizing
 plot functions
 graphics and tikz bug (Stack missing ?!)
@@ -10,3 +9,4 @@ Add arrow support into backends
 Can't catch a Cairo.Error.
 set_global_color -> set_color (see immediate_drawing!).
 separate graph_axes from viewports
+Optimize behavior of empty marks.
