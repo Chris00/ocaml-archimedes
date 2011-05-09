@@ -114,26 +114,38 @@ module type T = sig
 
           @param x default true, set to false if you want to synchronize
           only the y-axis
+
           @param y default true, set to false if you want to synchronize
           only the x-axis
       *)
 
-    val layout_grid : ?axes_sys:bool -> t -> int -> int -> t array
+    val layout_grid : ?syncs:(bool * bool * bool * bool) -> ?axes_sys:bool ->
+      t -> int -> int -> t array
       (** [layout_grid parent n_cols n_rows] creates [n_cols] * [n_rows]
           viewports layouted in a grid and returns them in an array of
           viewports
 
-          @param axes_sys see {!make}
-      *)
-    val layout_rows : ?axes_sys:bool -> t -> int -> t array
-      (** [layout_rows parent n_rows] creates [n_rows] viewports layouted in a
-          column and returns them in an array of viewpors
+          @param syncs (cx, cy, rx, ry) should we synchronize the x axis
+          along the columns ? The y axis alon the columns ? The x axis
+          along the rows ? The y axis along the rows ?
 
           @param axes_sys see {!make}
       *)
-    val layout_columns : ?axes_sys:bool -> t -> int -> t array
+    val layout_rows : ?syncs:(bool * bool) -> ?axes_sys:bool -> t ->
+      int -> t array
+      (** [layout_rows parent n_rows] creates [n_rows] viewports layouted in a
+          column and returns them in an array of viewpors
+
+          @param syncs the axes to synchronize (x, y)
+
+          @param axes_sys see {!make}
+      *)
+    val layout_columns : ?syncs:(bool * bool) -> ?axes_sys:bool -> t ->
+      int -> t array
       (** [layout_cols parent n_cols] creates [n_cols] viewports layouted in a
           row and returns them in an array of viewports
+
+          @param syncs the axes to synchronize (x, y)
 
           @param axes_sys see {!make}
       *)

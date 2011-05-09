@@ -220,9 +220,12 @@ and Viewport : sig
 
   val sync : ?x:bool -> ?y:bool -> t -> t -> unit
 
-  val layout_grid : ?axes_sys:bool -> t -> int -> int -> t array
-  val layout_rows : ?axes_sys:bool -> t -> int -> t array
-  val layout_columns : ?axes_sys:bool -> t -> int -> t array
+  val layout_grid : ?syncs:(bool * bool * bool * bool) -> ?axes_sys:bool ->
+    t -> int -> int -> t array
+  val layout_rows : ?syncs:(bool * bool) -> ?axes_sys:bool -> t ->
+    int -> t array
+  val layout_columns : ?syncs:(bool * bool) -> ?axes_sys:bool -> t ->
+    int -> t array
   val fixed_left : ?axes_sys:bool -> float -> t -> t * t
   val fixed_right : ?axes_sys:bool -> float -> t -> t * t
   val fixed_top : ?axes_sys:bool -> float -> t -> t * t
@@ -554,7 +557,7 @@ end
 (* Synchronization
  ***********************************************************************)
 
-  let sync ?(x=true) ?(y=false) vp vp_base =
+  let sync ?(x=true) ?(y=true) vp vp_base =
     let xvp = if x then vp_base else vp
     and yvp = if y then vp_base else vp in
     let xaxis = xvp.axes_system.Axes.x
@@ -565,22 +568,38 @@ end
  ***********************************************************************)
 
   (* Uniform grid; redim: identity *)
-  let layout_grid ?(axes_sys=false) vp rows cols =
+  let layout_grid ?(syncs=(false, false, false, false)) ?(axes_sys=false)
+      vp rows cols =
+    let cols_sync_x, cols_sync_y, rows_sync_x, rows_sync_y = syncs in
     let redim _ _ _ = () in
     let xstep = 1. /. (float cols) and ystep = 1. /. (float rows) in
+    let ret = Array.make (rows * cols) vp in
     let init_viewport i =
-      let xmin = float (i / cols) *. xstep
-      and ymin = float (i mod rows) *. ystep in
+      let x = i / cols and y = i mod cols in
+      let xmin = float x *. xstep
+      and ymin = float y *. ystep in
       let xmax = xmin +. xstep
       and ymax = ymin +. ystep in
-      make ~axes_sys vp Device xmin xmax ymin ymax redim
+      ret.(i) <- make ~axes_sys vp Device xmin xmax ymin ymax redim;
+      if x > 0 then begin
+        if cols_sync_x then sync ~y:false ret.(i) ret.(x)
+        else if cols_sync_y then sync ~x:false ret.(i) ret.(x)
+      end;
+      if y > 0 then begin
+        if rows_sync_x then sync ~y:false ret.(i) ret.(y * cols)
+        else if rows_sync_y then sync ~x:false ret.(i) ret.(y * cols)
+      end
     in
-    Array.init (rows * cols) init_viewport
+    for i = 0 to rows * cols - 1 do init_viewport i done;
+    ret
 
-  let layout_rows ?(axes_sys=false) vp n =
-    layout_grid ~axes_sys vp n 1
-  let layout_columns ?(axes_sys=false) vp n =
-    layout_grid ~axes_sys vp 1 n
+  let layout_rows ?(syncs=false, false) ?(axes_sys=false) vp n =
+    let sync_x, sync_y = syncs in
+    layout_grid ~syncs:(false, false, sync_x, sync_y) ~axes_sys vp n 1
+
+  let layout_columns ?(syncs=false, false) ?(axes_sys=false) vp n =
+    let sync_x, sync_y = syncs in
+    layout_grid ~syncs:(sync_x, sync_y, false, false) ~axes_sys vp 1 n
 
   let fixed_left ?(axes_sys=false) initial_proportion vp =
     let redim_fixed vp xfactor _ = begin
