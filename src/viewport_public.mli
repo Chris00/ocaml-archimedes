@@ -107,6 +107,17 @@ module type T = sig
 
     val get_backend : t -> Backend.t
 
+    val sync : ?x:bool -> ?y:bool -> t -> t -> unit
+      (** [sync vp vp_base] synchronize the viewport vp with vp_base. The
+          optionals ?x and ?y allows one to synchronize only the x axis or
+          only the y axis
+
+          @param x default true, set to false if you want to synchronize
+          only the y-axis
+          @param y default true, set to false if you want to synchronize
+          only the x-axis
+      *)
+
     val layout_grid : ?axes_sys:bool -> t -> int -> int -> t array
       (** [layout_grid parent n_cols n_rows] creates [n_cols] * [n_rows]
           viewports layouted in a grid and returns them in an array of

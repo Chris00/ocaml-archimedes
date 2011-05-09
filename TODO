@@ -9,3 +9,4 @@ Add support for orthonormalized autofit and add an orthonormalization routine.
 Add arrow support into backends
 Can't catch a Cairo.Error.
 set_global_color -> set_color (see immediate_drawing!).
+separate graph_axes from viewports
