@@ -19,8 +19,9 @@
    LICENSE for more details. *)
 
 type labels =
+  | No_label
   | Text of (string * float) array
-  | Number
+  | Number of int
   | Expnumber of float
   | Expnumber_named of float * string
   | Custom of (float -> string)
@@ -32,7 +33,7 @@ type tic =
 type t =
   | Fixed of labels * float list
   | Fixed_norm of labels * float list
-  | Equidistants of labels * int * int
+  | Equidistants of labels * float * int
   | Auto of labels
 
 (* ntics, min, max *)
@@ -70,16 +71,43 @@ let loose_labels_numeric ?(ntics=5) xmin xmax =
   aux [] graphmin
 
 let loose_labels xmin xmax = function
+  | No_label -> raise (Failure "Not yet implemented")
   | Text _ -> raise (Failure "Not yet implemented")
-  | Number -> loose_labels_numeric xmin xmax
+  | Number _ -> loose_labels_numeric xmin xmax (* TODO: use the number somehow. *)
   | Expnumber _ -> raise (Failure "Not yet implemented")
   | Expnumber_named _ -> raise (Failure "Not yet implemented")
   | Custom _ -> raise (Failure "Not yet implemented")
 
+let label_of_float label x = match label with
+  | No_label -> None
+  | Text _ -> raise (Failure "Not yet implemented")
+  | Number n -> Some (Printf.sprintf "%.*g" n x)
+  | Expnumber _ -> raise (Failure "Not yet implemented")
+  | Expnumber_named _ -> raise (Failure "Not yet implemented")
+  | Custom _ -> raise (Failure "Not yet implemented")
+
+let equi_labels d_major num_minor xmin xmax labels =
+  let d_minor = d_major /. float (succ num_minor) in
+  let rec aux_tics acc n x =
+    let n' = n mod (succ num_minor) in
+    let major = n' = 0 in
+    if x > xmax then acc
+    else
+      let tic =
+        if major then
+          Major (label_of_float labels x, x)
+        else
+          Minor x
+      and x' = x +. d_minor in
+      aux_tics (tic :: acc) (succ n') x'
+  in
+  if d_major > 0. then aux_tics [] 0 xmin else []
+
 let tics xmin xmax = function
   | Fixed _ -> raise (Failure "Not yet implemented")
   | Fixed_norm _ -> raise (Failure "Not yet implemented")
-  | Equidistants _ -> raise (Failure "Not yet implemented")
+  | Equidistants (labels, d_major, num_minor) ->
+      equi_labels d_major num_minor xmin xmax labels
   | Auto labels -> loose_labels xmin xmax labels
 
 (*  val loose_labels : float -> float -> labels -> tic list*)

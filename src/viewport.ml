@@ -145,7 +145,6 @@ end
             ~x ~y:(axis_offset +. tic_offset) Backend.CB label ()
         end
       | Tics.Minor x ->
-        let x, _ = V.ortho_from vp V.Data (x, 0.) in
         V.set_rel_mark_size_direct vp tic_size ();
         V.mark_direct vp x axis_offset tic_type ()
     in
@@ -186,7 +185,6 @@ end
             ~x:(axis_offset +. tic_offset) ~y Backend.LC label ()
         end
       | Tics.Minor x ->
-        let _, y = V.ortho_from vp V.Data (0., x) in
         V.set_rel_mark_size_direct vp tic_size ();
         V.mark_direct vp axis_offset x tic_type ()
     in
@@ -882,12 +880,12 @@ end
     add_instruction (mark_direct vp ~x ~y name) vp
 
   let add_x_axis ?(major=("tic_up",5.)) ?(minor=("tic_up",2.))
-      ?(tics=Tics.Auto Tics.Number) ?(offset=Axes.Absolute 0.)
+      ?(tics=Tics.Auto (Tics.Number 5)) ?(offset=Axes.Absolute 0.)
       ?(sign=Axes.Positive) vp =
     Axes.add_axis major minor tics offset sign (vp.axes_system.Axes.x)
 
   let add_y_axis ?(major=("tic_right",5.)) ?(minor=("tic_right",2.))
-      ?(tics=Tics.Auto Tics.Number) ?(offset=Axes.Absolute 0.)
+      ?(tics=Tics.Auto (Tics.Number 5)) ?(offset=Axes.Absolute 0.)
       ?(sign=Axes.Positive) vp =
     Axes.add_axis major minor tics offset sign (vp.axes_system.Axes.y)
 

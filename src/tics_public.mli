@@ -20,8 +20,9 @@
 
 module type T = sig
   type labels =
+    | No_label
     | Text of (string * float) array
-    | Number
+    | Number of int
     | Expnumber of float
     | Expnumber_named of float * string
     | Custom of (float -> string)
@@ -33,7 +34,7 @@ module type T = sig
   type t =
     | Fixed of labels * float list
     | Fixed_norm of labels * float list
-    | Equidistants of labels * int * int
+    | Equidistants of labels * float * int
     | Auto of labels
 
   val tics: float -> float -> t -> tic list
