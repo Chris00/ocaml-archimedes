@@ -907,12 +907,12 @@ end
     add_instruction (mark_direct vp ~x ~y name) vp
 
   let add_x_axis ?(major=("tic_up",5.)) ?(minor=("tic_up",2.))
-      ?(tics=Tics.Auto Tics.Number) ?(offset=Axes.Absolute 0.)
+      ?(tics=Tics.Auto (Tics.Number 5)) ?(offset=Axes.Absolute 0.)
       ?(sign=Axes.Positive) vp =
     Axes.add_axis major minor tics offset sign (vp.axes_system.Axes.x)
 
   let add_y_axis ?(major=("tic_right",5.)) ?(minor=("tic_right",2.))
-      ?(tics=Tics.Auto Tics.Number) ?(offset=Axes.Absolute 0.)
+      ?(tics=Tics.Auto (Tics.Number 5)) ?(offset=Axes.Absolute 0.)
       ?(sign=Axes.Positive) vp =
     Axes.add_axis major minor tics offset sign (vp.axes_system.Axes.y)
 
