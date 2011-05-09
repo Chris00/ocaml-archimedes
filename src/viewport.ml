@@ -109,54 +109,44 @@ end
     } in
     axis.graph_axes <- graph_axis :: axis.graph_axes
 
+  let axis_offset start range = function
+    | Absolute y -> start +. range *. y
+    | Relative y -> y
+
+  let tic vp x y (tic_type, tic_size) =
+    V.set_rel_mark_size_direct vp tic_size ();
+    V.mark_direct vp x y tic_type ()
+
+  let draw_tic tic graph_axis text = function
+    | Tics.Major (None, v) -> tic v graph_axis.Axes.major_tics
+    | Tics.Major (Some label, v) -> tic v graph_axis.Axes.major_tics;
+        text v label
+    | Tics.Minor v -> tic v graph_axis.Axes.minor_tics
+
   let draw_x_axis vp graph_axis =
     (* TODO add Backend.ARROW *)
     (*V.set_line_cap vp Backend.ARROW;*)
     let yrange = V.ymax vp -. V.ymin vp in
-    let axis_offset = match graph_axis.offset with
-      | Absolute y -> V.ymin vp +. yrange *. y
-      | Relative y -> y
-    in
+    let axis_offset = axis_offset (V.ymin vp) yrange graph_axis.offset in
     let path = Path.make_at (V.xmin vp) axis_offset in
     Path.line_to path (V.xmax vp) axis_offset;
     V.stroke_direct path vp V.Data ();
-    (* draw tics *)
-    let label_offset = axis_offset -. yrange *. 0.0375 in
-    let tic (tic_type, tic_size) x =
-      V.set_rel_mark_size_direct vp tic_size ();
-      V.mark_direct vp x axis_offset tic_type ()
-    in
-    let draw_tic = function
-      | Tics.Major (None, x) -> tic graph_axis.Axes.major_tics x
-      | Tics.Major (Some label, x) -> tic graph_axis.Axes.major_tics x;
-          V.show_text_direct vp V.Data ~x ~y:label_offset Backend.CB label ()
-      | Tics.Minor x -> tic graph_axis.Axes.minor_tics x
-    in
-    List.iter draw_tic graph_axis.tics_values
+    let y = axis_offset -. yrange *. 0.0375 in
+    let tic x = tic vp x axis_offset in
+    let text x lbl = V.show_text_direct vp V.Data ~x ~y Backend.CB lbl () in
+    List.iter (draw_tic tic graph_axis text) graph_axis.tics_values
     (*V.set_line_cap vp Backend.BUTT;*)
 
   let draw_y_axis vp graph_axis =
     let xrange = V.xmax vp -. V.xmin vp in
-    let axis_offset = match graph_axis.offset with
-      | Absolute x -> V.xmin vp +. xrange *. x
-      | Relative x -> x
-    in
+    let axis_offset = axis_offset (V.xmin vp) xrange graph_axis.offset in
     let path = Path.make_at axis_offset (V.ymin vp) in
     Path.line_to path axis_offset (V.ymax vp);
     V.stroke_direct path vp V.Data ();
-    (* draw tics *)
-    let label_offset = axis_offset -. xrange *. 0.0375 in
-    let tic (tic_type, tic_size) y =
-      V.set_rel_mark_size_direct vp tic_size ();
-      V.mark_direct vp axis_offset y tic_type ()
-    in
-    let draw_tic = function
-      | Tics.Major (None, y) -> tic graph_axis.Axes.major_tics y
-      | Tics.Major (Some label, y) -> tic graph_axis.Axes.major_tics y;
-          V.show_text_direct vp V.Data ~x:label_offset ~y Backend.CB label ()
-      | Tics.Minor y -> tic graph_axis.Axes.minor_tics y
-    in
-    List.iter draw_tic graph_axis.tics_values
+    let x = axis_offset -. xrange *. 0.0375 in
+    let tic y = tic vp axis_offset y in
+    let text y lbl = V.show_text_direct vp V.Data ~x ~y Backend.CB lbl () in
+    List.iter (draw_tic tic graph_axis text) graph_axis.tics_values
 
   let draw_axes vp =
     List.iter (draw_x_axis vp) (vp.Viewport.axes_system.x.graph_axes);
