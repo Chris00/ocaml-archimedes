@@ -23,6 +23,7 @@ open Printf
    linking succeeds. *)
 module ForLinking_1__ = Callback
 module ForLinking_2__ = Hashtbl
+module ForLinking_3__ = Stack
 
 (* Without the following, the native version reports "undefined
    symbol: caml_hash_variant" when loading Cairo. *)
