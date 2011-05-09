@@ -121,8 +121,7 @@ end
     Path.line_to path (V.xmax vp) axis_offset;
     V.stroke_direct path vp V.Data ();
     (* draw tics *)
-    let _, tic_size = graph_axis.Axes.major_tics in
-    let label_offset = axis_offset +. yrange *. (-0.75 *. tic_size /. 100.) in
+    let label_offset = axis_offset -. yrange *. 0.0375 in
     let tic (tic_type, tic_size) x =
       V.set_rel_mark_size_direct vp tic_size ();
       V.mark_direct vp x axis_offset tic_type ()
@@ -137,39 +136,25 @@ end
     (*V.set_line_cap vp Backend.BUTT;*)
 
   let draw_y_axis vp graph_axis =
-    (* FIXME: Absolutely ugly.*)
+    let xrange = V.xmax vp -. V.xmin vp in
     let axis_offset = match graph_axis.offset with
-      | Absolute x ->
-        let _, ofs = V.data_from vp V.Graph (x, 0.) in
-        ofs
+      | Absolute x -> V.xmin vp +. xrange *. x
       | Relative x -> x
     in
     let path = Path.make_at axis_offset (V.ymin vp) in
     Path.line_to path axis_offset (V.ymax vp);
     V.stroke_direct path vp V.Data ();
     (* draw tics *)
-    let tic_type, tic_size = graph_axis.Axes.major_tics in
-    let mtic_type, mtic_size = graph_axis.Axes.minor_tics in
-    let tic_offset =
-      (* FIXME: Absolutely ugly.*)
-      let x1, _ = V.data_from vp V.Orthonormal (0., 0.)
-        (* [/. 100.] is because tic_size is in user coordinates
-           [100. = usr_ms] *)
-      and x2, _ =
-        V.data_from vp V.Orthonormal (-0.75 *. tic_size /. 100., 0.) in
-      axis_offset +. x2 -. x1
-    in
-    let draw_major y =
+    let label_offset = axis_offset -. xrange *. 0.0375 in
+    let tic (tic_type, tic_size) y =
       V.set_rel_mark_size_direct vp tic_size ();
       V.mark_direct vp axis_offset y tic_type ()
     in
     let draw_tic = function
-      | Tics.Major (None, y) -> draw_major y
-      | Tics.Major (Some label, y) -> draw_major y;
-          V.show_text_direct vp V.Data ~x:tic_offset ~y Backend.LC label ()
-      | Tics.Minor y ->
-          V.set_rel_mark_size_direct vp mtic_size ();
-          V.mark_direct vp axis_offset y mtic_type ()
+      | Tics.Major (None, y) -> tic graph_axis.Axes.major_tics y
+      | Tics.Major (Some label, y) -> tic graph_axis.Axes.major_tics y;
+          V.show_text_direct vp V.Data ~x:label_offset ~y Backend.CB label ()
+      | Tics.Minor y -> tic graph_axis.Axes.minor_tics y
     in
     List.iter draw_tic graph_axis.tics_values
 
