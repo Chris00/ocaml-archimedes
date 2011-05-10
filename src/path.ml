@@ -41,6 +41,13 @@ let make () =
     y = 0.;
     curr_pt = false }
 
+let copy p =
+  { path = List.map (fun x -> x) p.path;
+    extents = { p.extents with Matrix.x = p.extents.Matrix.x };
+    x = p.x;
+    y = p.y;
+    curr_pt = p.curr_pt }
+
 let clear p =
   p.path <- [];
   p.extents <- { Matrix.x = 0.; y = 0.; w = 0.; h = 0. };

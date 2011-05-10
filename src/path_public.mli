@@ -24,6 +24,9 @@ module type T = sig
   val make: unit -> t
     (** [make ()] creates a new empty path *)
 
+  val copy: t -> t
+    (** [copy p] copies a path *)
+
   val make_at: float -> float -> t
     (** [make x y] creates a new empty path and moves it to ([x], [y]) *)
 

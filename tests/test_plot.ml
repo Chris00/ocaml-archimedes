@@ -6,7 +6,7 @@ let draw bk =
   let vp = V.init ~w:1024. ~h:600. ~dirs:["../src"; "./src"] bk in
   V.set_mark_size vp 5.;
   V.set_line_width vp 1.;
-  P.fx ~pathstyle:(P.Linespoints "o") vp (fun x -> x ** 2.) (-10.) 10.;
+  P.fx ~fill:true ~ylog:true ~pathstyle:(P.Linespoints "o") vp exp (-10.) 10.;
   V.mark vp ~x:0. ~y:5. "o";
   Axes.box vp;
   V.close vp

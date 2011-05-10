@@ -9,12 +9,11 @@ module type T = sig
       | Points of string
       | Linespoints of string
       | Impulses
-    type fill = In | Out
     type filledcurves = Color.t * Color.t (* f1 > f2, f2 < f1 *)
 
-    val fx : ?min_step:float -> ?nsamples:int -> ?fill:fill ->
-      ?pathstyle:pathstyle -> Viewport.Viewport.t -> (float -> float) ->
-      float -> float -> unit
+    val fx : ?xlog:bool -> ?ylog:bool -> ?min_step:float -> ?nsamples:int ->
+      ?fill:bool -> ?fillcolor:Color.t -> ?pathstyle:pathstyle ->
+      Viewport.Viewport.t -> (float -> float) -> float -> float -> unit
 
 (*    val xy_param : V.t -> ?nsamples:int -> ?fill:fill ->
       (float -> float * float) -> float -> float -> unit

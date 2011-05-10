@@ -26,11 +26,11 @@ module type Common = sig
     | Points of string
     | Linespoints of string
     | Impulses
-  type fill = In | Out
   type filledcurves = Color.t * Color.t (* f1 > f2, f2 < f1 *)
 
-  val fx : ?min_step:float -> ?nsamples:int -> ?fill:fill ->
-    ?pathstyle:pathstyle -> V.t -> (float -> float) -> float -> float -> unit
+  val fx : ?xlog:bool -> ?ylog:bool -> ?min_step:float -> ?nsamples:int ->
+    ?fill:bool -> ?fillcolor:Color.t -> ?pathstyle:pathstyle ->
+    V.t -> (float -> float) -> float -> float -> unit
 
 (*  val xy_param : V.t -> ?nsamples:int -> ?fill:fill ->
     (float -> float * float) -> float -> float -> unit
@@ -48,44 +48,41 @@ struct
     | Points of string
     | Linespoints of string
     | Impulses
-  type fill = In | Out
   type filledcurves = Color.t * Color.t (* f1 > f2, f2 < f1 *)
 
   let f_line_to vp (x, y) = V.line_to vp x y
   let f_finish vp = V.stroke vp V.Data
 
-  let xyf ?nsamples ?min_step ?(do_with=f_line_to) ?(finish=f_finish)
-      vp f a b =
-    let _, (y0, y1), fct = Functions.samplefx f ?nsamples ?min_step b a in
-    V.auto_fit vp a y0 b y1;
-    let f () =
-      fct (fun () -> do_with vp) ();
-      finish vp
+  let fx ?xlog ?ylog ?min_step ?nsamples ?(fill=false) ?(fillcolor=Color.red)
+      ?(pathstyle=Lines) vp f a b =
+    let _, (ymin, ymax), data =
+      Functions.samplefx ?xlog ?ylog ?nsamples ?min_step f b a
     in
-    V.add_instruction f vp
-
-  let fx ?min_step ?nsamples ?fill ?(pathstyle=Lines) vp f a b =
-    let path = Path.make () in
-    let draw x y = match pathstyle with
+    V.auto_fit vp a ymin b ymax;
+    let path = Path.make_at a (f a) in
+    let draw (x, y) = match pathstyle with
       | Lines -> Path.line_to path ~x ~y
-      | Points m -> V.mark_direct vp ~x ~y m ()
-      | Linespoints m ->
-          Path.line_to path ~x ~y;
-          V.mark_direct vp ~x ~y m ()
+      | Linespoints _ -> Path.line_to path ~x ~y
       | Impulses ->
           Path.move_to path ~x ~y:0.;
           Path.line_to path ~x ~y
+      | Points _ -> ()
     in
-    let first = ref true in
-    let do_with vp (x, y) =
-      if !first then begin
-        Path.move_to path ~x ~y;
-        first := false
-      end
-      else draw x y
-    in
-    let finish vp = V.stroke_direct ~path vp V.Data (); first := true in
-    xyf ?min_step ?nsamples ~do_with ~finish vp f a b
+    List.iter draw data;
+    let pathcopy = Path.copy path in
+    if fill then begin
+      Path.line_to path b 0.;
+      Path.line_to path a 0.;
+      V.set_global_color vp fillcolor;
+      V.fill ~path vp V.Data;
+      V.set_global_color vp Color.black
+    end;
+    V.stroke ~path:pathcopy vp V.Data;
+    (match pathstyle with
+     | Linespoints m | Points m ->
+         List.iter (fun (x, y) -> V.mark vp ~x ~y m) data
+     | _ -> ())
+
 end
 
 (************************************************************************)

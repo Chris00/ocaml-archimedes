@@ -27,7 +27,7 @@ val samplefx :
   ?xlog:bool -> ?ylog:bool ->
   ?min_step:float ->
   ?nsamples:int -> (float -> float) -> float -> float ->
-  int * (float * float) * (('a -> float * float -> 'a) -> 'a -> 'a)
+  int * (float * float) * (float * float) list
 
 val fxy_list :
   (float -> float * float) ->
