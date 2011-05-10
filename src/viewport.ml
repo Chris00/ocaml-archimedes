@@ -132,7 +132,7 @@ end
     let offset, pos = axis_offset (V.ymin vp) yrange graph_axis.offset in
     let path = Path.make_at (V.xmin vp) offset in
     Path.line_to path (V.xmax vp) offset;
-    V.stroke_direct path vp V.Data ();
+    V.stroke_direct ~path vp V.Data ();
     let y = offset +. yrange *. 0.0375 *. pos in
     let tic x = tic vp x offset in
     let text x lbl = V.show_text_direct vp V.Data ~x ~y B.CC lbl () in
@@ -144,7 +144,7 @@ end
     let offset, pos = axis_offset (V.xmin vp) xrange graph_axis.offset in
     let path = Path.make_at offset (V.ymin vp) in
     Path.line_to path offset (V.ymax vp);
-    V.stroke_direct path vp V.Data ();
+    V.stroke_direct ~path vp V.Data ();
     let x = offset +. xrange *. 0.0375 *. pos in
     let tic y = tic vp offset y in
     let text y lbl = V.show_text_direct vp V.Data ~x ~y B.CC lbl () in
@@ -207,8 +207,6 @@ and Viewport : sig
   val get_font_size : t -> float
   val get_mark_size : t -> float
 
-  val set_rel_mark_size_direct : t -> float -> unit -> unit
-
   val lower_left_corner : t -> float * float
   val upper_right_corner : t -> float * float
   val dimensions : t -> float * float (* returns (w, h) *)
@@ -234,19 +232,14 @@ and Viewport : sig
   val close_path : t -> unit
   val clear_path : t -> unit
     (*val path_extents : t -> rectangle*)
-  val stroke_direct : Path.t -> t -> coord_name -> unit -> unit
   val stroke_preserve : ?path:Path.t -> t -> coord_name -> unit
   val stroke : ?path:Path.t -> t -> coord_name -> unit
-  val fill : t -> unit
-  val fill_preserve : t -> unit
+  val fill_preserve : ?path:Path.t -> t -> coord_name -> unit
+  val fill : ?path:Path.t -> t -> coord_name -> unit
   val clip_rectangle : t -> x:float -> y:float -> w:float -> h:float -> unit
     (*  val save_vp : t -> unit
         val restore_vp : t -> unit*)
   val select_font_face : t -> Backend.slant -> Backend.weight -> string -> unit
-  val show_text_direct :
-    t -> coord_name ->
-    ?rotate:float ->
-    x:float -> y:float -> Backend.text_position -> string -> unit -> unit
   val show_text :
     t -> coord_name ->
     ?rotate:float ->
@@ -257,7 +250,26 @@ and Viewport : sig
   val mark : t -> x:float -> y:float -> string -> unit
     (* val mark_extents : t -> string -> rectangle *)
 
+  val set_line_width_direct : t -> float -> unit -> unit
+  val set_font_size_direct : t -> float -> unit -> unit
+  val set_mark_size_direct : t -> float -> unit -> unit
+  val set_rel_line_width_direct : t -> float -> unit -> unit
+  val set_rel_font_size_direct : t -> float -> unit -> unit
+  val set_rel_mark_size_direct : t -> float -> unit -> unit
+  val set_color_direct : t -> Color.t -> unit -> unit
+  val set_line_cap_direct : t -> Backend.line_cap -> unit -> unit
+  val set_dash_direct : t -> float -> float array -> unit -> unit
+  val set_line_join_direct : t -> Backend.line_join -> unit -> unit
+  val stroke_direct : ?path:Path.t -> t -> coord_name -> unit -> unit
+  val fill_direct : ?path:Path.t -> t -> coord_name -> unit -> unit
+  val clip_rectangle_direct : t -> x:float -> y:float -> w:float ->
+    h:float -> unit -> unit
+  val select_font_face_direct : t -> Backend.slant -> Backend.weight ->
+    string -> unit -> unit
+  val show_text_direct : t -> coord_name -> ?rotate:float ->
+    x:float -> y:float -> Backend.text_position -> string -> unit -> unit
   val mark_direct : t -> x:float -> y:float -> string -> unit -> unit
+
   val xrange : t -> float -> float -> unit
   val yrange : t -> float -> float -> unit
   val xmin : t -> float
@@ -265,6 +277,8 @@ and Viewport : sig
   val ymin : t -> float
   val ymax : t -> float
   val close : t -> unit
+
+  val add_instruction : (unit -> unit) -> t -> unit
   val do_instructions : t -> unit
 
   val add_x_axis: ?major:(string * float) -> ?minor:(string * float) ->
@@ -322,11 +336,103 @@ end
   let usr_lw, usr_ts, usr_ms = 500., 500., 100.
   let def_lw, def_ts, def_ms = 0.002, 0.024, 0.01
 
+(* General functions
+ ***********************************************************************)
+
   let get_coord_from_name vp = function
     | Device -> vp.coord_device
     | Graph -> vp.coord_graph
     | Data -> vp.coord_data
     | Orthonormal -> vp.coord_orthonormal
+
+  let get_path vp = function
+    | None -> vp.path
+    | Some p -> p
+
+  let to_parent coord (x, y) = Coordinate.to_parent coord ~x ~y
+  let from_parent coord (x, y) = Coordinate.from_parent coord ~x ~y
+
+  let rec ortho_from vp coord_name pos = match coord_name with
+    | Device -> from_parent vp.coord_orthonormal pos
+    | Graph -> ortho_from vp Device (to_parent vp.coord_graph pos)
+    | Data -> ortho_from vp Graph (to_parent vp.coord_data pos)
+    | Orthonormal -> pos
+
+  let rec data_from vp coord_name pos = match coord_name with
+    | Device -> data_from vp Graph (from_parent vp.coord_graph pos)
+    | Graph -> from_parent vp.coord_data pos
+    | Data -> pos
+    | Orthonormal -> data_from vp Device (to_parent vp.coord_orthonormal pos)
+
+(* Primitives
+ ***********************************************************************)
+
+  let set_line_width_direct vp lw () =
+    Backend.set_line_width vp.backend lw
+
+  let set_font_size_direct vp ts () =
+    Backend.set_font_size vp.backend ts
+
+  let set_mark_size_direct vp ms () =
+    vp.mark_size <- ms
+
+  let set_rel_line_width_direct vp lw () =
+    Backend.set_line_width vp.backend (lw /. usr_lw *. vp.square_side)
+
+  let set_rel_font_size_direct vp ts () =
+    Backend.set_font_size vp.backend (ts /. usr_ts *. vp.square_side)
+
+  let set_rel_mark_size_direct vp ms () =
+    vp.mark_size <- ms /. usr_ms *. vp.square_side
+
+  let set_color_direct vp color () =
+    Backend.set_color vp.backend color
+
+  let set_line_cap_direct vp lcap () =
+    Backend.set_line_cap vp.backend lcap
+
+  (* Fixme: Find more appropriated names for x, y *)
+  let set_dash_direct vp x y () =
+    Backend.set_dash vp.backend x y
+
+  let set_line_join_direct vp join () =
+    Backend.set_line_join vp.backend join
+
+  let stroke_direct ?path vp coord_name () =
+    let path = get_path vp path in
+    let coord = get_coord_from_name vp coord_name in
+    let ctm = Coordinate.use vp.backend coord in
+    Path.stroke_on_backend path vp.backend;
+    Coordinate.restore vp.backend ctm
+
+  let fill_direct ?path vp coord_name () =
+    let path = get_path vp path in
+    let coord = get_coord_from_name vp coord_name in
+    let ctm = Coordinate.use vp.backend coord in
+    Path.fill_on_backend path vp.backend;
+    Coordinate.restore vp.backend ctm
+
+  let clip_rectangle_direct vp ~x ~y ~w ~h () =
+    Backend.clip_rectangle vp.backend x y w h
+
+  let select_font_face_direct vp slant weight family () =
+    Backend.select_font_face vp.backend slant weight family
+
+  let show_text_direct vp coord_name ?(rotate=0.) ~x ~y pos text () =
+    let ctm = Coordinate.use vp.backend vp.coord_orthonormal in
+    let x, y = ortho_from vp coord_name (x, y) in
+    Backend.show_text vp.backend ~rotate ~x ~y pos text;
+    Coordinate.restore vp.backend ctm
+
+  let mark_direct vp ~x ~y name () =
+    let ms = vp.mark_size /. vp.square_side in
+    let x, y = ortho_from vp Data (x, y) in
+    let coord = Coordinate.make_translate vp.coord_orthonormal
+      (x -. ms /. 2.) (y -. ms /. 2.) in
+    Coordinate.scale coord ms ms;
+    let ctm = Coordinate.use vp.backend coord in
+    Pointstyle.render name vp.backend;
+    Coordinate.restore vp.backend ctm
 
 (* Initialization functions
  ***********************************************************************)
@@ -659,64 +765,57 @@ end
  ***********************************************************************)
 
   let set_line_width vp lw =
-    add_instruction (fun () -> Backend.set_line_width vp.backend lw) vp
+    add_instruction (set_line_width_direct vp lw) vp
 
   let set_font_size vp ts =
-    add_instruction (fun () -> Backend.set_font_size vp.backend ts) vp
+    add_instruction (set_font_size_direct vp ts) vp
 
   let set_mark_size vp ms =
-    add_instruction (fun () -> vp.mark_size <- ms) vp
+    add_instruction (set_mark_size_direct vp ms) vp
 
   let set_rel_line_width vp lw =
-    let f () =
-      Backend.set_line_width vp.backend (lw /. usr_lw *. vp.square_side)
-    in
-    add_instruction f vp
+    add_instruction (set_rel_line_width_direct vp lw) vp
 
-  (* FIXME: Fix names text, font? *)
   let set_rel_font_size vp ts =
-    let f () =
-      Backend.set_font_size vp.backend (ts /. usr_ts *. vp.square_side)
-    in
-    add_instruction f vp
-
-  let set_rel_mark_size_direct vp ms () =
-    vp.mark_size <- (ms /. usr_ms *. vp.square_side)
+    add_instruction (set_rel_font_size_direct vp ts) vp
 
   let set_rel_mark_size vp ms =
     add_instruction (set_rel_mark_size_direct vp ms) vp
 
-  let get_line_width vp =
-    (Sizes.get_lw vp.sizes) *. usr_lw
-  let get_font_size vp =
-    (Sizes.get_ts vp.sizes) *. usr_ts
-  let get_mark_size vp =
-    (Sizes.get_marks vp.sizes) *. usr_ms
-
+  (* Fixme: Are sizes still used ? *)
+  let get_line_width vp = (Sizes.get_lw vp.sizes) *. usr_lw
+  let get_font_size vp = (Sizes.get_ts vp.sizes) *. usr_ts
+  let get_mark_size vp = (Sizes.get_marks vp.sizes) *. usr_ms
 
 (* ......................................................................... *)
 
-  let lower_left_corner vp = Coordinate.to_device vp.coord_device ~x:0. ~y:0.
+  let lower_left_corner vp =
+    Coordinate.to_device vp.coord_device ~x:0. ~y:0.
 
-  let upper_right_corner vp = Coordinate.to_device vp.coord_device ~x:1. ~y:1.
+  let upper_right_corner vp =
+    Coordinate.to_device vp.coord_device ~x:1. ~y:1.
 
-  let dimensions vp = Coordinate.to_device_distance vp.coord_device ~dx:1. ~dy:1.
+  let dimensions vp =
+    Coordinate.to_device_distance vp.coord_device ~dx:1. ~dy:1.
 
   let set_global_color vp c =
-    add_instruction (fun () -> Backend.set_color vp.backend c) vp
+    add_instruction (set_color_direct vp c) vp
 
   let set_global_line_cap vp lc =
-    add_instruction (fun () -> Backend.set_line_cap vp.backend lc) vp
+    add_instruction (set_line_cap_direct vp lc) vp
 
   let set_global_dash vp x y =
-    add_instruction (fun () -> Backend.set_dash vp.backend x y) vp
+    add_instruction (set_dash_direct vp x y) vp
 
   let set_global_line_join vp join =
-    add_instruction (fun () -> Backend.set_line_join vp.backend join) vp
+    add_instruction (set_line_join_direct vp join) vp
 
   let get_line_cap vp = Backend.get_line_cap vp.backend
   let get_dash vp = Backend.get_dash vp.backend
   let get_line_join vp = Backend.get_line_join vp.backend
+
+(* Viewport path manipulation
+ ***********************************************************************)
 
   let move_to vp ~x ~y =
     add_instruction (fun () -> Path.move_to vp.path ~x ~y) vp
@@ -732,7 +831,6 @@ end
 
   let curve_to vp ~x1 ~y1 ~x2 ~y2 ~x3 ~y3 =
     add_instruction (fun () -> Path.curve_to vp.path ~x1 ~y1 ~x2 ~y2 ~x3 ~y3) vp
-
   let rectangle vp ~x ~y ~w ~h =
     add_instruction (fun () -> Path.rectangle vp.path ~x ~y ~w ~h) vp
 
@@ -747,88 +845,37 @@ end
 
   let path_extents vp = Path.extents vp.path
 
-  let stroke_direct path vp coord_name () =
-    let coord = get_coord_from_name vp coord_name in
-    let ctm = Coordinate.use vp.backend coord in
-    Path.stroke_on_backend path vp.backend;
-    Coordinate.restore vp.backend ctm
-
-  let stroke_preserve ?path vp coord_name =
-    let path = match path with
-      | None -> vp.path
-      | Some p -> p
-    in
+  let fit_path vp path =
     let e = Path.extents path in
     let x0 = e.Matrix.x
     and y0 = e.Matrix.y in
     let x1 = x0 +. e.Matrix.w
     and y1 = y0 +. e.Matrix.h in
-    auto_fit vp x0 y0 x1 y1;
-    add_instruction (stroke_direct path vp coord_name) vp
+    auto_fit vp x0 y0 x1 y1
+
+  let stroke_preserve ?path vp coord_name =
+    let path = get_path vp path in
+    fit_path vp path;
+    add_instruction (stroke_direct ~path vp coord_name) vp
 
   let stroke ?path vp coord_name =
     stroke_preserve ?path vp coord_name;
     if path = None then add_instruction (fun () -> Path.clear vp.path) vp
 
-  let fill vp =
-    add_instruction (fun () -> Backend.fill vp.backend) vp
+  let fill_preserve ?path vp coord_name =
+    let path = get_path vp path in
+    fit_path vp path;
+    add_instruction (fill_direct ~path vp coord_name) vp
 
-  let fill_preserve vp =
-    add_instruction (fun () -> Backend.fill_preserve vp.backend) vp
+  let fill ?path vp coord_name =
+    fill_preserve ?path vp coord_name;
+    if path = None then add_instruction (fun () -> Path.clear vp.path) vp
 
   let clip_rectangle vp ~x ~y ~w ~h =
-    add_instruction (fun () -> Backend.clip_rectangle vp.backend x y w h) vp
-
-(* (* TODO: Check what is it used for ? (drop it ?) *)
-  let save_vp vp =
-    let f () =
-      Backend.save vp.backend;
-      let sizes =
-        Sizes.get_lw vp.scalings,
-        Sizes.get_ts vp.scalings,
-        Sizes.get_marks vp.scalings
-      in
-      Stack.push sizes vp.scalings_hist
-    in
-    add_instruction f vp
-
-  (* TODO: Check what is it used for ? (drop it ?) *)
-  let restore_vp vp =
-    let f () =
-      try
-        let lw, ts, marks = Stack.pop vp.scalings_hist in
-        Sizes.set_abs_lw vp.scalings lw;
-        Sizes.set_abs_ts vp.scalings ts;
-        Sizes.set_abs_marks vp.scalings marks;
-        Backend.restore vp.backend
-      with Stack.Empty -> ()
-    in
-    add_instruction f vp *)
+    add_instruction (clip_rectangle_direct vp ~x ~y ~w ~h) vp
 
   let select_font_face vp slant weight family =
-    let f () = Backend.select_font_face vp.backend slant weight family in
-      add_instruction f vp
-
-  let to_parent coord (x, y) = Coordinate.to_parent coord ~x ~y
-  let from_parent coord (x, y) = Coordinate.from_parent coord ~x ~y
-
-  let rec ortho_from vp coord_name pos = match coord_name with
-    | Device -> from_parent vp.coord_orthonormal pos
-    | Graph -> ortho_from vp Device (to_parent vp.coord_graph pos)
-    | Data -> ortho_from vp Graph (to_parent vp.coord_data pos)
-    | Orthonormal -> pos
-
-  let rec data_from vp coord_name pos = match coord_name with
-    | Device -> data_from vp Graph (from_parent vp.coord_graph pos)
-    | Graph -> from_parent vp.coord_data pos
-    | Data -> pos
-    | Orthonormal -> data_from vp Device (to_parent vp.coord_orthonormal pos)
-
-  let show_text_direct vp coord_name ?(rotate=0.) ~x ~y pos text () =
-    let ctm = Coordinate.use vp.backend vp.coord_orthonormal in
-    let x, y = ortho_from vp coord_name (x, y) in
-    Backend.show_text vp.backend ~rotate ~x ~y pos text;
-    Coordinate.restore vp.backend ctm
+    add_instruction (select_font_face_direct vp slant weight family) vp
 
   let show_text vp coord_name ?(rotate=0.) ~x ~y pos text =
     (* auto_fit if Data *)
@@ -858,16 +905,6 @@ end
       auto_fit vp x0 y0 xend yend
     end;
     add_instruction (show_text_direct vp coord_name ~rotate ~x ~y pos text) vp
-
-  let mark_direct vp ~x ~y name () =
-    let ms = vp.mark_size /. vp.square_side in
-    let x, y = ortho_from vp Data (x, y) in
-    let coord = Coordinate.make_translate vp.coord_orthonormal
-      (x -. ms /. 2.) (y -. ms /. 2.) in
-    Coordinate.scale coord ms ms;
-    let ctm = Coordinate.use vp.backend coord in
-    Pointstyle.render name vp.backend;
-    Coordinate.restore vp.backend ctm
 
   let mark vp ~x ~y name =
     auto_fit vp x y x y; (* TODO we want all the mark to be included *)

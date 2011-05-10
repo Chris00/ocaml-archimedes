@@ -215,15 +215,20 @@ let close p =
     p.y <- y
   end
 
+let do_on_backend b = function
+  | Move_to (x, y) -> Backend.move_to b x y
+  | Line_to (x, y) -> Backend.line_to b x y
+  | Rectangle (x, y, w, h) -> Backend.rectangle b x y w h
+  | Curve_to (_, _, x1, y1, x2, y2, x3, y3) ->
+      Backend.curve_to b x1 y1 x2 y2 x3 y3
+  | Close (_, _) -> Backend.close_path b
+
 let stroke_on_backend p b =
   Backend.clear_path b;
-  let f = function
-    | Move_to (x, y) -> Backend.move_to b x y
-    | Line_to (x, y) -> Backend.line_to b x y
-    | Rectangle (x, y, w, h) -> Backend.rectangle b x y w h
-    | Curve_to (_, _, x1, y1, x2, y2, x3, y3) ->
-        Backend.curve_to b x1 y1 x2 y2 x3 y3
-    | Close (_, _) -> Backend.close_path b
-  in
-  List.iter f (List.rev p.path);
+  List.iter (do_on_backend b) (List.rev p.path);
   Backend.stroke b
+
+let fill_on_backend p b =
+  Backend.clear_path b;
+  List.iter (do_on_backend b) (List.rev p.path);
+  Backend.fill b

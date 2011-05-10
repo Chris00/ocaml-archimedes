@@ -67,4 +67,9 @@ module type T = sig
   (** [stroke_on_backend p bk] strokes the path [p] on the backend
       [bk]. It will not clear the path [p] but will clear the path of
       [bk]. *)
+
+  val fill_on_backend: t -> Backend.t -> unit
+  (** [fill_on_backend p bk] fills in the path [p] on the backend
+      [bk]. It will not clear the path [p] but will clear the path of
+      [bk]. *)
 end
