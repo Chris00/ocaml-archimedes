@@ -1,6 +1,6 @@
 (* File: viewport.mli
 
-   Copyright (C) 2009-2015
+   Copyright (C) 2009-2011
 
      Christophe Troestler <Christophe.Troestler@umons.ac.be>
      Pierre Hauweele <antegallya@gmail.com>
@@ -22,24 +22,11 @@ module type T = sig
   module rec Axes : sig
     type sign = Positive | Negative
 
-    type offset =
-      | Relative of float
-      | Absolute of float
-
-    type graph_axis = {
-      tics: Tics.t;
-      offset: offset;
-      major_tics: string * float;
-      minor_tics: string * float;
-      mutable tics_values: Tics.tic list
-    }
-
     type axis = {
       mutable x0: float;     mutable auto_x0: bool;
       mutable xend: float;   mutable auto_xend: bool;
       mutable log: bool;
       mutable orientation: sign;
-      mutable graph_axes: graph_axis list;
       mutable viewports: Viewport.t list
     }
 
@@ -50,10 +37,6 @@ module type T = sig
 
     val default_axis: unit -> axis
     val default_axes_system: unit -> t
-
-    val add_axis: (string * float) -> (string * float) -> Tics.t -> offset ->
-      sign -> axis -> unit
-    val draw_axes: Viewport.t -> unit
   end
   and Viewport : sig
     type t
@@ -275,15 +258,5 @@ module type T = sig
 
     val add_instruction : (unit -> unit) -> t -> unit
     val do_instructions : t -> unit
-
-    val add_x_axis: ?major:(string * float) -> ?minor:(string * float) ->
-      ?tics:Tics.t -> ?offset:Axes.offset -> ?sign:Axes.sign -> t -> unit
-    val add_y_axis: ?major:(string * float) -> ?minor:(string * float) ->
-      ?tics:Tics.t -> ?offset:Axes.offset -> ?sign:Axes.sign -> t -> unit
-    val draw_axes: t -> unit
-
-    val box: t -> unit
-    val cross: t -> unit
-
   end
 end

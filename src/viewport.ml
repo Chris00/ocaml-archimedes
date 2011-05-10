@@ -23,24 +23,11 @@ let is_nan_or_inf (x:float) = x <> x || 1. /. x = 0.
 module rec Axes : sig
   type sign = Positive | Negative
 
-  type offset =
-    | Relative of float
-    | Absolute of float
-
-  type graph_axis = {
-    tics: Tics.t;
-    offset: offset;
-    major_tics: string * float;
-    minor_tics: string * float;
-    mutable tics_values: Tics.tic list
-  }
-
   type axis = {
     mutable x0: float;     mutable auto_x0: bool;
     mutable xend: float;   mutable auto_xend: bool;
     mutable log: bool;
     mutable orientation: sign;
-    mutable graph_axes: graph_axis list;
     mutable viewports: Viewport.t list
   }
 
@@ -51,10 +38,6 @@ module rec Axes : sig
 
   val default_axis: unit -> axis
   val default_axes_system: unit -> t
-
-  val add_axis: (string * float) -> (string * float) -> Tics.t -> offset ->
-    sign -> axis -> unit
-  val draw_axes: Viewport.t -> unit
 end
 = struct
   module V = Viewport
@@ -62,28 +45,11 @@ end
 
   type sign = Positive | Negative
 
-  (* FIXME: offset might benefit from better variant names such as Data |
-     Graph. And, it doesn't support other coord_names. Maybe we should use
-     polymorphic variant types shared between Axes and Viewport instead of
-     redefining local ones as Axes.Data and Axes.Graph. *)
-  type offset =
-    | Relative of float
-    | Absolute of float
-
-  type graph_axis = {
-    tics: Tics.t;
-    offset: offset;
-    major_tics: string * float;
-    minor_tics: string * float;
-    mutable tics_values: Tics.tic list
-  }
-
   type axis = {
     mutable x0: float;     mutable auto_x0: bool;
     mutable xend: float;   mutable auto_xend: bool;
     mutable log: bool;
     mutable orientation: sign;
-    mutable graph_axes: graph_axis list;
     mutable viewports: Viewport.t list
   }
 
@@ -94,65 +60,11 @@ end
 
   let default_axis () =
     { x0 = 0.; xend = 1.; auto_x0 = true; auto_xend = true;
-      log = false; orientation = Positive; graph_axes = []; viewports = [] }
+      log = false; orientation = Positive; viewports = [] }
 
   let default_axes_system () =
     { x = default_axis ();
       y = default_axis () }
-
-  let add_axis major_tics minor_tics tics offset sign axis =
-    let graph_axis = {
-      tics=tics;
-      offset=offset;
-      major_tics=major_tics;
-      minor_tics=minor_tics;
-      tics_values=Tics.tics axis.Axes.x0 axis.Axes.xend tics
-    } in
-    axis.graph_axes <- graph_axis :: axis.graph_axes
-
-  (* returns the offset and wether the labels are over or under the axis *)
-  let axis_offset start range = function
-    | Absolute y -> start +. range *. y, if y < 0.5 then -1. else 1.
-    | Relative y -> y, if y < start +. range /. 2. then -1. else 1.
-
-  let tic vp x y (tic_type, tic_size) =
-    V.set_rel_mark_size_direct vp tic_size ();
-    V.mark_direct vp x y tic_type ()
-
-  let draw_tic tic graph_axis text = function
-    | Tics.Major (None, v) -> tic v graph_axis.Axes.major_tics
-    | Tics.Major (Some label, v) -> tic v graph_axis.Axes.major_tics;
-        text v label
-    | Tics.Minor v -> tic v graph_axis.Axes.minor_tics
-
-  let draw_x_axis vp graph_axis =
-    (* TODO add Backend.ARROW *)
-    (*V.set_line_cap vp Backend.ARROW;*)
-    let yrange = V.ymax vp -. V.ymin vp in
-    let offset, pos = axis_offset (V.ymin vp) yrange graph_axis.offset in
-    let path = Path.make_at (V.xmin vp) offset in
-    Path.line_to path (V.xmax vp) offset;
-    V.stroke_direct ~path vp V.Data ();
-    let y = offset +. yrange *. 0.0375 *. pos in
-    let tic x = tic vp x offset in
-    let text x lbl = V.show_text_direct vp V.Data ~x ~y B.CC lbl () in
-    List.iter (draw_tic tic graph_axis text) graph_axis.tics_values
-    (*V.set_line_cap vp Backend.BUTT;*)
-
-  let draw_y_axis vp graph_axis =
-    let xrange = V.xmax vp -. V.xmin vp in
-    let offset, pos = axis_offset (V.xmin vp) xrange graph_axis.offset in
-    let path = Path.make_at offset (V.ymin vp) in
-    Path.line_to path offset (V.ymax vp);
-    V.stroke_direct ~path vp V.Data ();
-    let x = offset +. xrange *. 0.0375 *. pos in
-    let tic y = tic vp offset y in
-    let text y lbl = V.show_text_direct vp V.Data ~x ~y B.CC lbl () in
-    List.iter (draw_tic tic graph_axis text) graph_axis.tics_values
-
-  let draw_axes vp =
-    List.iter (draw_x_axis vp) (vp.Viewport.axes_system.x.graph_axes);
-    List.iter (draw_y_axis vp) (vp.Viewport.axes_system.y.graph_axes)
 end
 and Viewport : sig
   type t = {
@@ -280,15 +192,6 @@ and Viewport : sig
 
   val add_instruction : (unit -> unit) -> t -> unit
   val do_instructions : t -> unit
-
-  val add_x_axis: ?major:(string * float) -> ?minor:(string * float) ->
-    ?tics:Tics.t -> ?offset:Axes.offset -> ?sign:Axes.sign -> t -> unit
-  val add_y_axis: ?major:(string * float) -> ?minor:(string * float) ->
-    ?tics:Tics.t -> ?offset:Axes.offset -> ?sign:Axes.sign -> t -> unit
-  val draw_axes: t -> unit
-
-  val box: t -> unit
-  val cross: t -> unit
 end
 = struct
   type t = {
@@ -575,12 +478,6 @@ end
     Matrix.translate m (-. x0) (-. y0);
     Coordinate.transform vp.coord_data m
 
-  let update_tics axis =
-    let f graph_axis =
-      let x0, xend = axis.Axes.x0, axis.Axes.xend in
-      graph_axis.Axes.tics_values <- Tics.tics x0 xend graph_axis.Axes.tics
-    in
-    List.iter f axis.Axes.graph_axes
 
   (* Utility function for (x|y)range *)
   let update_axis axis vp x0 xend =
@@ -614,8 +511,6 @@ end
       if is_nan_or_inf yaxis.Axes.xend || y1' > yaxis.Axes.xend then
         (yaxis.Axes.xend <- y1'; updated := true);
     if !updated then begin
-      update_tics xaxis;
-      update_tics yaxis;
       update_coordinate_system vp;
       if vp.immediate_drawing then begin
         let l1 = vp.axes_system.Axes.x.Axes.viewports in
@@ -874,6 +769,9 @@ end
   let clip_rectangle vp ~x ~y ~w ~h =
     add_instruction (clip_rectangle_direct vp ~x ~y ~w ~h) vp
 
+(* Text, marks
+ ***********************************************************************)
+
   let select_font_face vp slant weight family =
     add_instruction (select_font_face_direct vp slant weight family) vp
 
@@ -909,34 +807,5 @@ end
   let mark vp ~x ~y name =
     auto_fit vp x y x y; (* TODO we want all the mark to be included *)
     add_instruction (mark_direct vp ~x ~y name) vp
-
-  let add_x_axis ?(major=("tic_up",5.)) ?(minor=("tic_up",2.))
-      ?(tics=Tics.Auto (Tics.Number 5)) ?(offset=Axes.Absolute 0.)
-      ?(sign=Axes.Positive) vp =
-    Axes.add_axis major minor tics offset sign (vp.axes_system.Axes.x)
-
-  let add_y_axis ?(major=("tic_right",5.)) ?(minor=("tic_right",2.))
-      ?(tics=Tics.Auto (Tics.Number 5)) ?(offset=Axes.Absolute 0.)
-      ?(sign=Axes.Positive) vp =
-    Axes.add_axis major minor tics offset sign (vp.axes_system.Axes.y)
-
-  let draw_axes vp =
-    add_instruction (fun () -> Axes.draw_axes vp) vp
-
-  let box vp =
-    add_x_axis ~offset:(Axes.Absolute 0.) vp;
-    add_x_axis ~offset:(Axes.Absolute 1.) ~major:("tic_down", 5.)
-      ~minor:("tic_down", 2.) ~sign:Axes.Negative vp;
-    add_y_axis ~offset:(Axes.Absolute 0.) vp;
-    add_y_axis ~offset:(Axes.Absolute 1.) ~major:("tic_left", 5.)
-      ~minor:("tic_left", 2.) ~sign:Axes.Negative vp;
-    draw_axes vp
-
-  let cross vp =
-    add_x_axis ~offset:(Axes.Absolute 0.5) ~major:("|", 2.)
-      ~minor:("|", 1.) vp;
-    add_y_axis ~offset:(Axes.Absolute 0.5) ~major:("-", 2.)
-      ~minor:("-", 1.) vp;
-    draw_axes vp
 
 end
