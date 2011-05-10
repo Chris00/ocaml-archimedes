@@ -30,14 +30,6 @@ type offset =
   | Relative of float
   | Absolute of float
 
-type graph_axis = {
-  tics: Tics.t;
-  offset: offset;
-  major_tics: string * float;
-  minor_tics: string * float;
-  mutable tics_values: Tics.tic list
-}
-
 (* returns the offset and wether the labels are over or under the axis *)
 let axis_offset start range = function
   | Absolute y -> start +. range *. y, if y < 0.5 then -1. else 1.

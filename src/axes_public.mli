@@ -1,4 +1,4 @@
-(* File: tics.mli
+(* File: axes_public.mli
 
    Copyright (C) 2009-2015
 
@@ -18,4 +18,17 @@
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the file
    LICENSE for more details. *)
 
-include Tics_public.T
+module type T = sig
+  type offset =
+    | Relative of float
+    | Absolute of float
+
+  val add_x_axis : ?major:(string * float) -> ?minor:(string * float) ->
+    ?tics:Tics.t -> ?offset:offset -> Viewport.Viewport.t -> unit
+
+  val add_y_axis : ?major:(string * float) -> ?minor:(string * float) ->
+    ?tics:Tics.t -> ?offset:offset -> Viewport.Viewport.t -> unit
+
+  val box : Viewport.Viewport.t -> unit
+  val cross : Viewport.Viewport.t -> unit
+end

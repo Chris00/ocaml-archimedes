@@ -1,6 +1,6 @@
-(* File: tics.mli
+(* File: axes.mli
 
-   Copyright (C) 2009-2015
+   Copyright (C) 2009-2011
 
      Christophe Troestler <Christophe.Troestler@umons.ac.be>
      Pierre Hauweele <antegallya@gmail.com>
@@ -18,4 +18,4 @@
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the file
    LICENSE for more details. *)
 
-include Tics_public.T
+include Axes_public.T
