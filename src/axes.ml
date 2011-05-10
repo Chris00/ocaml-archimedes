@@ -18,7 +18,8 @@
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the file
    LICENSE for more details. *)
 
-module V = Viewport
+module B = Backend
+module V = Viewport.Viewport
 module A = Viewport.Axes (* Corresponding to "dimensions" of a viewport *)
 
 (* FIXME: offset might benefit from better variant names such as Data |
@@ -46,13 +47,13 @@ let tic vp x y (tic_type, tic_size) =
   V.set_rel_mark_size_direct vp tic_size ();
   V.mark_direct vp x y tic_type ()
 
-let draw_tic tic majors minors graph_axis text = function
+let draw_tic tic majors minors text = function
   | Tics.Major (None, v) -> tic v majors
   | Tics.Major (Some label, v) -> tic v majors;
       text v label
   | Tics.Minor v -> tic v minors
 
-let draw_x_axis major minor tics offset sign vp () =
+let draw_x_axis major minor tics offset vp () =
   let tics_values = Tics.tics (V.xmin vp) (V.xmax vp) tics in
   let yrange = V.ymax vp -. V.ymin vp in
   let offset, pos = axis_offset (V.ymin vp) yrange offset in
@@ -64,7 +65,7 @@ let draw_x_axis major minor tics offset sign vp () =
   let text x lbl = V.show_text_direct vp V.Data ~x ~y B.CC lbl () in
   List.iter (draw_tic tic major minor text) tics_values
 
-let draw_y_axis major minor tics offset sign vp () =
+let draw_y_axis major minor tics offset vp () =
   let tics_values = Tics.tics (V.ymin vp) (V.ymax vp) tics in
   let xrange = V.xmax vp -. V.xmin vp in
   let offset, pos = axis_offset (V.xmin vp) xrange offset in
@@ -77,28 +78,23 @@ let draw_y_axis major minor tics offset sign vp () =
   List.iter (draw_tic tic major minor text) tics_values
 
 let add_x_axis ?(major=("tic_up", 5.)) ?(minor=("tic_up", 2.))
-    ?(tics=Tics.Auto (Tics.Number 5)) ?(offset=A.Absolute 0.)
-    ?(sign=Axes.Positive) vp =
-  V.add_instruction (draw_x_axis major minor tics offset sign vp) vp
+    ?(tics=Tics.Auto (Tics.Number 5)) ?(offset=Absolute 0.) vp =
+  V.add_instruction (draw_x_axis major minor tics offset vp) vp
 
 let add_y_axis ?(major=("tic_up", 5.)) ?(minor=("tic_up", 2.))
-    ?(tics=Tics.Auto (Tics.Number 5)) ?(offset=A.Absolute 0.)
-    ?(sign=Axes.Positive) vp =
-  V.add_instruction (draw_y_axis major minor tics offset sign vp) vp
+    ?(tics=Tics.Auto (Tics.Number 5)) ?(offset=Absolute 0.) vp =
+  V.add_instruction (draw_y_axis major minor tics offset vp) vp
 
 let box vp =
-  add_x_axis ~offset:(Axes.Absolute 0.) vp;
-  add_x_axis ~offset:(Axes.Absolute 1.) ~major:("tic_down", 5.)
-    ~minor:("tic_down", 2.) ~sign:Axes.Negative vp;
-  add_y_axis ~offset:(Axes.Absolute 0.) vp;
-  add_y_axis ~offset:(Axes.Absolute 1.) ~major:("tic_left", 5.)
-    ~minor:("tic_left", 2.) ~sign:Axes.Negative vp;
-  draw_axes vp
+  add_x_axis ~offset:(Absolute 0.) vp;
+  add_x_axis ~offset:(Absolute 1.) ~major:("tic_down", 5.)
+    ~minor:("tic_down", 2.) vp;
+  add_y_axis ~offset:(Absolute 0.) vp;
+  add_y_axis ~offset:(Absolute 1.) ~major:("tic_left", 5.)
+    ~minor:("tic_left", 2.) vp
 
 let cross vp =
-  add_x_axis ~offset:(Axes.Absolute 0.5) ~major:("|", 2.)
+  add_x_axis ~offset:(Absolute 0.5) ~major:("|", 2.)
     ~minor:("|", 1.) vp;
-  add_y_axis ~offset:(Axes.Absolute 0.5) ~major:("-", 2.)
-    ~minor:("-", 1.) vp;
-  draw_axes vp
-
+  add_y_axis ~offset:(Absolute 0.5) ~major:("-", 2.)
+    ~minor:("-", 1.) vp

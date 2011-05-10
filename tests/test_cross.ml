@@ -8,7 +8,7 @@ let draw bk =
   V.xrange vp (-10.) 10.;
   V.yrange vp (-5.) 5.;
   V.set_line_width vp 1.;
-  V.cross vp;
+  Axes.cross vp;
   V.close vp
 
 let () =
