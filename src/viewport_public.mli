@@ -262,5 +262,8 @@ module type T = sig
       ?tics:Tics.t -> ?offset:Axes.offset -> ?sign:Axes.sign -> t -> unit
     val draw_axes: t -> unit
 
+    val box: t -> unit
+    val cross: t -> unit
+
   end
 end

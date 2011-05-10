@@ -58,6 +58,7 @@ module rec Axes : sig
 end
 = struct
   module V = Viewport
+  module B = Backend
 
   type sign = Positive | Negative
 
@@ -109,9 +110,10 @@ end
     } in
     axis.graph_axes <- graph_axis :: axis.graph_axes
 
+  (* returns the offset and wether the labels are over or under the axis *)
   let axis_offset start range = function
-    | Absolute y -> start +. range *. y
-    | Relative y -> y
+    | Absolute y -> start +. range *. y, if y < 0.5 then -1. else 1.
+    | Relative y -> y, if y < start +. range /. 2. then -1. else 1.
 
   let tic vp x y (tic_type, tic_size) =
     V.set_rel_mark_size_direct vp tic_size ();
@@ -127,25 +129,25 @@ end
     (* TODO add Backend.ARROW *)
     (*V.set_line_cap vp Backend.ARROW;*)
     let yrange = V.ymax vp -. V.ymin vp in
-    let axis_offset = axis_offset (V.ymin vp) yrange graph_axis.offset in
-    let path = Path.make_at (V.xmin vp) axis_offset in
-    Path.line_to path (V.xmax vp) axis_offset;
+    let offset, pos = axis_offset (V.ymin vp) yrange graph_axis.offset in
+    let path = Path.make_at (V.xmin vp) offset in
+    Path.line_to path (V.xmax vp) offset;
     V.stroke_direct path vp V.Data ();
-    let y = axis_offset -. yrange *. 0.0375 in
-    let tic x = tic vp x axis_offset in
-    let text x lbl = V.show_text_direct vp V.Data ~x ~y Backend.CB lbl () in
+    let y = offset +. yrange *. 0.0375 *. pos in
+    let tic x = tic vp x offset in
+    let text x lbl = V.show_text_direct vp V.Data ~x ~y B.CC lbl () in
     List.iter (draw_tic tic graph_axis text) graph_axis.tics_values
     (*V.set_line_cap vp Backend.BUTT;*)
 
   let draw_y_axis vp graph_axis =
     let xrange = V.xmax vp -. V.xmin vp in
-    let axis_offset = axis_offset (V.xmin vp) xrange graph_axis.offset in
-    let path = Path.make_at axis_offset (V.ymin vp) in
-    Path.line_to path axis_offset (V.ymax vp);
+    let offset, pos = axis_offset (V.xmin vp) xrange graph_axis.offset in
+    let path = Path.make_at offset (V.ymin vp) in
+    Path.line_to path offset (V.ymax vp);
     V.stroke_direct path vp V.Data ();
-    let x = axis_offset -. xrange *. 0.0375 in
-    let tic y = tic vp axis_offset y in
-    let text y lbl = V.show_text_direct vp V.Data ~x ~y Backend.CB lbl () in
+    let x = offset +. xrange *. 0.0375 *. pos in
+    let tic y = tic vp offset y in
+    let text y lbl = V.show_text_direct vp V.Data ~x ~y B.CC lbl () in
     List.iter (draw_tic tic graph_axis text) graph_axis.tics_values
 
   let draw_axes vp =
@@ -270,6 +272,9 @@ and Viewport : sig
   val add_y_axis: ?major:(string * float) -> ?minor:(string * float) ->
     ?tics:Tics.t -> ?offset:Axes.offset -> ?sign:Axes.sign -> t -> unit
   val draw_axes: t -> unit
+
+  val box: t -> unit
+  val cross: t -> unit
 end
 = struct
   type t = {
@@ -880,5 +885,21 @@ end
 
   let draw_axes vp =
     add_instruction (fun () -> Axes.draw_axes vp) vp
+
+  let box vp =
+    add_x_axis ~offset:(Axes.Absolute 0.) vp;
+    add_x_axis ~offset:(Axes.Absolute 1.) ~major:("tic_down", 5.)
+      ~minor:("tic_down", 2.) ~sign:Axes.Negative vp;
+    add_y_axis ~offset:(Axes.Absolute 0.) vp;
+    add_y_axis ~offset:(Axes.Absolute 1.) ~major:("tic_left", 5.)
+      ~minor:("tic_left", 2.) ~sign:Axes.Negative vp;
+    draw_axes vp
+
+  let cross vp =
+    add_x_axis ~offset:(Axes.Absolute 0.5) ~major:("|", 2.)
+      ~minor:("|", 1.) vp;
+    add_y_axis ~offset:(Axes.Absolute 0.5) ~major:("-", 2.)
+      ~minor:("-", 1.) vp;
+    draw_axes vp
 
 end
