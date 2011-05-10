@@ -29,6 +29,6 @@ module type T = sig
   val add_y_axis : ?major:(string * float) -> ?minor:(string * float) ->
     ?tics:Tics.t -> ?offset:offset -> Viewport.Viewport.t -> unit
 
-  val box : Viewport.Viewport.t -> unit
-  val cross : Viewport.Viewport.t -> unit
+  val box : ?tics:Tics.t -> ?tics_alt:Tics.t -> Viewport.Viewport.t -> unit
+  val cross : ?tics:Tics.t -> Viewport.Viewport.t -> unit 
 end

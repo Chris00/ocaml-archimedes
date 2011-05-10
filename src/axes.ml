@@ -69,24 +69,25 @@ let draw_y_axis major minor tics offset vp () =
   let text y lbl = V.show_text_direct vp V.Data ~x ~y B.CC lbl () in
   List.iter (draw_tic tic major minor text) tics_values
 
-let add_x_axis ?(major=("tic_up", 5.)) ?(minor=("tic_up", 2.))
+let add_x_axis ?(major=("tic_up", 3.)) ?(minor=("tic_up", 1.))
     ?(tics=Tics.Auto (Tics.Number 5)) ?(offset=Absolute 0.) vp =
   V.add_instruction (draw_x_axis major minor tics offset vp) vp
 
-let add_y_axis ?(major=("tic_up", 5.)) ?(minor=("tic_up", 2.))
+let add_y_axis ?(major=("tic_right", 3.)) ?(minor=("tic_right", 1.))
     ?(tics=Tics.Auto (Tics.Number 5)) ?(offset=Absolute 0.) vp =
   V.add_instruction (draw_y_axis major minor tics offset vp) vp
 
-let box vp =
-  add_x_axis ~offset:(Absolute 0.) vp;
-  add_x_axis ~offset:(Absolute 1.) ~major:("tic_down", 5.)
-    ~minor:("tic_down", 2.) vp;
-  add_y_axis ~offset:(Absolute 0.) vp;
-  add_y_axis ~offset:(Absolute 1.) ~major:("tic_left", 5.)
-    ~minor:("tic_left", 2.) vp
+(* TODO : tics_alt = Tics.Auto (Tics.No_label)) *)
+let box ?tics ?(tics_alt=Tics.Auto (Tics.Number 5)) vp =
+  add_x_axis ?tics ~offset:(Absolute 0.) vp;
+  add_x_axis ~tics:tics_alt ~offset:(Absolute 1.) ~major:("tic_down", 3.)
+    ~minor:("tic_down", 1.) vp;
+  add_y_axis ?tics ~offset:(Absolute 0.) vp;
+  add_y_axis ~tics:tics_alt ~offset:(Absolute 1.) ~major:("tic_left", 3.)
+    ~minor:("tic_left", 1.) vp
 
-let cross vp =
-  add_x_axis ~offset:(Absolute 0.5) ~major:("|", 2.)
+let cross ?tics vp =
+  add_x_axis ?tics ~offset:(Relative 0.) ~major:("|", 2.)
     ~minor:("|", 1.) vp;
-  add_y_axis ~offset:(Absolute 0.5) ~major:("-", 2.)
+  add_y_axis ?tics ~offset:(Relative 0.) ~major:("-", 2.)
     ~minor:("-", 1.) vp
