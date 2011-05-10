@@ -192,6 +192,8 @@ and Viewport : sig
 
   val add_instruction : (unit -> unit) -> t -> unit
   val do_instructions : t -> unit
+
+  val auto_fit : t -> float -> float -> float -> float -> unit
 end
 = struct
   type t = {

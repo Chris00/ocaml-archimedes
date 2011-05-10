@@ -258,5 +258,9 @@ module type T = sig
 
     val add_instruction : (unit -> unit) -> t -> unit
     val do_instructions : t -> unit
+
+    val auto_fit : t -> float -> float -> float -> float -> unit
+      (** [auto_fit vp x0 y0 x1 y1] ensures that the rectangle delimited by
+          (x0, y0) and (x1, y1) is included into the axes' ranges *)
   end
 end

@@ -18,37 +18,62 @@
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the file
    LICENSE for more details. *)
 
-module V = Viewport
+module V = Viewport.Viewport
 
-module type COMMON = sig
+module type Common = sig
+  type pathstyle =
+    | Lines
+    | Points of string
+    | Linespoints of string
+    | Impulses
   type fill = In | Out
   type filledcurves = Color.t * Color.t (* f1 > f2, f2 < f1 *)
 
-  val f : V.t -> ?nsamples:int -> ?fill:fill -> (float -> float) ->
-    float -> float -> unit
+  val fx : ?min_step:float -> ?nsamples:int -> ?fill:fill ->
+    ?pathstyle:pathstyle -> V.t -> (float -> float) -> float -> float -> unit
 
-  val xy_param : V.t -> ?nsamples:int -> ?fill:fill ->
+(*  val xy_param : V.t -> ?nsamples:int -> ?fill:fill ->
     (float -> float * float) -> float -> float -> unit
 
   (* TODO we want to have control over the stroke properties for each curve *)
   val filledcurves : V.t -> ?nsamples:int -> ?fill:filledcurves ->
-    (float -> float) -> (float -> float) -> float -> float -> unit
+    (float -> float) -> (float -> float) -> float -> float -> unit*)
 end
 
 module Common =
 struct
 
-  let f vp ?(nsamples=100) ?fill f a b =
-    let logarithmic = vp.V.axes_system.Axes.x.Axes.log in
-    let step = if logarithmic then (b /. a) ** (1. /. nsamples)
-    else (b -. a) /. nsamples in
+  type pathstyle =
+    | Lines
+    | Points of string
+    | Linespoints of string
+    | Impulses
+  type fill = In | Out
+  type filledcurves = Color.t * Color.t (* f1 > f2, f2 < f1 *)
 
+  let f_line_to vp (x, y) = V.line_to vp x y
+  let f_finish vp = V.stroke vp V.Data
 
+  let xyf ?nsamples ?min_step ?(do_with=f_line_to) ?(finish=f_finish)
+      vp f a b =
+    let _, (y0, y1), fct = Functions.samplefx f ?nsamples ?min_step b a in
+    V.auto_fit vp a y0 b y1;
+    let f () =
+      fct (fun () -> do_with vp) ();
+      finish vp
+    in
+    V.add_instruction f vp
 
-
-  let plot_f vp ?nsamples ?(fill=false) f a b fill0 fill1 =
+  let fx ?min_step ?nsamples ?fill ?(pathstyle=Lines) vp f a b =
+    let path = Path.make () in
+    let draw x y = match pathstyle with
+      | Lines -> Path.line_to path ~x ~y
+      | Points m -> V.mark vp ~x ~y m
+      | Linespoints m -> Path.line_to path ~x ~y; V.mark vp ~x ~y m
+      | Impulses -> Path.move_to path ~x ~y:0.; Path.line_to path ~x ~y
+    in
     let do_with, finish =
-      if fill then
+      (*if fill then
         let x_last = ref nan
         and y_last = ref nan in
         let first = ref true in
@@ -68,45 +93,23 @@ struct
             V.fill p;
             first := true; (* this set of functions may be run several times *)
          ))
-      else
+      else*)
         let first = ref true in
-        ((fun p (x,y) ->
-            if !first then (
-              V.move_to p x y;
-              first := false
-            )
-            else
-              V.line_to p x y),
-         (fun p ->
-            V.stroke p;
-            first := true)) in
-    V.xyf p.h ?color ?nsamples ~do_with ~finish f a b;
-    (* Add marks if requested *)
-    match mark with
-    | None -> ()
-    | Some mark ->
-        let do_with p (x,y) =
-          V.move_to p x y;
-          V.render p mark
-        and finish _ = () in
-        V.xyf p.h ?color ?nsamples ~do_with ~finish f a b
-  ;;
-
-  let id x y = (x, y)
-  let xyf p ?color ?nsamples ?mark ?(fill=false) f a b =
-    plot_f p ?color ?nsamples ?mark ~fill f a b id id
-
-  let pr_x x _ = (x, 0.)
-  let f p ?color ?nsamples ?mark ?(fill=false) f a b =
-    plot_f p ?color ?nsamples ?mark ~fill (fun x -> (x, f x)) a b pr_x pr_x
-
-  let set_font_size p w = V.set_global_font_size p.h w
-  let text p ?(rotate=0.) ~x ~y ?(pos=CC) txt =
-    V.show_text p.h ~rotate ~x ~y pos txt
+        let do_with vp (x, y) =
+          if !first then begin
+            Path.move_to path ~x ~y;
+            first := false
+          end
+          else draw x y
+        in
+        let finish vp = V.stroke ~path vp V.Data; first := true in
+        (do_with, finish)
+    in
+    xyf ?min_step ?nsamples ~do_with ~finish vp f a b
 end
 
 (************************************************************************)
-
+(*
 module Array =
 struct
   include Common
@@ -200,3 +203,4 @@ struct
     V.xy p.h ?color ?mark iter
 
 end
+*)

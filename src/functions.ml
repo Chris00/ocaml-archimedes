@@ -18,8 +18,8 @@ let update_extents e px py =
 let samplefxy f ?(min_step=1E-9) ?(nsamples = 100) a b =
   let step = (b -. a) /. (float nsamples) in
   (*Can be negative; in this way, plotting is done 'in the reverse order'*)
-  let x,y = f a in
-  let bounds_list = [1, a, step, nsamples] in
+  let x, y = f a in
+  let bounds_list = [(1, a, step, nsamples)] in
   let max_length = 1. in
   let rec next_point i tmin x0 y0 bounds listxy len extents =
     match bounds with
@@ -28,7 +28,7 @@ let samplefxy f ?(min_step=1E-9) ?(nsamples = 100) a b =
     | (prev_stop, prev_tmin, step, samples) :: list ->
         if i <= samples then
           (let p = tmin +. (float i) *. step in
-           let x,y = f p in
+           let x, y = f p in
            if is_nan y then
              (* ignore the point *)
              (* FIXME: this has to include "discontinuity"... what
@@ -39,7 +39,7 @@ let samplefxy f ?(min_step=1E-9) ?(nsamples = 100) a b =
            else
              let diffx = x -. x0 and diffy = y -. y0 in
              let rel_max =
-               max_length *. (x0 *. x0 +. y0 *. y0 +. (b-.a) *. (b-.a)) in
+               max_length *. (x0 *. x0 +. y0 *. y0 +. (b -. a) *. (b -. a)) in
              if diffx *. diffx +. diffy *. diffy < rel_max || step < min_step then
                let extents = update_extents extents x y in
                next_point (i+1) tmin x y bounds ((x,y)::listxy) (len+1) extents
@@ -58,39 +58,45 @@ let samplefxy f ?(min_step=1E-9) ?(nsamples = 100) a b =
   let extents = {Matrix.x = x; y = y; w = 0.; h = 0.} in
   next_point 1 a x y bounds_list [x,y] 1 extents
 
-let samplefx f ?(min_step=1E-9) ?(nsamples = 100) a b =
-  let step = (b -. a) /. (float nsamples) in
+let samplefx ?(xlog=false) ?(ylog=false) ?(min_step=1E-9)
+    ?(nsamples = 100) f a b =
+  let step = if xlog then (b /. a) ** (1. /. float nsamples)
+  else (b -. a) /. (float nsamples) in
   (*Can be negative; in this way, plotting is done 'in the reverse order'*)
-  let y = f a in
-  let bounds_list = [1, a, step, nsamples] in
+  let bounds_list = [(1, a, step, nsamples)] in
   let max_length = 1. in
-  let rec next_point i tmin y0 bounds listy len extents =
+  let rec next_point i tmin x0 y0 bounds listxy len extents =
     match bounds with
       [] -> (len, extents,
-             (fun use_sampling init -> List.fold_left use_sampling init listy))
+             (fun use_sampling init -> List.fold_left use_sampling init listxy))
     | (prev_stop, prev_tmin, step, samples) :: list ->
         if i > samples then
           (*Plot with current step size finished; return to previous step size.*)
-          next_point (prev_stop + 1) prev_tmin y0 list listy len extents
+          next_point (prev_stop + 1) prev_tmin x0 y0 list listxy len extents
         else
-          let p = tmin +. (float i) *. step in
-          let y = f p in
-          let diffy = y -. y0 in
-          let rel_max =
-            max_length *. (y0 *. y0 +. (b-.a) *. (b-.a))
-          in
-          if step *. step +. diffy *. diffy < rel_max
+          (* FIXME: Numerical error here *)
+          let x = if xlog then x0 *. step else x0 +. step in
+          let y = f x in
+          let diffx = if xlog then log x -. log x0 else y -. y0 in
+          let diffy = if ylog then log y -. log y0 else y -. y0 in
+          let y0_square = if ylog then log y0 *. log y0 else y0 *. y0 in
+          let ab_square = if xlog then (log (b -. a)) ** 2. else b -. a in
+          let rel_max = max_length *. (y0_square +. ab_square) in
+          if diffx *. diffx +. diffy *. diffy < rel_max
             || step < min_step then
               let ymin, ymax = extents in
               let new_ext = min y ymin, max y ymax in
-              next_point (i+1) tmin y bounds (y::listy) (len+1) new_ext
+              next_point (i+1) tmin x y bounds ((x, y)::listxy) (len+1) new_ext
           else
             (*increase precision by dividing step by 2.*)
-            let ntmin = tmin +. (float (i-1)) *. step in
-            next_point 1 ntmin y0 ((i, tmin, step/.2., 2)::bounds)
-              listy len extents
+            let ntmin = if xlog then tmin *. step ** float (i - 1)
+            else tmin +. (float (i-1)) *. step in
+            let nstep = if xlog then step ** 0.5 else step /. 2. in
+            next_point 1 ntmin x0 y0 ((i, tmin, nstep, 2) :: bounds)
+              listxy len extents
   in
-  next_point 1 a y bounds_list [y] 1 (y,y)
+  let x, y = a, f a in
+  next_point 1 a x y bounds_list [(x, y)] 1 (y, y)
 
 let fxy_list f ?min_step ?nsamples a b =
   let _,_, f = samplefxy f ?min_step ?nsamples a b in
