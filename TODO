@@ -10,4 +10,4 @@ Can't catch a Cairo.Error.
 set_global_color -> set_color (see immediate_drawing!).
 separate graph_axes from viewports
 Optimize behavior of empty marks.
-function labels (tags)
+function labels (tags) + set correct default font sizes

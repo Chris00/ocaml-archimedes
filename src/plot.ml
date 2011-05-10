@@ -68,43 +68,23 @@ struct
     let path = Path.make () in
     let draw x y = match pathstyle with
       | Lines -> Path.line_to path ~x ~y
-      | Points m -> V.mark vp ~x ~y m
-      | Linespoints m -> Path.line_to path ~x ~y; V.mark vp ~x ~y m
-      | Impulses -> Path.move_to path ~x ~y:0.; Path.line_to path ~x ~y
+      | Points m -> V.mark_direct vp ~x ~y m ()
+      | Linespoints m ->
+          Path.line_to path ~x ~y;
+          V.mark_direct vp ~x ~y m ()
+      | Impulses ->
+          Path.move_to path ~x ~y:0.;
+          Path.line_to path ~x ~y
     in
-    let do_with, finish =
-      (*if fill then
-        let x_last = ref nan
-        and y_last = ref nan in
-        let first = ref true in
-        ((fun p (x,y) ->
-            if !first then (
-              let x, y = fill0 x y in
-              V.move_to p x y;
-              first := false
-            )
-            else
-              V.line_to p x y;
-            x_last := x;
-            y_last := y),
-         (fun p ->
-            let x, y = fill1 !x_last !y_last in
-            V.line_to p x y;
-            V.fill p;
-            first := true; (* this set of functions may be run several times *)
-         ))
-      else*)
-        let first = ref true in
-        let do_with vp (x, y) =
-          if !first then begin
-            Path.move_to path ~x ~y;
-            first := false
-          end
-          else draw x y
-        in
-        let finish vp = V.stroke ~path vp V.Data; first := true in
-        (do_with, finish)
+    let first = ref true in
+    let do_with vp (x, y) =
+      if !first then begin
+        Path.move_to path ~x ~y;
+        first := false
+      end
+      else draw x y
     in
+    let finish vp = V.stroke_direct ~path vp V.Data (); first := true in
     xyf ?min_step ?nsamples ~do_with ~finish vp f a b
 end
 

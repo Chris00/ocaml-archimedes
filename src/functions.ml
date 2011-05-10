@@ -77,7 +77,7 @@ let samplefx ?(xlog=false) ?(ylog=false) ?(min_step=1E-9)
           (* FIXME: Numerical error here *)
           let x = if xlog then x0 *. step else x0 +. step in
           let y = f x in
-          let diffx = if xlog then log x -. log x0 else y -. y0 in
+          let diffx = if xlog then log x -. log x0 else x -. x0 in
           let diffy = if ylog then log y -. log y0 else y -. y0 in
           let y0_square = if ylog then log y0 *. log y0 else y0 *. y0 in
           let ab_square = if xlog then (log (b -. a)) ** 2. else b -. a in

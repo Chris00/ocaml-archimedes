@@ -4,9 +4,10 @@ module P = Plot.Common
 
 let draw bk =
   let vp = V.init ~w:1024. ~h:600. ~dirs:["../src"; "./src"] bk in
-  V.xrange vp (-10.) 10.;
-  V.yrange vp 0. 100.;
+  V.set_mark_size vp 5.;
+  V.set_line_width vp 1.;
   P.fx ~pathstyle:(P.Linespoints "o") vp (fun x -> x ** 2.) (-10.) 10.;
+  V.mark vp ~x:0. ~y:5. "o";
   Axes.box vp;
   V.close vp
 
