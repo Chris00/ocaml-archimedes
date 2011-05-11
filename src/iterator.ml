@@ -165,7 +165,7 @@ let of_bigarrays ?(xclayout=true) arrayx ?(yclayout=true) arrayy =
   in fill_array 1 (base_extents x y)
 
 let from_sampling f ?min_step ?nsamples a b =
-  let len, extents, fct =
+  let len, extents, data =
     Functions.samplefxy f ?min_step ?nsamples a b
   in
   let array = Array2.create float64 c_layout len 2 in
@@ -195,3 +195,4 @@ let nb_data iter = iter.len
 
 let extents iter = (*Make a copy*)
   {iter.extents with Matrix.x = iter.extents.Matrix.x}
+

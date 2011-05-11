@@ -16,10 +16,11 @@ module type T = sig
       ?fill:bool -> ?fillcolor:Color.t -> ?pathstyle:pathstyle ->
       Viewport.Viewport.t -> (float -> float) -> float -> float -> unit
 
-(*    val xy_param : V.t -> ?nsamples:int -> ?fill:fill ->
-      (float -> float * float) -> float -> float -> unit
+  val xy_param : ?min_step:float -> ?nsamples:int -> ?fill:bool ->
+    ?fillcolor:Color.t -> ?pathstyle:pathstyle ->
+    Viewport.Viewport.t -> (float -> float * float) -> float -> float -> unit
 
-    (* TODO we want to have control over the stroke properties for each curve *)
+(*    (* TODO we want to have control over the stroke properties for each curve *)
     val filledcurves : V.t -> ?nsamples:int -> ?fill:filledcurves ->
       (float -> float) -> (float -> float) -> float -> float -> unit*)
   end
