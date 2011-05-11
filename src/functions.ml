@@ -24,8 +24,7 @@ let samplefxy f ?(min_step=1E-9) ?(nsamples = 100) a b =
   let max_length = 1. in
   let rec next_point i tmin x0 y0 bounds listxy len extents =
     match bounds with
-      [] -> (len, extents,
-             (fun use_sampling init -> List.fold_left use_sampling init listxy))
+    | [] -> (len, extents, listxy)
     | (prev_stop, prev_tmin, step, samples) :: list ->
         if i <= samples then
           (let p = tmin +. (float i) *. step in
@@ -103,16 +102,16 @@ let samplefx ?(xlog=false) ?(ylog=false) ?(min_step=1E-9) ?(max_yrange=1E9)
   next_point 1 a x y bounds_list [(x, y)] 1 (y, y)
 
 let fxy_list f ?min_step ?nsamples a b =
-  let _,_, f = samplefxy f ?min_step ?nsamples a b in
-  f (fun l a-> a::l) []
+  let _,_, data = samplefxy f ?min_step ?nsamples a b in
+  List.fold_left (fun l a -> a::l) [] data
 
 let fx_list f ?min_step ?nsamples a b =
   let _,_, data = samplefx f ?min_step ?nsamples a b in
   List.fold_left (fun l a -> a::l) [] data
 
 let plotfxy t f ?(nsamples = 100) a b =
-  let _,_, f = samplefxy f ~nsamples a b in
-  f (fun () (x,y) -> Backend.line_to t x y) ()
+  let _, _, data = samplefxy f ~nsamples a b in
+  List.fold_left (fun () (x,y) -> Backend.line_to t x y) () data
 
 let plotfx t f = plotfxy t (fun t -> t,f t)
 

@@ -21,7 +21,7 @@ val samplefxy :
   (float -> float * float) ->
   ?min_step:float ->
   ?nsamples:int -> float -> float ->
-  int * Matrix.rectangle * (('a -> float * float -> 'a) -> 'a -> 'a)
+  int * Matrix.rectangle * (float * float) list
 
 val samplefx :
   ?xlog:bool -> ?ylog:bool ->
