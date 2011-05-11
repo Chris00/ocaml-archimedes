@@ -45,42 +45,47 @@ let draw_tic tic majors minors text = function
       text v label
   | Tics.Minor v -> tic v minors
 
-let draw_x_axis major minor tics offset vp () =
+let draw_x_axis major minor start stop tics offset vp () =
   let tics_values = Tics.tics (V.xmin vp) (V.xmax vp) tics in
   let yrange = V.ymax vp -. V.ymin vp in
   let offset, pos = axis_offset (V.ymin vp) yrange offset in
-  Arrows.line_direct vp (V.xmin vp) offset (V.xmax vp) offset ();
+  let x1, y1, x2, y2 = V.xmin vp, offset, V.xmax vp, offset in
+  Arrows.line_direct ~head:stop ~tail:start vp x1 y1 x2 y2 ();
   let y = offset +. yrange *. 0.0375 *. pos in
   let tic x = tic vp x offset in
   let text x lbl = V.show_text_direct vp V.Data ~x ~y B.CC lbl () in
   List.iter (draw_tic tic major minor text) tics_values
 
-let draw_y_axis major minor tics offset vp () =
+let draw_y_axis major minor start stop tics offset vp () =
   let tics_values = Tics.tics (V.ymin vp) (V.ymax vp) tics in
   let xrange = V.xmax vp -. V.xmin vp in
   let offset, pos = axis_offset (V.xmin vp) xrange offset in
-  Arrows.line_direct vp offset (V.ymin vp) offset (V.ymax vp) ();
+  let x1, y1, x2, y2 = offset, V.ymin vp, offset, V.ymax vp in
+  Arrows.line_direct ~head:stop ~tail:start vp x1 y1 x2 y2 ();
   let x = offset +. xrange *. 0.0375 *. pos in
   let tic y = tic vp offset y in
   let text y lbl = V.show_text_direct vp V.Data ~x ~y B.CC lbl () in
   List.iter (draw_tic tic major minor text) tics_values
 
 let add_x_axis ?(major=("tic_up", 3.)) ?(minor=("tic_up", 1.))
+    ?(start=Arrows.Unstyled) ?(stop=Arrows.Simple)
     ?(tics=Tics.Auto (Tics.Number 5)) ?(offset=Absolute 0.) vp =
-  V.add_instruction (draw_x_axis major minor tics offset vp) vp
+  V.add_instruction (draw_x_axis major minor start stop tics offset vp) vp
 
 let add_y_axis ?(major=("tic_right", 3.)) ?(minor=("tic_right", 1.))
+    ?(start=Arrows.Unstyled) ?(stop=Arrows.Simple)
     ?(tics=Tics.Auto (Tics.Number 5)) ?(offset=Absolute 0.) vp =
-  V.add_instruction (draw_y_axis major minor tics offset vp) vp
+  V.add_instruction (draw_y_axis major minor start stop tics offset vp) vp
 
-(* TODO : tics_alt = Tics.Auto (Tics.No_label)) *)
-let box ?tics ?(tics_alt=Tics.Auto (Tics.Number 5)) vp =
-  add_x_axis ?tics ~offset:(Absolute 0.) vp;
-  add_x_axis ~tics:tics_alt ~offset:(Absolute 1.) ~major:("tic_down", 3.)
-    ~minor:("tic_down", 1.) vp;
-  add_y_axis ?tics ~offset:(Absolute 0.) vp;
-  add_y_axis ~tics:tics_alt ~offset:(Absolute 1.) ~major:("tic_left", 3.)
-    ~minor:("tic_left", 1.) vp
+let box ?tics ?(tics_alt=Tics.Auto Tics.No_label) vp =
+  add_x_axis ~start:Arrows.Unstyled ~stop:Arrows.Unstyled
+    ?tics ~offset:(Absolute 0.) vp;
+  add_x_axis ~start:Arrows.Unstyled ~stop:Arrows.Unstyled ~tics:tics_alt
+    ~offset:(Absolute 1.) ~major:("tic_down", 3.) ~minor:("tic_down", 1.) vp;
+  add_y_axis ~start:Arrows.Unstyled ~stop:Arrows.Unstyled
+    ?tics ~offset:(Absolute 0.) vp;
+  add_y_axis ~start:Arrows.Unstyled ~stop:Arrows.Unstyled ~tics:tics_alt
+    ~offset:(Absolute 1.) ~major:("tic_left", 3.) ~minor:("tic_left", 1.) vp
 
 let cross ?tics vp =
   add_x_axis ?tics ~offset:(Relative 0.) ~major:("|", 2.)

@@ -19,7 +19,7 @@
    LICENSE for more details. *)
 
 module type T = sig
-  type arrow_style =
+  type style =
     | Unstyled
     | Simple
     | Double
@@ -28,18 +28,18 @@ module type T = sig
     | Circle
     | Custom of (Path.t -> unit)
 
-  val path_line_to : ?size:float -> ?head:arrow_style -> ?tail:arrow_style ->
+  val path_line_to : ?size:float -> ?head:style -> ?tail:style ->
     Path.t -> float -> float -> unit
 
-  val path_arc : ?size:float -> ?head:arrow_style -> ?tail:arrow_style ->
+  val path_arc : ?size:float -> ?head:style -> ?tail:style ->
     Path.t -> float -> float -> float -> unit
 
-  val line_direct : ?size:float -> ?head:arrow_style -> ?tail:arrow_style ->
+  val line_direct : ?size:float -> ?head:style -> ?tail:style ->
     Viewport.Viewport.t -> float -> float -> float -> float -> unit -> unit
 
-  val line : ?size:float -> ?head:arrow_style -> ?tail:arrow_style ->
+  val line : ?size:float -> ?head:style -> ?tail:style ->
     Viewport.Viewport.t -> float -> float -> float -> float -> unit
 
-  val arc : ?size:float -> ?head:arrow_style -> ?tail:arrow_style ->
+  val arc : ?size:float -> ?head:style -> ?tail:style ->
     Viewport.Viewport.t -> float -> float -> float -> float -> float -> unit
 end

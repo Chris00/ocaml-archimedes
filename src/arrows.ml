@@ -20,7 +20,7 @@
 
 module V = Viewport.Viewport
 
-type arrow_style =
+type style =
   | Unstyled
   | Simple
   | Double
