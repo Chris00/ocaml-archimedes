@@ -38,5 +38,6 @@ let () =
   include_module "Sizes";
   include_module "Tics";
   include_module "Viewport";
+  include_module "Arrows";
   include_module "Axes";
   include_module "Plot"

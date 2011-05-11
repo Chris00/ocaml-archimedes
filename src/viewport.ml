@@ -181,6 +181,7 @@ and Viewport : sig
   val show_text_direct : t -> coord_name -> ?rotate:float ->
     x:float -> y:float -> Backend.text_position -> string -> unit -> unit
   val mark_direct : t -> x:float -> y:float -> string -> unit -> unit
+  val path_direct : t -> x:float -> y:float -> Path.t -> unit -> unit
 
   val xrange : t -> float -> float -> unit
   val yrange : t -> float -> float -> unit
@@ -329,15 +330,21 @@ end
     Backend.show_text vp.backend ~rotate ~x ~y pos text;
     Coordinate.restore vp.backend ctm
 
-  let mark_direct vp ~x ~y name () =
+  let orthoinstr_direct vp ~x ~y f =
     let ms = vp.mark_size /. vp.square_side in
     let x, y = ortho_from vp Data (x, y) in
     let coord = Coordinate.make_translate vp.coord_orthonormal
       (x -. ms /. 2.) (y -. ms /. 2.) in
     Coordinate.scale coord ms ms;
     let ctm = Coordinate.use vp.backend coord in
-    Pointstyle.render name vp.backend;
+    f vp.backend;
     Coordinate.restore vp.backend ctm
+
+  let path_direct vp ~x ~y path () =
+    orthoinstr_direct vp ~x ~y (Path.stroke_on_backend path)
+
+  let mark_direct vp ~x ~y name () =
+    orthoinstr_direct vp ~x ~y (Pointstyle.render name)
 
 (* Initialization functions
  ***********************************************************************)

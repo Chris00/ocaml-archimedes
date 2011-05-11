@@ -160,6 +160,9 @@ module type T = sig
           @axes_sys see {!make}
       *)
 
+    val ortho_from : t -> coord_name -> float * float -> float * float
+    val data_from : t -> coord_name -> float * float -> float * float
+
     val set_line_width : t -> float -> unit
     val set_font_size : t -> float -> unit
     val set_mark_size : t -> float -> unit

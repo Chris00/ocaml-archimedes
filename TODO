@@ -8,7 +8,6 @@ Add support for orthonormalized autofit and add an orthonormalization routine.
 Add arrow support into backends
 Can't catch a Cairo.Error.
 set_global_color -> set_color (see immediate_drawing!).
-separate graph_axes from viewports
 Optimize behavior of empty marks.
 function labels (tags) + set correct default font sizes
 draw axes when plotting a function with Plot.fx

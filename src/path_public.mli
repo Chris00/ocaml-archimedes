@@ -43,14 +43,18 @@ module type T = sig
     (** [line_to p x y] draws a line from the path's current point to ([x],
         [y]) and sets the current point to ([x], [y]) *)
 
-  val rel_move_to: t -> x:float -> y:float -> unit
+  val rel_move_to: ?rot:float -> t -> x:float -> y:float -> unit
     (** [rel_move_to p x y] shifts the path's current point of [x]
-        horizontally and [y] vertically] *)
+        horizontally and [y] vertically]
 
-  val rel_line_to: t -> x:float -> y:float -> unit
+        @param rot (default: 0.) to consider a rotation of [rot] radians *)
+
+  val rel_line_to: ?rot:float -> t -> x:float -> y:float -> unit
     (** [rel_line_to p x y] shifts the path's current point of [x]
         horizontally and [y] vertically and draws a line between the current
-        and the new point *)
+        and the new point
+
+        @param rot (default: 0.) to consider a rotation of [rot] radians *)
 
   val rectangle: t -> x:float -> y:float -> w:float -> h:float -> unit
     (** [rectangle p x y w h] draws a rectangle specified by ([x], [y], [w],
@@ -75,4 +79,7 @@ module type T = sig
   (** [fill_on_backend p bk] fills in the path [p] on the backend
       [bk]. It will not clear the path [p] but will clear the path of
       [bk]. *)
+
+  val current_point: t -> float * float
+    (** [current_point p] returns the current point of the path *)
 end
