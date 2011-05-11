@@ -20,6 +20,7 @@
 
 module type T = sig
   type arrow_style =
+    | Unstyled
     | Simple
     | Double
     | Triple
@@ -32,6 +33,9 @@ module type T = sig
 
   val path_arc : ?size:float -> ?head:arrow_style -> ?tail:arrow_style ->
     Path.t -> float -> float -> float -> unit
+
+  val line_direct : ?size:float -> ?head:arrow_style -> ?tail:arrow_style ->
+    Viewport.Viewport.t -> float -> float -> float -> float -> unit -> unit
 
   val line : ?size:float -> ?head:arrow_style -> ?tail:arrow_style ->
     Viewport.Viewport.t -> float -> float -> float -> float -> unit

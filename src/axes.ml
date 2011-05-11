@@ -49,9 +49,7 @@ let draw_x_axis major minor tics offset vp () =
   let tics_values = Tics.tics (V.xmin vp) (V.xmax vp) tics in
   let yrange = V.ymax vp -. V.ymin vp in
   let offset, pos = axis_offset (V.ymin vp) yrange offset in
-  let path = Path.make_at (V.xmin vp) offset in
-  Path.line_to path (V.xmax vp) offset;
-  V.stroke_direct ~path vp V.Data ();
+  Arrows.line_direct vp (V.xmin vp) offset (V.xmax vp) offset ();
   let y = offset +. yrange *. 0.0375 *. pos in
   let tic x = tic vp x offset in
   let text x lbl = V.show_text_direct vp V.Data ~x ~y B.CC lbl () in
@@ -61,9 +59,7 @@ let draw_y_axis major minor tics offset vp () =
   let tics_values = Tics.tics (V.ymin vp) (V.ymax vp) tics in
   let xrange = V.xmax vp -. V.xmin vp in
   let offset, pos = axis_offset (V.xmin vp) xrange offset in
-  let path = Path.make_at offset (V.ymin vp) in
-  Path.line_to path offset (V.ymax vp);
-  V.stroke_direct ~path vp V.Data ();
+  Arrows.line_direct vp offset (V.ymin vp) offset (V.ymax vp) ();
   let x = offset +. xrange *. 0.0375 *. pos in
   let tic y = tic vp offset y in
   let text y lbl = V.show_text_direct vp V.Data ~x ~y B.CC lbl () in

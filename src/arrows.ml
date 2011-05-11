@@ -21,6 +21,7 @@
 module V = Viewport.Viewport
 
 type arrow_style =
+  | Unstyled
   | Simple
   | Double
   | Triple
@@ -41,63 +42,63 @@ let add_to_path path size alpha style =
     Path.rel_line_to ~rot:(-. alpha) path ~x:(x *. size) ~y:(y *. size) in
   let simple () = simple rel_move_to rel_line_to in
   match style with
-  | None -> ()
-  | Some Simple -> simple ()
-  | Some Double ->
+  | Unstyled -> ()
+  | Simple -> simple ()
+  | Double ->
       simple ();
       rel_move_to (-0.2) 0.;
       simple ();
       rel_move_to 0.2 0.;
-  | Some Triple ->
+  | Triple ->
       simple ();
       rel_move_to (-0.2) 0.;
       simple ();
       rel_move_to (-0.2) 0.;
       simple ();
       rel_move_to 0.4 0.
-  | Some Diamond ->
+  | Diamond ->
       rel_line_to (-0.5) (-0.3);
       rel_line_to (-0.5) 0.3;
       rel_line_to 0.5 0.3;
       rel_line_to 0.5 (-0.3);
-  | Some Circle -> ()
-  | Some (Custom f) -> f path
+  | Circle -> (* TODO *) ()
+  | (Custom f) -> f path
 
-let path_line_to ?(size=0.01) ?head ?tail path x y =
+let path_line_to ?(size=0.01) ?(head=Simple) ?(tail=Unstyled) path x y =
   let x0, y0 = Path.current_point path in
   let alpha = atan2 (y -. y0) (x -. x0) in
   add_to_path path size alpha tail;
   Path.line_to path x y;
   add_to_path path size alpha head
 
-let path_arc ?(size=0.01) ?head ?tail path r a1 a2 =
+let path_arc ?(size=0.01) ?(head=Simple) ?(tail=Unstyled) path r a1 a2 =
   let alpha = 0. in
   add_to_path path size alpha tail;
   Path.arc path r a1 a2;
   add_to_path path size alpha head
 
-let line ?(size=0.01) ?head ?tail vp x0 y0 x y =
-  V.auto_fit vp x0 y0 x y;
-  let f () =
-    let x0', y0' = V.ortho_from vp V.Data (x0, y0) in
-    let x', y' = V.ortho_from vp V.Data (x, y) in
-    let alpha = atan2 (y' -. y0') (x' -. x0') in
-    (* line *)
-    let path_line = Path.make_at x0 y0 in
-    Path.line_to path_line x y;
-    V.stroke_direct ~path:path_line vp V.Data ();
-    (* head *)
-    let path_head = Path.make_at x' y' in
-    add_to_path path_head size alpha head;
-    V.stroke_direct ~path:path_head vp V.Orthonormal ();
-    (* tail *)
-    let path_tail = Path.make_at x0' y0' in
-    add_to_path path_tail size alpha tail;
-    V.stroke_direct ~path:path_tail vp V.Orthonormal ()
-  in
-  V.add_instruction f vp
+let line_direct ?(size=0.01) ?(head=Simple) ?(tail=Unstyled) vp x0 y0 x y () =
+  let x0', y0' = V.ortho_from vp V.Data (x0, y0) in
+  let x', y' = V.ortho_from vp V.Data (x, y) in
+  let alpha = atan2 (y' -. y0') (x' -. x0') in
+  (* line *)
+  let path_line = Path.make_at x0 y0 in
+  Path.line_to path_line x y;
+  V.stroke_direct ~path:path_line vp V.Data ();
+  (* head *)
+  let path_head = Path.make_at x' y' in
+  add_to_path path_head size alpha head;
+  V.stroke_direct ~path:path_head vp V.Orthonormal ();
+  (* tail *)
+  let path_tail = Path.make_at x0' y0' in
+  add_to_path path_tail size alpha tail;
+  V.stroke_direct ~path:path_tail vp V.Orthonormal ()
 
-let arc ?(size=1.) ?head ?tail vp x0 y0 r a1 a2 =
+let line ?(size=0.01) ?(head=Simple) ?(tail=Unstyled) vp x0 y0 x y =
+  V.auto_fit vp x0 y0 x y;
+  V.add_instruction (line_direct ~size ~head ~tail vp x0 y0 x y) vp
+
+let arc ?(size=1.) ?(head=Simple) ?(tail=Unstyled) vp x0 y0 r a1 a2 =
   let x0', y0' = V.ortho_from vp V.Data (x0, y0) in
   let alpha0 = 0. in (* TODO *)
   let path_arc = Path.make_at x0 y0 in
