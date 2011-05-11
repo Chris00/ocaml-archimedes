@@ -58,25 +58,6 @@ let nicenum x round =
   in
   nf *. rounded
 
-let loose_labels_numeric ?(ntics=5) xmin xmax =
-  let range = nicenum (xmax -. xmin) false in
-  let d = nicenum (range /. float (pred ntics)) true in
-  let graphmin = (floor (xmin /. d)) *. d in
-  let graphmax = (ceil (xmax /.d)) *. d in
-  let nfrac = max (- int_of_float (floor (log10 d))) 0 in
-  let rec aux tics x =
-    if x > graphmax +. 0.5 *. d then tics
-    else aux (Major (Some (Printf.sprintf "%.*f" nfrac x), x) :: tics) (x +. d)
-  in
-  aux [] graphmin
-
-let loose_labels xmin xmax = function
-  | No_label -> raise (Failure "Not yet implemented")
-  | Text _ -> raise (Failure "Not yet implemented")
-  | Number _ -> loose_labels_numeric xmin xmax (* TODO: use the number somehow. *)
-  | Expnumber _ -> raise (Failure "Not yet implemented")
-  | Expnumber_named _ -> raise (Failure "Not yet implemented")
-  | Custom _ -> raise (Failure "Not yet implemented")
 
 let label_of_float label x = match label with
   | No_label -> None
@@ -85,6 +66,17 @@ let label_of_float label x = match label with
   | Expnumber _ -> raise (Failure "Not yet implemented")
   | Expnumber_named _ -> raise (Failure "Not yet implemented")
   | Custom _ -> raise (Failure "Not yet implemented")
+
+let loose_labels ?(ntics=5) xmin xmax label =
+  let range = nicenum (xmax -. xmin) false in
+  let d = nicenum (range /. float (pred ntics)) true in
+  let graphmin = (floor (xmin /. d)) *. d in
+  let graphmax = (ceil (xmax /.d)) *. d in
+  let rec aux tics x =
+    if x > graphmax +. 0.5 *. d then tics
+    else aux (Major (label_of_float label x, x) :: tics) (x +. d)
+  in
+  aux [] graphmin
 
 let equi_labels d_major num_minor xmin xmax labels =
   let d_minor = d_major /. float (succ num_minor) in

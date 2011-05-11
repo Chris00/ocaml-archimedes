@@ -23,24 +23,11 @@ let is_nan_or_inf (x:float) = x <> x || 1. /. x = 0.
 module rec Axes : sig
   type sign = Positive | Negative
 
-  type offset =
-    | Relative of float
-    | Absolute of float
-
-  type graph_axis = {
-    tics: Tics.t;
-    offset: offset;
-    major_tics: string * float;
-    minor_tics: string * float;
-    mutable tics_values: Tics.tic list
-  }
-
   type axis = {
     mutable x0: float;     mutable auto_x0: bool;
     mutable xend: float;   mutable auto_xend: bool;
     mutable log: bool;
     mutable orientation: sign;
-    mutable graph_axes: graph_axis list;
     mutable viewports: Viewport.t list
   }
 
@@ -51,10 +38,6 @@ module rec Axes : sig
 
   val default_axis: unit -> axis
   val default_axes_system: unit -> t
-
-  val add_axis: (string * float) -> (string * float) -> Tics.t -> offset ->
-    sign -> axis -> unit
-  val draw_axes: Viewport.t -> unit
 end
 = struct
   module V = Viewport
@@ -62,28 +45,11 @@ end
 
   type sign = Positive | Negative
 
-  (* FIXME: offset might benefit from better variant names such as Data |
-     Graph. And, it doesn't support other coord_names. Maybe we should use
-     polymorphic variant types shared between Axes and Viewport instead of
-     redefining local ones as Axes.Data and Axes.Graph. *)
-  type offset =
-    | Relative of float
-    | Absolute of float
-
-  type graph_axis = {
-    tics: Tics.t;
-    offset: offset;
-    major_tics: string * float;
-    minor_tics: string * float;
-    mutable tics_values: Tics.tic list
-  }
-
   type axis = {
     mutable x0: float;     mutable auto_x0: bool;
     mutable xend: float;   mutable auto_xend: bool;
     mutable log: bool;
     mutable orientation: sign;
-    mutable graph_axes: graph_axis list;
     mutable viewports: Viewport.t list
   }
 
@@ -94,65 +60,11 @@ end
 
   let default_axis () =
     { x0 = 0.; xend = 1.; auto_x0 = true; auto_xend = true;
-      log = false; orientation = Positive; graph_axes = []; viewports = [] }
+      log = false; orientation = Positive; viewports = [] }
 
   let default_axes_system () =
     { x = default_axis ();
       y = default_axis () }
-
-  let add_axis major_tics minor_tics tics offset sign axis =
-    let graph_axis = {
-      tics=tics;
-      offset=offset;
-      major_tics=major_tics;
-      minor_tics=minor_tics;
-      tics_values=Tics.tics axis.Axes.x0 axis.Axes.xend tics
-    } in
-    axis.graph_axes <- graph_axis :: axis.graph_axes
-
-  (* returns the offset and wether the labels are over or under the axis *)
-  let axis_offset start range = function
-    | Absolute y -> start +. range *. y, if y < 0.5 then -1. else 1.
-    | Relative y -> y, if y < start +. range /. 2. then -1. else 1.
-
-  let tic vp x y (tic_type, tic_size) =
-    V.set_rel_mark_size_direct vp tic_size ();
-    V.mark_direct vp x y tic_type ()
-
-  let draw_tic tic graph_axis text = function
-    | Tics.Major (None, v) -> tic v graph_axis.Axes.major_tics
-    | Tics.Major (Some label, v) -> tic v graph_axis.Axes.major_tics;
-        text v label
-    | Tics.Minor v -> tic v graph_axis.Axes.minor_tics
-
-  let draw_x_axis vp graph_axis =
-    (* TODO add Backend.ARROW *)
-    (*V.set_line_cap vp Backend.ARROW;*)
-    let yrange = V.ymax vp -. V.ymin vp in
-    let offset, pos = axis_offset (V.ymin vp) yrange graph_axis.offset in
-    let path = Path.make_at (V.xmin vp) offset in
-    Path.line_to path (V.xmax vp) offset;
-    V.stroke_direct path vp V.Data ();
-    let y = offset +. yrange *. 0.0375 *. pos in
-    let tic x = tic vp x offset in
-    let text x lbl = V.show_text_direct vp V.Data ~x ~y B.CC lbl () in
-    List.iter (draw_tic tic graph_axis text) graph_axis.tics_values
-    (*V.set_line_cap vp Backend.BUTT;*)
-
-  let draw_y_axis vp graph_axis =
-    let xrange = V.xmax vp -. V.xmin vp in
-    let offset, pos = axis_offset (V.xmin vp) xrange graph_axis.offset in
-    let path = Path.make_at offset (V.ymin vp) in
-    Path.line_to path offset (V.ymax vp);
-    V.stroke_direct path vp V.Data ();
-    let x = offset +. xrange *. 0.0375 *. pos in
-    let tic y = tic vp offset y in
-    let text y lbl = V.show_text_direct vp V.Data ~x ~y B.CC lbl () in
-    List.iter (draw_tic tic graph_axis text) graph_axis.tics_values
-
-  let draw_axes vp =
-    List.iter (draw_x_axis vp) (vp.Viewport.axes_system.x.graph_axes);
-    List.iter (draw_y_axis vp) (vp.Viewport.axes_system.y.graph_axes)
 end
 and Viewport : sig
   type t = {
@@ -207,8 +119,6 @@ and Viewport : sig
   val get_font_size : t -> float
   val get_mark_size : t -> float
 
-  val set_rel_mark_size_direct : t -> float -> unit -> unit
-
   val lower_left_corner : t -> float * float
   val upper_right_corner : t -> float * float
   val dimensions : t -> float * float (* returns (w, h) *)
@@ -234,19 +144,14 @@ and Viewport : sig
   val close_path : t -> unit
   val clear_path : t -> unit
     (*val path_extents : t -> rectangle*)
-  val stroke_direct : Path.t -> t -> coord_name -> unit -> unit
   val stroke_preserve : ?path:Path.t -> t -> coord_name -> unit
   val stroke : ?path:Path.t -> t -> coord_name -> unit
-  val fill : t -> unit
-  val fill_preserve : t -> unit
+  val fill_preserve : ?path:Path.t -> t -> coord_name -> unit
+  val fill : ?path:Path.t -> t -> coord_name -> unit
   val clip_rectangle : t -> x:float -> y:float -> w:float -> h:float -> unit
     (*  val save_vp : t -> unit
         val restore_vp : t -> unit*)
   val select_font_face : t -> Backend.slant -> Backend.weight -> string -> unit
-  val show_text_direct :
-    t -> coord_name ->
-    ?rotate:float ->
-    x:float -> y:float -> Backend.text_position -> string -> unit -> unit
   val show_text :
     t -> coord_name ->
     ?rotate:float ->
@@ -257,7 +162,27 @@ and Viewport : sig
   val mark : t -> x:float -> y:float -> string -> unit
     (* val mark_extents : t -> string -> rectangle *)
 
+  val set_line_width_direct : t -> float -> unit -> unit
+  val set_font_size_direct : t -> float -> unit -> unit
+  val set_mark_size_direct : t -> float -> unit -> unit
+  val set_rel_line_width_direct : t -> float -> unit -> unit
+  val set_rel_font_size_direct : t -> float -> unit -> unit
+  val set_rel_mark_size_direct : t -> float -> unit -> unit
+  val set_color_direct : t -> Color.t -> unit -> unit
+  val set_line_cap_direct : t -> Backend.line_cap -> unit -> unit
+  val set_dash_direct : t -> float -> float array -> unit -> unit
+  val set_line_join_direct : t -> Backend.line_join -> unit -> unit
+  val stroke_direct : ?path:Path.t -> t -> coord_name -> unit -> unit
+  val fill_direct : ?path:Path.t -> t -> coord_name -> unit -> unit
+  val clip_rectangle_direct : t -> x:float -> y:float -> w:float ->
+    h:float -> unit -> unit
+  val select_font_face_direct : t -> Backend.slant -> Backend.weight ->
+    string -> unit -> unit
+  val show_text_direct : t -> coord_name -> ?rotate:float ->
+    x:float -> y:float -> Backend.text_position -> string -> unit -> unit
   val mark_direct : t -> x:float -> y:float -> string -> unit -> unit
+  val path_direct : t -> x:float -> y:float -> Path.t -> unit -> unit
+
   val xrange : t -> float -> float -> unit
   val yrange : t -> float -> float -> unit
   val xmin : t -> float
@@ -265,16 +190,11 @@ and Viewport : sig
   val ymin : t -> float
   val ymax : t -> float
   val close : t -> unit
+
+  val add_instruction : (unit -> unit) -> t -> unit
   val do_instructions : t -> unit
 
-  val add_x_axis: ?major:(string * float) -> ?minor:(string * float) ->
-    ?tics:Tics.t -> ?offset:Axes.offset -> ?sign:Axes.sign -> t -> unit
-  val add_y_axis: ?major:(string * float) -> ?minor:(string * float) ->
-    ?tics:Tics.t -> ?offset:Axes.offset -> ?sign:Axes.sign -> t -> unit
-  val draw_axes: t -> unit
-
-  val box: t -> unit
-  val cross: t -> unit
+  val auto_fit : t -> float -> float -> float -> float -> unit
 end
 = struct
   type t = {
@@ -322,11 +242,113 @@ end
   let usr_lw, usr_ts, usr_ms = 500., 500., 100.
   let def_lw, def_ts, def_ms = 0.002, 0.024, 0.01
 
+(* General functions
+ ***********************************************************************)
+
   let get_coord_from_name vp = function
     | Device -> vp.coord_device
     | Graph -> vp.coord_graph
     | Data -> vp.coord_data
     | Orthonormal -> vp.coord_orthonormal
+
+  let get_path vp = function
+    | None -> vp.path
+    | Some p -> p
+
+  let to_parent coord (x, y) = Coordinate.to_parent coord ~x ~y
+  let from_parent coord (x, y) = Coordinate.from_parent coord ~x ~y
+
+  let rec ortho_from vp coord_name pos = match coord_name with
+    | Device ->
+        ortho_from vp Orthonormal (from_parent vp.coord_orthonormal pos)
+    | Graph ->
+        ortho_from vp Device (to_parent vp.coord_graph pos)
+    | Data ->
+        ortho_from vp Graph (to_parent vp.coord_data pos)
+    | Orthonormal ->
+        pos
+
+  let rec data_from vp coord_name pos = match coord_name with
+    | Device -> data_from vp Graph (from_parent vp.coord_graph pos)
+    | Graph -> from_parent vp.coord_data pos
+    | Data -> pos
+    | Orthonormal -> data_from vp Device (to_parent vp.coord_orthonormal pos)
+
+(* Primitives
+ ***********************************************************************)
+
+  let set_line_width_direct vp lw () =
+    Backend.set_line_width vp.backend lw
+
+  let set_font_size_direct vp ts () =
+    Backend.set_font_size vp.backend ts
+
+  let set_mark_size_direct vp ms () =
+    vp.mark_size <- ms
+
+  let set_rel_line_width_direct vp lw () =
+    Backend.set_line_width vp.backend (lw /. usr_lw *. vp.square_side)
+
+  let set_rel_font_size_direct vp ts () =
+    Backend.set_font_size vp.backend (ts /. usr_ts *. vp.square_side)
+
+  let set_rel_mark_size_direct vp ms () =
+    vp.mark_size <- ms /. usr_ms *. vp.square_side
+
+  let set_color_direct vp color () =
+    Backend.set_color vp.backend color
+
+  let set_line_cap_direct vp lcap () =
+    Backend.set_line_cap vp.backend lcap
+
+  (* Fixme: Find more appropriated names for x, y *)
+  let set_dash_direct vp x y () =
+    Backend.set_dash vp.backend x y
+
+  let set_line_join_direct vp join () =
+    Backend.set_line_join vp.backend join
+
+  let stroke_direct ?path vp coord_name () =
+    let path = get_path vp path in
+    let coord = get_coord_from_name vp coord_name in
+    let ctm = Coordinate.use vp.backend coord in
+    Path.stroke_on_backend path vp.backend;
+    Coordinate.restore vp.backend ctm
+
+  let fill_direct ?path vp coord_name () =
+    let path = get_path vp path in
+    let coord = get_coord_from_name vp coord_name in
+    let ctm = Coordinate.use vp.backend coord in
+    Path.fill_on_backend path vp.backend;
+    Coordinate.restore vp.backend ctm
+
+  let clip_rectangle_direct vp ~x ~y ~w ~h () =
+    Backend.clip_rectangle vp.backend x y w h
+
+  let select_font_face_direct vp slant weight family () =
+    Backend.select_font_face vp.backend slant weight family
+
+  let show_text_direct vp coord_name ?(rotate=0.) ~x ~y pos text () =
+    let ctm = Coordinate.use vp.backend vp.coord_orthonormal in
+    let x, y = ortho_from vp coord_name (x, y) in
+    Backend.show_text vp.backend ~rotate ~x ~y pos text;
+    Coordinate.restore vp.backend ctm
+
+  let orthoinstr_direct vp ~x ~y f =
+    let ms = vp.mark_size /. vp.square_side in
+    let x, y = ortho_from vp Data (x, y) in
+    let coord = Coordinate.make_translate vp.coord_orthonormal
+      (x -. ms /. 2.) (y -. ms /. 2.) in
+    Coordinate.scale coord ms ms;
+    let ctm = Coordinate.use vp.backend coord in
+    f vp.backend;
+    Coordinate.restore vp.backend ctm
+
+  let path_direct vp ~x ~y path () =
+    orthoinstr_direct vp ~x ~y (Path.stroke_on_backend path)
+
+  let mark_direct vp ~x ~y name () =
+    orthoinstr_direct vp ~x ~y (Pointstyle.render name)
 
 (* Initialization functions
  ***********************************************************************)
@@ -389,8 +411,8 @@ end
         (xmax -. xmin) (ymax -. ymin)
     in
     let coord_graph =
-      Coordinate.make_scale
-        (Coordinate.make_translate coord_device 0.1 0.1) 0.8 0.8 in
+      Coordinate.make_translate coord_device 0.1 0.1 in
+    Coordinate.scale coord_graph 0.8 0.8;
     let viewport = {
       backend = vp.backend;
       parent = vp;
@@ -469,12 +491,6 @@ end
     Matrix.translate m (-. x0) (-. y0);
     Coordinate.transform vp.coord_data m
 
-  let update_tics axis =
-    let f graph_axis =
-      let x0, xend = axis.Axes.x0, axis.Axes.xend in
-      graph_axis.Axes.tics_values <- Tics.tics x0 xend graph_axis.Axes.tics
-    in
-    List.iter f axis.Axes.graph_axes
 
   (* Utility function for (x|y)range *)
   let update_axis axis vp x0 xend =
@@ -508,8 +524,6 @@ end
       if is_nan_or_inf yaxis.Axes.xend || y1' > yaxis.Axes.xend then
         (yaxis.Axes.xend <- y1'; updated := true);
     if !updated then begin
-      update_tics xaxis;
-      update_tics yaxis;
       update_coordinate_system vp;
       if vp.immediate_drawing then begin
         let l1 = vp.axes_system.Axes.x.Axes.viewports in
@@ -659,64 +673,57 @@ end
  ***********************************************************************)
 
   let set_line_width vp lw =
-    add_instruction (fun () -> Backend.set_line_width vp.backend lw) vp
+    add_instruction (set_line_width_direct vp lw) vp
 
   let set_font_size vp ts =
-    add_instruction (fun () -> Backend.set_font_size vp.backend ts) vp
+    add_instruction (set_font_size_direct vp ts) vp
 
   let set_mark_size vp ms =
-    add_instruction (fun () -> vp.mark_size <- ms) vp
+    add_instruction (set_mark_size_direct vp ms) vp
 
   let set_rel_line_width vp lw =
-    let f () =
-      Backend.set_line_width vp.backend (lw /. usr_lw *. vp.square_side)
-    in
-    add_instruction f vp
+    add_instruction (set_rel_line_width_direct vp lw) vp
 
-  (* FIXME: Fix names text, font? *)
   let set_rel_font_size vp ts =
-    let f () =
-      Backend.set_font_size vp.backend (ts /. usr_ts *. vp.square_side)
-    in
-    add_instruction f vp
-
-  let set_rel_mark_size_direct vp ms () =
-    vp.mark_size <- (ms /. usr_ms *. vp.square_side)
+    add_instruction (set_rel_font_size_direct vp ts) vp
 
   let set_rel_mark_size vp ms =
     add_instruction (set_rel_mark_size_direct vp ms) vp
 
-  let get_line_width vp =
-    (Sizes.get_lw vp.sizes) *. usr_lw
-  let get_font_size vp =
-    (Sizes.get_ts vp.sizes) *. usr_ts
-  let get_mark_size vp =
-    (Sizes.get_marks vp.sizes) *. usr_ms
-
+  (* Fixme: Are sizes still used ? *)
+  let get_line_width vp = (Sizes.get_lw vp.sizes) *. usr_lw
+  let get_font_size vp = (Sizes.get_ts vp.sizes) *. usr_ts
+  let get_mark_size vp = (Sizes.get_marks vp.sizes) *. usr_ms
 
 (* ......................................................................... *)
 
-  let lower_left_corner vp = Coordinate.to_device vp.coord_device ~x:0. ~y:0.
+  let lower_left_corner vp =
+    Coordinate.to_device vp.coord_device ~x:0. ~y:0.
 
-  let upper_right_corner vp = Coordinate.to_device vp.coord_device ~x:1. ~y:1.
+  let upper_right_corner vp =
+    Coordinate.to_device vp.coord_device ~x:1. ~y:1.
 
-  let dimensions vp = Coordinate.to_device_distance vp.coord_device ~dx:1. ~dy:1.
+  let dimensions vp =
+    Coordinate.to_device_distance vp.coord_device ~dx:1. ~dy:1.
 
   let set_global_color vp c =
-    add_instruction (fun () -> Backend.set_color vp.backend c) vp
+    add_instruction (set_color_direct vp c) vp
 
   let set_global_line_cap vp lc =
-    add_instruction (fun () -> Backend.set_line_cap vp.backend lc) vp
+    add_instruction (set_line_cap_direct vp lc) vp
 
   let set_global_dash vp x y =
-    add_instruction (fun () -> Backend.set_dash vp.backend x y) vp
+    add_instruction (set_dash_direct vp x y) vp
 
   let set_global_line_join vp join =
-    add_instruction (fun () -> Backend.set_line_join vp.backend join) vp
+    add_instruction (set_line_join_direct vp join) vp
 
   let get_line_cap vp = Backend.get_line_cap vp.backend
   let get_dash vp = Backend.get_dash vp.backend
   let get_line_join vp = Backend.get_line_join vp.backend
+
+(* Viewport path manipulation
+ ***********************************************************************)
 
   let move_to vp ~x ~y =
     add_instruction (fun () -> Path.move_to vp.path ~x ~y) vp
@@ -732,7 +739,6 @@ end
 
   let curve_to vp ~x1 ~y1 ~x2 ~y2 ~x3 ~y3 =
     add_instruction (fun () -> Path.curve_to vp.path ~x1 ~y1 ~x2 ~y2 ~x3 ~y3) vp
-
   let rectangle vp ~x ~y ~w ~h =
     add_instruction (fun () -> Path.rectangle vp.path ~x ~y ~w ~h) vp
 
@@ -747,88 +753,40 @@ end
 
   let path_extents vp = Path.extents vp.path
 
-  let stroke_direct path vp coord_name () =
-    let coord = get_coord_from_name vp coord_name in
-    let ctm = Coordinate.use vp.backend coord in
-    Path.stroke_on_backend path vp.backend;
-    Coordinate.restore vp.backend ctm
-
-  let stroke_preserve ?path vp coord_name =
-    let path = match path with
-      | None -> vp.path
-      | Some p -> p
-    in
+  let fit_path vp path =
     let e = Path.extents path in
     let x0 = e.Matrix.x
     and y0 = e.Matrix.y in
     let x1 = x0 +. e.Matrix.w
     and y1 = y0 +. e.Matrix.h in
-    auto_fit vp x0 y0 x1 y1;
-    add_instruction (stroke_direct path vp coord_name) vp
+    auto_fit vp x0 y0 x1 y1
+
+  let stroke_preserve ?path vp coord_name =
+    let path = get_path vp path in
+    fit_path vp path;
+    add_instruction (stroke_direct ~path vp coord_name) vp
 
   let stroke ?path vp coord_name =
     stroke_preserve ?path vp coord_name;
     if path = None then add_instruction (fun () -> Path.clear vp.path) vp
 
-  let fill vp =
-    add_instruction (fun () -> Backend.fill vp.backend) vp
+  let fill_preserve ?path vp coord_name =
+    let path = get_path vp path in
+    fit_path vp path;
+    add_instruction (fill_direct ~path vp coord_name) vp
 
-  let fill_preserve vp =
-    add_instruction (fun () -> Backend.fill_preserve vp.backend) vp
+  let fill ?path vp coord_name =
+    fill_preserve ?path vp coord_name;
+    if path = None then add_instruction (fun () -> Path.clear vp.path) vp
 
   let clip_rectangle vp ~x ~y ~w ~h =
-    add_instruction (fun () -> Backend.clip_rectangle vp.backend x y w h) vp
+    add_instruction (clip_rectangle_direct vp ~x ~y ~w ~h) vp
 
-(* (* TODO: Check what is it used for ? (drop it ?) *)
-  let save_vp vp =
-    let f () =
-      Backend.save vp.backend;
-      let sizes =
-        Sizes.get_lw vp.scalings,
-        Sizes.get_ts vp.scalings,
-        Sizes.get_marks vp.scalings
-      in
-      Stack.push sizes vp.scalings_hist
-    in
-    add_instruction f vp
-
-  (* TODO: Check what is it used for ? (drop it ?) *)
-  let restore_vp vp =
-    let f () =
-      try
-        let lw, ts, marks = Stack.pop vp.scalings_hist in
-        Sizes.set_abs_lw vp.scalings lw;
-        Sizes.set_abs_ts vp.scalings ts;
-        Sizes.set_abs_marks vp.scalings marks;
-        Backend.restore vp.backend
-      with Stack.Empty -> ()
-    in
-    add_instruction f vp *)
+(* Text, marks
+ ***********************************************************************)
 
   let select_font_face vp slant weight family =
-    let f () = Backend.select_font_face vp.backend slant weight family in
-      add_instruction f vp
-
-  let to_parent coord (x, y) = Coordinate.to_parent coord ~x ~y
-  let from_parent coord (x, y) = Coordinate.from_parent coord ~x ~y
-
-  let rec ortho_from vp coord_name pos = match coord_name with
-    | Device -> from_parent vp.coord_orthonormal pos
-    | Graph -> ortho_from vp Device (to_parent vp.coord_graph pos)
-    | Data -> ortho_from vp Graph (to_parent vp.coord_data pos)
-    | Orthonormal -> pos
-
-  let rec data_from vp coord_name pos = match coord_name with
-    | Device -> data_from vp Graph (from_parent vp.coord_graph pos)
-    | Graph -> from_parent vp.coord_data pos
-    | Data -> pos
-    | Orthonormal -> data_from vp Device (to_parent vp.coord_orthonormal pos)
-
-  let show_text_direct vp coord_name ?(rotate=0.) ~x ~y pos text () =
-    let ctm = Coordinate.use vp.backend vp.coord_orthonormal in
-    let x, y = ortho_from vp coord_name (x, y) in
-    Backend.show_text vp.backend ~rotate ~x ~y pos text;
-    Coordinate.restore vp.backend ctm
+    add_instruction (select_font_face_direct vp slant weight family) vp
 
   let show_text vp coord_name ?(rotate=0.) ~x ~y pos text =
     (* auto_fit if Data *)
@@ -859,47 +817,8 @@ end
     end;
     add_instruction (show_text_direct vp coord_name ~rotate ~x ~y pos text) vp
 
-  let mark_direct vp ~x ~y name () =
-    let ms = vp.mark_size /. vp.square_side in
-    let x, y = ortho_from vp Data (x, y) in
-    let coord = Coordinate.make_translate vp.coord_orthonormal
-      (x -. ms /. 2.) (y -. ms /. 2.) in
-    Coordinate.scale coord ms ms;
-    let ctm = Coordinate.use vp.backend coord in
-    Pointstyle.render name vp.backend;
-    Coordinate.restore vp.backend ctm
-
   let mark vp ~x ~y name =
     auto_fit vp x y x y; (* TODO we want all the mark to be included *)
     add_instruction (mark_direct vp ~x ~y name) vp
-
-  let add_x_axis ?(major=("tic_up",5.)) ?(minor=("tic_up",2.))
-      ?(tics=Tics.Auto (Tics.Number 5)) ?(offset=Axes.Absolute 0.)
-      ?(sign=Axes.Positive) vp =
-    Axes.add_axis major minor tics offset sign (vp.axes_system.Axes.x)
-
-  let add_y_axis ?(major=("tic_right",5.)) ?(minor=("tic_right",2.))
-      ?(tics=Tics.Auto (Tics.Number 5)) ?(offset=Axes.Absolute 0.)
-      ?(sign=Axes.Positive) vp =
-    Axes.add_axis major minor tics offset sign (vp.axes_system.Axes.y)
-
-  let draw_axes vp =
-    add_instruction (fun () -> Axes.draw_axes vp) vp
-
-  let box vp =
-    add_x_axis ~offset:(Axes.Absolute 0.) vp;
-    add_x_axis ~offset:(Axes.Absolute 1.) ~major:("tic_down", 5.)
-      ~minor:("tic_down", 2.) ~sign:Axes.Negative vp;
-    add_y_axis ~offset:(Axes.Absolute 0.) vp;
-    add_y_axis ~offset:(Axes.Absolute 1.) ~major:("tic_left", 5.)
-      ~minor:("tic_left", 2.) ~sign:Axes.Negative vp;
-    draw_axes vp
-
-  let cross vp =
-    add_x_axis ~offset:(Axes.Absolute 0.5) ~major:("|", 2.)
-      ~minor:("|", 1.) vp;
-    add_y_axis ~offset:(Axes.Absolute 0.5) ~major:("-", 2.)
-      ~minor:("-", 1.) vp;
-    draw_axes vp
 
 end

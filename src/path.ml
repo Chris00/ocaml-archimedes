@@ -18,6 +18,9 @@
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the file
    LICENSE for more details. *)
 
+let fourth_pi = atan 1.
+let two_pi = fourth_pi /. 2.
+
 type data =
   | Move_to of float * float
   | Line_to of float * float
@@ -40,6 +43,13 @@ let make () =
     x = 0.;
     y = 0.;
     curr_pt = false }
+
+let copy p =
+  { path = List.map (fun x -> x) p.path;
+    extents = { p.extents with Matrix.x = p.extents.Matrix.x };
+    x = p.x;
+    y = p.y;
+    curr_pt = p.curr_pt }
 
 let clear p =
   p.path <- [];
@@ -88,11 +98,16 @@ let line_to p ~x ~y =
     p.y <- y
   end else move_to p ~x ~y
 
-let rel_move_to p ~x ~y =
-  move_to p ~x:(p.x +. x) ~y:(p.y +. y)
+let rotate alpha x y =
+  x *. cos alpha +. y *. sin alpha, y *. cos alpha -. x *. sin alpha
 
-let rel_line_to p ~x ~y =
-  line_to p ~x:(p.x +. x) ~y:(p.y +. y)
+let rel_move_to ?(rot=0.) p ~x ~y =
+  let x', y' = rotate rot x y in
+  move_to p ~x:(p.x +. x') ~y:(p.y +. y')
+
+let rel_line_to ?(rot=0.) p ~x ~y =
+  let x', y' = rotate rot x y in
+  line_to p ~x:(p.x +. x') ~y:(p.y +. y')
 
 let rectangle p ~x ~y ~w ~h =
   p.path <- Rectangle (x, y, w, h) :: p.path;
@@ -179,8 +194,6 @@ let curve_to p ~x1 ~y1 ~x2 ~y2 ~x3 ~y3 =
    passes by middle point of the arc. *)
 let arc_control = 4. /. 3. (* (1 - cos(b))/(sin b),  b = (a1 - a2)/2 *)
 
-let fourth_pi = atan 1.
-
 let rec bezier_arc p x0 y0 r a1 a2 =
   let da = 0.5 *. (a2 -. a1) in
   if abs_float(da) <= fourth_pi then
@@ -215,15 +228,22 @@ let close p =
     p.y <- y
   end
 
+let do_on_backend b = function
+  | Move_to (x, y) -> Backend.move_to b x y
+  | Line_to (x, y) -> Backend.line_to b x y
+  | Rectangle (x, y, w, h) -> Backend.rectangle b x y w h
+  | Curve_to (_, _, x1, y1, x2, y2, x3, y3) ->
+      Backend.curve_to b x1 y1 x2 y2 x3 y3
+  | Close (_, _) -> Backend.close_path b
+
 let stroke_on_backend p b =
   Backend.clear_path b;
-  let f = function
-    | Move_to (x, y) -> Backend.move_to b x y
-    | Line_to (x, y) -> Backend.line_to b x y
-    | Rectangle (x, y, w, h) -> Backend.rectangle b x y w h
-    | Curve_to (_, _, x1, y1, x2, y2, x3, y3) ->
-        Backend.curve_to b x1 y1 x2 y2 x3 y3
-    | Close (_, _) -> Backend.close_path b
-  in
-  List.iter f (List.rev p.path);
+  List.iter (do_on_backend b) (List.rev p.path);
   Backend.stroke b
+
+let fill_on_backend p b =
+  Backend.clear_path b;
+  List.iter (do_on_backend b) (List.rev p.path);
+  Backend.fill b
+
+let current_point p = p.x, p.y

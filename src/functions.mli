@@ -24,19 +24,19 @@ val samplefxy :
   int * Matrix.rectangle * (('a -> float * float -> 'a) -> 'a -> 'a)
 
 val samplefx :
-  (float -> float) ->
-  ?min_step:float ->
-  ?nsamples:int -> float -> float ->
-  int * (float * float) * (('a -> float -> 'a) -> 'a -> 'a)
+  ?xlog:bool -> ?ylog:bool ->
+  ?min_step:float -> ?max_yrange:float ->
+  ?nsamples:int -> (float -> float) -> float -> float ->
+  int * (float * float) * (float * float) list
 
 val fxy_list :
   (float -> float * float) ->
   ?min_step:float -> ?nsamples:int -> float -> float -> (float * float) list
-
+(*
 val fx_list :
   (float -> float) ->
   ?min_step:float -> ?nsamples:int -> float -> float -> float list
-
+*)
 val plotfxy :
   Backend.t ->
   (float -> float * float) -> ?nsamples:int -> float -> float -> unit

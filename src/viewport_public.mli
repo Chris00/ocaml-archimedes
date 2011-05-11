@@ -1,6 +1,6 @@
 (* File: viewport.mli
 
-   Copyright (C) 2009-2015
+   Copyright (C) 2009-2011
 
      Christophe Troestler <Christophe.Troestler@umons.ac.be>
      Pierre Hauweele <antegallya@gmail.com>
@@ -22,24 +22,11 @@ module type T = sig
   module rec Axes : sig
     type sign = Positive | Negative
 
-    type offset =
-      | Relative of float
-      | Absolute of float
-
-    type graph_axis = {
-      tics: Tics.t;
-      offset: offset;
-      major_tics: string * float;
-      minor_tics: string * float;
-      mutable tics_values: Tics.tic list
-    }
-
     type axis = {
       mutable x0: float;     mutable auto_x0: bool;
       mutable xend: float;   mutable auto_xend: bool;
       mutable log: bool;
       mutable orientation: sign;
-      mutable graph_axes: graph_axis list;
       mutable viewports: Viewport.t list
     }
 
@@ -50,10 +37,6 @@ module type T = sig
 
     val default_axis: unit -> axis
     val default_axes_system: unit -> t
-
-    val add_axis: (string * float) -> (string * float) -> Tics.t -> offset ->
-      sign -> axis -> unit
-    val draw_axes: Viewport.t -> unit
   end
   and Viewport : sig
     type t
@@ -177,6 +160,9 @@ module type T = sig
           @axes_sys see {!make}
       *)
 
+    val ortho_from : t -> coord_name -> float * float -> float * float
+    val data_from : t -> coord_name -> float * float -> float * float
+
     val set_line_width : t -> float -> unit
     val set_font_size : t -> float -> unit
     val set_mark_size : t -> float -> unit
@@ -223,11 +209,11 @@ module type T = sig
     val stroke : ?path:Path.t -> t -> coord_name -> unit
       (** strokes the path (default: viewport's path) on the specified
           coordinate system, does clear the viewport's path if no path given *)
-    val fill : t -> unit
-    val fill_preserve : t -> unit
+    val fill_preserve : ?path:Path.t -> t -> coord_name -> unit
+    val fill : ?path:Path.t -> t -> coord_name -> unit
     val clip_rectangle : t -> x:float -> y:float -> w:float -> h:float -> unit
-(*    val save_vp : t -> unit
-    val restore_vp : t -> unit*)
+      (*    val save_vp : t -> unit
+            val restore_vp : t -> unit*)
     val select_font_face : t -> Backend.slant -> Backend.weight -> string -> unit
     val show_text :
       t -> coord_name ->
@@ -251,19 +237,33 @@ module type T = sig
     val ymin : t -> float
     val ymax : t -> float
 
+    val set_line_width_direct : t -> float -> unit -> unit
+    val set_font_size_direct : t -> float -> unit -> unit
+    val set_mark_size_direct : t -> float -> unit -> unit
+    val set_rel_line_width_direct : t -> float -> unit -> unit
+    val set_rel_font_size_direct : t -> float -> unit -> unit
+    val set_rel_mark_size_direct : t -> float -> unit -> unit
+    val set_color_direct : t -> Color.t -> unit -> unit
+    val set_line_cap_direct : t -> Backend.line_cap -> unit -> unit
+    val set_dash_direct : t -> float -> float array -> unit -> unit
+    val set_line_join_direct : t -> Backend.line_join -> unit -> unit
+    val stroke_direct : ?path:Path.t -> t -> coord_name -> unit -> unit
+    val fill_direct : ?path:Path.t -> t -> coord_name -> unit -> unit
+    val clip_rectangle_direct : t -> x:float -> y:float -> w:float ->
+      h:float -> unit -> unit
+    val select_font_face_direct : t -> Backend.slant -> Backend.weight ->
+      string -> unit -> unit
+    val show_text_direct : t -> coord_name -> ?rotate:float ->
+      x:float -> y:float -> Backend.text_position -> string -> unit -> unit
+    val mark_direct : t -> x:float -> y:float -> string -> unit -> unit
 
     val close : t -> unit
 
+    val add_instruction : (unit -> unit) -> t -> unit
     val do_instructions : t -> unit
 
-    val add_x_axis: ?major:(string * float) -> ?minor:(string * float) ->
-      ?tics:Tics.t -> ?offset:Axes.offset -> ?sign:Axes.sign -> t -> unit
-    val add_y_axis: ?major:(string * float) -> ?minor:(string * float) ->
-      ?tics:Tics.t -> ?offset:Axes.offset -> ?sign:Axes.sign -> t -> unit
-    val draw_axes: t -> unit
-
-    val box: t -> unit
-    val cross: t -> unit
-
+    val auto_fit : t -> float -> float -> float -> float -> unit
+      (** [auto_fit vp x0 y0 x1 y1] ensures that the rectangle delimited by
+          (x0, y0) and (x1, y1) is included into the axes' ranges *)
   end
 end

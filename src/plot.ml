@@ -18,95 +18,76 @@
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the file
    LICENSE for more details. *)
 
-module V = Viewport
+module V = Viewport.Viewport
 
-module type COMMON = sig
-  type fill = In | Out
+module type Common = sig
+  type pathstyle =
+    | Lines
+    | Points of string
+    | Linespoints of string
+    | Impulses
   type filledcurves = Color.t * Color.t (* f1 > f2, f2 < f1 *)
 
-  val f : V.t -> ?nsamples:int -> ?fill:fill -> (float -> float) ->
-    float -> float -> unit
+  val fx : ?xlog:bool -> ?ylog:bool -> ?min_step:float ->
+    ?max_yrange:float -> ?nsamples:int ->
+    ?fill:bool -> ?fillcolor:Color.t -> ?pathstyle:pathstyle ->
+    V.t -> (float -> float) -> float -> float -> unit
 
-  val xy_param : V.t -> ?nsamples:int -> ?fill:fill ->
+(*  val xy_param : V.t -> ?nsamples:int -> ?fill:fill ->
     (float -> float * float) -> float -> float -> unit
 
   (* TODO we want to have control over the stroke properties for each curve *)
   val filledcurves : V.t -> ?nsamples:int -> ?fill:filledcurves ->
-    (float -> float) -> (float -> float) -> float -> float -> unit
+    (float -> float) -> (float -> float) -> float -> float -> unit*)
 end
 
 module Common =
 struct
 
-  let f vp ?(nsamples=100) ?fill f a b =
-    let logarithmic = vp.V.axes_system.Axes.x.Axes.log in
-    let step = if logarithmic then (b /. a) ** (1. /. nsamples)
-    else (b -. a) /. nsamples in
+  type pathstyle =
+    | Lines
+    | Points of string
+    | Linespoints of string
+    | Impulses
+  type filledcurves = Color.t * Color.t (* f1 > f2, f2 < f1 *)
 
+  let f_line_to vp (x, y) = V.line_to vp x y
+  let f_finish vp = V.stroke vp V.Data
 
+  let fx ?xlog ?ylog ?min_step ?max_yrange ?nsamples ?(fill=false)
+      ?(fillcolor=Color.red) ?(pathstyle=Lines) vp f a b =
+    let _, (ymin, ymax), data =
+      Functions.samplefx ?xlog ?ylog ?nsamples ?min_step ?max_yrange f b a
+    in
+    V.auto_fit vp a ymin b ymax;
+    let path = Path.make_at a (f a) in
+    let draw (x, y) = match pathstyle with
+      | Lines -> Path.line_to path ~x ~y
+      | Linespoints _ -> Path.line_to path ~x ~y
+      | Impulses ->
+          Path.move_to path ~x ~y:0.;
+          Path.line_to path ~x ~y
+      | Points _ -> ()
+    in
+    List.iter draw data;
+    let pathcopy = Path.copy path in
+    if fill then begin
+      Path.line_to path b 0.;
+      Path.line_to path a 0.;
+      V.set_global_color vp fillcolor;
+      V.fill ~path vp V.Data;
+      V.set_global_color vp Color.black
+    end;
+    V.stroke ~path:pathcopy vp V.Data;
+    (match pathstyle with
+     | Linespoints m | Points m ->
+         List.iter (fun (x, y) -> V.mark vp ~x ~y m) data
+     | _ -> ())
 
-
-  let plot_f vp ?nsamples ?(fill=false) f a b fill0 fill1 =
-    let do_with, finish =
-      if fill then
-        let x_last = ref nan
-        and y_last = ref nan in
-        let first = ref true in
-        ((fun p (x,y) ->
-            if !first then (
-              let x, y = fill0 x y in
-              V.move_to p x y;
-              first := false
-            )
-            else
-              V.line_to p x y;
-            x_last := x;
-            y_last := y),
-         (fun p ->
-            let x, y = fill1 !x_last !y_last in
-            V.line_to p x y;
-            V.fill p;
-            first := true; (* this set of functions may be run several times *)
-         ))
-      else
-        let first = ref true in
-        ((fun p (x,y) ->
-            if !first then (
-              V.move_to p x y;
-              first := false
-            )
-            else
-              V.line_to p x y),
-         (fun p ->
-            V.stroke p;
-            first := true)) in
-    V.xyf p.h ?color ?nsamples ~do_with ~finish f a b;
-    (* Add marks if requested *)
-    match mark with
-    | None -> ()
-    | Some mark ->
-        let do_with p (x,y) =
-          V.move_to p x y;
-          V.render p mark
-        and finish _ = () in
-        V.xyf p.h ?color ?nsamples ~do_with ~finish f a b
-  ;;
-
-  let id x y = (x, y)
-  let xyf p ?color ?nsamples ?mark ?(fill=false) f a b =
-    plot_f p ?color ?nsamples ?mark ~fill f a b id id
-
-  let pr_x x _ = (x, 0.)
-  let f p ?color ?nsamples ?mark ?(fill=false) f a b =
-    plot_f p ?color ?nsamples ?mark ~fill (fun x -> (x, f x)) a b pr_x pr_x
-
-  let set_font_size p w = V.set_global_font_size p.h w
-  let text p ?(rotate=0.) ~x ~y ?(pos=CC) txt =
-    V.show_text p.h ~rotate ~x ~y pos txt
 end
 
 (************************************************************************)
-
+(*
 module Array =
 struct
   include Common
@@ -200,3 +181,4 @@ struct
     V.xy p.h ?color ?mark iter
 
 end
+*)

@@ -8,7 +8,7 @@ let draw bk =
   V.xrange vp 0. 10.;
   V.yrange vp 0. 5.;
   V.set_line_width vp 1.;
-  V.box vp;
+  Axes.box ~tics:(Tics.Equidistants (Tics.Number 5, 1.5, 3)) vp;
   V.close vp
 
 let () =

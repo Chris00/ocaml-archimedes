@@ -27,10 +27,6 @@ let () =
   printf "(** A 2D plotting library with various backends. *)\n\n";
   include_module "Color";
 
-  (*section "Plotting functions";
-  include_module "Axes";
-  include_module "Plot";*)
-
   section "Affine transformations";
   include_module "Matrix";
 
@@ -41,4 +37,7 @@ let () =
   include_module "Path";
   include_module "Sizes";
   include_module "Tics";
-  include_module "Viewport"
+  include_module "Viewport";
+  include_module "Arrows";
+  include_module "Axes";
+  include_module "Plot"
