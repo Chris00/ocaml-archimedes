@@ -25,7 +25,7 @@ val samplefxy :
 
 val samplefx :
   ?xlog:bool -> ?ylog:bool ->
-  ?min_step:float ->
+  ?min_step:float -> ?max_yrange:float ->
   ?nsamples:int -> (float -> float) -> float -> float ->
   int * (float * float) * (float * float) list
 

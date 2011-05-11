@@ -28,7 +28,8 @@ module type Common = sig
     | Impulses
   type filledcurves = Color.t * Color.t (* f1 > f2, f2 < f1 *)
 
-  val fx : ?xlog:bool -> ?ylog:bool -> ?min_step:float -> ?nsamples:int ->
+  val fx : ?xlog:bool -> ?ylog:bool -> ?min_step:float ->
+    ?max_yrange:float -> ?nsamples:int ->
     ?fill:bool -> ?fillcolor:Color.t -> ?pathstyle:pathstyle ->
     V.t -> (float -> float) -> float -> float -> unit
 
@@ -53,10 +54,10 @@ struct
   let f_line_to vp (x, y) = V.line_to vp x y
   let f_finish vp = V.stroke vp V.Data
 
-  let fx ?xlog ?ylog ?min_step ?nsamples ?(fill=false) ?(fillcolor=Color.red)
-      ?(pathstyle=Lines) vp f a b =
+  let fx ?xlog ?ylog ?min_step ?max_yrange ?nsamples ?(fill=false)
+      ?(fillcolor=Color.red) ?(pathstyle=Lines) vp f a b =
     let _, (ymin, ymax), data =
-      Functions.samplefx ?xlog ?ylog ?nsamples ?min_step f b a
+      Functions.samplefx ?xlog ?ylog ?nsamples ?min_step ?max_yrange f b a
     in
     V.auto_fit vp a ymin b ymax;
     let path = Path.make_at a (f a) in

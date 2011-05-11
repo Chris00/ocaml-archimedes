@@ -1,6 +1,7 @@
 open Backend
 
 let is_nan (x: float) = x <> x
+let is_inf log max y = log && 1. /. y = 0. || not log && y > max
 
 let update_extents e px py =
   let x, w, xupdated =
@@ -58,7 +59,7 @@ let samplefxy f ?(min_step=1E-9) ?(nsamples = 100) a b =
   let extents = {Matrix.x = x; y = y; w = 0.; h = 0.} in
   next_point 1 a x y bounds_list [x,y] 1 extents
 
-let samplefx ?(xlog=false) ?(ylog=false) ?(min_step=1E-9)
+let samplefx ?(xlog=false) ?(ylog=false) ?(min_step=1E-9) ?(max_yrange=1E9)
     ?(nsamples = 100) f a b =
   let step = if xlog then (b /. a) ** (1. /. float nsamples)
   else (b -. a) /. (float nsamples) in
@@ -76,23 +77,27 @@ let samplefx ?(xlog=false) ?(ylog=false) ?(min_step=1E-9)
           (* FIXME: Numerical error here *)
           let x = if xlog then x0 *. step else x0 +. step in
           let y = f x in
-          let diffx = if xlog then log x -. log x0 else x -. x0 in
-          let diffy = if ylog then log y -. log y0 else y -. y0 in
-          let y0_square = if ylog then log y0 *. log y0 else y0 *. y0 in
-          let ab_square = if xlog then (log (b -. a)) ** 2. else b -. a in
-          let rel_max = max_length *. (y0_square +. ab_square) in
-          if diffx *. diffx +. diffy *. diffy < rel_max
-            || step < min_step then
-              let ymin, ymax = extents in
-              let new_ext = min y ymin, max y ymax in
-              next_point (i+1) tmin x y bounds ((x, y)::listxy) (len+1) new_ext
+          if is_nan y || is_inf ylog max_yrange y then
+            next_point (i+1) tmin x y bounds listxy (len+1) extents
           else
-            (*increase precision by dividing step by 2.*)
-            let ntmin = if xlog then tmin *. step ** float (i - 1)
-            else tmin +. (float (i-1)) *. step in
-            let nstep = if xlog then step ** 0.5 else step /. 2. in
-            next_point 1 ntmin x0 y0 ((i, tmin, nstep, 2) :: bounds)
-              listxy len extents
+            let diffx = if xlog then log x -. log x0 else x -. x0 in
+            let diffy = if ylog then log y -. log y0 else y -. y0 in
+            let y0_square = if ylog then log y0 *. log y0 else y0 *. y0 in
+            let ab_square = if xlog then (log (b -. a)) ** 2. else b -. a in
+            let rel_max = max_length *. (y0_square +. ab_square) in
+            if diffx *. diffx +. diffy *. diffy < rel_max
+              || step < min_step then
+                let ymin, ymax = extents in
+                let new_ext = min y ymin, max y ymax in
+                let l = (x, y) :: listxy in
+                next_point (i+1) tmin x y bounds l (len+1) new_ext
+            else
+              (*increase precision by dividing step by 2.*)
+              let ntmin = if xlog then tmin *. step ** float (i - 1)
+              else tmin +. (float (i-1)) *. step in
+              let nstep = if xlog then step ** 0.5 else step /. 2. in
+              next_point 1 ntmin x0 y0 ((i, tmin, nstep, 2) :: bounds)
+                listxy len extents
   in
   let x, y = a, f a in
   next_point 1 a x y bounds_list [(x, y)] 1 (y, y)

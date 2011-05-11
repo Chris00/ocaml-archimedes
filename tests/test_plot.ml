@@ -4,11 +4,11 @@ module P = Plot.Common
 
 let draw bk =
   let vp = V.init ~w:1024. ~h:600. ~dirs:["../src"; "./src"] bk in
-  V.set_mark_size vp 5.;
+  V.set_mark_size vp 50.;
   V.set_line_width vp 1.;
-  P.fx ~fill:true ~ylog:true ~pathstyle:(P.Linespoints "o") vp exp (-10.) 10.;
-  V.mark vp ~x:0. ~y:5. "o";
-  Axes.box vp;
+  let f x = 1. /. x in
+  P.fx ~fill:true ~pathstyle:(P.Linespoints "o") vp f (-10.) 10.;
+  Axes.box ~tics:(Tics.Equidistants (Tics.Number 5, 1., 2)) vp;
   V.close vp
 
 let () =

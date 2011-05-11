@@ -259,10 +259,14 @@ end
   let from_parent coord (x, y) = Coordinate.from_parent coord ~x ~y
 
   let rec ortho_from vp coord_name pos = match coord_name with
-    | Device -> from_parent vp.coord_orthonormal pos
-    | Graph -> ortho_from vp Device (to_parent vp.coord_graph pos)
-    | Data -> ortho_from vp Graph (to_parent vp.coord_data pos)
-    | Orthonormal -> pos
+    | Device ->
+        ortho_from vp Orthonormal (from_parent vp.coord_orthonormal pos)
+    | Graph ->
+        ortho_from vp Device (to_parent vp.coord_graph pos)
+    | Data ->
+        ortho_from vp Graph (to_parent vp.coord_data pos)
+    | Orthonormal ->
+        pos
 
   let rec data_from vp coord_name pos = match coord_name with
     | Device -> data_from vp Graph (from_parent vp.coord_graph pos)
@@ -407,8 +411,8 @@ end
         (xmax -. xmin) (ymax -. ymin)
     in
     let coord_graph =
-      Coordinate.make_scale
-        (Coordinate.make_translate coord_device 0.1 0.1) 0.8 0.8 in
+      Coordinate.make_translate coord_device 0.1 0.1 in
+    Coordinate.scale coord_graph 0.8 0.8;
     let viewport = {
       backend = vp.backend;
       parent = vp;

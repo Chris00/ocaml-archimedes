@@ -11,7 +11,8 @@ module type T = sig
       | Impulses
     type filledcurves = Color.t * Color.t (* f1 > f2, f2 < f1 *)
 
-    val fx : ?xlog:bool -> ?ylog:bool -> ?min_step:float -> ?nsamples:int ->
+    val fx : ?xlog:bool -> ?ylog:bool -> ?min_step:float ->
+      ?max_yrange:float -> ?nsamples:int ->
       ?fill:bool -> ?fillcolor:Color.t -> ?pathstyle:pathstyle ->
       Viewport.Viewport.t -> (float -> float) -> float -> float -> unit
 
