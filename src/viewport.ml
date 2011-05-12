@@ -191,6 +191,8 @@ and Viewport : sig
   val xmax : t -> float
   val ymin : t -> float
   val ymax : t -> float
+  val xlog : t -> bool
+  val ylog : t -> bool
   val close : t -> unit
 
   val add_instruction : (unit -> unit) -> t -> unit
@@ -828,5 +830,8 @@ end
   let mark vp ~x ~y name =
     auto_fit vp x y x y; (* TODO we want all the mark to be included *)
     add_instruction (mark_direct vp ~x ~y name) vp
+
+  let xlog vp = vp.axes_system.Axes.x.Axes.log
+  let ylog vp = vp.axes_system.Axes.y.Axes.log
 
 end

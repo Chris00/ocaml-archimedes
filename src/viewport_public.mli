@@ -238,6 +238,9 @@ module type T = sig
     val ymin : t -> float
     val ymax : t -> float
 
+    val xlog : t -> bool
+    val ylog : t -> bool
+
     val set_line_width_direct : t -> float -> unit -> unit
     val set_font_size_direct : t -> float -> unit -> unit
     val set_mark_size_direct : t -> float -> unit -> unit

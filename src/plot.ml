@@ -31,8 +31,7 @@ module type Common = sig
 
   type filledcurves = Color.t * Color.t (* f1 > f2, f2 < f1 *)
 
-  val fx : ?xlog:bool -> ?ylog:bool -> ?min_step:float ->
-    ?max_yrange:float -> ?nsamples:int ->
+  val fx : ?min_step:float -> ?max_yrange:float -> ?nsamples:int ->
     ?fill:bool -> ?fillcolor:Color.t -> ?pathstyle:pathstyle ->
     ?g:(float -> float) -> V.t -> (float -> float) -> float -> float -> unit
 
@@ -76,35 +75,16 @@ struct
         Path.move_to path ~x ~y:base;
         Arrows.path_line_to ~size ~head:Arrows.Stop ~tail:Arrows.Stop path x y
 
-  let xy_param ?min_step ?nsamples ?(fill=false) ?(fillcolor=Color.red)
-      ?(pathstyle=Lines) vp f a b =
-    let _, r, data = Functions.samplefxy ?nsamples ?min_step f b a in
-    let x1 = r.Matrix.x and y1 = r.Matrix.y in
-    let x2 = x1 +. r.Matrix.w and y2 = y1 +. r.Matrix.h in
-    V.auto_fit vp x1 y1 x2 y2;
-    let x, y = f a in
-    let path = Path.make_at x y in
-    List.iter (draw_data pathstyle path) data;
-    let pathcopy = Path.copy path in
-    if fill then begin
-      V.set_global_color vp fillcolor;
-      V.fill ~path vp V.Data;
-      V.set_global_color vp Color.black
-    end;
-    V.stroke ~path:pathcopy vp V.Data;
-    (match pathstyle with
-     | Linespoints m | Points m ->
-         List.iter (fun (x, y) -> V.mark vp ~x ~y m) data
-     | _ -> ())
-
-  let fx ?xlog ?ylog ?min_step ?max_yrange ?nsamples ?(fill=false)
+  let fx ?min_step ?max_yrange ?nsamples ?(fill=false)
       ?(fillcolor=Color.red) ?(pathstyle=Lines) ?(g=fun _ -> 0.) vp f a b =
+    let xlog = V.xlog vp
+    and ylog = V.ylog vp in
     let h x = f x +. g x in
     let _, (ymin, ymax), data_g =
-      Functions.samplefx ?xlog ?ylog ?nsamples ?min_step ?max_yrange g a b
+      Functions.samplefx ~xlog ~ylog ?nsamples ?min_step ?max_yrange g a b
     in
     let _, (ymin', ymax'), data =
-      Functions.samplefx ?xlog ?ylog ?nsamples ?min_step ?max_yrange h b a
+      Functions.samplefx ~xlog ~ylog ?nsamples ?min_step ?max_yrange h b a
     in
     V.auto_fit vp a (min ymin ymin') b (max ymax ymax');
     let path = Path.make_at a (h a) in
@@ -153,8 +133,8 @@ struct
 end
 
 (************************************************************************)
-(*
-module Array =
+
+(*module Array =
 struct
   include Common
 
