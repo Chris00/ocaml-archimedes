@@ -40,11 +40,6 @@ module type Common = sig
     ?fillcolor:Color.t -> ?pathstyle:pathstyle ->
     V.t -> (float -> float * float) -> float -> float -> unit
 
-(*  val fx_over_g : ?xlog:bool -> ?ylog:bool -> ?min_step:float ->
-    ?max_yrange:float -> ?nsamples:int ->
-    ?fill:bool -> ?fillcolor:Color.t -> ?pathstyle:pathstyle ->
-    V.t -> (float -> float) -> (float -> float) -> float -> float -> unit*)
-
 (* TODO we want to have control over the stroke properties for each curve *)
 (*val filledcurves : V.t -> ?nsamples:int -> ?fill:filledcurves ->
   (float -> float) -> (float -> float) -> float -> float -> unit*)
@@ -80,28 +75,6 @@ struct
     | Interval ->
         Path.move_to path ~x ~y:base;
         Arrows.path_line_to ~head:Arrows.Stop ~tail:Arrows.Stop path x y
-
-(*  let fx ?xlog ?ylog ?min_step ?max_yrange ?nsamples ?(fill=false)
-      ?(fillcolor=Color.red) ?(pathstyle=Lines) vp f a b =
-    let _, (ymin, ymax), data =
-      Functions.samplefx ?xlog ?ylog ?nsamples ?min_step ?max_yrange f b a
-    in
-    V.auto_fit vp a ymin b ymax;
-    let path = Path.make_at a (f a) in
-    List.iter (draw_data pathstyle path) data;
-    let pathcopy = Path.copy path in
-    if fill then begin
-      Path.line_to path b 0.;
-      Path.line_to path a 0.;
-      V.set_global_color vp fillcolor;
-      V.fill ~path vp V.Data;
-      V.set_global_color vp Color.black
-    end;
-    V.stroke ~path:pathcopy vp V.Data;
-    (match pathstyle with
-     | Linespoints m | Points m ->
-         List.iter (fun (x, y) -> V.mark vp ~x ~y m) data
-     | _ -> ())*)
 
   let xy_param ?min_step ?nsamples ?(fill=false) ?(fillcolor=Color.red)
       ?(pathstyle=Lines) vp f a b =
@@ -151,6 +124,27 @@ struct
       V.add_instruction instruction vp;
     end;
     V.stroke ~path vp V.Data;
+    (match pathstyle with
+     | Linespoints m | Points m ->
+         List.iter (fun (x, y) -> V.mark vp ~x ~y m) data
+     | _ -> ())
+
+  let xy_param ?min_step ?nsamples ?(fill=false) ?(fillcolor=Color.red)
+      ?(pathstyle=Lines) vp f a b =
+    let _, r, data = Functions.samplefxy ?nsamples ?min_step f b a in
+    let x1 = r.Matrix.x and y1 = r.Matrix.y in
+    let x2 = x1 +. r.Matrix.w and y2 = y1 +. r.Matrix.h in
+    V.auto_fit vp x1 y1 x2 y2;
+    let x, y = f a in
+    let path = Path.make_at x y in
+    List.iter (draw_data pathstyle path) data;
+    let pathcopy = Path.copy path in
+    if fill then begin
+      V.set_global_color vp fillcolor;
+      V.fill ~path vp V.Data;
+      V.set_global_color vp Color.black
+    end;
+    V.stroke ~path:pathcopy vp V.Data;
     (match pathstyle with
      | Linespoints m | Points m ->
          List.iter (fun (x, y) -> V.mark vp ~x ~y m) data
