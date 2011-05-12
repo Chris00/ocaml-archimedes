@@ -54,6 +54,7 @@ struct
     | Impulses
     | Boxes of float
     | Interval of float
+
   type filledcurves = Color.t * Color.t (* f1 > f2, f2 < f1 *)
 
   let f_line_to vp (x, y) = V.line_to vp x y
@@ -75,6 +76,14 @@ struct
         Path.move_to path ~x ~y:base;
         Arrows.path_line_to ~size ~head:Arrows.Stop ~tail:Arrows.Stop path x y
 
+  let close_data pathstyle path (x, y) = match pathstyle with
+    | Lines | Linespoints _ -> Path.line_to path ~x ~y
+    | Impulses | Points _ | Boxes _ | Interval _ -> ()
+
+  let draw_point pathstyle vp (x, y) = match pathstyle with
+    | Lines | Impulses | Boxes _ | Interval _ -> ()
+    | Points m | Linespoints m -> V.mark vp ~x ~y m
+
   let fx ?min_step ?max_yrange ?nsamples ?(fill=false)
       ?(fillcolor=Color.red) ?(pathstyle=Lines) ?(g=fun _ -> 0.) vp f a b =
     let xlog = V.xlog vp
@@ -94,20 +103,14 @@ struct
     if fill then begin
       let pathcopy = Path.copy path in
       Path.line_to pathcopy b (g b);
-      List.iter (draw_data pathstyle pathcopy) data_g;
-      let instruction () =
-        let c = V.get_color vp in
-        V.set_color_direct vp fillcolor ();
-        V.fill_direct ~path:pathcopy vp V.Data ();
-        V.set_color_direct vp c ()
-      in
-      V.add_instruction instruction vp;
+      List.iter (close_data pathstyle pathcopy) data_g;
+      V.save vp;
+      V.set_global_color vp fillcolor;
+      V.fill ~path:pathcopy vp V.Data;
+      V.restore vp;
     end;
     V.stroke ~path vp V.Data;
-    (match pathstyle with
-     | Linespoints m | Points m ->
-         List.iter (fun (x, y) -> V.mark vp ~x ~y m) data
-     | _ -> ())
+    List.iter (draw_point pathstyle vp) data
 
   let xy_param ?min_step ?nsamples ?(fill=false) ?(fillcolor=Color.red)
       ?(pathstyle=Lines) vp f a b =
@@ -125,32 +128,126 @@ struct
       V.set_global_color vp Color.black
     end;
     V.stroke ~path:pathcopy vp V.Data;
-    (match pathstyle with
-     | Linespoints m | Points m ->
-         List.iter (fun (x, y) -> V.mark vp ~x ~y m) data
-     | _ -> ())
+    List.iter (draw_point pathstyle vp) data
 
 end
 
 (************************************************************************)
 
-(*module Array =
+module Array =
 struct
   include Common
 
-  let x p ?color ?mark ?(n0=0) x =
-    let n = Array.init (Array.length x) (fun i -> float(n0 + i)) in
-    let iter = Iterator.of_arrays n x in
-    (*draw_axes p;*)
-    V.xy p.h ?color ?mark iter
+  let x ?(fill=false) ?(fillcolor=Color.red) ?(pathstyle=Boxes 0.4) vp data =
+    let ymin = ref data.(0)
+    and ymax = ref data.(0) in
+    let n = Array.length data in
+    let path = Path.make_at 0. data.(0) in
+    for x = 0 to n - 1 do
+      let y = data.(x) in
+      ymin := min !ymin y;
+      ymax := max !ymax y;
+      draw_data pathstyle path (float x, y)
+    done;
+    V.auto_fit vp 0. !ymin (float n) !ymax;
+    if fill then begin
+      let pathcopy = Path.copy path in
+      Path.line_to pathcopy (float (n - 1)) 0.;
+      Path.line_to pathcopy 0. 0.;
+      let instruction () =
+        let c = V.get_color vp in
+        V.set_color_direct vp fillcolor ();
+        V.fill_direct ~path:pathcopy vp V.Data ();
+        V.set_color_direct vp c ()
+      in
+      V.add_instruction instruction vp;
+    end;
+    V.stroke ~path vp V.Data;
+    (match pathstyle with
+     | Linespoints m | Points m ->
+         Array.iteri (fun i y -> V.mark vp ~x:(float i) ~y m) data
+     | _ -> ())
 
-  let xy p ?color ?mark x y =
-    let iter = Iterator.of_arrays x y in
-    (*draw_axes p;*)
-    V.xy p.h ?color ?mark iter
+  let xy ?(fill=false) ?(fillcolor=Color.red) ?(pathstyle=Boxes 0.4)
+      vp data_x data_y =
+    let n = Array.length data_x in
+    assert (n = Array.length data_y);
+    let xmin = ref data_x.(0)
+    and xmax = ref data_x.(0)
+    and ymin = ref data_y.(0)
+    and ymax = ref data_y.(0) in
+    let path = Path.make_at data_x.(0) data_y.(0) in
+    for i = 0 to n - 1 do
+      let x, y = data_x.(i), data_y.(i) in
+      xmin := min !xmin x;
+      xmax := max !xmax x;
+      ymin := min !ymin y;
+      ymax := max !ymax y;
+      draw_data pathstyle path (x, y)
+    done;
+    V.auto_fit vp !xmin !ymin !xmax !ymax;
+    if fill then begin
+      let instruction () =
+        let c = V.get_color vp in
+        V.set_color_direct vp fillcolor ();
+        V.fill_direct ~path vp V.Data ();
+        V.set_color_direct vp c ()
+      in
+      V.add_instruction instruction vp;
+    end;
+    V.stroke ~path vp V.Data;
+    (match pathstyle with
+     | Linespoints m | Points m ->
+         Array.iteri (fun i x -> V.mark vp ~x ~y:(data_y.(i)) m) data_x
+     | _ -> ())
+
+  let stack ?(color=[|Color.rgb 0.8 0.8 0.8|])
+      ?(fillcolor=[|Color.rgb 0.95 0.95 0.95|])
+      ?(pathstyle=Boxes 0.4) vp data =
+    let m = Array.length data in
+    let n = Array.length data.(0) in
+    let xmax = float (n - 1) in
+    let ymin = ref data.(0).(0)
+    and ymax = ref data.(0).(0) in
+    (* Stacking *)
+    let curdata = Array.copy data.(0) in
+    let stacking i j x =
+      if x < 0. then begin
+        print_string "Warning: stack containing negative values,\n";
+        print_string "this may produce unexpected results\n"
+      end;
+      curdata.(j) <- if i = 0 then x else x +. curdata.(j);
+      ymin := min !ymin curdata.(j);
+      ymax := max !ymax curdata.(j);
+      curdata.(j)
+    in
+    let data = Array.init m (fun i -> Array.mapi (stacking i) data.(i)) in
+    V.auto_fit vp (-1.) !ymin (xmax +. 1.) (!ymax +. abs_float !ymax *. 0.02);
+    (* Drawing *)
+    V.save vp;
+    for i = m - 1 downto 0 do
+      let path = Path.make_at 0. data.(i).(0) in
+      for j = 0 to n - 1 do
+        let base = if i = 0 then 0. else data.(i-1).(j) in
+        draw_data ~base pathstyle path (float j, data.(i).(j))
+      done;
+      if fillcolor != [||] then begin
+        let pathcopy = Path.copy path in
+        for j = n - 1 downto 0 do
+          let y = if i = 0 then 0. else data.(i-1).(j) in
+          close_data pathstyle pathcopy (float j, y)
+        done;
+        V.set_global_color vp fillcolor.(i mod (Array.length fillcolor));
+        V.fill ~path:pathcopy vp V.Data;
+      end;
+      V.set_global_color vp color.(i mod (Array.length color));
+      V.stroke ~path vp V.Data;
+    done;
+    V.restore vp (* TODO points *)
+
 end
 
-module L = List
+(*module L = List
 module List =
 struct
   include Common

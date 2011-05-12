@@ -67,6 +67,8 @@ end
       y = default_axis () }
 end
 and Viewport : sig
+  type save_data
+
   type t = {
     backend: Backend.t;
     parent: t;
@@ -80,10 +82,12 @@ and Viewport : sig
     mutable axes_system: Axes.t;
     mutable sizes: Sizes.t;
     mutable mark_size: float;
+    mutable font_size: float;
     color: Color.t ref;
     mutable instructions: (unit -> unit) Queue.t;
     mutable immediate_drawing: bool;
     redim: t -> float -> float -> unit;
+    mutable saves: save_data list
   }
   type coord_name = Device | Graph | Data | Orthonormal
   val get_coord_from_name : t -> coord_name -> Coordinate.t
@@ -184,6 +188,8 @@ and Viewport : sig
     x:float -> y:float -> Backend.text_position -> string -> unit -> unit
   val mark_direct : t -> x:float -> y:float -> string -> unit -> unit
   val path_direct : t -> x:float -> y:float -> Path.t -> unit -> unit
+  val save_direct : t -> unit -> unit
+  val restore_direct : t -> unit -> unit
 
   val xrange : t -> float -> float -> unit
   val yrange : t -> float -> float -> unit
@@ -199,8 +205,19 @@ and Viewport : sig
   val do_instructions : t -> unit
 
   val auto_fit : t -> float -> float -> float -> float -> unit
+
+  val save : t -> unit
+  val restore : t -> unit
 end
 = struct
+  type save_data = {
+    lw: float; fs: float; ms: float;
+    c: Color.t;
+    line_cap: Backend.line_cap;
+    dash: float array * float;
+    line_join: Backend.line_join;
+  }
+
   type t = {
     backend: Backend.t;
     parent: t;
@@ -227,6 +244,7 @@ end
     (* For sizing texts, tics, etc. *)
     mutable sizes: Sizes.t;
     mutable mark_size: float;
+    mutable font_size: float;
     (* The current color, shared by all the "root" descending *)
     color: Color.t ref;
     (* An instruction is a "thing" to plot on the device, we memorize
@@ -240,6 +258,9 @@ end
        what should subsequent coordinates become ? This function must set
        them correctly *)
     redim: t -> float -> float -> unit;
+
+    (* internal *)
+    mutable saves: save_data list;
   }
 
   type coord_name = Device | Graph | Data | Orthonormal
@@ -287,19 +308,20 @@ end
     Backend.set_line_width vp.backend lw
 
   let set_font_size_direct vp ts () =
+    vp.font_size <- ts;
     Backend.set_font_size vp.backend ts
 
   let set_mark_size_direct vp ms () =
     vp.mark_size <- ms
 
-  let set_rel_line_width_direct vp lw () =
-    Backend.set_line_width vp.backend (lw /. usr_lw *. vp.square_side)
+  let set_rel_line_width_direct vp lw =
+    set_font_size_direct vp (lw /. usr_lw *. vp.square_side)
 
-  let set_rel_font_size_direct vp ts () =
-    Backend.set_font_size vp.backend (ts /. usr_ts *. vp.square_side)
+  let set_rel_font_size_direct vp ts =
+    set_font_size_direct vp (ts /. usr_ts *. vp.square_side)
 
-  let set_rel_mark_size_direct vp ms () =
-    vp.mark_size <- ms /. usr_ms *. vp.square_side
+  let set_rel_mark_size_direct vp ms =
+    set_mark_size_direct vp (ms /. usr_ms *. vp.square_side)
 
   let set_color_direct vp color () =
     vp.color := color;
@@ -357,6 +379,30 @@ end
   let mark_direct vp ~x ~y name () =
     orthoinstr_direct vp ~x ~y (Pointstyle.render name)
 
+  let save_direct vp () =
+    let save = {
+      lw = Backend.get_line_width vp.backend;
+      fs = vp.font_size;
+      ms = vp.mark_size;
+      c = !(vp.color);
+      line_cap = Backend.get_line_cap vp.backend;
+      dash = Backend.get_dash vp.backend;
+      line_join = Backend.get_line_join vp.backend
+    } in
+    vp.saves <- save :: vp.saves
+
+  let restore_direct vp () =
+    let save = List.hd vp.saves in
+    vp.saves <- List.tl vp.saves;
+    set_line_width_direct vp save.lw ();
+    set_font_size_direct vp save.fs ();
+    set_mark_size_direct vp save.ms ();
+    set_color_direct vp save.c ();
+    set_line_cap_direct vp save.line_cap ();
+    let x, y = save.dash in
+    set_dash_direct vp y x ();
+    set_line_join_direct vp save.line_join ()
+
 (* Initialization functions
  ***********************************************************************)
 
@@ -391,12 +437,14 @@ end
       path = Path.make ();
       axes_system = Axes.default_axes_system ();
       sizes = Sizes.make_rel (Sizes.make_root size0 1. 1. 1.) lines text marks;
+      font_size = def_ts;
       mark_size = def_ms;
       color = ref Color.black;
       instructions = Queue.create ();
       immediate_drawing = false;
       redim = (fun _ _ _ -> ());
       square_side = size0;
+      saves = []
     } in
     viewport.axes_system.Axes.x.Axes.viewports <- [viewport];
     viewport.axes_system.Axes.y.Axes.viewports <- [viewport];
@@ -437,11 +485,13 @@ end
         else Axes.default_axes_system ();
       sizes = Sizes.make_rel vp.sizes lines text marks;
       mark_size = def_ms;
+      font_size = def_ts;
       color = vp.color;
       instructions = Queue.create ();
       immediate_drawing = false;
       redim = redim;
       square_side = size0;
+      saves = []
     } in
     if not axes_sys then begin
       viewport.axes_system.Axes.x.Axes.viewports <- [viewport];
@@ -472,9 +522,13 @@ end
   (* Note: if a vp is synchronized with one of its children, this children
      will be redrawn two times. *)
   let rec do_instructions vp =
+    if vp.saves != [] then print_string "Warning: saves list is not empty\n";
     blank vp;
     Queue.iter (fun f -> f ()) vp.instructions;
     List.iter do_instructions vp.children
+
+  let save vp = add_instruction (save_direct vp) vp
+  let restore vp = add_instruction (restore_direct vp) vp
 
   let close vp =
     let parent = vp.parent in

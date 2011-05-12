@@ -260,6 +260,8 @@ module type T = sig
     val show_text_direct : t -> coord_name -> ?rotate:float ->
       x:float -> y:float -> Backend.text_position -> string -> unit -> unit
     val mark_direct : t -> x:float -> y:float -> string -> unit -> unit
+    val save_direct : t -> unit -> unit
+    val restore_direct : t -> unit -> unit
 
     val close : t -> unit
 
@@ -269,5 +271,8 @@ module type T = sig
     val auto_fit : t -> float -> float -> float -> float -> unit
       (** [auto_fit vp x0 y0 x1 y1] ensures that the rectangle delimited by
           (x0, y0) and (x1, y1) is included into the axes' ranges *)
+
+    val save : t -> unit
+    val restore : t -> unit
   end
 end

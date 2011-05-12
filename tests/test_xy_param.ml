@@ -1,6 +1,6 @@
 open Archimedes
 module V = Viewport.Viewport
-module P = Plot.Common
+module P = Plot.Array
 
 let pi = acos (-1.)
 

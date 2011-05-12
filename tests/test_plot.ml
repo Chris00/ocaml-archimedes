@@ -1,6 +1,6 @@
 open Archimedes
 module V = Viewport.Viewport
-module P = Plot.Common
+module P = Plot.Array
 
 let draw bk =
   let vp = V.init ~w:1024. ~h:600. ~dirs:["../src"; "./src"] bk in

@@ -3,7 +3,7 @@ module type T = sig
 
   (************************************************************************)
   (** Functions common to all datatype submodules. *)
-  module Common : sig
+  module type Common = sig
     type pathstyle =
       | Lines
       | Points of string
@@ -24,22 +24,24 @@ module type T = sig
       ?fillcolor:Color.t -> ?pathstyle:pathstyle ->
       Viewport.Viewport.t -> (float -> float * float) -> float -> float -> unit
 
-(*    (* TODO we want to have control over the stroke properties for each curve *)
-    val filledcurves : V.t -> ?nsamples:int -> ?fill:filledcurves ->
-      (float -> float) -> (float -> float) -> float -> float -> unit*)
+    (* TODO we want to have control over the stroke properties for each curve *)
   end
-(*
+
   module Array : sig
-    include COMMON
+    include Common
 
-    val x : t -> ?color: Color.t -> ?mark:string -> ?n0:int ->
-      float array -> unit
+    val x : ?fill:bool -> ?fillcolor:Color.t -> ?pathstyle:pathstyle ->
+      Viewport.Viewport.t -> float array -> unit
 
-    val xy : t -> ?color: Color.t -> ?mark:string ->
-      float array -> float array -> unit
+    val xy : ?fill:bool -> ?fillcolor:Color.t -> ?pathstyle:pathstyle ->
+      Viewport.Viewport.t -> float array -> float array -> unit
+
+    val stack : ?color:(Color.t array) -> ?fillcolor:(Color.t array) ->
+      ?pathstyle:pathstyle -> Viewport.Viewport.t -> float array array -> unit
+
   end
 
-  module List : sig
+(*  module List : sig
     include COMMON
 
     val x : t -> ?color: Color.t -> ?mark:string -> ?n0:int ->
