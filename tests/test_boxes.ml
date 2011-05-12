@@ -4,10 +4,19 @@ module P = Plot.Common
 
 let draw bk =
   let vp = V.init ~w:1024. ~h:600. ~dirs:["../src"; "./src"] bk in
-  V.set_global_color vp Color.yellow;
-  P.fx ~fill:true ~pathstyle:(P.Boxes 0.08) vp sin (-10.) 10.;
-  V.set_global_color vp Color.black;
+  let vps = V.layout_grid vp 2 2 in
+  let vp1 = vps.(0) and vp2 = vps.(3) in
+
+  V.set_global_color vp1 Color.yellow;
+  P.fx ~nsamples:50 ~fill:true ~pathstyle:(P.Boxes 0.08) vp1 sin (-5.) 5.;
+  V.set_global_color vp1 Color.black;
+  Axes.box vp1;
+
+  P.fx ~nsamples:30 ~pathstyle:(P.Interval 0.1) vp2 sin (-5.) 5.;
+  Axes.box vp2;
+
   Axes.box vp;
+
   V.close vp
 
 let () =

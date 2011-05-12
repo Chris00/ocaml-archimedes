@@ -562,7 +562,7 @@ end
     let redim _ _ _ = () in
     let xstep = 1. /. (float cols) and ystep = 1. /. (float rows) in
     let ret = Array.make (rows * cols) vp in
-    let init_viewport i =
+    for i = 0 to rows * cols - 1 do
       let x = i / cols and y = i mod cols in
       let xmin = float x *. xstep
       and ymin = float y *. ystep in
@@ -577,8 +577,7 @@ end
         if rows_sync_x then sync ~y:false ret.(i) ret.(y * cols)
         else if rows_sync_y then sync ~x:false ret.(i) ret.(y * cols)
       end
-    in
-    for i = 0 to rows * cols - 1 do init_viewport i done;
+    done;
     ret
 
   let layout_rows ?(syncs=false, false) ?(axes_sys=false) vp n =

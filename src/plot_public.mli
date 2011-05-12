@@ -10,7 +10,7 @@ module type T = sig
       | Linespoints of string
       | Impulses
       | Boxes of float
-      | Interval
+      | Interval of float
 
     type filledcurves = Color.t * Color.t (* f1 > f2, f2 < f1 *)
 

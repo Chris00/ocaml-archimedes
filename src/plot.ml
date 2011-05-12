@@ -27,7 +27,7 @@ module type Common = sig
     | Linespoints of string
     | Impulses
     | Boxes of float (* Width in Data coordinates (usually what we want) *)
-    | Interval
+    | Interval of float (* Width in Data coordinates (to be consistent) *)
 
   type filledcurves = Color.t * Color.t (* f1 > f2, f2 < f1 *)
 
@@ -54,7 +54,7 @@ struct
     | Linespoints of string
     | Impulses
     | Boxes of float
-    | Interval
+    | Interval of float
   type filledcurves = Color.t * Color.t (* f1 > f2, f2 < f1 *)
 
   let f_line_to vp (x, y) = V.line_to vp x y
@@ -72,9 +72,9 @@ struct
         Path.line_to path ~x:(x +. f /. 2.) ~y;
         Path.line_to path ~x:(x -. f /. 2.) ~y;
         Path.line_to path ~x:(x -. f /. 2.) ~y:base
-    | Interval ->
+    | Interval size ->
         Path.move_to path ~x ~y:base;
-        Arrows.path_line_to ~head:Arrows.Stop ~tail:Arrows.Stop path x y
+        Arrows.path_line_to ~size ~head:Arrows.Stop ~tail:Arrows.Stop path x y
 
   let xy_param ?min_step ?nsamples ?(fill=false) ?(fillcolor=Color.red)
       ?(pathstyle=Lines) vp f a b =
