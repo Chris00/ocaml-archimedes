@@ -1,3 +1,4 @@
+
 (* File: arrows_public.mli
 
    Copyright (C) 2009-2011
@@ -26,6 +27,7 @@ module type T = sig
     | Triple
     | Diamond
     | Circle
+    | Stop
     | Custom of (Path.t -> unit)
 
   val path_line_to : ?size:float -> ?head:style -> ?tail:style ->

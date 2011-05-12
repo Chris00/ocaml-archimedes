@@ -33,7 +33,8 @@ type tic =
 type t =
   | Fixed of labels * float list
   | Fixed_norm of labels * float list
-  | Equidistants of labels * float * int
+  | Equidistants of
+      labels * float * float * int (* labels, offset, distance, minors *)
   | Auto of labels
 
 (* ntics, min, max *)
@@ -78,7 +79,8 @@ let loose_labels ?(ntics=5) xmin xmax label =
   in
   aux [] graphmin
 
-let equi_labels d_major num_minor xmin xmax labels =
+let equi_labels offset d_major num_minor xmin xmax labels =
+  let first_major = xmin +. (mod_float (offset -. xmin) d_major) in
   let d_minor = d_major /. float (succ num_minor) in
   let rec aux_tics acc n x =
     let n' = n mod (succ num_minor) in
@@ -93,13 +95,13 @@ let equi_labels d_major num_minor xmin xmax labels =
       and x' = x +. d_minor in
       aux_tics (tic :: acc) (succ n') x'
   in
-  if d_major > 0. then aux_tics [] 0 xmin else []
+  if d_major > 0. then aux_tics [] 0 first_major else []
 
 let tics xmin xmax = function
   | Fixed _ -> raise (Failure "Not yet implemented")
   | Fixed_norm _ -> raise (Failure "Not yet implemented")
-  | Equidistants (labels, d_major, num_minor) ->
-      equi_labels d_major num_minor xmin xmax labels
+  | Equidistants (labels, offset, d_major, num_minor) ->
+      equi_labels offset d_major num_minor xmin xmax labels
   | Auto labels -> loose_labels xmin xmax labels
 
 (*  val loose_labels : float -> float -> labels -> tic list*)

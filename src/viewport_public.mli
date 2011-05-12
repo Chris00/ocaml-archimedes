@@ -169,6 +169,7 @@ module type T = sig
     val set_rel_line_width : t -> float -> unit
     val set_rel_font_size : t -> float -> unit
     val set_rel_mark_size : t -> float -> unit
+    val get_color : t -> Color.t
     val get_line_width : t -> float
     val get_font_size : t -> float
     val get_mark_size : t -> float

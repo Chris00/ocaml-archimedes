@@ -80,6 +80,7 @@ and Viewport : sig
     mutable axes_system: Axes.t;
     mutable sizes: Sizes.t;
     mutable mark_size: float;
+    color: Color.t ref;
     mutable instructions: (unit -> unit) Queue.t;
     mutable immediate_drawing: bool;
     redim: t -> float -> float -> unit;
@@ -128,6 +129,7 @@ and Viewport : sig
   val set_global_dash : t -> float -> float array -> unit
   val set_global_line_join : t -> Backend.line_join -> unit
     (*  val set_global_line_width : t -> float -> unit*)
+  val get_color : t -> Color.t
   val get_line_cap : t -> Backend.line_cap
   val get_dash : t -> float array * float
   val get_line_join : t -> Backend.line_join
@@ -223,6 +225,8 @@ end
     (* For sizing texts, tics, etc. *)
     mutable sizes: Sizes.t;
     mutable mark_size: float;
+    (* The current color, shared by all the "root" descending *)
+    color: Color.t ref;
     (* An instruction is a "thing" to plot on the device, we memorize
        their order to replot in case of necessity *)
     mutable instructions: (unit -> unit) Queue.t;
@@ -296,6 +300,7 @@ end
     vp.mark_size <- ms /. usr_ms *. vp.square_side
 
   let set_color_direct vp color () =
+    vp.color := color;
     Backend.set_color vp.backend color
 
   let set_line_cap_direct vp lcap () =
@@ -385,6 +390,7 @@ end
       axes_system = Axes.default_axes_system ();
       sizes = Sizes.make_rel (Sizes.make_root size0 1. 1. 1.) lines text marks;
       mark_size = def_ms;
+      color = ref Color.black;
       instructions = Queue.create ();
       immediate_drawing = false;
       redim = (fun _ _ _ -> ());
@@ -429,6 +435,7 @@ end
         else Axes.default_axes_system ();
       sizes = Sizes.make_rel vp.sizes lines text marks;
       mark_size = def_ms;
+      color = vp.color;
       instructions = Queue.create ();
       immediate_drawing = false;
       redim = redim;
@@ -721,6 +728,8 @@ end
   let get_line_cap vp = Backend.get_line_cap vp.backend
   let get_dash vp = Backend.get_dash vp.backend
   let get_line_join vp = Backend.get_line_join vp.backend
+
+  let get_color vp = !(vp.color)
 
 (* Viewport path manipulation
  ***********************************************************************)

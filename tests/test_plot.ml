@@ -6,9 +6,10 @@ let draw bk =
   let vp = V.init ~w:1024. ~h:600. ~dirs:["../src"; "./src"] bk in
   V.set_mark_size vp 5.;
   V.set_line_width vp 1.;
-  let f x = 1. /. x in
-  P.fx ~fill:true ~pathstyle:(P.Linespoints "o") vp f (-10.) 10.;
-  Axes.box ~tics:(Tics.Equidistants (Tics.Number 5, 1., 2)) vp;
+  let g x = sin x in
+  let f x = x in
+  P.fx ~g ~fill:true ~pathstyle:(P.Linespoints "o") vp f (-10.) 10.;
+  Axes.box ~tics:(Tics.Equidistants (Tics.Number 5, 0., 1., 2)) vp;
   V.close vp
 
 let () =

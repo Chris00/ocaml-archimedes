@@ -34,7 +34,7 @@ module type T = sig
   type t =
     | Fixed of labels * float list
     | Fixed_norm of labels * float list
-    | Equidistants of labels * float * int
+    | Equidistants of labels * float * float * int
     | Auto of labels
 
   val tics: float -> float -> t -> tic list

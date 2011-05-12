@@ -27,6 +27,7 @@ type style =
   | Triple
   | Diamond
   | Circle
+  | Stop
   | Custom of (Path.t -> unit)
 
 let simple rel_move_to rel_line_to =
@@ -62,6 +63,10 @@ let add_to_path path size alpha style =
       rel_line_to 0.5 0.3;
       rel_line_to 0.5 (-0.3);
   | Circle -> (* TODO *) ()
+  | Stop ->
+      rel_move_to 0. (-0.5);
+      rel_line_to 0. 1.;
+      rel_move_to 0. (-0.5)
   | (Custom f) -> f path
 
 let path_line_to ?(size=0.01) ?(head=Simple) ?(tail=Unstyled) path x y =

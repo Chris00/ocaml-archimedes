@@ -26,16 +26,24 @@ module type Common = sig
     | Points of string
     | Linespoints of string
     | Impulses
+    | Boxes of float (* Width in Data coordinates (usually what we want) *)
+    | Interval
+
   type filledcurves = Color.t * Color.t (* f1 > f2, f2 < f1 *)
 
   val fx : ?xlog:bool -> ?ylog:bool -> ?min_step:float ->
     ?max_yrange:float -> ?nsamples:int ->
     ?fill:bool -> ?fillcolor:Color.t -> ?pathstyle:pathstyle ->
-    V.t -> (float -> float) -> float -> float -> unit
+    ?g:(float -> float) -> V.t -> (float -> float) -> float -> float -> unit
 
   val xy_param : ?min_step:float -> ?nsamples:int -> ?fill:bool ->
     ?fillcolor:Color.t -> ?pathstyle:pathstyle ->
     V.t -> (float -> float * float) -> float -> float -> unit
+
+(*  val fx_over_g : ?xlog:bool -> ?ylog:bool -> ?min_step:float ->
+    ?max_yrange:float -> ?nsamples:int ->
+    ?fill:bool -> ?fillcolor:Color.t -> ?pathstyle:pathstyle ->
+    V.t -> (float -> float) -> (float -> float) -> float -> float -> unit*)
 
 (* TODO we want to have control over the stroke properties for each curve *)
 (*val filledcurves : V.t -> ?nsamples:int -> ?fill:filledcurves ->
@@ -50,20 +58,30 @@ struct
     | Points of string
     | Linespoints of string
     | Impulses
+    | Boxes of float
+    | Interval
   type filledcurves = Color.t * Color.t (* f1 > f2, f2 < f1 *)
 
   let f_line_to vp (x, y) = V.line_to vp x y
   let f_finish vp = V.stroke vp V.Data
 
-  let draw_data pathstyle path (x, y) = match pathstyle with
+  let draw_data ?(base=0.) pathstyle path (x, y) = match pathstyle with
     | Lines -> Path.line_to path ~x ~y
     | Linespoints _ -> Path.line_to path ~x ~y
     | Impulses ->
-        Path.move_to path ~x ~y:0.;
+        Path.move_to path ~x ~y:base;
         Path.line_to path ~x ~y
     | Points _ -> ()
+    | Boxes f ->
+        Path.move_to path ~x:(x +. f /. 2.) ~y:base;
+        Path.line_to path ~x:(x +. f /. 2.) ~y;
+        Path.line_to path ~x:(x -. f /. 2.) ~y;
+        Path.line_to path ~x:(x -. f /. 2.) ~y:base
+    | Interval ->
+        Path.move_to path ~x ~y:base;
+        Arrows.path_line_to ~head:Arrows.Stop ~tail:Arrows.Stop path x y
 
-  let fx ?xlog ?ylog ?min_step ?max_yrange ?nsamples ?(fill=false)
+(*  let fx ?xlog ?ylog ?min_step ?max_yrange ?nsamples ?(fill=false)
       ?(fillcolor=Color.red) ?(pathstyle=Lines) vp f a b =
     let _, (ymin, ymax), data =
       Functions.samplefx ?xlog ?ylog ?nsamples ?min_step ?max_yrange f b a
@@ -83,7 +101,7 @@ struct
     (match pathstyle with
      | Linespoints m | Points m ->
          List.iter (fun (x, y) -> V.mark vp ~x ~y m) data
-     | _ -> ())
+     | _ -> ())*)
 
   let xy_param ?min_step ?nsamples ?(fill=false) ?(fillcolor=Color.red)
       ?(pathstyle=Lines) vp f a b =
@@ -101,6 +119,38 @@ struct
       V.set_global_color vp Color.black
     end;
     V.stroke ~path:pathcopy vp V.Data;
+    (match pathstyle with
+     | Linespoints m | Points m ->
+         List.iter (fun (x, y) -> V.mark vp ~x ~y m) data
+     | _ -> ())
+
+  let fx ?xlog ?ylog ?min_step ?max_yrange ?nsamples ?(fill=false)
+      ?(fillcolor=Color.red) ?(pathstyle=Lines) ?(g=fun _ -> 0.) vp f a b =
+    let h x = f x +. g x in
+    let _, (ymin, ymax), data_g =
+      Functions.samplefx ?xlog ?ylog ?nsamples ?min_step ?max_yrange g a b
+    in
+    let _, (ymin', ymax'), data =
+      Functions.samplefx ?xlog ?ylog ?nsamples ?min_step ?max_yrange h b a
+    in
+    V.auto_fit vp a (min ymin ymin') b (max ymax ymax');
+    let path = Path.make_at a (h a) in
+    List.iter2
+      (fun (_, gy) (hx, hy) -> draw_data pathstyle path ~base:gy (hx, hy))
+      data_g data;
+    if fill then begin
+      let pathcopy = Path.copy path in
+      Path.line_to pathcopy b (g b);
+      List.iter (draw_data pathstyle pathcopy) data_g;
+      let instruction () =
+        let c = V.get_color vp in
+        V.set_color_direct vp fillcolor ();
+        V.fill_direct ~path:pathcopy vp V.Data ();
+        V.set_color_direct vp c ()
+      in
+      V.add_instruction instruction vp;
+    end;
+    V.stroke ~path vp V.Data;
     (match pathstyle with
      | Linespoints m | Points m ->
          List.iter (fun (x, y) -> V.mark vp ~x ~y m) data

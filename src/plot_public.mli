@@ -9,16 +9,20 @@ module type T = sig
       | Points of string
       | Linespoints of string
       | Impulses
+      | Boxes of float
+      | Interval
+
     type filledcurves = Color.t * Color.t (* f1 > f2, f2 < f1 *)
 
     val fx : ?xlog:bool -> ?ylog:bool -> ?min_step:float ->
       ?max_yrange:float -> ?nsamples:int ->
       ?fill:bool -> ?fillcolor:Color.t -> ?pathstyle:pathstyle ->
-      Viewport.Viewport.t -> (float -> float) -> float -> float -> unit
+      ?g:(float -> float) -> Viewport.Viewport.t -> (float -> float) ->
+      float -> float -> unit
 
-  val xy_param : ?min_step:float -> ?nsamples:int -> ?fill:bool ->
-    ?fillcolor:Color.t -> ?pathstyle:pathstyle ->
-    Viewport.Viewport.t -> (float -> float * float) -> float -> float -> unit
+    val xy_param : ?min_step:float -> ?nsamples:int -> ?fill:bool ->
+      ?fillcolor:Color.t -> ?pathstyle:pathstyle ->
+      Viewport.Viewport.t -> (float -> float * float) -> float -> float -> unit
 
 (*    (* TODO we want to have control over the stroke properties for each curve *)
     val filledcurves : V.t -> ?nsamples:int -> ?fill:filledcurves ->

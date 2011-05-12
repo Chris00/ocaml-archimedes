@@ -9,9 +9,9 @@ let draw bk =
   V.yrange vp 0. 5.;
   V.set_line_width vp 1.;
   Axes.add_x_axis ~major:("|", 4.2)
-    ~tics:(Tics.Equidistants (Tics.Number 5, 3., 2))
+    ~tics:(Tics.Equidistants (Tics.Number 5, 0., 3., 2))
     ~offset:(Axes.Relative 2.) vp;
-  Axes.add_y_axis ~tics:(Tics.Equidistants (Tics.Number 5, 3., 1)) vp;
+  Axes.add_y_axis ~tics:(Tics.Equidistants (Tics.Number 5, 0., 3., 1)) vp;
   V.set_rel_font_size vp 16.;
 
   V.close vp
