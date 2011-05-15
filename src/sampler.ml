@@ -95,3 +95,8 @@ let samplefxy ?(tlog=false) ?(min_step=1E-9) ?(nsamples=100)
   and x2, y2 = f t2 in
   let extents = x1, x1, y1, y1 in
   aux nsamples t1 x1 y1 t2 x2 y2 [(x1, y1)] extents
+
+let samplefxy_adaptive =
+  let strategy = strategy_center_random in
+  let criterion = criterion_angle ~threshold:3.14 in
+  samplefxy ~nsamples:2 ~strategy ~criterion

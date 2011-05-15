@@ -79,4 +79,9 @@ module type T = sig
         @param criterion a customized criterion, which can be chosen among
         those in this module
     *)
+
+  val samplefxy_adaptive : ?tlog:bool -> ?min_step:float ->
+    (float -> float * float) -> float -> float ->
+    (float * float) list * (float * float * float * float)
+    (** An fully adaptive wrapper for samplefxy *)
 end
