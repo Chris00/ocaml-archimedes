@@ -39,7 +39,7 @@ native: archimedes.cmxa $(PLUGINS:.ml=.cmxs)
 
 ARCHIMEDES_FILES = conf.ml string_utils.ml color.ml matrix.ml backend.ml \
   coordinate.ml functions.ml pointstyle.ml path.ml sizes.ml \
-  iterator.ml tics.ml viewport.ml arrows.ml axes.ml plot.ml
+  iterator.ml tics.ml viewport.ml arrows.ml axes.ml sampler.ml plot.ml
 
 archimedes.cma: archimedes.cmo
 archimedes.cmxa: archimedes.cmx
