@@ -1,3 +1,27 @@
+(* File: sampler_public.mli
+
+   Copyright (C) 2009-2011
+
+     Christophe Troestler <Christophe.Troestler@umons.ac.be>
+     Pierre Hauweele <antegallya@gmail.com>
+     Noemie Meunier <noemie_6462@hotmail.com>
+     Fabian Pijcke <fabian.pijcke@gmail.com>
+     WWW: http://math.umons.ac.be/an/software/
+
+   This library is free software; you can redistribute it and/or modify
+   it under the terms of the GNU Lesser General Public License version 3 or
+   later as published by the Free Software Foundation, with the special
+   exception on linking described in the file LICENSE.
+
+   This library is distributed in the hope that it will be useful, but
+   WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the file
+   LICENSE for more details. *)
+
+(** Some utils to sample a function. The main routine, samplefxy, is
+    mainly based on an article from Graphics Gems vol. 5, page 173:
+    Adaptive Sampling of Parametric Curves. *)
+
 module type T = sig
   type strategy = float -> float -> float
     (** A strategy is a function [f t1 t2] that returns an internal point
@@ -36,9 +60,10 @@ module type T = sig
 
   val samplefxy : ?tlog:bool -> ?min_step:float -> ?nsamples:int ->
     ?strategy:strategy -> ?criterion:criterion -> (float -> float * float) ->
-    float -> float -> (float * float) list
+    float -> float -> (float * float) list * (float * float * float * float)
     (** [samplefxy f t1 t2] samples the parametric function f from t1 to
-        t2, returning a list of the points in the sample.
+        t2, returning a list of the points in the sample and the extents
+        of the sample (x0, xend, y0, yend).
 
         @param tlog do we need to step in a logarithmic way ?
 
