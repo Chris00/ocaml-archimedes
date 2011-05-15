@@ -1,4 +1,4 @@
-(*open Bigarray
+open Bigarray
 
 type t = {
   data:(float,float64_elt,c_layout) Array2.t;
@@ -173,10 +173,10 @@ let from_sampling f ?min_step ?nsamples a b =
   let fill_array array (x,y) =
     array.{!n,0} <- x;
     array.{!n,1} <- y;
-    n := !n + 1;
-    array
+    n := !n + 1
   in
-  {data = fct fill_array array;
+  List.iter (fill_array array) data;
+  {data = array;
    extents = extents;
    pos = 0; len = len}
 
@@ -196,4 +196,3 @@ let nb_data iter = iter.len
 let extents iter = (*Make a copy*)
   {iter.extents with Matrix.x = iter.extents.Matrix.x}
 
-*)

@@ -10,3 +10,4 @@ set_global_color -> set_color (see immediate_drawing!).
 Optimize behavior of empty marks.
 function labels (tags) + set correct default font sizes
 draw axes when plotting a function with Plot.fx
+Make major's distance related to offset in tics.

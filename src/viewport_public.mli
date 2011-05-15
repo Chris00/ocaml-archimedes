@@ -90,6 +90,10 @@ module type T = sig
 
     val get_backend : t -> Backend.t
 
+    val get_vp_xaxes : t -> t list
+
+    val get_vp_yaxes : t -> t list
+
     val sync : ?x:bool -> ?y:bool -> t -> t -> unit
       (** [sync vp vp_base] synchronize the viewport vp with vp_base. The
           optionals ?x and ?y allows one to synchronize only the x axis or
