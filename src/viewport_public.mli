@@ -31,12 +31,9 @@ module type T = sig
     }
 
     type t = {
-      x: axis;
-      y: axis;
+      mutable x: axis;
+      mutable y: axis;
     }
-
-    val default_axis: unit -> axis
-    val default_axes_system: unit -> t
   end
   and Viewport : sig
     type t
@@ -89,10 +86,6 @@ module type T = sig
       *)
 
     val get_backend : t -> Backend.t
-
-    val get_vp_xaxes : t -> t list
-
-    val get_vp_yaxes : t -> t list
 
     val sync : ?x:bool -> ?y:bool -> t -> t -> unit
       (** [sync vp vp_base] synchronize the viewport vp with vp_base. The

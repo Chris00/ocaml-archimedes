@@ -32,16 +32,13 @@ module rec Axes : sig
   }
 
   type t = {
-    x: axis;
-    y: axis;
+    mutable x: axis;
+    mutable y: axis;
   }
 
   val default_axis: unit -> axis
   val default_axes_system: unit -> t
-  val get_x_axis : Viewport.t -> axis
-  val get_y_axis : Viewport.t -> axis
-  val add_x_viewport : t -> Viewport.t -> unit
-  val add_y_viewport : t -> Viewport.t -> unit
+  val add_viewport : axis -> Viewport.t -> unit
 
 end
 = struct
@@ -59,8 +56,8 @@ end
   }
 
   type t = {
-    x: axis;
-    y: axis;
+    mutable x: axis;
+    mutable y: axis;
   }
 
   let default_axis () =
@@ -71,15 +68,8 @@ end
     { x = default_axis ();
       y = default_axis () }
 
-  let get_x_axis vp = vp.Viewport.axes_system.x
-
-  let get_y_axis vp = vp.Viewport.axes_system.y
-
-  let add_x_viewport axe vp =
-    axe.x.viewports <- vp :: axe.x.viewports
-
-  let add_y_viewport axe vp =
-    axe.y.viewports <- vp :: axe.y.viewports
+  let add_viewport axis vp =
+    axis.viewports <- vp :: axis.viewports
 
 end
 and Viewport : sig
@@ -96,7 +86,6 @@ and Viewport : sig
     mutable square_side: float;
     path: Path.t;
     mutable axes_system: Axes.t;
-    mutable sync: bool;
     mutable sizes: Sizes.t;
     mutable mark_size: float;
     mutable font_size: float;
@@ -115,10 +104,6 @@ and Viewport : sig
     (t -> float -> float -> unit) -> t
 
   val get_backend : t -> Backend.t
-
-  val get_vp_xaxes : t -> t list
-
-  val get_vp_yaxes : t -> t list
 
   val sync : ?x:bool -> ?y:bool -> t -> t -> unit
 
@@ -214,6 +199,10 @@ and Viewport : sig
 
   val xrange : t -> float -> float -> unit
   val yrange : t -> float -> float -> unit
+
+  val set_xlog : t -> bool -> unit
+  val set_ylog : t -> bool -> unit
+
   val xmin : t -> float
   val xmax : t -> float
   val ymin : t -> float
@@ -262,7 +251,6 @@ end
 
     (* Axes system associated to the viewport *)
     mutable axes_system: Axes.t;
-    mutable sync: bool;
     (* For sizing texts, tics, etc. *)
     mutable sizes: Sizes.t;
     mutable mark_size: float;
@@ -458,7 +446,6 @@ end
       coord_data = Coordinate.make_identity coord_graph;
       path = Path.make ();
       axes_system = Axes.default_axes_system ();
-      sync = false;
       sizes = Sizes.make_rel (Sizes.make_root size0 1. 1. 1.) lines text marks;
       font_size = def_ts;
       mark_size = def_ms;
@@ -506,7 +493,6 @@ end
       axes_system =
         if axes_sys then vp.axes_system
         else Axes.default_axes_system ();
-      sync = false;
       sizes = Sizes.make_rel vp.sizes lines text marks;
       mark_size = def_ms;
       font_size = def_ts;
@@ -554,12 +540,6 @@ end
   let save vp = add_instruction (save_direct vp) vp
   let restore vp = add_instruction (restore_direct vp) vp
 
-  let get_vp_xaxes vp =
-    vp.axes_system.Axes.x.Axes.viewports
-
-  let get_vp_yaxes vp =
-    vp.axes_system.Axes.x.Axes.viewports
-
   let close vp =
     let parent = vp.parent in
     parent.children <- List.filter (fun x -> not (x == vp)) parent.children;
@@ -586,36 +566,20 @@ end
 
 
   (* Utility function for (x|y)range *)
-  let update_axis get_axis vp x0 xend =
-    let rec sync_axis vp =
-      if vp.sync then ()
-      else begin
-        let axis = get_axis vp in
-        axis.Axes.auto_x0 <- is_nan_or_inf x0;
-        if not (is_nan_or_inf x0) then axis.Axes.x0 <- x0;
-        axis.Axes.auto_xend <- is_nan_or_inf xend;
-        if not (is_nan_or_inf xend) then axis.Axes.xend <- xend;
-        update_coordinate_system vp;
-        vp.sync <- true;
-        List.iter sync_axis axis.Axes.viewports
-      end
-    in
-    let rec update_sync vp =
-      if not vp.sync then ()
-      else begin
-        let axis = get_axis vp in
-        vp.sync <- false;
-        List.iter update_sync axis.Axes.viewports
-        end
-    in
-    sync_axis vp;
-    update_sync vp;
+  let update_axis vp axis x0 xend =
+    axis.Axes.auto_x0 <- is_nan_or_inf x0;
+    if not (is_nan_or_inf x0) then axis.Axes.x0 <- x0;
+    axis.Axes.auto_xend <- is_nan_or_inf xend;
+    if not (is_nan_or_inf xend) then axis.Axes.xend <- xend;
+    List.iter update_coordinate_system axis.Axes.viewports;
     if vp.immediate_drawing then
-    let axis = get_axis vp in
     List.iter do_instructions axis.Axes.viewports
 
-  let xrange vp = update_axis Axes.get_x_axis vp
-  let yrange vp = update_axis Axes.get_y_axis vp
+  let xrange vp = update_axis vp vp.axes_system.Axes.x
+  let yrange vp = update_axis vp vp.axes_system.Axes.y
+
+  let set_xlog vp v = vp.axes_system.Axes.x.Axes.log <- v
+  let set_ylog vp v = vp.axes_system.Axes.y.Axes.log <- v
 
   let auto_fit vp x0 y0 x1 y1 =
     let xaxis = vp.axes_system.Axes.x
@@ -652,12 +616,12 @@ end
 
   let sync ?(x=true) ?(y=true) vp vp_base =
     if x then begin
-      Axes.add_x_viewport vp.axes_system vp_base;
-      Axes.add_x_viewport vp_base.axes_system vp
+      vp.axes_system.Axes.x <- vp_base.axes_system.Axes.x;
+      Axes.add_viewport vp_base.axes_system.Axes.x vp
     end;
     if y then begin
-      Axes.add_y_viewport vp.axes_system vp_base;
-      Axes.add_y_viewport vp_base.axes_system vp
+      vp.axes_system.Axes.y <- vp_base.axes_system.Axes.y;
+      Axes.add_viewport vp_base.axes_system.Axes.y vp
     end
 
 
@@ -680,16 +644,12 @@ end
       let xmax = xmin +. xstep
       and ymax = ymin +. ystep in
       ret.(i) <- make ~axes_sys vp Device xmin xmax ymin ymax redim;
-      if i >= 0 && i < rows then
-        for j = 1 to c do
-          sync ~x:cols_sync_x ~y:cols_sync_y ret.(i + j * rows) ret.(i)
-        done;
-      if (i mod rows) = 0 then
-        for j = 1 to r do
-          sync ~x:rows_sync_x ~y:rows_sync_y ret.(i + j) ret.(i)
-        done;
+      if i >= rows then
+        sync ~x:cols_sync_x ~y:cols_sync_y ret.(i) ret.(i mod rows);
+      if i mod rows > 0 then
+        sync ~x:rows_sync_x ~y:rows_sync_y ret.(i) ret.(i - (i mod rows))
     in
-    for i = rows * cols - 1 downto 0 do init_viewport i done;
+    for i = 0 to rows * cols - 1 do init_viewport i done;
     ret
 
   let layout_rows ?(syncs=false, false) ?(axes_sys=false) vp n =

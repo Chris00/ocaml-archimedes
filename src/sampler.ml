@@ -45,7 +45,7 @@ let criterion_angle ?(threshold=3.1) x1 y1 xm ym x2 y2 =
   acos ((side1 +. side2 -. side_hyp)
         /. (2. *. sqrt side1 *. sqrt side2)) > threshold
 
-let criterion_angle_log xlog ylog ?(threshold=175.) x1 y1 xm ym x2 y2 =
+let criterion_angle_log xlog ylog ?(threshold=3.1) x1 y1 xm ym x2 y2 =
   let id x = x in
   let tx = if xlog then log10 else id
   and ty = if ylog then log10 else id in

@@ -71,7 +71,7 @@ module type T = sig
 
         @param nsamples base number of samples wanted (cut the space
         between t1 and t2 in nsamples fragments of equivalent size,
-        depending on tlog
+        depending on tlog)
 
         @param strategy a customized strategy, which can be chosen among
         those in this module
