@@ -31,7 +31,8 @@ module type Common = sig
 
   type filledcurves = Color.t * Color.t (* f1 > f2, f2 < f1 *)
 
-  val fx : ?min_step:float -> ?max_yrange:float -> ?nsamples:int ->
+  val fx : ?strategy:Sampler.strategy -> ?criterion:Sampler.criterion ->
+    ?min_step:float -> ?max_yrange:float -> ?nsamples:int ->
     ?fill:bool -> ?fillcolor:Color.t -> ?pathstyle:pathstyle ->
     ?g:(float -> float) -> V.t -> (float -> float) -> float -> float -> unit
 
@@ -84,25 +85,18 @@ struct
     | Lines | Impulses | Boxes _ | Interval _ -> ()
     | Points m | Linespoints m -> V.mark vp ~x ~y m
 
-  let fx ?min_step ?max_yrange ?nsamples ?(fill=false)
+  let fx ?strategy ?criterion ?min_step ?max_yrange ?nsamples ?(fill=false)
       ?(fillcolor=Color.red) ?(pathstyle=Lines) ?(g=fun _ -> 0.) vp f a b =
-    let xlog = V.xlog vp
-    and ylog = V.ylog vp in
-    let h x = f x +. g x in
-    let _, (ymin, ymax), data_g =
-      Functions.samplefx ~xlog ~ylog ?nsamples ?min_step ?max_yrange g a b
-    in
-    let _, (ymin', ymax'), data =
-      Functions.samplefx ~xlog ~ylog ?nsamples ?min_step ?max_yrange h b a
-    in
-    V.auto_fit vp a (min ymin ymin') b (max ymax ymax');
-    let path = Path.make_at a (h a) in
-    List.iter2
-      (fun (_, gy) (hx, hy) -> draw_data pathstyle path ~base:gy (hx, hy))
-      data_g data;
+    let sampler = Sampler.samplefxy ?strategy ?criterion ~tlog:(V.xlog vp) in
+    let data, (_, _, ymin, ymax) = sampler (fun x -> x, f x +. g x) a b in
+    V.auto_fit vp a ymin b ymax;
+    let path = Path.make_at a (f a +. g a) in
+    List.iter
+      (fun (hx, hy) -> draw_data pathstyle path ~base:(g hx) (hx, hy)) data;
     if fill then begin
       let pathcopy = Path.copy path in
       Path.line_to pathcopy b (g b);
+      let data_g, _ = sampler (fun x -> x, g x) b a in
       List.iter (close_data pathstyle pathcopy) data_g;
       V.save vp;
       V.set_global_color vp fillcolor;
