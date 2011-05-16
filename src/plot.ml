@@ -85,6 +85,14 @@ struct
     | Lines | Impulses | Boxes _ | Interval _ -> ()
     | Points m | Linespoints m -> V.mark vp ~x ~y m
 
+  let fill_data fillcolor pathstyle vp path (data_base, _) =
+    let path = Path.copy path in
+    List.iter (close_data pathstyle path) data_base;
+    V.save vp;
+    V.set_color vp fillcolor;
+    V.fill ~path vp V.Data;
+    V.restore vp
+
   let fx ?strategy ?criterion ?min_step ?max_yrange ?nsamples ?(fill=false)
       ?(fillcolor=Color.red) ?(pathstyle=Lines) ?(g=fun _ -> 0.) vp f a b =
     let sampler = Sampler.samplefxy ?strategy ?criterion ~tlog:(V.xlog vp) in
@@ -93,16 +101,8 @@ struct
     let path = Path.make_at a (f a +. g a) in
     List.iter
       (fun (hx, hy) -> draw_data pathstyle path ~base:(g hx) (hx, hy)) data;
-    if fill then begin
-      let pathcopy = Path.copy path in
-      Path.line_to pathcopy b (g b);
-      let data_g, _ = sampler (fun x -> x, g x) b a in
-      List.iter (close_data pathstyle pathcopy) data_g;
-      V.save vp;
-      V.set_color vp fillcolor;
-      V.fill ~path:pathcopy vp V.Data;
-      V.restore vp;
-    end;
+    if fill then
+      fill_data fillcolor pathstyle vp path (sampler (fun x -> x, g x) b a);
     V.stroke ~path vp V.Data;
     List.iter (draw_point pathstyle vp) data
 
