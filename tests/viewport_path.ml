@@ -16,17 +16,17 @@ let draw bk =
 
   (* Draw it (absolute) *)
   V.set_line_width vp 42.;
-  V.set_global_color vp Color.red;
+  V.set_color vp Color.red;
   V.stroke ~path:p vp V.Device;
 
   (* Draw it (relative) *)
   V.set_rel_line_width vp 5.;
-  V.set_global_color vp Color.black;
+  V.set_color vp Color.black;
   V.stroke ~path:p vp V.Device;
 
   (* Draw it (relative) *)
   V.set_rel_line_width vp 1.;
-  V.set_global_color vp Color.white;
+  V.set_color vp Color.white;
   V.stroke ~path:p vp V.Device;
 
   V.close vp

@@ -13,14 +13,14 @@ let draw bk =
   V.yrange subvps.(0) (-3.) 5.;
   V.xrange subvps.(1) (-5.) 5.;
   V.yrange subvps.(1) (-1.) 5.;
- (* Pl.fx subvps.(0) (fun x -> x *. x) 0. 30.;*)
+  (* Pl.fx subvps.(0) (fun x -> x *. x) 0. 30.;*)
   V.set_line_width subvps.(0) 1.;
   Axes.cross ~tics:(Tics.Equidistants (Tics.Number 5, 0., 3., 1)) subvps.(0);
-  V.set_global_color subvps.(1) Color.red;
+  V.set_color subvps.(1) Color.red;
   Axes.cross ~tics:(Tics.Equidistants (Tics.Number 5, 0., 1., 1)) subvps.(1);
-  V.set_global_color subvps.(2) Color.blue;
+  V.set_color subvps.(2) Color.blue;
   Axes.cross ~tics:(Tics.Equidistants (Tics.Number 5, 0., 1.5, 1)) subvps.(2);
-  V.set_global_color subvps.(3) Color.green;
+  V.set_color subvps.(3) Color.green;
   Axes.cross ~tics:(Tics.Equidistants (Tics.Number 5, 0., 2.5, 1)) subvps.(3);
   V.close vp
 

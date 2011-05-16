@@ -99,7 +99,7 @@ struct
       let data_g, _ = sampler (fun x -> x, g x) b a in
       List.iter (close_data pathstyle pathcopy) data_g;
       V.save vp;
-      V.set_global_color vp fillcolor;
+      V.set_color vp fillcolor;
       V.fill ~path:pathcopy vp V.Data;
       V.restore vp;
     end;
@@ -117,9 +117,9 @@ struct
     List.iter (draw_data pathstyle path) data;
     let pathcopy = Path.copy path in
     if fill then begin
-      V.set_global_color vp fillcolor;
+      V.set_color vp fillcolor;
       V.fill ~path vp V.Data;
-      V.set_global_color vp Color.black
+      V.set_color vp Color.black
     end;
     V.stroke ~path:pathcopy vp V.Data;
     List.iter (draw_point pathstyle vp) data
@@ -231,10 +231,10 @@ struct
           let y = if i = 0 then 0. else data.(i-1).(j) in
           close_data pathstyle pathcopy (float j, y)
         done;
-        V.set_global_color vp fillcolor.(i mod (Array.length fillcolor));
+        V.set_color vp fillcolor.(i mod (Array.length fillcolor));
         V.fill ~path:pathcopy vp V.Data;
       end;
-      V.set_global_color vp color.(i mod (Array.length color));
+      V.set_color vp color.(i mod (Array.length color));
       V.stroke ~path vp V.Data;
     done;
     V.restore vp (* TODO points *)

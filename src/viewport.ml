@@ -89,7 +89,7 @@ and Viewport : sig
     mutable sizes: Sizes.t;
     mutable mark_size: float;
     mutable font_size: float;
-    color: Color.t ref;
+    mutable color: Color.t;
     mutable instructions: (unit -> unit) Queue.t;
     mutable immediate_drawing: bool;
     redim: t -> float -> float -> unit;
@@ -134,7 +134,7 @@ and Viewport : sig
   val upper_right_corner : t -> float * float
   val dimensions : t -> float * float (* returns (w, h) *)
     (* set_global_param set param of backend and then of all viewports *)
-  val set_global_color : t -> Color.t -> unit
+  val set_color : t -> Color.t -> unit
   val set_global_line_cap : t -> Backend.line_cap -> unit
   val set_global_dash : t -> float -> float array -> unit
   val set_global_line_join : t -> Backend.line_join -> unit
@@ -256,7 +256,7 @@ end
     mutable mark_size: float;
     mutable font_size: float;
     (* The current color, shared by all the "root" descending *)
-    color: Color.t ref;
+    mutable color: Color.t;
     (* An instruction is a "thing" to plot on the device, we memorize
        their order to replot in case of necessity *)
     mutable instructions: (unit -> unit) Queue.t;
@@ -334,7 +334,7 @@ end
     set_mark_size_direct vp (ms /. usr_ms *. vp.square_side)
 
   let set_color_direct vp color () =
-    vp.color := color;
+    vp.color <- color;
     Backend.set_color vp.backend color
 
   let set_line_cap_direct vp lcap () =
@@ -394,7 +394,7 @@ end
       lw = Backend.get_line_width vp.backend;
       fs = vp.font_size;
       ms = vp.mark_size;
-      c = !(vp.color);
+      c = vp.color;
       line_cap = Backend.get_line_cap vp.backend;
       dash = Backend.get_dash vp.backend;
       line_join = Backend.get_line_join vp.backend
@@ -449,7 +449,7 @@ end
       sizes = Sizes.make_rel (Sizes.make_root size0 1. 1. 1.) lines text marks;
       font_size = def_ts;
       mark_size = def_ms;
-      color = ref Color.black;
+      color = Color.black;
       instructions = Queue.create ();
       immediate_drawing = false;
       redim = (fun _ _ _ -> ());
@@ -534,8 +534,9 @@ end
   let rec do_instructions vp =
     if vp.saves != [] then print_string "Warning: saves list is not empty\n";
     blank vp;
+    set_color_direct vp vp.color;
     Queue.iter (fun f -> f ()) vp.instructions;
-    List.iter do_instructions vp.children
+    List.iter do_instructions (List.rev vp.children)
 
   let save vp = add_instruction (save_direct vp) vp
   let restore vp = add_instruction (restore_direct vp) vp
@@ -784,7 +785,7 @@ end
   let dimensions vp =
     Coordinate.to_device_distance vp.coord_device ~dx:1. ~dy:1.
 
-  let set_global_color vp c =
+  let set_color vp c =
     add_instruction (set_color_direct vp c) vp
 
   let set_global_line_cap vp lc =
@@ -800,7 +801,7 @@ end
   let get_dash vp = Backend.get_dash vp.backend
   let get_line_join vp = Backend.get_line_join vp.backend
 
-  let get_color vp = !(vp.color)
+  let get_color vp = vp.color
 
 (* Viewport path manipulation
  ***********************************************************************)

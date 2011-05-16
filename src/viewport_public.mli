@@ -179,7 +179,7 @@ module type T = sig
       (** The device's width and height of the viewport *)
 
     (* set_global_param set param of backend and then of all viewports *)
-    val set_global_color : t -> Color.t -> unit
+    val set_color : t -> Color.t -> unit
     val set_global_line_cap : t -> Backend.line_cap -> unit
     val set_global_dash : t -> float -> float array -> unit
     val set_global_line_join : t -> Backend.line_join -> unit

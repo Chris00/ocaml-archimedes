@@ -14,17 +14,17 @@ let draw bk =
   let trace i vp =
     V.set_rel_line_width vp 1.;
 
-    V.set_global_color vp colors.(i mod 4);
+    V.set_color vp colors.(i mod 4);
     V.rectangle vp ~x:0. ~y:0. ~w:1. ~h:1.;
     V.stroke vp V.Graph;
 
     V.set_line_width vp 1.;
 
-    V.set_global_color vp colors.((i + 2) mod 4);
+    V.set_color vp colors.((i + 2) mod 4);
     V.rectangle vp ~x:0. ~y:0. ~w:1. ~h:1.;
     V.stroke vp V.Orthonormal;
 
-    V.set_global_color vp colors.((i + 1) mod 4);
+    V.set_color vp colors.((i + 1) mod 4);
     V.move_to vp ~x:0. ~y:0.;
     V.line_to vp ~x:1. ~y:0.;
     V.line_to vp ~x:1. ~y:1.;
@@ -38,10 +38,10 @@ let draw bk =
 
   V.move_to vp 0.3 0.;
   V.line_to vp 0.3 1.;
-  V.set_global_color vp Color.yellow;
+  V.set_color vp Color.yellow;
   V.stroke vp V.Device;
 
-  V.set_global_color vp Color.red;
+  V.set_color vp Color.red;
   V.set_rel_line_width vp 1.;
   V.rectangle vp ~x:0. ~y:0. ~w:1. ~h:1.;
   V.stroke vp V.Graph;
