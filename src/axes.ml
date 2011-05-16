@@ -72,10 +72,12 @@ let add_x_axis ?(major=("tic_up", 3.)) ?(minor=("tic_up", 1.))
     ?(tics=Tics.Auto (Tics.Number 5)) ?(offset=Absolute 0.) vp =
   V.add_instruction (draw_x_axis major minor start stop tics offset vp) vp
 
+
 let add_y_axis ?(major=("tic_right", 3.)) ?(minor=("tic_right", 1.))
     ?(start=Arrows.Unstyled) ?(stop=Arrows.Simple)
     ?(tics=Tics.Auto (Tics.Number 5)) ?(offset=Absolute 0.) vp =
   V.add_instruction (draw_y_axis major minor start stop tics offset vp) vp
+
 
 let box ?tics ?(tics_alt=Tics.Auto Tics.No_label) vp =
   add_x_axis ~start:Arrows.Unstyled ~stop:Arrows.Unstyled

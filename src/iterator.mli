@@ -15,7 +15,7 @@
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the file
    LICENSE for more details. *)
 
-(*
+
 (** Iterations on points (internal module). *)
 
 type t
@@ -46,4 +46,3 @@ val reset : t -> unit
 val nb_data : t -> int
 
 val extents : t -> Matrix.rectangle
-*)
