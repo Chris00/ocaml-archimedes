@@ -29,6 +29,7 @@ module type T = sig
 
     val next : t -> (float * float) option
     val reset : t -> unit
+    val iter : t -> (float -> float -> unit) -> unit
   end
 
   module List : sig
