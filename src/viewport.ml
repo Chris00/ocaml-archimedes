@@ -587,30 +587,30 @@ end
     and yaxis = vp.axes_system.Axes.y in
     (* TODO can we skip those tests ? (x|y)(0|1)' *)
     let x0', x1', y0', y1' = min x0 x1, max x0 x1, min y0 y1, max y0 y1 in
-    let updated = ref false in
+    let xupdated = ref false in
+    let yupdated = ref false in
     if xaxis.Axes.auto_x0 then
       if is_nan_or_inf xaxis.Axes.x0 || x0' < xaxis.Axes.x0 then
-        (xaxis.Axes.x0 <- x0'; updated := true);
+        (xaxis.Axes.x0 <- x0'; xupdated := true);
     if xaxis.Axes.auto_xend then
       if is_nan_or_inf xaxis.Axes.xend || x1' > xaxis.Axes.xend then
-        (xaxis.Axes.xend <- x1'; updated := true);
+        (xaxis.Axes.xend <- x1'; xupdated := true);
     if yaxis.Axes.auto_x0 then
       if is_nan_or_inf yaxis.Axes.x0 || y0' < yaxis.Axes.x0 then
-        (yaxis.Axes.x0 <- y0'; updated := true);
+        (yaxis.Axes.x0 <- y0'; yupdated := true);
     if yaxis.Axes.auto_xend then
       if is_nan_or_inf yaxis.Axes.xend || y1' > yaxis.Axes.xend then
-        (yaxis.Axes.xend <- y1'; updated := true);
-    if !updated then begin
-      update_coordinate_system vp;
-      if vp.immediate_drawing then begin
-        let l1 = vp.axes_system.Axes.x.Axes.viewports in
-        let l2 = vp.axes_system.Axes.y.Axes.viewports in
-        (* We want to merge the 2 lists without duplicates *)
-        let l2' = List.filter (fun x -> not (List.exists (( == ) x) l1)) l2 in
-        List.iter do_instructions (List.rev_append l1 l2')
-          (* TODO Is there a way to optimize that bunch of code ? *)
-      end
-    end
+        (yaxis.Axes.xend <- y1'; yupdated := true);
+    let axes = vp.axes_system in
+    let l1 = if !xupdated then axes.Axes.x.Axes.viewports else [] in
+    let l2 = if !yupdated then axes.Axes.y.Axes.viewports else [] in
+    (* We want to merge the 2 lists without duplicates *)
+    let l2' = List.filter (fun x -> not (List.exists (( == ) x) l1)) l2 in
+    let l = List.rev_append l1 l2' in
+    List.iter update_coordinate_system l;
+    if vp.immediate_drawing then
+      (* TODO Is there a way to optimize that bunch of code ? *)
+      List.iter do_instructions l
 
 (* Synchronization
  ***********************************************************************)

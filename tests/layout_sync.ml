@@ -9,11 +9,11 @@ let draw bk =
   let subvps = V.layout_grid ~syncs:(true, true, false, true) vp 2 2 in
   V.rectangle subvps.(0) ~x:0. ~y:0. ~w:1. ~h:1.;
   V.stroke subvps.(0) V.Data;
-  V.xrange subvps.(0) (-10.) 10.;
+(*  V.xrange subvps.(0) (-10.) 10.;
   V.yrange subvps.(0) (-3.) 5.;
   V.xrange subvps.(1) (-5.) 5.;
-  V.yrange subvps.(1) (-1.) 5.;
-  (* Pl.fx subvps.(0) (fun x -> x *. x) 0. 30.;*)
+  V.yrange subvps.(1) (-1.) 5.;*)
+  Pl.fx subvps.(0) (fun x -> x *. x) 0. 5.;
   V.set_line_width subvps.(0) 1.;
   Axes.cross ~tics:(Tics.Equidistants (Tics.Number 5, 0., 3., 1)) subvps.(0);
   V.set_color subvps.(1) Color.red;
