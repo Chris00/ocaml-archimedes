@@ -26,13 +26,7 @@ module type Iterator = sig
 
   val next : t -> (float * float) option
   val reset : t -> unit
-  val iterate : (float -> float -> unit) -> t -> unit
 end
-
-let rec iterate next f iter =
-  match next iter with
-  | None -> ()
-  | Some v -> f v; iterate f iter
 
 module List = struct
   type data = float list
@@ -54,8 +48,6 @@ module List = struct
         iter.data_curr <- tl;
         iter.pos <- succ iter.pos;
         Some (float iter.pos, x)
-
-  let iter = iterate next
 end
 
 module List2 = struct
@@ -75,8 +67,6 @@ module List2 = struct
     | p :: tl ->
         iter.data_curr <- tl;
         Some p
-
-  let iter = iterate next
 end
 
 module A = Array
@@ -100,8 +90,6 @@ module Array = struct
       iter.pos <- succ iter.pos;
       Some (float iter.pos, A.get iter.data iter.pos)
     end
-
-  let iter = iterate next
 end
 
 module Array2 = struct
@@ -123,8 +111,6 @@ module Array2 = struct
       iter.pos <- succ iter.pos;
       Some (A.get iter.data iter.pos)
     end
-
-  let iter = iterate next
 end
 
 module Bigarray_ = struct
@@ -147,8 +133,6 @@ module Bigarray_ = struct
       iter.pos <- succ iter.pos;
       Some (float iter.pos, iter.data.{iter.pos})
     end
-
-  let iter = iterate next
 end
 
 module Bigarray_C = struct
@@ -183,8 +167,6 @@ module Bigarray2_ = struct
       iter.pos <- succ iter.pos;
       Some (iter.data.{iter.pos, 0}, iter.data.{iter.pos, 1})
     end
-
-  let iter = iterate next
 end
 
 module Bigarray2_C = struct
@@ -197,4 +179,8 @@ module Bigarray2_Fortran = struct
   include Bigarray2_
   type data = Bigarray.fortran_layout datai
   type t = Bigarray.fortran_layout ti
+end
+
+module Function = struct
+  include Sampler.FIterator2
 end

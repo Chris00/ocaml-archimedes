@@ -40,6 +40,6 @@ let () =
   include_module "Viewport";
   include_module "Arrows";
   include_module "Axes";
-  include_module "Iterator";
   include_module "Sampler";
+  include_module "Iterator";
   include_module "Plot"

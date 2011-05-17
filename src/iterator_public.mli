@@ -29,7 +29,6 @@ module type T = sig
 
     val next : t -> (float * float) option
     val reset : t -> unit
-    val iter : t -> (float -> float -> unit) -> unit
   end
 
   module List : sig
@@ -74,5 +73,9 @@ module type T = sig
 
     include Iterator with
       type data = (float, float64_elt, fortran_layout) Array2.t
+  end
+
+  module Function : sig
+    include Iterator with type data = Sampler.FIterator2.data
   end
 end

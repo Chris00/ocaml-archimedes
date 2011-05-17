@@ -58,10 +58,28 @@ module type T = sig
     (** Same criterion as criterion_angle, but one can tell that the x/y
         axis is logarithmic, and increment precision in a more wise way *)
 
-  val samplefxy : ?tlog:bool -> ?min_step:float -> ?nsamples:int ->
-    ?strategy:strategy -> ?criterion:criterion -> (float -> float * float) ->
-    float -> float -> (float * float) list
-    (** [samplefxy f t1 t2] samples the parametric function f from t1 to
+  module FIterator2 : sig
+    type data = {
+      tlog: bool;
+      min_step: float;
+      nsamples: int;
+      strategy: strategy;
+      criterion: criterion;
+      f: float -> (float * float);
+      t1: float;
+      t2: float
+    }
+
+    type t = {
+      data: data;
+      mutable p: (float * float) option;
+      mutable next: unit -> unit
+    }
+
+    val create : ?tlog:bool -> ?min_step:float -> ?nsamples:int ->
+      ?strategy:strategy -> ?criterion:criterion ->
+      (float -> float * float) -> float -> float -> t
+    (** [create f t1 t2] samples the parametric function f from t1 to
         t2, returning a list of the points in the sample.
 
         @param tlog do we need to step in a logarithmic way ?
@@ -79,37 +97,8 @@ module type T = sig
         those in this module
     *)
 
-  val samplefxy_adaptive : ?tlog:bool -> ?min_step:float ->
-    (float -> float * float) -> float -> float ->
-    (float * float) list
-    (** An fully adaptive wrapper for samplefxy *)
-
-  module type Common = sig
-    type strategy = float -> float -> float
-    type criterion = float -> float -> float -> float -> float -> float -> bool
-  end
-
-  module FIterator : sig
-    include Common
-
-    type d = {
-      tlog: bool; min_step: float; nsamples: int;
-      strategy: strategy; criterion: criterion;
-      f: float -> float; a: float; b: float
-    }
-
-    include Iterator.Iterator with type data = d
-  end
-
-  module FIterator2 : sig
-    include Common
-
-    type d = {
-      tlog: bool; min_step: float; nsamples: int;
-      strategy: strategy; criterion: criterion;
-      f: float -> (float * float); t1: float; t2: float
-    }
-
-    include Iterator.Iterator with type data = d
+    val of_data : data -> t
+    val reset : t -> unit
+    val next : t -> (float * float) option
   end
 end
