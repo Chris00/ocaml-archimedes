@@ -34,8 +34,11 @@ type t =
   | Fixed of labels * float list
   | Fixed_norm of labels * float list
   | Equidistants of
-      labels * float * float * int (* labels, offset, distance, minors *)
+      (* labels, log, offset, distance, minors *)
+      labels * float * float * int
   | Auto of labels
+
+let lg b x = log x /. log b
 
 (* ntics, min, max *)
 (*  val loose_labels_numeric : float -> float -> tic list
@@ -68,7 +71,7 @@ let label_of_float label x = match label with
   | Expnumber_named _ -> raise (Failure "Not yet implemented")
   | Custom _ -> raise (Failure "Not yet implemented")
 
-let loose_labels ?(ntics=5) xmin xmax label =
+let loose_labels ?(ntics=5) log xmin xmax label =
   let range = nicenum (xmax -. xmin) false in
   let d = nicenum (range /. float (pred ntics)) true in
   let graphmin = (floor (xmin /. d)) *. d in
@@ -79,29 +82,38 @@ let loose_labels ?(ntics=5) xmin xmax label =
   in
   aux [] graphmin
 
-let equi_labels offset d_major num_minor xmin xmax labels =
-  let first_major = xmin +. (mod_float (offset -. xmin) d_major) in
-  let d_minor = d_major /. float (succ num_minor) in
-  let rec aux_tics acc n x =
+let equi_labels log offset d_major num_minor xmin xmax labels =
+  let first_major =
+    if log then xmin /. d_major ** floor (lg d_major (offset /. xmin))
+    else xmin +. (mod_float (offset -. xmin) d_major) in
+  let d_minor =
+    if log then first_major /. d_major /. float num_minor
+    else d_major /. float (succ num_minor) in
+  let minors_before = int_of_float ((first_major -. xmin) /. d_minor) in
+  let first_tic = first_major -. (float minors_before *. d_minor) in
+  let rec aux_tics d_minor acc n x =
     let n' = n mod (succ num_minor) in
     let major = n' = 0 in
     if x > xmax then acc
     else
-      let tic =
+      let tic, d_minor =
         if major then
-          Major (label_of_float labels x, x)
+          (Major (label_of_float labels x, x),
+           if log then d_minor *. d_major else d_major)
         else
-          Minor x
-      and x' = x +. d_minor in
-      aux_tics (tic :: acc) (succ n') x'
+          (Minor x, d_minor)
+      in
+      let x' = x +. d_minor in
+      Printf.printf "%f\n%!" x';
+      aux_tics d_minor (tic :: acc) (succ n') x'
   in
-  if d_major > 0. then aux_tics [] 0 first_major else []
+  if d_major > 0. then aux_tics d_minor [] (- minors_before) first_tic else []
 
-let tics xmin xmax = function
+let tics log xmin xmax = function
   | Fixed _ -> raise (Failure "Not yet implemented")
   | Fixed_norm _ -> raise (Failure "Not yet implemented")
   | Equidistants (labels, offset, d_major, num_minor) ->
-      equi_labels offset d_major num_minor xmin xmax labels
-  | Auto labels -> loose_labels xmin xmax labels
+      equi_labels log offset d_major num_minor xmin xmax labels
+  | Auto labels -> loose_labels log xmin xmax labels
 
 (*  val loose_labels : float -> float -> labels -> tic list*)

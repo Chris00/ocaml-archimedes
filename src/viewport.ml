@@ -828,31 +828,17 @@ end
 (* Viewport path manipulation
  ***********************************************************************)
 
-  let move_to vp ~x ~y =
-    add_instruction (fun () -> Path.move_to vp.path ~x ~y) vp
+  let move_to vp = Path.move_to vp.path
+  let line_to vp = Path.line_to vp.path
+  let rel_move_to vp = Path.rel_move_to vp.path
+  let rel_line_to vp = Path.rel_line_to vp.path
 
-  let line_to vp ~x ~y =
-    add_instruction (fun () -> Path.line_to vp.path ~x ~y) vp
+  let curve_to vp = Path.curve_to vp.path
+  let rectangle vp = Path.rectangle vp.path
+  let arc vp = Path.arc vp.path
 
-  let rel_move_to vp ~x ~y =
-    add_instruction (fun () -> Path.rel_move_to vp.path ~x ~y) vp
-
-  let rel_line_to vp ~x ~y =
-    add_instruction (fun () -> Path.rel_line_to vp.path ~x ~y) vp
-
-  let curve_to vp ~x1 ~y1 ~x2 ~y2 ~x3 ~y3 =
-    add_instruction (fun () -> Path.curve_to vp.path ~x1 ~y1 ~x2 ~y2 ~x3 ~y3) vp
-  let rectangle vp ~x ~y ~w ~h =
-    add_instruction (fun () -> Path.rectangle vp.path ~x ~y ~w ~h) vp
-
-  let arc vp ~r ~a1 ~a2 =
-    add_instruction (fun () -> Path.arc vp.path ~r ~a1 ~a2) vp
-
-  let close_path vp =
-    add_instruction (fun () -> Path.close vp.path) vp
-
-  let clear_path vp =
-    add_instruction (fun () -> Path.clear vp.path) vp
+  let close_path vp = Path.close vp.path
+  let clear_path vp = Path.clear vp.path
 
   let path_extents vp = Path.extents vp.path
 
@@ -862,11 +848,14 @@ end
     and y0 = e.Matrix.y in
     let x1 = x0 +. e.Matrix.w
     and y1 = y0 +. e.Matrix.h in
+    Printf.printf "extents %f %f %f %f\n%!" x0 y0 x1 y1;
     auto_fit vp x0 y0 x1 y1
 
   let stroke_preserve ?path vp coord_name =
     let path = get_path vp path in
-    fit_path vp path;
+    if coord_name = Data then
+      fit_path vp path;
+    let path = Path.copy path in
     add_instruction (stroke_direct ~path vp coord_name) vp
 
   let stroke ?path vp coord_name =
@@ -875,7 +864,9 @@ end
 
   let fill_preserve ?path vp coord_name =
     let path = get_path vp path in
-    fit_path vp path;
+    if coord_name = Data then
+      fit_path vp path;
+    let path = Path.copy path in
     add_instruction (fill_direct ~path vp coord_name) vp
 
   let fill ?path vp coord_name =

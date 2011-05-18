@@ -46,7 +46,7 @@ let draw_tic tic majors minors text = function
   | Tics.Minor v -> tic v minors
 
 let draw_x_axis major minor start stop tics offset vp () =
-  let tics_values = Tics.tics (V.xmin vp) (V.xmax vp) tics in
+  let tics_values = Tics.tics (V.xlog vp) (V.xmin vp) (V.xmax vp) tics in
   let yrange = V.ymax vp -. V.ymin vp in
   let offset, pos = axis_offset (V.ymin vp) yrange offset in
   let x1, y1, x2, y2 = V.xmin vp, offset, V.xmax vp, offset in
@@ -57,7 +57,7 @@ let draw_x_axis major minor start stop tics offset vp () =
   List.iter (draw_tic tic major minor text) tics_values
 
 let draw_y_axis major minor start stop tics offset vp () =
-  let tics_values = Tics.tics (V.ymin vp) (V.ymax vp) tics in
+  let tics_values = Tics.tics (V.ylog vp) (V.ymin vp) (V.ymax vp) tics in
   let xrange = V.xmax vp -. V.xmin vp in
   let offset, pos = axis_offset (V.xmin vp) xrange offset in
   let x1, y1, x2, y2 = offset, V.ymin vp, offset, V.ymax vp in

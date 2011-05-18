@@ -39,7 +39,7 @@ type t = {
 
 let make () =
   { path = [];
-    extents = { Matrix.x = 0.; y = 0.; w = 0.; h = 0. };
+    extents = { Matrix.x = nan; y = nan; w = nan; h = nan };
     x = 0.;
     y = 0.;
     curr_pt = false }
@@ -53,7 +53,7 @@ let copy p =
 
 let clear p =
   p.path <- [];
-  p.extents <- { Matrix.x = 0.; y = 0.; w = 0.; h = 0. };
+  p.extents <- { Matrix.x = nan; y = nan; w = nan; h = nan };
   p.x <- 0.;
   p.y <- 0.;
   p.curr_pt <- false
@@ -77,6 +77,7 @@ let update_rectangle p x0 y0 x1 y1 =
   and y = min e.Matrix.y (min y0 y1)
   and x' = max (e.Matrix.x +. e.Matrix.w) (max x0 x1)
   and y' = max (e.Matrix.y +. e.Matrix.h) (max y0 y1) in
+  Printf.printf "path: %f %f %f %f\n" x y (x' -. x) (y' -. y);
   p.extents <- { Matrix.x = x; y = y; w = x' -. x; h = y' -. y }
 
 let move_to p ~x ~y =

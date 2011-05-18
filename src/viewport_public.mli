@@ -237,6 +237,8 @@ module type T = sig
 
     val xlog : t -> bool
     val ylog : t -> bool
+    val set_xlog : t -> bool -> unit
+    val set_ylog : t -> bool -> unit
 
     val set_line_width_direct : t -> float -> unit -> unit
     val set_font_size_direct : t -> float -> unit -> unit

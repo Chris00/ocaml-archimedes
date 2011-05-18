@@ -37,5 +37,5 @@ module type T = sig
     | Equidistants of labels * float * float * int
     | Auto of labels
 
-  val tics: float -> float -> t -> tic list
+  val tics: bool -> float -> float -> t -> tic list
 end
