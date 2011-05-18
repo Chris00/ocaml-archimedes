@@ -295,19 +295,41 @@ end
   let to_parent coord (x, y) = Coordinate.to_parent coord ~x ~y
   let from_parent coord (x, y) = Coordinate.from_parent coord ~x ~y
 
+  let data_norm_log axes_system (x, y) =
+    let axis_norm_log axis x =
+      if axis.Axes.log then
+        let x0, xend = axis.Axes.x0, axis.Axes.xend in
+        (log (x /. x0) /. log (xend /. x0)) *. (xend -. x0) +. x0
+      else x
+    in
+    (axis_norm_log axes_system.Axes.x x, axis_norm_log axes_system.Axes.y y)
+
   let rec ortho_from vp coord_name pos = match coord_name with
     | Device ->
         ortho_from vp Orthonormal (from_parent vp.coord_orthonormal pos)
     | Graph ->
         ortho_from vp Device (to_parent vp.coord_graph pos)
     | Data ->
+        let pos = data_norm_log vp.axes_system pos in
         ortho_from vp Graph (to_parent vp.coord_data pos)
     | Orthonormal ->
         pos
 
+  let data_unnorm_log axes_system (x, y) =
+    let axis_unnorm_log axis x =
+      if axis.Axes.log then
+        let x0, xend = axis.Axes.x0, axis.Axes.xend in
+        exp ((x -. x0) /. (xend -. x0) *. log (xend /. x0) +. log x0)
+      else x
+    in
+    (axis_unnorm_log axes_system.Axes.x x,
+     axis_unnorm_log axes_system.Axes.y y)
+
   let rec data_from vp coord_name pos = match coord_name with
     | Device -> data_from vp Graph (from_parent vp.coord_graph pos)
-    | Graph -> from_parent vp.coord_data pos
+    | Graph ->
+        let pos = data_unnorm_log vp.axes_system pos in
+        from_parent vp.coord_data pos
     | Data -> pos
     | Orthonormal -> data_from vp Device (to_parent vp.coord_orthonormal pos)
 
