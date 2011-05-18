@@ -58,45 +58,69 @@ let criterion_angle_log xlog ylog ?(threshold=3.1) x1 y1 xm ym x2 y2 =
   acos ((side1 +. side2 -. side_hyp)
         /. (2. *. sqrt side1 *. sqrt side2)) > threshold
 
-let update_extents extents x y =
-  let x0, xend, y0, yend = extents in
-  min x x0, max x xend, min y y0, max y yend
+type data = {
+  tlog: bool;
+  min_step: float;
+  nsamples: int;
+  strategy: strategy;
+  criterion: criterion;
+  f: float -> (float * float);
+  t1: float;
+  t2: float
+}
 
-let rec refine min_step strategy criterion xylist f t1 x1 y1 t2 x2 y2 extents =
-  if abs_float (t1 -. t2) < min_step then xylist, extents
-  else
-    let m = strategy t1 t2 in
-    let xm, ym = f m in
-    if criterion x1 y1 xm ym x2 y2 then xylist, extents
-    else
-      let extents = update_extents extents xm ym in
-      let r = refine min_step strategy criterion in
-      let xylist, extents = r xylist f t1 x1 y1 m xm ym extents in
-      let xylist = (xm, ym) :: xylist in
-      r xylist f m xm ym t2 x2 y2 extents
+type t = {
+  data: data;
+  mutable p: (float * float) option;
+  mutable next: unit -> unit
+}
 
-let next tlog t1 t2 nintervals =
-  if tlog then t1 *. (t2 /. t1) ** (1. /. nintervals)
-  else t1 +. (t2 -. t1) /. nintervals
+let rec refine iter t1 x1 y1 t2 x2 y2 next =
+  if abs_float (t1 -. t2) < iter.data.min_step then begin
+    iter.p <- Some (x2, y2);
+    iter.next <- next
+  end else
+    let m = iter.data.strategy t1 t2 in
+    let xm, ym = iter.data.f m in
+    if iter.data.criterion x1 y1 xm ym x2 y2 then begin
+      iter.p <- Some (x2, y2);
+      iter.next <- next
+    end else
+      let next' () = refine iter m xm ym t2 x2 y2 next in
+      refine iter t1 x1 y1 m xm ym next'
 
-let samplefxy ?(tlog=false) ?(min_step=1E-9) ?(nsamples=100)
+let rec sample_interval iter nsamples t1 x1 y1 t2 x2 y2 =
+  if nsamples < 2 then begin
+    iter.p <- None;
+    iter.next <- (fun () -> ())
+  end else
+    let m = if iter.data.tlog
+    then t1 *. (t2 /. t1) ** (1. /. (float (nsamples - 1)))
+    else t1 +. (t2 -. t1) /. (float (nsamples - 1)) in
+    let xm, ym = iter.data.f m in
+    let next' () = sample_interval iter (nsamples - 1) m xm ym t2 x2 y2 in
+    refine iter t1 x1 y1 m xm ym next'
+
+let reset iter =
+  iter.p <- Some (iter.data.f iter.data.t1);
+  let t1, t2 = iter.data.t1, iter.data.t2 in
+  let x1, y1 = iter.data.f t1
+  and x2, y2 = iter.data.f t2 in
+  let next' () = sample_interval iter iter.data.nsamples t1 x1 y1 t2 x2 y2 in
+  iter.next <- next'
+
+let of_data f =
+  let iter = {data=f; p=None; next=(fun () -> ())} in
+  reset iter;
+  iter
+
+let next iter =
+  let v = iter.p in
+  iter.next ();
+  v
+
+let create ?(tlog=false) ?(min_step=1E-9) ?(nsamples=100)
     ?(strategy=strategy_midpoint) ?(criterion=criterion_none) f t1 t2 =
-  let rec aux nsamples t1 x1 y1 t2 x2 y2 xylist extents =
-    if nsamples < 2 then List.rev xylist, extents
-    else
-      let m = next tlog t1 t2 (float (nsamples - 1)) in
-      let xm, ym = f m in
-      let extents = update_extents extents xm ym in
-      let pts, extents =
-        refine min_step strategy criterion xylist f t1 x1 y1 m xm ym extents in
-      aux (nsamples - 1) m xm ym t2 x2 y2 ((xm, ym) :: pts) extents
-  in
-  let x1, y1 = f t1
-  and x2, y2 = f t2 in
-  let extents = x1, x1, y1, y1 in
-  aux nsamples t1 x1 y1 t2 x2 y2 [(x1, y1)] extents
-
-let samplefxy_adaptive =
-  let strategy = strategy_center_random in
-  let criterion = criterion_angle ~threshold:3.14 in
-  samplefxy ~nsamples:2 ~strategy ~criterion
+  let d = {tlog=tlog; min_step=min_step; nsamples=nsamples;
+           strategy=strategy; criterion=criterion; f=f; t1=t1; t2=t2} in
+  of_data d

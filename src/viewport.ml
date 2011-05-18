@@ -534,7 +534,7 @@ end
   let rec do_instructions vp =
     if vp.saves != [] then print_string "Warning: saves list is not empty\n";
     blank vp;
-    set_color_direct vp vp.color;
+    set_color_direct vp vp.color ();
     Queue.iter (fun f -> f ()) vp.instructions;
     List.iter do_instructions (List.rev vp.children)
 

@@ -26,7 +26,19 @@ module type Iterator = sig
 
   val next : t -> (float * float) option
   val reset : t -> unit
+  val iter : (float * float -> unit) -> t -> unit
+  val iter_cache : (float * float -> unit) -> t -> (float * float) list
 end
+
+let rec iterate next f iter =
+  match next iter with
+  | None -> ()
+  | Some p -> f p; iterate next f iter
+
+let rec iterate_cache next starting_list f iter =
+  match next iter with
+  | None -> starting_list
+  | Some p -> f p; iterate_cache next (p :: starting_list) f iter
 
 module List = struct
   type data = float list
@@ -48,6 +60,9 @@ module List = struct
         iter.data_curr <- tl;
         iter.pos <- succ iter.pos;
         Some (float iter.pos, x)
+
+  let iter = iterate next
+  let iter_cache = iterate_cache next []
 end
 
 module List2 = struct
@@ -67,6 +82,9 @@ module List2 = struct
     | p :: tl ->
         iter.data_curr <- tl;
         Some p
+
+  let iter = iterate next
+  let iter_cache = iterate_cache next []
 end
 
 module A = Array
@@ -90,6 +108,9 @@ module Array = struct
       iter.pos <- succ iter.pos;
       Some (float iter.pos, A.get iter.data iter.pos)
     end
+
+  let iter = iterate next
+  let iter_cache = iterate_cache next []
 end
 
 module Array2 = struct
@@ -111,6 +132,9 @@ module Array2 = struct
       iter.pos <- succ iter.pos;
       Some (A.get iter.data iter.pos)
     end
+
+  let iter = iterate next
+  let iter_cache = iterate_cache next []
 end
 
 module Bigarray_ = struct
@@ -139,12 +163,18 @@ module Bigarray_C = struct
   include Bigarray_
   type data = Bigarray.c_layout datai
   type t = Bigarray.c_layout ti
+
+  let iter = iterate next
+  let iter_cache = iterate_cache next []
 end
 
 module Bigarray_Fortran = struct
   include Bigarray_
   type data = Bigarray.fortran_layout datai
   type t = Bigarray.fortran_layout ti
+
+  let iter = iterate next
+  let iter_cache = iterate_cache next []
 end
 
 module Bigarray2_ = struct
@@ -173,10 +203,23 @@ module Bigarray2_C = struct
   include Bigarray2_
   type data = Bigarray.c_layout datai
   type t = Bigarray.c_layout ti
+
+  let iter = iterate next
+  let iter_cache = iterate_cache next []
 end
 
 module Bigarray2_Fortran = struct
   include Bigarray2_
   type data = Bigarray.fortran_layout datai
   type t = Bigarray.fortran_layout ti
+
+  let iter = iterate next
+  let iter_cache = iterate_cache next []
+end
+
+module Function = struct
+  include Sampler
+
+  let iter = iterate next
+  let iter_cache = iterate_cache next []
 end
