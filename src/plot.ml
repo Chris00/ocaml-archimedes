@@ -87,29 +87,33 @@ struct
 
   let fill_data fillcolor pathstyle vp path iter =
     let path = Path.copy path in
-    Sampler.FIterator.iter (close_data pathstyle path) data_base;
+    Iterator.Function.iter (close_data pathstyle path) iter;
     V.save vp;
     V.set_color vp fillcolor;
     V.fill ~path vp V.Data;
     V.restore vp
 
-  (* TODO Check *)
   let fx ?strategy ?criterion ?min_step ?max_yrange ?nsamples ?(fill=false)
       ?(fillcolor=Color.red) ?(pathstyle=Lines) ?(g=fun _ -> 0.) vp f a b =
-    let h x = f x +. g x in
-    let sampler = Sampler.FIterator.create ?strategy ?criterion
+    let h x = x, f x +. g x in
+    let sampler = Iterator.Function.create ?strategy ?criterion
       ~tlog:(V.xlog vp) in
     let iter = sampler h a b in
-    let miny = ref (h a) and maxy = ref (h a) in
-    let path = Path.make_at a (h a) in
-    Sampler.FIterator.iter
-      (fun hx hy ->
+    let _, ha = h a in
+    let miny = ref ha and maxy = ref ha in
+    let path = Path.make_at a ha in
+    let data_rev = Iterator.Function.iter_cache
+      (fun (hx, hy) ->
+         print_float hx;
+         print_string " ";
+         print_float hy;
+         print_newline ();
          miny := min !miny hy; maxy := max !maxy hy;
-         draw_data pathstyle path ~base:(g hx) (hx, hy)) data
-    V.auto_fit vp a miny b maxy;
-    if fill then fill_data fillcolor pathstyle vp path (sampler g b a);
+         draw_data pathstyle path ~base:(g hx) (hx, hy)) iter in
+    V.auto_fit vp a !miny b !maxy;
+    if fill then fill_data fillcolor pathstyle vp path (sampler (fun x -> x, g x) b a);
     V.stroke ~path vp V.Data;
-    Sampler.FIterator.iter (draw_point pathstyle vp) iter
+    List.iter (draw_point pathstyle vp) data_rev
 
   let xy_param ?min_step ?nsamples ?(fill=false) ?(fillcolor=Color.red)
       ?(pathstyle=Lines) vp f a b =

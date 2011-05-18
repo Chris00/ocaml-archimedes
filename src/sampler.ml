@@ -58,74 +58,69 @@ let criterion_angle_log xlog ylog ?(threshold=3.1) x1 y1 xm ym x2 y2 =
   acos ((side1 +. side2 -. side_hyp)
         /. (2. *. sqrt side1 *. sqrt side2)) > threshold
 
-module FIterator2 = struct
-  type strategy = float -> float -> float
-  type criterion = float -> float -> float -> float -> float -> float -> bool
+type data = {
+  tlog: bool;
+  min_step: float;
+  nsamples: int;
+  strategy: strategy;
+  criterion: criterion;
+  f: float -> (float * float);
+  t1: float;
+  t2: float
+}
 
-  type data = {
-    tlog: bool;
-    min_step: float;
-    nsamples: int;
-    strategy: strategy;
-    criterion: criterion;
-    f: float -> (float * float);
-    t1: float;
-    t2: float
-  }
+type t = {
+  data: data;
+  mutable p: (float * float) option;
+  mutable next: unit -> unit
+}
 
-  type t = {
-    data: data;
-    mutable p: (float * float) option;
-    mutable next: unit -> unit
-  }
-
-  let rec refine iter t1 x1 y1 t2 x2 y2 next =
-    if abs_float (t1 -. t2) < iter.data.min_step then begin
+let rec refine iter t1 x1 y1 t2 x2 y2 next =
+  if abs_float (t1 -. t2) < iter.data.min_step then begin
+    iter.p <- Some (x2, y2);
+    iter.next <- next
+  end else
+    let m = iter.data.strategy t1 t2 in
+    let xm, ym = iter.data.f m in
+    if iter.data.criterion x1 y1 xm ym x2 y2 then begin
       iter.p <- Some (x2, y2);
       iter.next <- next
     end else
-      let m = iter.data.strategy t1 t2 in
-      let xm, ym = iter.data.f m in
-      if iter.data.criterion x1 y1 xm ym x2 y2 then begin
-        iter.p <- Some (x2, y2);
-        iter.next <- next
-      end else
-        let next' () = refine iter m xm ym t2 x2 y2 next in
-        refine iter t1 x1 y1 m xm ym next'
-
-  let rec sample_interval iter nsamples t1 x1 y1 t2 x2 y2 =
-    if nsamples < 1 then begin
-      iter.p <- None;
-      iter.next <- (fun () -> ())
-    end else
-      let m = if iter.data.tlog
-      then t1 *. (t2 /. t1) ** (1. /. (float (nsamples - 1)))
-      else t1 +. (t2 -. t1) /. (float (nsamples - 1)) in
-      let xm, ym = iter.data.f m in
-      let next' () = sample_interval iter (nsamples - 1) m xm ym t2 x2 y2 in
+      let next' () = refine iter m xm ym t2 x2 y2 next in
       refine iter t1 x1 y1 m xm ym next'
 
-  let reset iter =
-    iter.p <- Some (iter.data.f iter.data.t1);
-    let t1, t2 = iter.data.t1, iter.data.t2 in
-    let x1, y1 = iter.data.f t1
-    and x2, y2 = iter.data.f t2 in
-    let next' () = sample_interval iter iter.data.nsamples t1 x1 y1 t2 x2 y2 in
-    iter.next <- next'
+let rec sample_interval iter nsamples t1 x1 y1 t2 x2 y2 =
+  if nsamples < 2 then begin
+    iter.p <- None;
+    iter.next <- (fun () -> ())
+  end else
+    let m = if iter.data.tlog
+    then t1 *. (t2 /. t1) ** (1. /. (float (nsamples - 1)))
+    else t1 +. (t2 -. t1) /. (float (nsamples - 1)) in
+    let xm, ym = iter.data.f m in
+    let next' () = sample_interval iter (nsamples - 1) m xm ym t2 x2 y2 in
+    refine iter t1 x1 y1 m xm ym next'
 
-  let of_data f =
-    let iter = {data=f; p=None; next=(fun () -> ())} in
-    reset iter;
-    iter
+let reset iter =
+  iter.p <- Some (iter.data.f iter.data.t1);
+  let t1, t2 = iter.data.t1, iter.data.t2 in
+  let x1, y1 = iter.data.f t1
+  and x2, y2 = iter.data.f t2 in
+  let next' () = sample_interval iter iter.data.nsamples t1 x1 y1 t2 x2 y2 in
+  iter.next <- next'
 
-  let create ?(tlog=false) ?(min_step=1E-9) ?(nsamples=100)
-      ?(strategy=strategy_midpoint) ?(criterion=criterion_none) f t1 t2 =
-    let d = {tlog=tlog; min_step=min_step; nsamples=nsamples;
-             strategy=strategy; criterion=criterion; f=f; t1=t1; t2=t2} in
-    of_data d
+let of_data f =
+  let iter = {data=f; p=None; next=(fun () -> ())} in
+  reset iter;
+  iter
 
-  let next iter =
-    let v = iter.p in
-    iter.next ();
-    v
-end
+let next iter =
+  let v = iter.p in
+  iter.next ();
+  v
+
+let create ?(tlog=false) ?(min_step=1E-9) ?(nsamples=100)
+    ?(strategy=strategy_midpoint) ?(criterion=criterion_none) f t1 t2 =
+  let d = {tlog=tlog; min_step=min_step; nsamples=nsamples;
+           strategy=strategy; criterion=criterion; f=f; t1=t1; t2=t2} in
+  of_data d
