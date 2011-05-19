@@ -254,7 +254,9 @@ let transform p f =
       let x, y = f (x, y) in
       Move_to (x, y)
     | Line_to (x, y) ->
+      Printf.printf "Line_to from %f %f\n%!" x y;
       let x, y = f (x, y) in
+      Printf.printf "TO %f %f\n%!" x y;
       Line_to (x, y)
     | Rectangle (x, y, w, h) ->
       let x, y = f (x, y) in

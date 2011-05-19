@@ -329,12 +329,14 @@ end
     | Data -> pos
     | Orthonormal -> data_from vp Device (to_parent vp.coord_orthonormal pos)
 
-  let get_path vp p =
+  let get_path ?(notransform=false) vp p coord_name =
     let p = match p with
       | None -> vp.path
       | Some p -> p
     in
-    Path.transform p (data_norm_log vp.axes_system)
+    if coord_name = Data && not notransform then
+      Path.transform p (data_norm_log vp.axes_system)
+    else p
 
 (* Primitives
  ***********************************************************************)
@@ -373,16 +375,14 @@ end
     Backend.set_line_join vp.backend join
 
   let stroke_direct ?path vp coord_name () =
-    let path = get_path vp path in
+    let path = get_path vp path coord_name in
     let coord = get_coord_from_name vp coord_name in
     let ctm = Coordinate.use vp.backend coord in
-    let xlog = vp.axes_system.Axes.x.Axes.log
-    and ylog = vp.axes_system.Axes.y.Axes.log in
     Path.stroke_on_backend path vp.backend;
     Coordinate.restore vp.backend ctm
 
   let fill_direct ?path vp coord_name () =
-    let path = get_path vp path in
+    let path = get_path vp path coord_name in
     let coord = get_coord_from_name vp coord_name in
     let ctm = Coordinate.use vp.backend coord in
     Path.fill_on_backend path vp.backend;
@@ -856,7 +856,7 @@ end
     auto_fit vp x0 y0 x1 y1
 
   let stroke_preserve ?path vp coord_name =
-    let path = get_path vp path in
+    let path = get_path ~notransform:true vp path coord_name in
     if coord_name = Data then
       fit_path vp path;
     let path = Path.copy path in
@@ -867,7 +867,7 @@ end
     if path = None then add_instruction (fun () -> Path.clear vp.path) vp
 
   let fill_preserve ?path vp coord_name =
-    let path = get_path vp path in
+    let path = get_path ~notransform:true vp path coord_name in
     if coord_name = Data then
       fit_path vp path;
     let path = Path.copy path in
