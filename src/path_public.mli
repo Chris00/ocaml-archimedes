@@ -81,5 +81,10 @@ module type T = sig
       [bk]. *)
 
   val current_point: t -> float * float
-    (** [current_point p] returns the current point of the path *)
+  (** [current_point p] returns the current point of the path *)
+
+  val transform: t -> (float * float -> float * float) -> t
+  (** [transform p f] returns a new path that is the path [p] transformed by
+      function [f]. It only modifies end points of paths primitives and
+      extents are leaved the same. *)
 end

@@ -288,10 +288,6 @@ end
     | Data -> vp.coord_data
     | Orthonormal -> vp.coord_orthonormal
 
-  let get_path vp = function
-    | None -> vp.path
-    | Some p -> p
-
   let to_parent coord (x, y) = Coordinate.to_parent coord ~x ~y
   let from_parent coord (x, y) = Coordinate.from_parent coord ~x ~y
 
@@ -333,6 +329,13 @@ end
     | Data -> pos
     | Orthonormal -> data_from vp Device (to_parent vp.coord_orthonormal pos)
 
+  let get_path vp p =
+    let p = match p with
+      | None -> vp.path
+      | Some p -> p
+    in
+    Path.transform p (data_norm_log vp.axes_system)
+
 (* Primitives
  ***********************************************************************)
 
@@ -373,6 +376,8 @@ end
     let path = get_path vp path in
     let coord = get_coord_from_name vp coord_name in
     let ctm = Coordinate.use vp.backend coord in
+    let xlog = vp.axes_system.Axes.x.Axes.log
+    and ylog = vp.axes_system.Axes.y.Axes.log in
     Path.stroke_on_backend path vp.backend;
     Coordinate.restore vp.backend ctm
 

@@ -1,13 +1,10 @@
 axes
 resizing
 plot functions
-graphics and tikz bug (Stack missing ?!)
 implement missing functions (show_text, etc.) in viewport.ml
 transparency support
 Add support for orthonormalized autofit and add an orthonormalization routine.
 Can't catch a Cairo.Error.
-set_global_color -> set_color (see immediate_drawing!).
 Optimize behavior of empty marks.
 function labels (tags) + set correct default font sizes
 draw axes when plotting a function with Plot.fx
-Make major's distance related to offset in tics.

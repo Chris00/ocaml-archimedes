@@ -247,3 +247,29 @@ let fill_on_backend p b =
   Backend.fill b
 
 let current_point p = p.x, p.y
+
+let transform p f =
+  let map_f = function
+    | Move_to (x, y) ->
+      let x, y = f (x, y) in
+      Move_to (x, y)
+    | Line_to (x, y) ->
+      let x, y = f (x, y) in
+      Line_to (x, y)
+    | Rectangle (x, y, w, h) ->
+      let x, y = f (x, y) in
+      let x', y' = f (x +. w, y +. h) in
+      Rectangle (x, y, x' -. x, y' -. y)
+    | Curve_to (x0, y0, x1, y1, x2, y2, x3, y3) ->
+      let x0, y0 = f (x0, y0)
+      (* We do not transform the control points for now. *)
+      and x3, y3 = f (x3, y3) in
+      Curve_to (x0, y0, x1, y1, x2, y2, x3, y3)
+    | Close (x, y) ->
+      let x, y = f (x, y) in
+      Close (x, y)
+  in
+  let x, y = f (p.x, p.y) in
+  {p with path = List.map map_f p.path;
+    x = x; y = y}
+

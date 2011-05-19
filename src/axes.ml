@@ -51,9 +51,11 @@ let draw_x_axis major minor start stop tics offset vp () =
   let offset, pos = axis_offset (V.ymin vp) yrange offset in
   let x1, y1, x2, y2 = V.xmin vp, offset, V.xmax vp, offset in
   Arrows.line_direct ~head:stop ~tail:start vp x1 y1 x2 y2 ();
-  let y = offset +. yrange *. 0.0375 *. pos in
   let tic x = tic vp x offset in
-  let text x lbl = V.show_text_direct vp V.Data ~x ~y B.CC lbl () in
+  let text x lbl =
+    let x, y = V.ortho_from vp V.Data (x, offset) in
+    let y = y +. 0.0375 *. pos in
+    V.show_text_direct vp V.Orthonormal ~x ~y B.CC lbl () in
   List.iter (draw_tic tic major minor text) tics_values
 
 let draw_y_axis major minor start stop tics offset vp () =
@@ -62,9 +64,11 @@ let draw_y_axis major minor start stop tics offset vp () =
   let offset, pos = axis_offset (V.xmin vp) xrange offset in
   let x1, y1, x2, y2 = offset, V.ymin vp, offset, V.ymax vp in
   Arrows.line_direct ~head:stop ~tail:start vp x1 y1 x2 y2 ();
-  let x = offset +. xrange *. 0.0375 *. pos in
   let tic y = tic vp offset y in
-  let text y lbl = V.show_text_direct vp V.Data ~x ~y B.CC lbl () in
+  let text y lbl =
+    let x, y = V.ortho_from vp V.Data (offset, y) in
+    let x = x +. 0.0375 *. pos in
+    V.show_text_direct vp V.Orthonormal ~x ~y B.CC lbl () in
   List.iter (draw_tic tic major minor text) tics_values
 
 let add_x_axis ?(major=("tic_up", 3.)) ?(minor=("tic_up", 1.))
