@@ -334,7 +334,8 @@ end
       | None -> vp.path
       | Some p -> p
     in
-    if coord_name = Data && not notransform then
+    if coord_name = Data && not notransform &&
+      (vp.axes_system.Axes.x.Axes.log || vp.axes_system.Axes.y.Axes.log) then
       Path.transform p (data_norm_log vp.axes_system)
     else p
 
