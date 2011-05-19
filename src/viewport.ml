@@ -61,7 +61,7 @@ end
   }
 
   let default_axis () =
-    { x0 = 0.; xend = 1.; auto_x0 = true; auto_xend = true;
+    { x0 = nan; xend = nan; auto_x0 = true; auto_xend = true;
       log = false; orientation = Positive; viewports = [] }
 
   let default_axes_system () =
@@ -848,7 +848,6 @@ end
     and y0 = e.Matrix.y in
     let x1 = x0 +. e.Matrix.w
     and y1 = y0 +. e.Matrix.h in
-    Printf.printf "extents %f %f %f %f\n%!" x0 y0 x1 y1;
     auto_fit vp x0 y0 x1 y1
 
   let stroke_preserve ?path vp coord_name =
