@@ -117,7 +117,7 @@ let tics log xmin xmax = function
   | Fixed _ -> raise (Failure "Not yet implemented")
   | Fixed_norm _ -> raise (Failure "Not yet implemented")
   | Equidistants (labels, offset, d_major, num_minor) ->
-      equi_labels log offset d_major num_minor xmin xmax labels
+    equi_labels log offset d_major num_minor xmin xmax labels
   | Auto labels -> loose_labels log xmin xmax labels
 
 (*  val loose_labels : float -> float -> labels -> tic list*)

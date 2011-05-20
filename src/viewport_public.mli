@@ -22,13 +22,7 @@ module type T = sig
   module rec Axes : sig
     type sign = Positive | Negative
 
-    type axis = {
-      mutable x0: float;     mutable auto_x0: bool;
-      mutable xend: float;   mutable auto_xend: bool;
-      mutable log: bool;
-      mutable orientation: sign;
-      mutable viewports: Viewport.t list
-    }
+    type axis
 
     type t = {
       mutable x: axis;

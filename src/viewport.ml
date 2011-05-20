@@ -24,8 +24,13 @@ module rec Axes : sig
   type sign = Positive | Negative
 
   type axis = {
-    mutable x0: float;     mutable auto_x0: bool;
-    mutable xend: float;   mutable auto_xend: bool;
+    (* Range used for graphic purpose. *)
+    (* TODO: check if it is better to using variant type for auto_x0. *)
+    mutable gx0: float;     mutable auto_x0: bool;
+    mutable gxend: float;   mutable auto_xend: bool;
+    (* Real extents of data. *)
+    mutable x0: float;
+    mutable xend: float;
     mutable log: bool;
     mutable orientation: sign;
     mutable viewports: Viewport.t list
@@ -38,6 +43,8 @@ module rec Axes : sig
 
   val default_axis: unit -> axis
   val default_axes_system: unit -> t
+
+  val normalize_axis : axis -> unit
   val add_viewport : axis -> Viewport.t -> unit
 
 end
@@ -48,8 +55,10 @@ end
   type sign = Positive | Negative
 
   type axis = {
-    mutable x0: float;     mutable auto_x0: bool;
-    mutable xend: float;   mutable auto_xend: bool;
+    mutable gx0: float;     mutable auto_x0: bool;
+    mutable gxend: float;   mutable auto_xend: bool;
+    mutable x0: float;
+    mutable xend: float;
     mutable log: bool;
     mutable orientation: sign;
     mutable viewports: Viewport.t list
@@ -61,12 +70,33 @@ end
   }
 
   let default_axis () =
-    { x0 = nan; xend = nan; auto_x0 = true; auto_xend = true;
+    { gx0 = 0.; gxend = 1.; auto_x0 = true; auto_xend = true;
+      x0 = infinity; xend = -.infinity;
       log = false; orientation = Positive; viewports = [] }
 
   let default_axes_system () =
     { x = default_axis ();
       y = default_axis () }
+
+  let normalize_axis axis =
+    match axis.auto_x0, axis.auto_xend with
+    | false, false -> ()
+    | false, true ->
+      (* TODO: test if using the magnitude of the values for interval
+         epsilon is good looking or not. *)
+      axis.gxend <- max axis.xend (axis.gx0 +. 0.01);
+    | true, false ->
+      axis.gx0 <- min axis.x0 (axis.gxend -. 0.01);
+    | true, true ->
+      assert (axis.x0 = infinity || axis.x0 > -.infinity);
+      assert (axis.xend = -.infinity || axis.xend < infinity);
+      if axis.x0 = infinity && axis.xend = -.infinity then begin
+        axis.gx0 <- 0.;
+        axis.gxend <- 1.
+      end else begin
+        axis.gx0 <- min axis.x0 (axis.xend -. 0.01);
+        axis.gxend <- max axis.xend (axis.x0 +. 0.01)
+      end
 
   let add_viewport axis vp =
     axis.viewports <- vp :: axis.viewports
@@ -294,8 +324,8 @@ end
   let data_norm_log axes_system (x, y) =
     let axis_norm_log axis x =
       if axis.Axes.log then
-        let x0, xend = axis.Axes.x0, axis.Axes.xend in
-        (log (x /. x0) /. log (xend /. x0)) *. (xend -. x0) +. x0
+        let xmin, xmax = axis.Axes.gx0, axis.Axes.gxend in
+        (log (x /. xmin) /. log (xmax /. xmin)) *. (xmax -. xmin) +. xmin
       else x
     in
     (axis_norm_log axes_system.Axes.x x, axis_norm_log axes_system.Axes.y y)
@@ -314,7 +344,7 @@ end
   let data_unnorm_log axes_system (x, y) =
     let axis_unnorm_log axis x =
       if axis.Axes.log then
-        let x0, xend = axis.Axes.x0, axis.Axes.xend in
+        let x0, xend = axis.Axes.gx0, axis.Axes.gxend in
         exp ((x -. x0) /. (xend -. x0) *. log (xend /. x0) +. log x0)
       else x
     in
@@ -580,10 +610,10 @@ end
 (* Axes update functions
  ***********************************************************************)
 
-  let xmin vp = vp.axes_system.Axes.x.Axes.x0
-  let xmax vp = vp.axes_system.Axes.x.Axes.xend
-  let ymin vp = vp.axes_system.Axes.y.Axes.x0
-  let ymax vp = vp.axes_system.Axes.y.Axes.xend
+  let xmin vp = vp.axes_system.Axes.x.Axes.gx0
+  let xmax vp = vp.axes_system.Axes.x.Axes.gxend
+  let ymin vp = vp.axes_system.Axes.y.Axes.gx0
+  let ymax vp = vp.axes_system.Axes.y.Axes.gxend
 
   let update_coordinate_system vp =
     let x0, xend, y0, yend = xmin vp, xmax vp, ymin vp, ymax vp in
@@ -593,13 +623,12 @@ end
     Matrix.translate m (-. x0) (-. y0);
     Coordinate.transform vp.coord_data m
 
-
   (* Utility function for (x|y)range *)
-  let update_axis vp axis x0 xend =
-    axis.Axes.auto_x0 <- is_nan_or_inf x0;
-    if not (is_nan_or_inf x0) then axis.Axes.x0 <- x0;
-    axis.Axes.auto_xend <- is_nan_or_inf xend;
-    if not (is_nan_or_inf xend) then axis.Axes.xend <- xend;
+  let update_axis vp axis gx0 gxend =
+    axis.Axes.auto_x0 <- is_nan_or_inf gx0;
+    if not (is_nan_or_inf gx0) then axis.Axes.gx0 <- gx0;
+    axis.Axes.auto_xend <- is_nan_or_inf gxend;
+    if not (is_nan_or_inf gxend) then axis.Axes.gxend <- gxend;
     List.iter update_coordinate_system axis.Axes.viewports;
     if vp.immediate_drawing then
     List.iter do_instructions axis.Axes.viewports
@@ -611,9 +640,9 @@ end
   let set_ylog vp v = vp.axes_system.Axes.y.Axes.log <- v
 
   let auto_fit vp x0 y0 x1 y1 =
-    let xaxis = vp.axes_system.Axes.x
-    and yaxis = vp.axes_system.Axes.y in
-    (* TODO can we skip those tests ? (x|y)(0|1)' *)
+    let axes = vp.axes_system in
+    let xaxis = axes.Axes.x
+    and yaxis = axes.Axes.y in
     let x0', x1', y0', y1' = min x0 x1, max x0 x1, min y0 y1, max y0 y1 in
     let xupdated = ref false in
     let yupdated = ref false in
@@ -629,9 +658,16 @@ end
     if yaxis.Axes.auto_xend then
       if is_nan_or_inf yaxis.Axes.xend || y1' > yaxis.Axes.xend then
         (yaxis.Axes.xend <- y1'; yupdated := true);
-    let axes = vp.axes_system in
-    let l1 = if !xupdated then axes.Axes.x.Axes.viewports else [] in
-    let l2 = if !yupdated then axes.Axes.y.Axes.viewports else [] in
+    let l1 =
+      if !xupdated then begin
+        Axes.normalize_axis xaxis;
+        axes.Axes.x.Axes.viewports
+      end else [] in
+    let l2 =
+      if !yupdated then begin
+        Axes.normalize_axis yaxis;
+        axes.Axes.y.Axes.viewports
+      end else [] in
     (* We want to merge the 2 lists without duplicates *)
     let l2' = List.filter (fun x -> not (List.exists (( == ) x) l1)) l2 in
     let l = List.rev_append l1 l2' in
