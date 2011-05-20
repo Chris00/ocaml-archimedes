@@ -701,7 +701,6 @@ end
     let redim _ _ _ = () in
     let xstep = 1. /. (float cols) and ystep = 1. /. (float rows) in
     let ret = Array.make (rows * cols) vp in
-    let c, r = cols - 1, rows - 1 in
     let init_viewport i =
       let x = i / rows and y = i mod rows in
       let xmin = float x *. xstep

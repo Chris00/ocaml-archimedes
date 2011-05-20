@@ -32,7 +32,7 @@ module type Common = sig
   type filledcurves = Color.t * Color.t (* f1 > f2, f2 < f1 *)
 
   val fx : ?strategy:Sampler.strategy -> ?criterion:Sampler.criterion ->
-    ?min_step:float -> ?max_yrange:float -> ?nsamples:int ->
+    ?min_step:float -> ?nsamples:int ->
     ?fill:bool -> ?fillcolor:Color.t -> ?pathstyle:pathstyle ->
     ?g:(float -> float) -> V.t -> (float -> float) -> float -> float -> unit
 
@@ -93,11 +93,13 @@ struct
     V.fill ~path vp V.Data;
     V.restore vp
 
-  let fx ?strategy ?criterion ?min_step ?max_yrange ?nsamples ?(fill=false)
+  let fx ?strategy ?criterion ?min_step ?nsamples ?(fill=false)
       ?(fillcolor=Color.red) ?(pathstyle=Lines) ?(g=fun _ -> 0.) vp f a b =
     let h x = x, f x +. g x in
-    let sampler = Iterator.Function.create ?strategy ?criterion
-      ~tlog:(V.xlog vp) in
+    let sampler =
+      Iterator.Function.create ~tlog:(V.xlog vp) ?min_step ?nsamples
+        ?strategy ?criterion
+    in
     let iter = sampler h a b in
     let _, ha = h a in
     let miny = ref ha and maxy = ref ha in
@@ -169,7 +171,7 @@ struct
     (match pathstyle with
      | Linespoints m | Points m ->
          Array.iteri (fun i y -> V.mark vp ~x:(float i) ~y m) data
-     | _ -> ())
+     | Lines | Impulses | Boxes _ | Interval _ -> ())
 
   let xy ?(fill=false) ?(fillcolor=Color.red) ?(pathstyle=Boxes 0.4)
       vp data_x data_y =
@@ -202,7 +204,7 @@ struct
     (match pathstyle with
      | Linespoints m | Points m ->
          Array.iteri (fun i x -> V.mark vp ~x ~y:(data_y.(i)) m) data_x
-     | _ -> ())
+     | Lines | Impulses | Boxes _ | Interval _ -> ())
 
   let stack ?(color=[|Color.rgb 0.8 0.8 0.8|])
       ?(fillcolor=[|Color.rgb 0.95 0.95 0.95|])

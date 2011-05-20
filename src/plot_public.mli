@@ -15,8 +15,7 @@ module type T = sig
     type filledcurves = Color.t * Color.t (* f1 > f2, f2 < f1 *)
 
     val fx : ?strategy:Sampler.strategy -> ?criterion:Sampler.criterion ->
-      ?min_step:float ->
-      ?max_yrange:float -> ?nsamples:int ->
+      ?min_step:float -> ?nsamples:int ->
       ?fill:bool -> ?fillcolor:Color.t -> ?pathstyle:pathstyle ->
       ?g:(float -> float) -> Viewport.Viewport.t -> (float -> float) ->
       float -> float -> unit
