@@ -383,7 +383,7 @@ end
     vp.mark_size <- ms
 
   let set_rel_line_width_direct vp lw =
-    set_font_size_direct vp (lw /. usr_lw *. vp.square_side)
+    set_line_width_direct vp (lw /. usr_lw *. vp.square_side)
 
   let set_rel_font_size_direct vp ts =
     set_font_size_direct vp (ts /. usr_ts *. vp.square_side)
