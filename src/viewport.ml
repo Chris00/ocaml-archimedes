@@ -701,7 +701,6 @@ end
     let redim _ _ _ = () in
     let xstep = 1. /. (float cols) and ystep = 1. /. (float rows) in
     let ret = Array.make (rows * cols) vp in
-    let c, r = cols - 1, rows - 1 in
     let init_viewport i =
       let x = i / rows and y = i mod rows in
       let xmin = float x *. xstep
@@ -725,13 +724,13 @@ end
     let sync_x, sync_y = syncs in
     layout_grid ~syncs:(sync_x, sync_y, false, false) ~axes_sys vp 1 n
 
-  let fixed_left ?(axes_sys=false) initial_proportion vp =
+  let fixed_left ?(axes_sys=false) init_prop vp =
     let redim_fixed vp xfactor _ = begin
       let coord = vp.coord_device in
       Coordinate.scale coord (1. /. xfactor) 1.;
     end in
     let vp_fixed =
-      make ~axes_sys vp Device 0. initial_proportion 0. 1. redim_fixed in
+      make ~axes_sys vp Device 0. init_prop 0. 1. redim_fixed in
     let redim vp xfactor _ = begin
       let coord = vp.coord_device in
       Coordinate.scale coord (1. /. xfactor) 1.;
@@ -740,10 +739,10 @@ end
       let vp_left, _ = Coordinate.to_parent vp.coord_device ~x:0. ~y:0. in
       Coordinate.translate coord (vp_left -. fixed_right) 0.
     end in
-    let vp' = make ~axes_sys vp Device initial_proportion 1. 0. 1. redim in
+    let vp' = make ~axes_sys vp Device init_prop 1. 0. 1. redim in
     (vp_fixed, vp')
 
-  let fixed_right ?(axes_sys=false) initial_proportion vp =
+  let fixed_right ?(axes_sys=false) init_prop vp =
     let redim_fixed vp xfactor _ = begin
       let coord = vp.coord_device in
       Coordinate.scale coord (1. /. xfactor) 1.;
@@ -751,21 +750,21 @@ end
         coord (-. (fst (Coordinate.to_parent coord ~x:1. ~y:0.))) 0.
     end in
     let vp_fixed =
-      make ~axes_sys vp Device initial_proportion 1. 0. 1. redim_fixed in
+      make ~axes_sys vp Device init_prop 1. 0. 1. redim_fixed in
     let redim vp xfactor _ = begin
       let coord = vp.coord_device in
       Coordinate.scale coord (1. /. xfactor) 1.
     end in
-    let vp' = make ~axes_sys vp Device 0. initial_proportion 0. 1. redim in
+    let vp' = make ~axes_sys vp Device 0. init_prop 0. 1. redim in
     (vp_fixed, vp')
 
-  let fixed_top ?(axes_sys=false) initial_proportion vp =
+  let fixed_top ?(axes_sys=false) init_prop vp =
     let redim_fixed vp _ yfactor = begin
       let coord = vp.coord_device in
       Coordinate.scale coord 1. (1. /. yfactor);
     end in
     let vp_fixed =
-      make ~axes_sys vp Device 0. 1. 0. initial_proportion redim_fixed
+      make ~axes_sys vp Device 0. 1. (1. -. init_prop) 1. redim_fixed
     in
     let rec redim vp _ yfactor = begin
       let coord = vp.coord_device in
@@ -775,10 +774,10 @@ end
       let _, vp_top = Coordinate.to_parent vp.coord_device ~x:0. ~y:0. in
       Coordinate.translate coord (vp_top -. fixed_bottom) 0.
     end in
-    let vp' = make ~axes_sys vp Device 0. initial_proportion 0. 1. redim in
+    let vp' = make ~axes_sys vp Device 0. 1. 0. (1. -. init_prop) redim in
     (vp_fixed, vp')
 
-  let fixed_bottom ?(axes_sys=false) initial_proportion vp =
+  let fixed_bottom ?(axes_sys=false) init_prop vp =
     let redim_fixed vp _ yfactor = begin
       let coord = vp.coord_device in
       Coordinate.scale coord 1. (1. /. yfactor);
@@ -786,25 +785,28 @@ end
         coord 0. (-. (snd (Coordinate.to_parent coord ~x:0. ~y:1.)))
     end in
     let vp_fixed =
-      make ~axes_sys vp Device 0. 1. initial_proportion 1. redim_fixed in
+      make ~axes_sys vp Device 0. 1. 0. init_prop redim_fixed in
     let rec redim vp _ yfactor = begin
       let coord = vp.coord_device in
       Coordinate.scale coord 1. (1. /. yfactor)
     end in
-    let vp' = make ~axes_sys vp Device 0. 1. 0. initial_proportion redim in
+    let vp' = make ~axes_sys vp Device 0. 1. init_prop 1. redim in
     (vp_fixed, vp')
 
   (* Border layouts, of desired sizes *)
   let layout_borders ?(north=0.) ?(south=0.) ?(west=0.) ?(east=0.)
       ?(axes_sys=false) vp =
+    if south +. north >= 1. || east +. west >= 1. then
+      invalid_arg "Archimedes.Viewport.Viewport.layout_borders: \
+                   invalid borders dimensions (sum need to be < 1).";
     let east, vp =
-      if east > 0. then fixed_right ~axes_sys (1. -. east) vp else vp, vp
+      if east > 0. then fixed_right ~axes_sys east vp else vp, vp
     in
     let west, vp =
       if west > 0. then fixed_left ~axes_sys west vp else vp, vp
     in
     let south, vp =
-      if south > 0. then fixed_bottom ~axes_sys (1. -. south) vp else vp, vp
+      if south > 0. then fixed_bottom ~axes_sys south vp else vp, vp
     in
     let north, center =
       if north > 0. then fixed_top ~axes_sys north vp else vp, vp
