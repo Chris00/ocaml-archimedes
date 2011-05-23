@@ -44,7 +44,9 @@ module rec Axes : sig
   val default_axis: unit -> axis
   val default_axes_system: unit -> t
 
-  val normalize_axis : axis -> unit
+  val fit_axis : axis -> unit
+  val resize_axis : axis -> float -> unit
+
   val add_viewport : axis -> Viewport.t -> unit
 
 end
@@ -78,7 +80,7 @@ end
     { x = default_axis ();
       y = default_axis () }
 
-  let normalize_axis axis =
+  let fit_axis axis =
     match axis.auto_x0, axis.auto_xend with
     | false, false -> ()
     | false, true ->
@@ -97,6 +99,16 @@ end
         axis.gx0 <- min axis.x0 (axis.xend -. 0.01);
         axis.gxend <- max axis.xend (axis.x0 +. 0.01)
       end
+
+  let resize_axis axis size =
+    match axis.auto_x0, axis.auto_xend with
+    | false, false | true, true ->
+      axis.gx0 <- (axis.gx0 +. axis.gxend -. size) *. 0.5;
+      axis.gxend <- (axis.gx0 +. axis.gxend +. size) *. 0.5
+    | false, true ->
+      axis.gxend <- axis.gx0 +. size
+    | true, false ->
+      axis.gx0 <- axis.gxend -. size
 
   let add_viewport axis vp =
     axis.viewports <- vp :: axis.viewports
@@ -229,6 +241,10 @@ and Viewport : sig
 
   val xrange : t -> float -> float -> unit
   val yrange : t -> float -> float -> unit
+
+  val resize_xaxis : t -> float -> unit
+  val resize_yaxis : t -> float -> unit
+  val orthonormalize_axes : t -> unit
 
   val set_xlog : t -> bool -> unit
   val set_ylog : t -> bool -> unit
@@ -641,6 +657,30 @@ end
   let set_xlog vp v = vp.axes_system.Axes.x.Axes.log <- v
   let set_ylog vp v = vp.axes_system.Axes.y.Axes.log <- v
 
+  let resize_axis vp axis size =
+    Axes.resize_axis axis size;
+    List.iter update_coordinate_system axis.Axes.viewports;
+    if vp.immediate_drawing then
+      List.iter do_instructions axis.Axes.viewports
+
+  let resize_xaxis vp = resize_axis vp vp.axes_system.Axes.x
+  let resize_yaxis vp = resize_axis vp vp.axes_system.Axes.y
+
+  (* TODO: add an option on autofit to auto_orthonormalize. *)
+  let orthonormalize_axes vp =
+    let ratio =
+      let w, h = ortho_from vp Device (1., 1.) in
+      w /. h
+    in
+    let xaxis = vp.axes_system.Axes.x
+    and yaxis = vp.axes_system.Axes.y in
+    let xsize = xaxis.Axes.gxend -. xaxis.Axes.gx0
+    and yscaled = (yaxis.Axes.gxend -. yaxis.Axes.gx0) *. ratio in
+    if xsize > yscaled then
+      resize_yaxis vp (xsize /. ratio)
+    else if xsize < yscaled then
+      resize_xaxis vp yscaled
+
   let auto_fit vp x0 y0 x1 y1 =
     let axes = vp.axes_system in
     let xaxis = axes.Axes.x
@@ -662,12 +702,12 @@ end
         (yaxis.Axes.xend <- y1'; yupdated := true);
     let l1 =
       if !xupdated then begin
-        Axes.normalize_axis xaxis;
+        Axes.fit_axis xaxis;
         axes.Axes.x.Axes.viewports
       end else [] in
     let l2 =
       if !yupdated then begin
-        Axes.normalize_axis yaxis;
+        Axes.fit_axis yaxis;
         axes.Axes.y.Axes.viewports
       end else [] in
     (* We want to merge the 2 lists without duplicates *)

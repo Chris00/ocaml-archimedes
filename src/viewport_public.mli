@@ -224,6 +224,20 @@ module type T = sig
     val xrange : t -> float -> float -> unit
     val yrange : t -> float -> float -> unit
 
+    val resize_xaxis : t -> float -> unit
+    (** [resize_xaxis vp size] resizes the x axis to be of size [size].
+
+        Resize is done by adjusting the automatic directions of the range
+        to gain a size of [size]. But if there is no degree of liberty for
+        resizing (i.e axis is full manual), the manually set range will be
+        overriden, centering the same value. *)
+    val resize_yaxis : t -> float -> unit
+    (** [resize_yaxis vp size] same as {!resize_xaxis} for the y axis. *)
+    val orthonormalize_axes : t -> unit
+    (** [orthonormalize_axes vp] modifies x and y ranges to be
+        orthonormalized. Manual settings are overriden but priority for
+        range modfication is given to auto directions. *)
+
     val xmin : t -> float
     val xmax : t -> float
     val ymin : t -> float
