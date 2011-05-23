@@ -254,9 +254,7 @@ let transform p f =
       let x, y = f (x, y) in
       Move_to (x, y)
     | Line_to (x, y) ->
-      Printf.printf "Line_to from %f %f\n%!" x y;
       let x, y = f (x, y) in
-      Printf.printf "TO %f %f\n%!" x y;
       Line_to (x, y)
     | Rectangle (x, y, w, h) ->
       let x, y = f (x, y) in
@@ -264,7 +262,8 @@ let transform p f =
       Rectangle (x, y, x' -. x, y' -. y)
     | Curve_to (x0, y0, x1, y1, x2, y2, x3, y3) ->
       let x0, y0 = f (x0, y0)
-      (* We do not transform the control points for now. *)
+      and x1, y1 = f (x1, y1)
+      and x2, y2 = f (x2, y2)
       and x3, y3 = f (x3, y3) in
       Curve_to (x0, y0, x1, y1, x2, y2, x3, y3)
     | Close (x, y) ->
@@ -274,4 +273,3 @@ let transform p f =
   let x, y = f (p.x, p.y) in
   {p with path = List.map map_f p.path;
     x = x; y = y}
-

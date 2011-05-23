@@ -25,7 +25,7 @@ module rec Axes : sig
 
   type axis = {
     (* Range used for graphic purpose. *)
-    (* TODO: check if it is better to using variant type for auto_x0. *)
+    (* TODO: check if it is better to use a variant type for auto_x0. *)
     mutable gx0: float;     mutable auto_x0: bool;
     mutable gxend: float;   mutable auto_xend: bool;
     (* Real extents of data. *)
@@ -624,6 +624,8 @@ end
     Coordinate.transform vp.coord_data m
 
   (* Utility function for (x|y)range *)
+  (* TODO: Check for valid input ! We do not want nan nor empty
+     intervals. *)
   let update_axis vp axis gx0 gxend =
     axis.Axes.auto_x0 <- is_nan_or_inf gx0;
     if not (is_nan_or_inf gx0) then axis.Axes.gx0 <- gx0;

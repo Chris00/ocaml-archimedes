@@ -3,7 +3,8 @@ module B = Backend
 (*let pi = 4. *. atan 1.*)
 let two_pi = 8. *. atan 1.
 
-(*Registering point styles.*)
+(*Registering point styles. TODO: shouldn't we be better with hash
+  tables ? Since we have to often access the elements. *)
 module M = Map.Make(String)
 
 type name = string
