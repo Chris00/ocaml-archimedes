@@ -21,13 +21,9 @@
 module type T = sig
   module rec Axes : sig
     type sign = Positive | Negative
-
+    (* TODO: Maybe that these should be private. *)
     type axis
-
-    type t = {
-      mutable x: axis;
-      mutable y: axis;
-    }
+    type t
   end
   and Viewport : sig
     type t
@@ -62,15 +58,13 @@ module type T = sig
           @param dirs a list of output files, useful for backends supporting
           several output formats (e.g. ["mytest.eps", "tex/mytest.tex"])
       *)
-    val make : ?axes_sys:bool -> ?lines:float -> ?text:float -> ?marks:float ->
+    val make : ?lines:float -> ?text:float -> ?marks:float ->
       t -> coord_name -> float -> float -> float -> float ->
       (t -> float -> float -> unit) -> t
       (** [make parent coord_name xmin xmax ymin ymax] creates and returns a
           viewport on top of [parent] with top left corner (xmin, ymin) and
           bottom right corner (xmax, ymax) using parent's [coord_name]
           coordinate system.
-
-          @param axes_sys should we draw the axis system ?
 
           @param lines see {!init}
 
@@ -93,7 +87,7 @@ module type T = sig
           only the x-axis
       *)
 
-    val layout_grid : ?syncs:(bool * bool * bool * bool) -> ?axes_sys:bool ->
+    val layout_grid : ?syncs:(bool * bool * bool * bool) ->
       t -> int -> int -> t array
       (** [layout_grid parent n_cols n_rows] creates [n_cols] * [n_rows]
           viewports layouted in a grid and returns them in an array of
@@ -102,26 +96,20 @@ module type T = sig
           @param syncs (cx, cy, rx, ry) should we synchronize the x axis
           along the columns ? The y axis alon the columns ? The x axis
           along the rows ? The y axis along the rows ?
-
-          @param axes_sys see {!make}
       *)
-    val layout_rows : ?syncs:(bool * bool) -> ?axes_sys:bool -> t ->
+    val layout_rows : ?syncs:(bool * bool) -> t ->
       int -> t array
       (** [layout_rows parent n_rows] creates [n_rows] viewports layouted in a
           column and returns them in an array of viewpors
 
           @param syncs the axes to synchronize (x, y)
-
-          @param axes_sys see {!make}
       *)
-    val layout_columns : ?syncs:(bool * bool) -> ?axes_sys:bool -> t ->
+    val layout_columns : ?syncs:(bool * bool) -> t ->
       int -> t array
       (** [layout_cols parent n_cols] creates [n_cols] viewports layouted in a
           row and returns them in an array of viewports
 
           @param syncs the axes to synchronize (x, y)
-
-          @param axes_sys see {!make}
       *)
       (* not in public interface *)
       (*val fixed_left : ?axes_sys:bool -> float -> t -> viewport * viewport
@@ -129,7 +117,7 @@ module type T = sig
         val fixed_top : ?axes_sys:bool -> float -> t -> viewport * viewport
         val fixed_bottom : ?axes_sys:bool -> float -> t -> viewport * viewport*)
     val layout_borders : ?north:float -> ?south:float -> ?west:float ->
-      ?east:float -> ?axes_sys:bool -> t -> t * t * t * t * t
+      ?east:float -> t -> t * t * t * t * t
       (** [layout_borders parent] returns a 5-uple of viewports where the 4
           first viewports are fixed in size towards the center while the fifth
           one is extensible. The viewports are north, south, west, east, center
@@ -147,8 +135,6 @@ module type T = sig
 
           @param east the size of the east's viewport; same behaviour as
           north if zero
-
-          @axes_sys see {!make}
       *)
 
     val ortho_from : t -> coord_name -> float * float -> float * float
@@ -221,22 +207,10 @@ module type T = sig
         val box_axes
         val centered_axes*)
 
+    val axes_ratio : t -> float -> unit
+    (** [axes_ratio vp ratio] forces axes to keep [ratio] ([w / h]). *)
     val xrange : t -> float -> float -> unit
     val yrange : t -> float -> float -> unit
-
-    val resize_xaxis : t -> float -> unit
-    (** [resize_xaxis vp size] resizes the x axis to be of size [size].
-
-        Resize is done by adjusting the automatic directions of the range
-        to gain a size of [size]. But if there is no degree of liberty for
-        resizing (i.e axis is full manual), the manually set range will be
-        overriden, centering the same value. *)
-    val resize_yaxis : t -> float -> unit
-    (** [resize_yaxis vp size] same as {!resize_xaxis} for the y axis. *)
-    val orthonormalize_axes : t -> unit
-    (** [orthonormalize_axes vp] modifies x and y ranges to be
-        orthonormalized. Manual settings are overriden but priority for
-        range modfication is given to auto directions. *)
 
     val xmin : t -> float
     val xmax : t -> float

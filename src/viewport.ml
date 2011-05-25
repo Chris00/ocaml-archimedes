@@ -18,100 +18,152 @@
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the file
    LICENSE for more details. *)
 
-let is_nan_or_inf (x:float) = x <> x || 1. /. x = 0.
+let is_inf x = 1. /. x = 0.
+
+let is_nan x = x <> x
 
 module rec Axes : sig
   type sign = Positive | Negative
 
-  type axis = {
-    (* Range used for graphic purpose. *)
+  type 'a sync = {
+    mutable value: 'a;
+    mutable vps: Viewport.t list
+  }
+
+  type range = {
     (* TODO: check if it is better to use a variant type for auto_x0. *)
-    mutable gx0: float;     mutable auto_x0: bool;
-    mutable gxend: float;   mutable auto_xend: bool;
+    mutable x0: float;     mutable auto_x0: bool;
+    mutable xend: float;   mutable auto_xend: bool;
     (* Real extents of data. *)
-    mutable x0: float;
-    mutable xend: float;
+    mutable data_x0: float;
+    mutable data_xend: float
+  }
+
+  type axis = {
+    mutable gx0: float;
+    mutable gxend: float;
+    mutable unit_size: float sync;
+    mutable range: range sync;
     mutable log: bool;
     mutable orientation: sign;
-    mutable viewports: Viewport.t list
   }
 
   type t = {
     mutable x: axis;
     mutable y: axis;
+    mutable ratio: float option sync
   }
 
-  val default_axis: unit -> axis
-  val default_axes_system: unit -> t
+  val default_axes_system: float -> float -> t
 
-  val fit_axis : axis -> unit
+  val fit_range : range -> unit
   val resize_axis : axis -> float -> unit
+  val update_axes_system : t -> float -> float -> unit
 
-  val add_viewport : axis -> Viewport.t -> unit
-
-end
-= struct
+end = struct
   module V = Viewport
   module B = Backend
 
   type sign = Positive | Negative
 
+  type 'a sync = {
+    mutable value: 'a;
+    mutable vps: Viewport.t list
+  }
+
+  type range = {
+    mutable x0: float;     mutable auto_x0: bool;
+    mutable xend: float;   mutable auto_xend: bool;
+    mutable data_x0: float;
+    mutable data_xend: float
+  }
+
   type axis = {
-    mutable gx0: float;     mutable auto_x0: bool;
-    mutable gxend: float;   mutable auto_xend: bool;
-    mutable x0: float;
-    mutable xend: float;
+    mutable gx0: float;
+    mutable gxend: float;
+    mutable unit_size: float sync;
+    mutable range: range sync;
     mutable log: bool;
     mutable orientation: sign;
-    mutable viewports: Viewport.t list
   }
 
   type t = {
     mutable x: axis;
     mutable y: axis;
+    mutable ratio: float option sync
   }
 
-  let default_axis () =
-    { gx0 = 0.; gxend = 1.; auto_x0 = true; auto_xend = true;
-      x0 = infinity; xend = -.infinity;
-      log = false; orientation = Positive; viewports = [] }
+  let default_sync def_val =
+    { value = def_val; vps = [] }
 
-  let default_axes_system () =
-    { x = default_axis ();
-      y = default_axis () }
+  let default_range () =
+    { x0 = 0.; xend = 1.; auto_x0 = true; auto_xend = true;
+      data_x0 = infinity; data_xend = -.infinity }
 
-  let fit_axis axis =
-    match axis.auto_x0, axis.auto_xend with
+  let default_axis s =
+    { gx0 = 0.; gxend = 1.; unit_size = default_sync s;
+      range = default_sync (default_range ());
+      log = false; orientation = Positive }
+
+  let default_axes_system w h =
+    { x = default_axis w;
+      y = default_axis h;
+      ratio = default_sync None}
+
+  let fit_range range =
+    match range.auto_x0, range.auto_xend with
     | false, false -> ()
     | false, true ->
-      (* TODO: test if using the magnitude of the values for interval
-         epsilon is good looking or not. *)
-      axis.gxend <- max axis.xend (axis.gx0 +. 0.01);
+          (* TODO: test if using the magnitude of the values for interval
+             epsilon is good looking or not. *)
+      range.xend <- max range.data_xend (range.x0 +. 0.01);
     | true, false ->
-      axis.gx0 <- min axis.x0 (axis.gxend -. 0.01);
+      range.x0 <- min range.data_x0 (range.xend -. 0.01);
     | true, true ->
-      assert (axis.x0 = infinity || axis.x0 > -.infinity);
-      assert (axis.xend = -.infinity || axis.xend < infinity);
-      if axis.x0 = infinity && axis.xend = -.infinity then begin
-        axis.gx0 <- 0.;
-        axis.gxend <- 1.
+      assert (range.data_x0 = infinity || range.data_x0 > -.infinity);
+      assert (range.data_xend = -.infinity || range.data_xend < infinity);
+      if range.data_x0 = infinity && range.data_xend = -.infinity then begin
+        range.x0 <- 0.;
+        range.xend <- 1.
       end else begin
-        axis.gx0 <- min axis.x0 (axis.xend -. 0.01);
-        axis.gxend <- max axis.xend (axis.x0 +. 0.01)
+        range.x0 <- min range.data_x0 (range.data_xend -. 0.01);
+        range.xend <- max range.data_xend (range.data_x0 +. 0.01)
       end
 
   let resize_axis axis size =
-    match axis.auto_x0, axis.auto_xend with
+    let r = axis.range.value in
+    match r.auto_x0, r.auto_xend with
     | false, false | true, true ->
-      axis.gx0 <- (axis.gx0 +. axis.gxend -. size) *. 0.5;
-      axis.gxend <- (axis.gx0 +. axis.gxend +. size) *. 0.5
+      axis.gx0 <- (r.x0 +. r.xend -. size) *. 0.5;
+      axis.gxend <- (r.x0 +. r.xend +. size) *. 0.5
     | false, true ->
-      axis.gxend <- axis.gx0 +. size
+      axis.gxend <- r.x0 +. size
     | true, false ->
-      axis.gx0 <- axis.gxend -. size
+      axis.gx0 <- r.xend -. size
 
-  let add_viewport axis vp =
-    axis.viewports <- vp :: axis.viewports
+  let update_axis axis unit_size size =
+    resize_axis axis (size /. unit_size)
+
+  let update_axes_system axes sizex sizey =
+    let xunit = axes.x.unit_size.value
+    and yunit = axes.y.unit_size.value in
+    match axes.ratio.value with
+    | None ->
+      (* FIXME: When only one axis is updated, we should only update that one
+         axis. *)
+      (* sizes should have been choosed so that
+         [size / unit_size >= xend - x0] *)
+      resize_axis axes.x (sizex /. xunit);
+      resize_axis axes.y (sizey /. yunit)
+    | Some r ->
+      let xscaled = yunit /. r in
+      if xscaled <= xunit then begin
+        resize_axis axes.x (sizex /. xscaled);
+        resize_axis axes.y (sizey /. yunit)
+      end else begin
+        resize_axis axes.x (sizex /. xunit);
+        resize_axis axes.y (sizey /. (xunit *. r))
+      end
 
 end
 and Viewport : sig
@@ -128,6 +180,8 @@ and Viewport : sig
     mutable square_side: float;
     path: Path.t;
     mutable axes_system: Axes.t;
+    mutable xaxis_size: float;
+    mutable yaxis_size: float;
     mutable sizes: Sizes.t;
     mutable mark_size: float;
     mutable font_size: float;
@@ -141,7 +195,7 @@ and Viewport : sig
   val get_coord_from_name : t -> coord_name -> Coordinate.t
   val init : ?lines:float -> ?text:float -> ?marks:float -> ?w:float ->
     ?h:float -> dirs:string list -> string -> t
-  val make : ?axes_sys:bool -> ?lines:float -> ?text:float -> ?marks:float ->
+  val make : ?lines:float -> ?text:float -> ?marks:float ->
     t -> coord_name -> float -> float -> float -> float ->
     (t -> float -> float -> unit) -> t
 
@@ -149,18 +203,18 @@ and Viewport : sig
 
   val sync : ?x:bool -> ?y:bool -> t -> t -> unit
 
-  val layout_grid : ?syncs:(bool * bool * bool * bool) -> ?axes_sys:bool ->
+  val layout_grid : ?syncs:(bool * bool * bool * bool) ->
     t -> int -> int -> t array
-  val layout_rows : ?syncs:(bool * bool) -> ?axes_sys:bool -> t ->
+  val layout_rows : ?syncs:(bool * bool) -> t ->
     int -> t array
-  val layout_columns : ?syncs:(bool * bool) -> ?axes_sys:bool -> t ->
+  val layout_columns : ?syncs:(bool * bool) -> t ->
     int -> t array
-  val fixed_left : ?axes_sys:bool -> float -> t -> t * t
-  val fixed_right : ?axes_sys:bool -> float -> t -> t * t
-  val fixed_top : ?axes_sys:bool -> float -> t -> t * t
-  val fixed_bottom : ?axes_sys:bool -> float -> t -> t * t
+  val fixed_left : float -> t -> t * t
+  val fixed_right : float -> t -> t * t
+  val fixed_top : float -> t -> t * t
+  val fixed_bottom : float -> t -> t * t
   val layout_borders : ?north:float -> ?south:float -> ?west:float ->
-    ?east:float -> ?axes_sys:bool -> t -> t * t * t * t * t
+    ?east:float -> t -> t * t * t * t * t
 
   val set_line_width : t -> float -> unit
   val set_font_size : t -> float -> unit
@@ -175,12 +229,12 @@ and Viewport : sig
   val lower_left_corner : t -> float * float
   val upper_right_corner : t -> float * float
   val dimensions : t -> float * float (* returns (w, h) *)
-    (* set_global_param set param of backend and then of all viewports *)
+  (* set_global_param set param of backend and then of all viewports *)
   val set_color : t -> Color.t -> unit
   val set_global_line_cap : t -> Backend.line_cap -> unit
   val set_global_dash : t -> float -> float array -> unit
   val set_global_line_join : t -> Backend.line_join -> unit
-    (*  val set_global_line_width : t -> float -> unit*)
+  (*  val set_global_line_width : t -> float -> unit*)
   val get_color : t -> Color.t
   val get_line_cap : t -> Backend.line_cap
   val get_dash : t -> float array * float
@@ -197,24 +251,24 @@ and Viewport : sig
   val arc : t -> r:float -> a1:float -> a2:float -> unit
   val close_path : t -> unit
   val clear_path : t -> unit
-    (*val path_extents : t -> rectangle*)
+  (*val path_extents : t -> rectangle*)
   val stroke_preserve : ?path:Path.t -> t -> coord_name -> unit
   val stroke : ?path:Path.t -> t -> coord_name -> unit
   val fill_preserve : ?path:Path.t -> t -> coord_name -> unit
   val fill : ?path:Path.t -> t -> coord_name -> unit
   val clip_rectangle : t -> x:float -> y:float -> w:float -> h:float -> unit
-    (*  val save_vp : t -> unit
-        val restore_vp : t -> unit*)
+  (*  val save_vp : t -> unit
+      val restore_vp : t -> unit*)
   val select_font_face : t -> Backend.slant -> Backend.weight -> string -> unit
   val show_text :
     t -> coord_name ->
     ?rotate:float ->
     x:float -> y:float -> Backend.text_position -> string -> unit
-    (*  val text_extents : t -> string -> rectangle*)
+  (*  val text_extents : t -> string -> rectangle*)
   val ortho_from : t -> coord_name -> float * float -> float * float
   val data_from : t -> coord_name -> float * float -> float * float
   val mark : t -> x:float -> y:float -> string -> unit
-    (* val mark_extents : t -> string -> rectangle *)
+  (* val mark_extents : t -> string -> rectangle *)
 
   val set_line_width_direct : t -> float -> unit -> unit
   val set_font_size_direct : t -> float -> unit -> unit
@@ -239,12 +293,9 @@ and Viewport : sig
   val save_direct : t -> unit -> unit
   val restore_direct : t -> unit -> unit
 
+  val axes_ratio : t -> float -> unit
   val xrange : t -> float -> float -> unit
   val yrange : t -> float -> float -> unit
-
-  val resize_xaxis : t -> float -> unit
-  val resize_yaxis : t -> float -> unit
-  val orthonormalize_axes : t -> unit
 
   val set_xlog : t -> bool -> unit
   val set_ylog : t -> bool -> unit
@@ -264,8 +315,7 @@ and Viewport : sig
 
   val save : t -> unit
   val restore : t -> unit
-end
-= struct
+end = struct
   type save_data = {
     lw: float; fs: float; ms: float;
     c: Color.t;
@@ -297,6 +347,9 @@ end
 
     (* Axes system associated to the viewport *)
     mutable axes_system: Axes.t;
+    (* TODO!!: update xaxis_size... *)
+    mutable xaxis_size: float;
+    mutable yaxis_size: float;
     (* For sizing texts, tics, etc. *)
     mutable sizes: Sizes.t;
     mutable mark_size: float;
@@ -384,6 +437,11 @@ end
       (vp.axes_system.Axes.x.Axes.log || vp.axes_system.Axes.y.Axes.log) then
       Path.transform p (data_norm_log vp.axes_system)
     else p
+
+  (* Merges two non-sorted lists without duplicates. *)
+  let merge l1 l2 =
+    let l2' = List.filter (fun x -> not (List.exists (( == ) x) l1)) l2 in
+    List.rev_append l1 l2'
 
 (* Primitives
  ***********************************************************************)
@@ -508,6 +566,8 @@ end
     let coord_graph =
       Coordinate.make_translate coord_device 0.1 0.1 in
     Coordinate.scale coord_graph 0.8 0.8;
+    let xaxis_size = w *. 0.8
+    and yaxis_size = h *. 0.8 in
     let rec viewport = {
       backend = backend;
       parent = viewport;
@@ -515,11 +575,13 @@ end
       coord_device = coord_device; coord_graph = coord_graph;
       coord_orthonormal =
         Coordinate.make_scale coord_device (size0 /. w) (size0 /. h);
-      (* We don't care; will be updated as soon as points are added or we
-	 change axes. *)
+        (* We don't care; will be updated as soon as points are added or we
+	   change axes. *)
       coord_data = Coordinate.make_identity coord_graph;
       path = Path.make ();
-      axes_system = Axes.default_axes_system ();
+      axes_system = Axes.default_axes_system xaxis_size yaxis_size;
+      xaxis_size = xaxis_size;
+      yaxis_size = yaxis_size;
       sizes = Sizes.make_rel (Sizes.make_root size0 1. 1. 1.) lines text marks;
       font_size = def_ts;
       mark_size = def_ms;
@@ -530,19 +592,23 @@ end
       square_side = size0;
       saves = []
     } in
-    viewport.axes_system.Axes.x.Axes.viewports <- [viewport];
-    viewport.axes_system.Axes.y.Axes.viewports <- [viewport];
+    let axes = viewport.axes_system in
+    axes.Axes.ratio.Axes.vps <- [ viewport ];
+    axes.Axes.x.Axes.unit_size.Axes.vps <- [ viewport ];
+    axes.Axes.x.Axes.range.Axes.vps <- [ viewport ];
+    axes.Axes.y.Axes.unit_size.Axes.vps <- [ viewport ];
+    axes.Axes.y.Axes.range.Axes.vps <- [ viewport ];
     viewport
 
-  let make ?(axes_sys=false) ?(lines=def_lw) ?(text=def_ts) ?(marks=def_ms)
+  let make ?(lines=def_lw) ?(text=def_ts) ?(marks=def_ms)
       vp coord_name xmin xmax ymin ymax redim =
-   let coord_parent = get_coord_from_name vp coord_name in
-   let w, h, size0 =
-     (* We can't be sure of the y orientation, so we them in absolute *)
-     let xmax', y2' = Coordinate.to_device coord_parent xmax ymax
-     and xmin', y1' = Coordinate.to_device coord_parent xmin ymin in
-     let w = xmax' -. xmin' and h = abs_float (y2' -. y1') in
-     w, h, min w h
+    let coord_parent = get_coord_from_name vp coord_name in
+    let w, h, size0 =
+      (* We can't be sure of the y orientation, so we them in absolute *)
+      let xmax', y2' = Coordinate.to_device coord_parent xmax ymax
+      and xmin', y1' = Coordinate.to_device coord_parent xmin ymin in
+      let w = xmax' -. xmin' and h = abs_float (y2' -. y1') in
+      w, h, min w h
     in
     let coord_parent = get_coord_from_name vp coord_name in
     let coord_device =
@@ -553,20 +619,22 @@ end
     let coord_graph =
       Coordinate.make_translate coord_device 0.1 0.1 in
     Coordinate.scale coord_graph 0.8 0.8;
+    let xaxis_size = w *. 0.8
+    and yaxis_size = h *. 0.8 in
     let viewport = {
       backend = vp.backend;
       parent = vp;
       children = [];
       coord_device = coord_device; coord_graph = coord_graph;
       coord_orthonormal =
-      Coordinate.make_scale coord_device (size0 /. w) (size0 /. h);
+        Coordinate.make_scale coord_device (size0 /. w) (size0 /. h);
       (* We don't care; will be updated as soon as points are added or we
 	 change axes. *)
       coord_data = Coordinate.make_identity coord_graph;
       path = Path.make ();
-      axes_system =
-        if axes_sys then vp.axes_system
-        else Axes.default_axes_system ();
+      axes_system = Axes.default_axes_system xaxis_size yaxis_size;
+      xaxis_size = xaxis_size;
+      yaxis_size = yaxis_size;
       sizes = Sizes.make_rel vp.sizes lines text marks;
       mark_size = def_ms;
       font_size = def_ts;
@@ -577,10 +645,12 @@ end
       square_side = size0;
       saves = []
     } in
-    if not axes_sys then begin
-      viewport.axes_system.Axes.x.Axes.viewports <- [viewport];
-      viewport.axes_system.Axes.y.Axes.viewports <- [viewport]
-    end;
+    let axes = viewport.axes_system in
+    axes.Axes.ratio.Axes.vps <- [ viewport ];
+    axes.Axes.x.Axes.unit_size.Axes.vps <- [ viewport ];
+    axes.Axes.x.Axes.range.Axes.vps <- [ viewport ];
+    axes.Axes.y.Axes.unit_size.Axes.vps <- [ viewport ];
+    axes.Axes.y.Axes.range.Axes.vps <- [ viewport ];
     vp.children <- viewport :: vp.children;
     viewport
 
@@ -639,106 +709,139 @@ end
     Matrix.translate m (-. x0) (-. y0);
     Coordinate.transform vp.coord_data m
 
-  (* Utility function for (x|y)range *)
-  (* TODO: Check for valid input ! We do not want nan nor empty
-     intervals. *)
-  let update_axis vp axis gx0 gxend =
-    axis.Axes.auto_x0 <- is_nan_or_inf gx0;
-    if not (is_nan_or_inf gx0) then axis.Axes.gx0 <- gx0;
-    axis.Axes.auto_xend <- is_nan_or_inf gxend;
-    if not (is_nan_or_inf gxend) then axis.Axes.gxend <- gxend;
-    List.iter update_coordinate_system axis.Axes.viewports;
+  (* Updates gx0 and gxend for an axes system and then redraw them. *)
+  let update_axes_system vp =
+    Axes.update_axes_system vp.axes_system vp.xaxis_size vp.yaxis_size;
+    update_coordinate_system vp;
     if vp.immediate_drawing then
-    List.iter do_instructions axis.Axes.viewports
+      do_instructions vp
 
-  let xrange vp = update_axis vp vp.axes_system.Axes.x
-  let yrange vp = update_axis vp vp.axes_system.Axes.y
+  let update_ratio vp ratio =
+    let sync = vp.axes_system.Axes.ratio in
+    sync.Axes.value <- ratio;
+    List.iter update_axes_system sync.Axes.vps
 
-  let set_xlog vp v = vp.axes_system.Axes.x.Axes.log <- v
-  let set_ylog vp v = vp.axes_system.Axes.y.Axes.log <- v
+  let norm_ratio_auto_axes axes =
+    match axes.Axes.ratio.Axes.value with
+    | None -> ()
+    | Some _ ->
+      (* Ratio forces axes systems where one axis is full manual (not
+         auto_x0 nor _xend) to have both axes full manual. *)
+      let xrange = axes.Axes.x.Axes.range.Axes.value
+      and yrange = axes.Axes.y.Axes.range.Axes.value in
+      if not (xrange.Axes.auto_x0 || xrange.Axes.auto_xend) then begin
+        xrange.Axes.auto_x0 <- false;
+        xrange.Axes.auto_xend <- false
+      end else
+        if not (yrange.Axes.auto_x0 || yrange.Axes.auto_xend) then begin
+          xrange.Axes.auto_x0 <- false;
+          yrange.Axes.auto_xend <- false
+        end
 
-  let resize_axis vp axis size =
-    Axes.resize_axis axis size;
-    List.iter update_coordinate_system axis.Axes.viewports;
-    if vp.immediate_drawing then
-      List.iter do_instructions axis.Axes.viewports
+  let axes_ratio vp ratio =
+    let ratio = if 0. < ratio && ratio < infinity then Some ratio else None in
+    norm_ratio_auto_axes vp.axes_system;
+    update_ratio vp ratio
 
-  let resize_xaxis vp = resize_axis vp vp.axes_system.Axes.x
-  let resize_yaxis vp = resize_axis vp vp.axes_system.Axes.y
-
-  (* TODO: add an option on autofit to auto_orthonormalize. *)
-  let orthonormalize_axes vp =
-    let ratio =
-      let w, h = ortho_from vp Device (1., 1.) in
-      w /. h
+  (* [update_axis_range axis axis_size] updates x0 and xend ranges around
+     data and updates unit_size according to the size of the axis on the
+     backend. Returns the list of viewports affected by the update. *)
+  let update_axis_range axis axis_size =
+    Axes.fit_range axis.Axes.range.Axes.value;
+    let xrange =
+      (axis.Axes.range.Axes.value.Axes.xend
+       -. axis.Axes.range.Axes.value.Axes.x0)
     in
+    (* A change in range implies a change of the unit vector size. We have
+       to update it the maintain the minimal unit size in the
+       synchronization group for unit size. *)
+    (* TODO: we may want to factorise that with the function to update the
+       unit size. *)
+    let unit_size = axis_size /. xrange in
+    if unit_size < axis.Axes.unit_size.Axes.value then begin
+      axis.Axes.unit_size.Axes.value <- unit_size;
+      merge axis.Axes.range.Axes.vps axis.Axes.unit_size.Axes.vps
+    end else
+      axis.Axes.range.Axes.vps
+
+  (* Call update of x0, xend ranges and update of unit_size. Then, call an
+     update of gx0 and gxend on affected viewports (with redraw if
+     necessary). *)
+  let update_axes_ranges vp xupdate yupdate =
     let xaxis = vp.axes_system.Axes.x
     and yaxis = vp.axes_system.Axes.y in
-    let xsize = xaxis.Axes.gxend -. xaxis.Axes.gx0
-    and yscaled = (yaxis.Axes.gxend -. yaxis.Axes.gx0) *. ratio in
-    if xsize > yscaled then
-      resize_yaxis vp (xsize /. ratio)
-    else if xsize < yscaled then
-      resize_xaxis vp yscaled
+    let l1 = if xupdate then update_axis_range xaxis vp.xaxis_size else [] in
+    let l2 = if yupdate then update_axis_range yaxis vp.yaxis_size else [] in
+    let l = merge l1 l2 in
+    List.iter update_axes_system l
 
   let auto_fit vp x0 y0 x1 y1 =
     let axes = vp.axes_system in
     let xaxis = axes.Axes.x
     and yaxis = axes.Axes.y in
+    let xrange = xaxis.Axes.range.Axes.value
+    and yrange = yaxis.Axes.range.Axes.value in
     let x0', x1', y0', y1' = min x0 x1, max x0 x1, min y0 y1, max y0 y1 in
     let xupdated = ref false in
     let yupdated = ref false in
-    if xaxis.Axes.auto_x0 then
-      if is_nan_or_inf xaxis.Axes.x0 || x0' < xaxis.Axes.x0 then
-        (xaxis.Axes.x0 <- x0'; xupdated := true);
-    if xaxis.Axes.auto_xend then
-      if is_nan_or_inf xaxis.Axes.xend || x1' > xaxis.Axes.xend then
-        (xaxis.Axes.xend <- x1'; xupdated := true);
-    if yaxis.Axes.auto_x0 then
-      if is_nan_or_inf yaxis.Axes.x0 || y0' < yaxis.Axes.x0 then
-        (yaxis.Axes.x0 <- y0'; yupdated := true);
-    if yaxis.Axes.auto_xend then
-      if is_nan_or_inf yaxis.Axes.xend || y1' > yaxis.Axes.xend then
-        (yaxis.Axes.xend <- y1'; yupdated := true);
-    let l1 =
-      if !xupdated then begin
-        Axes.fit_axis xaxis;
-        axes.Axes.x.Axes.viewports
-      end else [] in
-    let l2 =
-      if !yupdated then begin
-        Axes.fit_axis yaxis;
-        axes.Axes.y.Axes.viewports
-      end else [] in
-    (* We want to merge the 2 lists without duplicates *)
-    let l2' = List.filter (fun x -> not (List.exists (( == ) x) l1)) l2 in
-    let l = List.rev_append l1 l2' in
-    List.iter update_coordinate_system l;
-    if vp.immediate_drawing then
-      (* TODO Is there a way to optimize that bunch of code ? *)
-      List.iter do_instructions l
+    assert (not (is_nan xrange.Axes.data_x0));
+    assert (not (is_nan xrange.Axes.data_xend));
+    assert (not (is_nan yrange.Axes.data_x0));
+    assert (not (is_nan yrange.Axes.data_xend));
+    (* Update data ranges. *)
+    if xrange.Axes.auto_x0 then
+      if is_inf xrange.Axes.data_x0 || x0' < xrange.Axes.data_x0 then
+        (xrange.Axes.data_x0 <- x0'; xupdated := true);
+    if xrange.Axes.auto_xend then
+      if is_inf xrange.Axes.data_xend || x1' > xrange.Axes.data_xend then
+        (xrange.Axes.data_xend <- x1'; xupdated := true);
+    if yrange.Axes.auto_x0 then
+      if is_inf yrange.Axes.data_x0 || y0' < yrange.Axes.data_x0 then
+        (yrange.Axes.data_x0 <- y0'; yupdated := true);
+    if yrange.Axes.auto_xend then
+      if is_inf yrange.Axes.data_xend || y1' > yrange.Axes.data_xend then
+        (yrange.Axes.data_xend <- y1'; yupdated := true);
+    (* Update x0, xend ranges, unit_size and gx0, gxend and redraw... *)
+    update_axes_ranges vp !xupdated !yupdated
+
+  (* Utility function for (x|y)range *)
+  let update_axis vp range_sync x0 xend =
+    if x0 < xend then begin
+      let range = range_sync.Axes.value in
+      range.Axes.auto_x0 <- is_inf x0;
+      if not (is_inf x0) then range.Axes.x0 <- x0;
+      range.Axes.auto_xend <- is_inf xend;
+      if not (is_inf xend) then range.Axes.xend <- xend;
+      norm_ratio_auto_axes vp.axes_system;
+      update_axes_system vp
+    end else
+      invalid_arg "Archimedes.Viewport.Viewport.x/yrange: invalid range."
+
+  let xrange vp = update_axis vp vp.axes_system.Axes.x.Axes.range
+  let yrange vp = update_axis vp vp.axes_system.Axes.y.Axes.range
+
+  let set_xlog vp v = vp.axes_system.Axes.x.Axes.log <- v
+  let set_ylog vp v = vp.axes_system.Axes.y.Axes.log <- v
 
 (* Synchronization
  ***********************************************************************)
 
-  let sync ?(x=true) ?(y=true) vp vp_base =
-    if x then begin
+  let sync ?(x=true) ?(y=true) vp vp_base = ()
+(*    if x then begin
       vp.axes_system.Axes.x <- vp_base.axes_system.Axes.x;
       Axes.add_viewport vp_base.axes_system.Axes.x vp
     end;
     if y then begin
       vp.axes_system.Axes.y <- vp_base.axes_system.Axes.y;
       Axes.add_viewport vp_base.axes_system.Axes.y vp
-    end
-
+    end*)
 
 (* Layouts
  ***********************************************************************)
 
 (* TODO ! *)
   (* Uniform grid; redim: identity *)
-  let layout_grid ?(syncs=(false, false, false, false)) ?(axes_sys=false)
-      vp rows cols =
+  let layout_grid ?(syncs=(false, false, false, false)) vp rows cols =
     let cols_sync_x, cols_sync_y, rows_sync_x, rows_sync_y = syncs in
     let redim _ _ _ = () in
     let xstep = 1. /. (float cols) and ystep = 1. /. (float rows) in
@@ -749,7 +852,7 @@ end
       and ymin = float y *. ystep in
       let xmax = xmin +. xstep
       and ymax = ymin +. ystep in
-      ret.(i) <- make ~axes_sys vp Device xmin xmax ymin ymax redim;
+      ret.(i) <- make vp Device xmin xmax ymin ymax redim;
       if i >= rows then
         sync ~x:cols_sync_x ~y:cols_sync_y ret.(i) ret.(i mod rows);
       if i mod rows > 0 then
@@ -758,21 +861,21 @@ end
     for i = 0 to rows * cols - 1 do init_viewport i done;
     ret
 
-  let layout_rows ?(syncs=false, false) ?(axes_sys=false) vp n =
+  let layout_rows ?(syncs=false, false) vp n =
     let sync_x, sync_y = syncs in
-    layout_grid ~syncs:(false, false, sync_x, sync_y) ~axes_sys vp n 1
+    layout_grid ~syncs:(false, false, sync_x, sync_y) vp n 1
 
-  let layout_columns ?(syncs=false, false) ?(axes_sys=false) vp n =
+  let layout_columns ?(syncs=false, false) vp n =
     let sync_x, sync_y = syncs in
-    layout_grid ~syncs:(sync_x, sync_y, false, false) ~axes_sys vp 1 n
+    layout_grid ~syncs:(sync_x, sync_y, false, false) vp 1 n
 
-  let fixed_left ?(axes_sys=false) init_prop vp =
+  let fixed_left init_prop vp =
     let redim_fixed vp xfactor _ = begin
       let coord = vp.coord_device in
       Coordinate.scale coord (1. /. xfactor) 1.;
     end in
     let vp_fixed =
-      make ~axes_sys vp Device 0. init_prop 0. 1. redim_fixed in
+      make vp Device 0. init_prop 0. 1. redim_fixed in
     let redim vp xfactor _ = begin
       let coord = vp.coord_device in
       Coordinate.scale coord (1. /. xfactor) 1.;
@@ -781,10 +884,10 @@ end
       let vp_left, _ = Coordinate.to_parent vp.coord_device ~x:0. ~y:0. in
       Coordinate.translate coord (vp_left -. fixed_right) 0.
     end in
-    let vp' = make ~axes_sys vp Device init_prop 1. 0. 1. redim in
+    let vp' = make vp Device init_prop 1. 0. 1. redim in
     (vp_fixed, vp')
 
-  let fixed_right ?(axes_sys=false) init_prop vp =
+  let fixed_right init_prop vp =
     let redim_fixed vp xfactor _ = begin
       let coord = vp.coord_device in
       Coordinate.scale coord (1. /. xfactor) 1.;
@@ -792,21 +895,21 @@ end
         coord (-. (fst (Coordinate.to_parent coord ~x:1. ~y:0.))) 0.
     end in
     let vp_fixed =
-      make ~axes_sys vp Device init_prop 1. 0. 1. redim_fixed in
+      make vp Device init_prop 1. 0. 1. redim_fixed in
     let redim vp xfactor _ = begin
       let coord = vp.coord_device in
       Coordinate.scale coord (1. /. xfactor) 1.
     end in
-    let vp' = make ~axes_sys vp Device 0. init_prop 0. 1. redim in
+    let vp' = make vp Device 0. init_prop 0. 1. redim in
     (vp_fixed, vp')
 
-  let fixed_top ?(axes_sys=false) init_prop vp =
+  let fixed_top init_prop vp =
     let redim_fixed vp _ yfactor = begin
       let coord = vp.coord_device in
       Coordinate.scale coord 1. (1. /. yfactor);
     end in
     let vp_fixed =
-      make ~axes_sys vp Device 0. 1. (1. -. init_prop) 1. redim_fixed
+      make vp Device 0. 1. (1. -. init_prop) 1. redim_fixed
     in
     let rec redim vp _ yfactor = begin
       let coord = vp.coord_device in
@@ -816,10 +919,10 @@ end
       let _, vp_top = Coordinate.to_parent vp.coord_device ~x:0. ~y:0. in
       Coordinate.translate coord (vp_top -. fixed_bottom) 0.
     end in
-    let vp' = make ~axes_sys vp Device 0. 1. 0. (1. -. init_prop) redim in
+    let vp' = make vp Device 0. 1. 0. (1. -. init_prop) redim in
     (vp_fixed, vp')
 
-  let fixed_bottom ?(axes_sys=false) init_prop vp =
+  let fixed_bottom init_prop vp =
     let redim_fixed vp _ yfactor = begin
       let coord = vp.coord_device in
       Coordinate.scale coord 1. (1. /. yfactor);
@@ -827,31 +930,30 @@ end
         coord 0. (-. (snd (Coordinate.to_parent coord ~x:0. ~y:1.)))
     end in
     let vp_fixed =
-      make ~axes_sys vp Device 0. 1. 0. init_prop redim_fixed in
+      make vp Device 0. 1. 0. init_prop redim_fixed in
     let rec redim vp _ yfactor = begin
       let coord = vp.coord_device in
       Coordinate.scale coord 1. (1. /. yfactor)
     end in
-    let vp' = make ~axes_sys vp Device 0. 1. init_prop 1. redim in
+    let vp' = make vp Device 0. 1. init_prop 1. redim in
     (vp_fixed, vp')
 
   (* Border layouts, of desired sizes *)
-  let layout_borders ?(north=0.) ?(south=0.) ?(west=0.) ?(east=0.)
-      ?(axes_sys=false) vp =
+  let layout_borders ?(north=0.) ?(south=0.) ?(west=0.) ?(east=0.) vp =
     if south +. north >= 1. || east +. west >= 1. then
       invalid_arg "Archimedes.Viewport.Viewport.layout_borders: \
                    invalid borders dimensions (sum need to be < 1).";
     let east, vp =
-      if east > 0. then fixed_right ~axes_sys east vp else vp, vp
+      if east > 0. then fixed_right east vp else vp, vp
     in
     let west, vp =
-      if west > 0. then fixed_left ~axes_sys west vp else vp, vp
+      if west > 0. then fixed_left west vp else vp, vp
     in
     let south, vp =
-      if south > 0. then fixed_bottom ~axes_sys south vp else vp, vp
+      if south > 0. then fixed_bottom south vp else vp, vp
     in
     let north, center =
-      if north > 0. then fixed_top ~axes_sys north vp else vp, vp
+      if north > 0. then fixed_top north vp else vp, vp
     in
     (north, south, west, east, center)
 
