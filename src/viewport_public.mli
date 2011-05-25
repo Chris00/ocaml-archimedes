@@ -75,17 +75,20 @@ module type T = sig
 
     val get_backend : t -> Backend.t
 
+    val desync_ratio : t -> unit
+      (** [desync_ratio vp] make [vp] single. *)
+
+    val sync_ratio : t -> t -> unit
+
+    (* TODO: desync_range *)
+
+    val sync_range : ?x:bool -> ?y:bool -> t -> t -> unit
+
+    (* TODO: desync_unit_size *)
+
+    val sync_unit_size : ?x:bool -> ?y:bool -> t -> t -> unit
+
     val sync : ?x:bool -> ?y:bool -> t -> t -> unit
-      (** [sync vp vp_base] synchronize the viewport vp with vp_base. The
-          optionals ?x and ?y allows one to synchronize only the x axis or
-          only the y axis
-
-          @param x default true, set to false if you want to synchronize
-          only the y-axis
-
-          @param y default true, set to false if you want to synchronize
-          only the x-axis
-      *)
 
     val layout_grid : ?syncs:(bool * bool * bool * bool) ->
       t -> int -> int -> t array

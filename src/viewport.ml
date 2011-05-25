@@ -201,6 +201,21 @@ and Viewport : sig
 
   val get_backend : t -> Backend.t
 
+  val desync_ratio : t -> unit
+    (** [desync_ratio vp] make [vp] single. *)
+
+  val sync_ratio : t -> t -> unit
+
+  (* TODO: desync_range *)
+
+  val sync_range : ?x:bool -> ?y:bool -> t -> t -> unit
+
+  (* TODO: desync_unit_size *)
+
+  val sync_unit_size : ?x:bool -> ?y:bool -> t -> t -> unit
+
+  val sync : ?x:bool -> ?y:bool -> t -> t -> unit
+
   val sync : ?x:bool -> ?y:bool -> t -> t -> unit
 
   val layout_grid : ?syncs:(bool * bool * bool * bool) ->
@@ -229,12 +244,12 @@ and Viewport : sig
   val lower_left_corner : t -> float * float
   val upper_right_corner : t -> float * float
   val dimensions : t -> float * float (* returns (w, h) *)
-  (* set_global_param set param of backend and then of all viewports *)
+    (* set_global_param set param of backend and then of all viewports *)
   val set_color : t -> Color.t -> unit
   val set_global_line_cap : t -> Backend.line_cap -> unit
   val set_global_dash : t -> float -> float array -> unit
   val set_global_line_join : t -> Backend.line_join -> unit
-  (*  val set_global_line_width : t -> float -> unit*)
+    (*  val set_global_line_width : t -> float -> unit*)
   val get_color : t -> Color.t
   val get_line_cap : t -> Backend.line_cap
   val get_dash : t -> float array * float
@@ -251,24 +266,24 @@ and Viewport : sig
   val arc : t -> r:float -> a1:float -> a2:float -> unit
   val close_path : t -> unit
   val clear_path : t -> unit
-  (*val path_extents : t -> rectangle*)
+    (*val path_extents : t -> rectangle*)
   val stroke_preserve : ?path:Path.t -> t -> coord_name -> unit
   val stroke : ?path:Path.t -> t -> coord_name -> unit
   val fill_preserve : ?path:Path.t -> t -> coord_name -> unit
   val fill : ?path:Path.t -> t -> coord_name -> unit
   val clip_rectangle : t -> x:float -> y:float -> w:float -> h:float -> unit
-  (*  val save_vp : t -> unit
-      val restore_vp : t -> unit*)
+    (*  val save_vp : t -> unit
+        val restore_vp : t -> unit*)
   val select_font_face : t -> Backend.slant -> Backend.weight -> string -> unit
   val show_text :
     t -> coord_name ->
     ?rotate:float ->
     x:float -> y:float -> Backend.text_position -> string -> unit
-  (*  val text_extents : t -> string -> rectangle*)
+    (*  val text_extents : t -> string -> rectangle*)
   val ortho_from : t -> coord_name -> float * float -> float * float
   val data_from : t -> coord_name -> float * float -> float * float
   val mark : t -> x:float -> y:float -> string -> unit
-  (* val mark_extents : t -> string -> rectangle *)
+    (* val mark_extents : t -> string -> rectangle *)
 
   val set_line_width_direct : t -> float -> unit -> unit
   val set_font_size_direct : t -> float -> unit -> unit
@@ -826,15 +841,89 @@ end = struct
 (* Synchronization
  ***********************************************************************)
 
-  let sync ?(x=true) ?(y=true) vp vp_base = ()
-(*    if x then begin
-      vp.axes_system.Axes.x <- vp_base.axes_system.Axes.x;
-      Axes.add_viewport vp_base.axes_system.Axes.x vp
-    end;
-    if y then begin
-      vp.axes_system.Axes.y <- vp_base.axes_system.Axes.y;
-      Axes.add_viewport vp_base.axes_system.Axes.y vp
-    end*)
+  let remove_from_sync vp sync =
+    sync.Axes.vps <- List.filter (fun vp' -> not (vp' == vp)) sync.Axes.vps
+
+  (** [desync_ratio vp] make [vp] single. *)
+  let desync_ratio vp =
+    let vp_ratio = vp.axes_system.Axes.ratio in
+    remove_from_sync vp vp_ratio;
+    vp.axes_system.Axes.ratio <- { vp_ratio with Axes.vps = [vp] };
+    update_axes_system vp
+
+  let sync_ratio vp vp_base =
+    let base_axes = vp_base.axes_system in
+    remove_from_sync vp vp.axes_system.Axes.ratio;
+    vp.axes_system.Axes.ratio <- base_axes.Axes.ratio;
+    base_axes.Axes.ratio.Axes.vps <- vp :: base_axes.Axes.ratio.Axes.vps;
+    update_axes_system vp
+
+  (* TODO: desync_range *)
+
+  let sync_range ?(x=true) ?(y=true) vp vp_base =
+    let base_axes = vp_base.axes_system in
+    let x0, x1 =
+      let base_xrange = base_axes.Axes.x.Axes.range in
+      if x then begin
+        let xrange = vp.axes_system.Axes.x.Axes.range in
+        let x0, x1 =
+          xrange.Axes.value.Axes.data_x0,
+          xrange.Axes.value.Axes.data_xend
+        in
+        remove_from_sync vp vp.axes_system.Axes.x.Axes.range;
+        vp.axes_system.Axes.x.Axes.range <- base_xrange;
+        base_xrange.Axes.vps <- vp :: base_xrange.Axes.vps;
+        update_axes_system vp;
+        (x0, x1)
+      end else
+        (base_xrange.Axes.value.Axes.data_x0,
+         base_xrange.Axes.value.Axes.data_xend)
+    and y0, y1 =
+      let base_yrange = base_axes.Axes.y.Axes.range in
+      if y then begin
+        let yrange = vp.axes_system.Axes.y.Axes.range in
+        let y0, y1 =
+          yrange.Axes.value.Axes.data_x0,
+          yrange.Axes.value.Axes.data_xend
+        in
+        remove_from_sync vp vp.axes_system.Axes.y.Axes.range;
+        vp.axes_system.Axes.y.Axes.range <- base_yrange;
+        base_yrange.Axes.vps <- vp :: base_yrange.Axes.vps;
+        update_axes_system vp;
+        (y0, y1)
+      end else
+        (base_yrange.Axes.value.Axes.data_x0,
+         base_yrange.Axes.value.Axes.data_xend)
+    in
+    auto_fit vp x0 y0 x1 y1
+
+  let sync_axis_unit_size vp axis base_axis =
+    remove_from_sync vp axis.Axes.unit_size;
+    let unit_size = axis.Axes.unit_size.Axes.value in
+    axis.Axes.unit_size <- base_axis.Axes.unit_size;
+    base_axis.Axes.unit_size.Axes.vps <- vp :: base_axis.Axes.unit_size.Axes.vps;
+    if unit_size < base_axis.Axes.unit_size.Axes.value then begin
+      axis.Axes.unit_size.Axes.value <- unit_size;
+      axis.Axes.unit_size.Axes.vps
+    end else [ vp ]
+
+  (* TODO: desync_unit_size *)
+
+  let sync_unit_size ?(x=true) ?(y=true) vp vp_base =
+    let vps1 =
+      if x then
+        sync_axis_unit_size vp vp.axes_system.Axes.x vp_base.axes_system.Axes.x
+      else []
+    and vps2 =
+      if y then
+        sync_axis_unit_size vp vp.axes_system.Axes.y vp_base.axes_system.Axes.y
+      else []
+    in
+    List.iter update_axes_system (merge vps1 vps2)
+
+  let sync ?(x=true) ?(y=true) vp vp_base =
+    sync_unit_size ~x ~y vp vp_base;
+    sync_range ~x ~y vp vp_base
 
 (* Layouts
  ***********************************************************************)
