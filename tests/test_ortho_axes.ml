@@ -8,8 +8,8 @@ let draw bk =
   V.xrange vp (-10.) 10.;
   V.yrange vp (-3.) 5.;
   V.set_line_width vp 1.;
+  V.axes_ratio vp 1.;
   Axes.cross vp;
-  V.orthonormalize_axes vp;
   V.close vp
 
 let () =

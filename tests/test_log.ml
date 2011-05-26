@@ -11,8 +11,10 @@ let draw bk =
   P.rectangle p 1. 1. 100. 100.;
   V.stroke ~path:p vp V.Data;*)
 
+(*  V.set_mark_size vp 3.;*)
   Axes.box ~tics:(Tics.Equidistants (Tics.Number 5, 0.1, 10., 5)) vp;
   Pl.fx ~pathstyle:(Pl.Linespoints "o") vp (fun x -> x *. x) 0.1 10.;
+
 
   V.close vp
 

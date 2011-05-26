@@ -8,3 +8,4 @@ Can't catch a Cairo.Error.
 Optimize behavior of empty marks.
 function labels (tags) + set correct default font sizes
 draw axes when plotting a function with Plot.fx
+Add clipping.

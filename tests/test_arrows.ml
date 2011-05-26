@@ -4,9 +4,9 @@ module V = Viewport.Viewport
 let draw bk =
   let vp = V.init ~w:1024. ~h:600. ~dirs:["../src"; "./src"] bk in
   V.set_line_width vp 1.;
-  Arrows.line ~head:(Arrows.Simple) vp 0. 0. 1. 1.;
-  V.xrange vp 0. 2.;
-  V.yrange vp 0. 2.;
+  Arrows.line ~head:(Arrows.Simple) vp 1. 1. 3. 3.;
+  V.xrange vp 0. 4.;
+  V.yrange vp 0. 4.;
   Axes.box vp;
   V.close vp
 

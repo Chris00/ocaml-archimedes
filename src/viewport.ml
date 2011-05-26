@@ -54,7 +54,7 @@ module rec Axes : sig
     mutable ratio: float option sync
   }
 
-  val default_axes_system: float -> float -> t
+  val default_axes_system: unit -> t
 
   val fit_range : range -> unit
   val resize_axis : axis -> float -> unit
@@ -100,22 +100,22 @@ end = struct
     { x0 = 0.; xend = 1.; auto_x0 = true; auto_xend = true;
       data_x0 = infinity; data_xend = -.infinity }
 
-  let default_axis s =
-    { gx0 = 0.; gxend = 1.; unit_size = default_sync s;
+  let default_axis () =
+    { gx0 = 0.; gxend = 1.; unit_size = default_sync infinity;
       range = default_sync (default_range ());
       log = false; orientation = Positive }
 
-  let default_axes_system w h =
-    { x = default_axis w;
-      y = default_axis h;
+  let default_axes_system () =
+    { x = default_axis ();
+      y = default_axis ();
       ratio = default_sync None}
 
   let fit_range range =
     match range.auto_x0, range.auto_xend with
     | false, false -> ()
     | false, true ->
-          (* TODO: test if using the magnitude of the values for interval
-             epsilon is good looking or not. *)
+      (* TODO: test if using the magnitude of the values for interval
+         epsilon is good looking or not. *)
       range.xend <- max range.data_xend (range.x0 +. 0.01);
     | true, false ->
       range.x0 <- min range.data_x0 (range.xend -. 0.01);
@@ -132,6 +132,7 @@ end = struct
 
   let resize_axis axis size =
     let r = axis.range.value in
+    let size = max size (r.xend -. r.x0) in
     match r.auto_x0, r.auto_xend with
     | false, false | true, true ->
       axis.gx0 <- (r.x0 +. r.xend -. size) *. 0.5;
@@ -202,20 +203,11 @@ and Viewport : sig
   val get_backend : t -> Backend.t
 
   val desync_ratio : t -> unit
-    (** [desync_ratio vp] make [vp] single. *)
-
   val sync_ratio : t -> t -> unit
-
   (* TODO: desync_range *)
-
   val sync_range : ?x:bool -> ?y:bool -> t -> t -> unit
-
   (* TODO: desync_unit_size *)
-
   val sync_unit_size : ?x:bool -> ?y:bool -> t -> t -> unit
-
-  val sync : ?x:bool -> ?y:bool -> t -> t -> unit
-
   val sync : ?x:bool -> ?y:bool -> t -> t -> unit
 
   val layout_grid : ?syncs:(bool * bool * bool * bool) ->
@@ -391,7 +383,7 @@ end = struct
 
   (* Multiplier to get "user-friendly" values (e.g. 12pt instead of 0.024) *)
   let usr_lw, usr_ts, usr_ms = 500., 500., 100.
-  let def_lw, def_ts, def_ms = 0.002, 0.024, 0.01
+  let def_lw, def_ts, def_ms = 0.002, 0.02, 0.05
 
 (* General functions
  ***********************************************************************)
@@ -594,12 +586,12 @@ end = struct
 	   change axes. *)
       coord_data = Coordinate.make_identity coord_graph;
       path = Path.make ();
-      axes_system = Axes.default_axes_system xaxis_size yaxis_size;
+      axes_system = Axes.default_axes_system ();
       xaxis_size = xaxis_size;
       yaxis_size = yaxis_size;
       sizes = Sizes.make_rel (Sizes.make_root size0 1. 1. 1.) lines text marks;
-      font_size = def_ts;
-      mark_size = def_ms;
+      font_size = text;
+      mark_size = marks;
       color = Color.black;
       instructions = Queue.create ();
       immediate_drawing = false;
@@ -615,8 +607,11 @@ end = struct
     axes.Axes.y.Axes.range.Axes.vps <- [ viewport ];
     viewport
 
-  let make ?(lines=def_lw) ?(text=def_ts) ?(marks=def_ms)
+  let make ?(lines=def_lw *. usr_lw) ?(text=def_ts *. usr_ts) ?(marks=def_ms *. usr_ms)
       vp coord_name xmin xmax ymin ymax redim =
+    if coord_name = Data then
+      invalid_arg "Archimedes.Viewport.make: \
+                   can't make a subviewport in Data coordinates.";
     let coord_parent = get_coord_from_name vp coord_name in
     let w, h, size0 =
       (* We can't be sure of the y orientation, so we them in absolute *)
@@ -625,7 +620,6 @@ end = struct
       let w = xmax' -. xmin' and h = abs_float (y2' -. y1') in
       w, h, min w h
     in
-    let coord_parent = get_coord_from_name vp coord_name in
     let coord_device =
       Coordinate.make_scale
         (Coordinate.make_translate coord_parent xmin ymin)
@@ -647,12 +641,12 @@ end = struct
 	 change axes. *)
       coord_data = Coordinate.make_identity coord_graph;
       path = Path.make ();
-      axes_system = Axes.default_axes_system xaxis_size yaxis_size;
+      axes_system = Axes.default_axes_system ();
       xaxis_size = xaxis_size;
       yaxis_size = yaxis_size;
       sizes = Sizes.make_rel vp.sizes lines text marks;
-      mark_size = def_ms;
-      font_size = def_ts;
+      mark_size = marks;
+      font_size = text;
       color = vp.color;
       instructions = Queue.create ();
       immediate_drawing = false;
@@ -804,36 +798,41 @@ end = struct
     assert (not (is_nan yrange.Axes.data_x0));
     assert (not (is_nan yrange.Axes.data_xend));
     (* Update data ranges. *)
-    if xrange.Axes.auto_x0 then
+    if xrange.Axes.auto_x0 && not (is_inf x0') then
       if is_inf xrange.Axes.data_x0 || x0' < xrange.Axes.data_x0 then
         (xrange.Axes.data_x0 <- x0'; xupdated := true);
-    if xrange.Axes.auto_xend then
+    if xrange.Axes.auto_xend && not (is_inf x1') then
       if is_inf xrange.Axes.data_xend || x1' > xrange.Axes.data_xend then
         (xrange.Axes.data_xend <- x1'; xupdated := true);
-    if yrange.Axes.auto_x0 then
+    if yrange.Axes.auto_x0 && not (is_inf y0') then
       if is_inf yrange.Axes.data_x0 || y0' < yrange.Axes.data_x0 then
         (yrange.Axes.data_x0 <- y0'; yupdated := true);
-    if yrange.Axes.auto_xend then
+    if yrange.Axes.auto_xend && not (is_inf y1') then
       if is_inf yrange.Axes.data_xend || y1' > yrange.Axes.data_xend then
         (yrange.Axes.data_xend <- y1'; yupdated := true);
     (* Update x0, xend ranges, unit_size and gx0, gxend and redraw... *)
     update_axes_ranges vp !xupdated !yupdated
 
   (* Utility function for (x|y)range *)
-  let update_axis vp range_sync x0 xend =
+  let update_axis vp axis axis_size x0 xend =
     if x0 < xend then begin
-      let range = range_sync.Axes.value in
+      let range = axis.Axes.range.Axes.value in
       range.Axes.auto_x0 <- is_inf x0;
       if not (is_inf x0) then range.Axes.x0 <- x0;
       range.Axes.auto_xend <- is_inf xend;
       if not (is_inf xend) then range.Axes.xend <- xend;
       norm_ratio_auto_axes vp.axes_system;
-      update_axes_system vp
+      let unit_size = axis_size /. (range.Axes.xend -. range.Axes.x0) in
+      if unit_size < axis.Axes.unit_size.Axes.value then begin
+        axis.Axes.unit_size.Axes.value <- unit_size;
+        List.iter update_axes_system axis.Axes.unit_size.Axes.vps
+      end else
+        update_axes_system vp
     end else
       invalid_arg "Archimedes.Viewport.Viewport.x/yrange: invalid range."
 
-  let xrange vp = update_axis vp vp.axes_system.Axes.x.Axes.range
-  let yrange vp = update_axis vp vp.axes_system.Axes.y.Axes.range
+  let xrange vp = update_axis vp vp.axes_system.Axes.x vp.xaxis_size
+  let yrange vp = update_axis vp vp.axes_system.Axes.y vp.yaxis_size
 
   let set_xlog vp v = vp.axes_system.Axes.x.Axes.log <- v
   let set_ylog vp v = vp.axes_system.Axes.y.Axes.log <- v
@@ -861,49 +860,36 @@ end = struct
   (* TODO: desync_range *)
 
   let sync_range ?(x=true) ?(y=true) vp vp_base =
-    let base_axes = vp_base.axes_system in
-    let x0, x1 =
-      let base_xrange = base_axes.Axes.x.Axes.range in
-      if x then begin
-        let xrange = vp.axes_system.Axes.x.Axes.range in
-        let x0, x1 =
-          xrange.Axes.value.Axes.data_x0,
-          xrange.Axes.value.Axes.data_xend
-        in
-        remove_from_sync vp vp.axes_system.Axes.x.Axes.range;
-        vp.axes_system.Axes.x.Axes.range <- base_xrange;
-        base_xrange.Axes.vps <- vp :: base_xrange.Axes.vps;
+    let sync_axis_range sync_axis axis axis_base =
+      let base_range = axis_base.Axes.range in
+      if sync_axis then begin
+        let range = axis.Axes.range in
+        let x0 = range.Axes.value.Axes.data_x0
+        and x1 = range.Axes.value.Axes.data_xend in
+        remove_from_sync vp range;
+        axis.Axes.range <- base_range;
+        base_range.Axes.vps <- vp :: base_range.Axes.vps;
         update_axes_system vp;
         (x0, x1)
       end else
-        (base_xrange.Axes.value.Axes.data_x0,
-         base_xrange.Axes.value.Axes.data_xend)
-    and y0, y1 =
-      let base_yrange = base_axes.Axes.y.Axes.range in
-      if y then begin
-        let yrange = vp.axes_system.Axes.y.Axes.range in
-        let y0, y1 =
-          yrange.Axes.value.Axes.data_x0,
-          yrange.Axes.value.Axes.data_xend
-        in
-        remove_from_sync vp vp.axes_system.Axes.y.Axes.range;
-        vp.axes_system.Axes.y.Axes.range <- base_yrange;
-        base_yrange.Axes.vps <- vp :: base_yrange.Axes.vps;
-        update_axes_system vp;
-        (y0, y1)
-      end else
-        (base_yrange.Axes.value.Axes.data_x0,
-         base_yrange.Axes.value.Axes.data_xend)
+        (base_range.Axes.value.Axes.data_x0,
+         base_range.Axes.value.Axes.data_xend)
     in
-    auto_fit vp x0 y0 x1 y1
+    let axes = vp.axes_system
+    and base_axes = vp_base.axes_system in
+    let x0, x1 = sync_axis_range x axes.Axes.x base_axes.Axes.x
+    and y0, y1 = sync_axis_range y axes.Axes.y base_axes.Axes.y in
+    if x || y then
+      auto_fit vp x0 y0 x1 y1
 
   let sync_axis_unit_size vp axis base_axis =
-    remove_from_sync vp axis.Axes.unit_size;
-    let unit_size = axis.Axes.unit_size.Axes.value in
-    axis.Axes.unit_size <- base_axis.Axes.unit_size;
-    base_axis.Axes.unit_size.Axes.vps <- vp :: base_axis.Axes.unit_size.Axes.vps;
-    if unit_size < base_axis.Axes.unit_size.Axes.value then begin
-      axis.Axes.unit_size.Axes.value <- unit_size;
+    let unit_size = axis.Axes.unit_size
+    and base_unit_size = base_axis.Axes.unit_size in
+    remove_from_sync vp unit_size;
+    axis.Axes.unit_size <- base_unit_size;
+    base_unit_size.Axes.vps <- vp :: base_unit_size.Axes.vps;
+    if unit_size.Axes.value < base_unit_size.Axes.value then begin
+      axis.Axes.unit_size.Axes.value <- unit_size.Axes.value;
       axis.Axes.unit_size.Axes.vps
     end else [ vp ]
 
@@ -928,7 +914,6 @@ end = struct
 (* Layouts
  ***********************************************************************)
 
-(* TODO ! *)
   (* Uniform grid; redim: identity *)
   let layout_grid ?(syncs=(false, false, false, false)) vp rows cols =
     let cols_sync_x, cols_sync_y, rows_sync_x, rows_sync_y = syncs in

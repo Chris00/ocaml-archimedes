@@ -106,10 +106,6 @@ struct
     let path = Path.make_at a ha in
     let data_rev = Iterator.Function.iter_cache
       (fun (hx, hy) ->
-         print_float hx;
-         print_string " ";
-         print_float hy;
-         print_newline ();
          miny := min !miny hy; maxy := max !maxy hy;
          draw_data pathstyle path ~base:(g hx) (hx, hy)) iter in
     V.auto_fit vp a !miny b !maxy;
