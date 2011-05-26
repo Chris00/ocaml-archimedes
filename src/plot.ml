@@ -61,21 +61,19 @@ struct
   let f_line_to vp (x, y) = V.line_to vp x y
   let f_finish vp = V.stroke vp V.Data
 
-  let draw_data ?(base=0.) pathstyle path (x, y) = match pathstyle with
+  let draw_data ?(base=0.) pathstyle path (x, y) =
+    match pathstyle with
     | Lines -> Path.line_to path ~x ~y
     | Linespoints _ -> Path.line_to path ~x ~y
     | Impulses ->
-        Path.move_to path ~x ~y:base;
-        Path.line_to path ~x ~y
+      Path.move_to path ~x ~y:base;
+      Path.line_to path ~x ~y
     | Points _ -> ()
-    | Boxes f ->
-        Path.move_to path ~x:(x +. f /. 2.) ~y:base;
-        Path.line_to path ~x:(x +. f /. 2.) ~y;
-        Path.line_to path ~x:(x -. f /. 2.) ~y;
-        Path.line_to path ~x:(x -. f /. 2.) ~y:base
+    | Boxes w ->
+      Path.rectangle path ~x:(x -. w *. 0.5) ~y:base ~w ~h:(y -. base)
     | Interval size ->
-        Path.move_to path ~x ~y:base;
-        Arrows.path_line_to ~size ~head:Arrows.Stop ~tail:Arrows.Stop path x y
+      Path.move_to path ~x ~y:base;
+      Arrows.path_line_to ~size ~head:Arrows.Stop ~tail:Arrows.Stop path x y
 
   let close_data pathstyle path (x, y) = match pathstyle with
     | Lines | Linespoints _ -> Path.line_to path ~x ~y
@@ -139,7 +137,7 @@ module Array =
 struct
   include Common
 
-  let x ?(fill=false) ?(fillcolor=Color.red) ?(pathstyle=Boxes 0.4) vp data =
+  let x ?(fill=false) ?(fillcolor=Color.red) ?(pathstyle=Boxes 0.5) vp data =
     let ymin = ref data.(0)
     and ymax = ref data.(0) in
     let n = Array.length data in
@@ -169,7 +167,7 @@ struct
          Array.iteri (fun i y -> V.mark vp ~x:(float i) ~y m) data
      | Lines | Impulses | Boxes _ | Interval _ -> ())
 
-  let xy ?(fill=false) ?(fillcolor=Color.red) ?(pathstyle=Boxes 0.4)
+  let xy ?(fill=false) ?(fillcolor=Color.red) ?(pathstyle=Boxes 0.5)
       vp data_x data_y =
     let n = Array.length data_x in
     assert (n = Array.length data_y);
@@ -204,7 +202,7 @@ struct
 
   let stack ?(color=[|Color.rgb 0.8 0.8 0.8|])
       ?(fillcolor=[|Color.rgb 0.95 0.95 0.95|])
-      ?(pathstyle=Boxes 0.4) vp data =
+      ?(pathstyle=Boxes 0.5) vp data =
     let m = Array.length data in
     let n = Array.length data.(0) in
     let xmax = float (n - 1) in

@@ -61,7 +61,7 @@ let draw_x_axis major minor start stop tics offset vp () =
   let text x lbl =
     let x, y = V.ortho_from vp V.Data (x, offset) in
     let y = y +. 0.0375 *. pos in
-    let align = if pos < 0. then B.CT else B.CB in
+    let align = if pos < 0. then B.CB else B.CT in
     V.show_text_direct vp V.Orthonormal ~x ~y align lbl () in
   List.iter (draw_tic tic major minor text) tics_values
 
