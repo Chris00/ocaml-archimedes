@@ -1,11 +1,9 @@
-axes
 resizing
 plot functions
-implement missing functions (show_text, etc.) in viewport.ml
+implement missing functions in viewport.ml
 transparency support
-Add support for orthonormalized autofit and add an orthonormalization routine.
 Can't catch a Cairo.Error.
 Optimize behavior of empty marks.
-function labels (tags) + set correct default font sizes
+function labels (tags) 
 draw axes when plotting a function with Plot.fx
 Add clipping.

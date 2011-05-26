@@ -24,7 +24,7 @@ type labels =
   | Number of int
   | Expnumber of float
   | Expnumber_named of float * string
-  | Custom of (float -> string)
+  | Custom of (float -> string option)
 
 type tic =
   | Major of string option * float
@@ -74,7 +74,7 @@ let label_of_float label x = match label with
   | Number n -> Some (Printf.sprintf "%.*g" n x)
   | Expnumber _ -> raise (Failure "Not yet implemented")
   | Expnumber_named _ -> raise (Failure "Not yet implemented")
-  | Custom _ -> raise (Failure "Not yet implemented")
+  | Custom f -> f x
 
 let loose_labels ?(ntics=5) log xmin xmax label =
   let range = nicenum (xmax -. xmin) false in

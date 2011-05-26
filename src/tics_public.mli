@@ -25,7 +25,7 @@ module type T = sig
     | Number of int
     | Expnumber of float
     | Expnumber_named of float * string
-    | Custom of (float -> string)
+    | Custom of (float -> string option)
 
   type tic =
     | Major of string option * float
