@@ -1,5 +1,5 @@
 open Archimedes
-module V = Viewport.Viewport
+module V = Viewport
 module P = Plot.Array
 
 let data =

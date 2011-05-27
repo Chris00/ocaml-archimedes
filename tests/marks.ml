@@ -1,6 +1,6 @@
 open Archimedes
 (*module P = Plot.List*)
-module V = Viewport.Viewport
+module V = Viewport
 
 (* The names of all implemented markers. *)
 (*let markers =

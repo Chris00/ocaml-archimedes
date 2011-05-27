@@ -1,5 +1,5 @@
 open Archimedes
-module V = Viewport.Viewport
+module V = Viewport
 
 let draw bk =
   let f vp x y =

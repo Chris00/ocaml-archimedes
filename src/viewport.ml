@@ -913,7 +913,7 @@ end = struct
       end else
         update_axes_system vp
     end else
-      invalid_arg "Archimedes.Viewport.Viewport.x/yrange: invalid range."
+      invalid_arg "Archimedes.Viewport.x/yrange: invalid range."
 
   let xrange vp = update_axis vp vp.axes_system.Axes.x vp.xaxis_size
   let yrange vp = update_axis vp vp.axes_system.Axes.y vp.yaxis_size
@@ -1099,7 +1099,7 @@ end = struct
   (* Border layouts, of desired sizes *)
   let layout_borders ?(north=0.) ?(south=0.) ?(west=0.) ?(east=0.) vp =
     if south +. north >= 1. || east +. west >= 1. then
-      invalid_arg "Archimedes.Viewport.Viewport.layout_borders: \
+      invalid_arg "Archimedes.Viewport.layout_borders: \
                    invalid borders dimensions (sum need to be < 1).";
     let east, vp =
       if east > 0. then fixed_right east vp else vp, vp
@@ -1207,5 +1207,6 @@ end = struct
 
   let xlog vp = vp.axes_system.Axes.x.Axes.log
   let ylog vp = vp.axes_system.Axes.y.Axes.log
-
 end
+
+include Viewport

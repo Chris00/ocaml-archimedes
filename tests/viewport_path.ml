@@ -1,6 +1,6 @@
 open Printf
 open Archimedes
-module V = Viewport.Viewport
+module V = Viewport
 module P = Path
 
 let pi = 4. *. atan 1.

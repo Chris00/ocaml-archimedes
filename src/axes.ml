@@ -19,7 +19,7 @@
    LICENSE for more details. *)
 
 module B = Backend
-module V = Viewport.Viewport
+module V = Viewport
 
 (* FIXME: offset might benefit from better variant names such as Data |
    Graph. And, it doesn't support other coord_names. Maybe we should use

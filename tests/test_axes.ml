@@ -1,5 +1,5 @@
 open Archimedes
-module V = Viewport.Viewport
+module V = Viewport
 
 let draw bk =
   let vp = V.init ~w:1024. ~h:600. ~dirs:["../src"; "./src"] bk in

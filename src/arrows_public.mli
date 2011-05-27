@@ -37,11 +37,11 @@ module type T = sig
     Path.t -> float -> float -> float -> unit
 
   val line_direct : ?size:float -> ?head:style -> ?tail:style ->
-    Viewport.Viewport.t -> float -> float -> float -> float -> unit -> unit
+    Viewport.t -> float -> float -> float -> float -> unit -> unit
 
   val line : ?size:float -> ?head:style -> ?tail:style ->
-    Viewport.Viewport.t -> float -> float -> float -> float -> unit
+    Viewport.t -> float -> float -> float -> float -> unit
 
   val arc : ?size:float -> ?head:style -> ?tail:style ->
-    Viewport.Viewport.t -> float -> float -> float -> float -> float -> unit
+    Viewport.t -> float -> float -> float -> float -> float -> unit
 end

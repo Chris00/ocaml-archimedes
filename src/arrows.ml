@@ -18,7 +18,7 @@
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the file
    LICENSE for more details. *)
 
-module V = Viewport.Viewport
+module V = Viewport
 
 type style =
   | Unstyled
