@@ -67,19 +67,55 @@ module type T = sig
     *)
 
   val get_backend : t -> Backend.t
+    (** [get_backend vp] returns the backend associated to [vp], if vp is
+        built over another viewport, the same backend is used. *)
 
   val desync_ratio : t -> unit
-    (** [desync_ratio vp] make [vp] single. *)
+    (** [desync_ratio vp] make [vp] single. The ratio used will be the one
+        used before desync. *)
 
   val sync_ratio : t -> t -> unit
+    (** [sync_ratio vp vp_base] synchronizes [vp]'s ratio with the
+        [vp_base]'s one. *)
 
-  (* TODO: desync_range *)
+  val desync_range : ?x:bool -> ?y:bool -> t -> unit
+    (** [desync_range vp] make [vp] single. The range used will be the one
+        used before desync.
+
+        @param x desync the x axis (default: true)
+
+        @param y desync the y axis (default: true)
+    *)
 
   val sync_range : ?x:bool -> ?y:bool -> t -> t -> unit
+    (** [sync_range vp vp_base] synchronizes [vp]'s ranges (according
+        to ?x and ?y params) with the ranges of [vp_base]. The range
+        consists of a xmin and a xmax values, which defines the bounds of
+        the viewport in Coordinate data.
 
-  (* TODO: desync_unit_size *)
+        @param x sync the x axis (default: true)
 
+        @param y sync the y axis (default: true)
+    *)
+
+  val desync_unit_size : ?x:bool -> ?y:bool -> t -> unit
+    (** [desync_unit_size vp] make [vp] single. The unit size used will be
+        the one used before desync.
+
+        @param x desync the x axis (default: true)
+
+        @param y desync the y axis (default: true)
+    *)
+
+  (* TODO: explicit what unit sizes are *)
   val sync_unit_size : ?x:bool -> ?y:bool -> t -> t -> unit
+    (** [sync_unit_size vp vp_base] synchronizes [vp]'s unit sizes
+        (according to ?x and ?y params) with the sizes of [vp_base].
+
+        @param x sync the x axis (default: true)
+
+        @param y sync the y axis (default: true)
+    *)
 
   val sync : ?x:bool -> ?y:bool -> t -> t -> unit
 
