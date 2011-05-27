@@ -20,6 +20,8 @@
 
 module V = Viewport.Viewport
 
+let isnt_nan_nor_inf x = x = x && 1. /. x <> 0.
+
 module type Common = sig
   type pathstyle =
     | Lines
@@ -62,26 +64,30 @@ struct
   let f_finish vp = V.stroke vp V.Data
 
   let draw_data ?(base=0.) pathstyle path (x, y) =
-    match pathstyle with
-    | Lines -> Path.line_to path ~x ~y
-    | Linespoints _ -> Path.line_to path ~x ~y
-    | Impulses ->
-      Path.move_to path ~x ~y:base;
-      Path.line_to path ~x ~y
-    | Points _ -> ()
-    | Boxes w ->
-      Path.rectangle path ~x:(x -. w *. 0.5) ~y:base ~w ~h:(y -. base)
-    | Interval size ->
-      Path.move_to path ~x ~y:base;
-      Arrows.path_line_to ~size ~head:Arrows.Stop ~tail:Arrows.Stop path x y
+    if isnt_nan_nor_inf y then
+      match pathstyle with
+      | Lines _ | Linespoints _-> Path.line_to path ~x ~y
+      | Impulses ->
+        Path.move_to path ~x ~y:base;
+        Path.line_to path ~x ~y
+      | Points _ -> ()
+      | Boxes w ->
+        Path.rectangle path ~x:(x -. w *. 0.5) ~y:base ~w ~h:(y -. base)
+      | Interval size ->
+        Path.move_to path ~x ~y:base;
+        Arrows.path_line_to ~size ~head:Arrows.Stop ~tail:Arrows.Stop path x y
 
-  let close_data pathstyle path (x, y) = match pathstyle with
-    | Lines | Linespoints _ -> Path.line_to path ~x ~y
-    | Impulses | Points _ | Boxes _ | Interval _ -> ()
+  let close_data pathstyle path (x, y) =
+    if isnt_nan_nor_inf y then
+      match pathstyle with
+      | Lines | Linespoints _ -> Path.line_to path ~x ~y
+      | Impulses | Points _ | Boxes _ | Interval _ -> ()
 
-  let draw_point pathstyle vp (x, y) = match pathstyle with
-    | Lines | Impulses | Boxes _ | Interval _ -> ()
-    | Points m | Linespoints m -> V.mark vp ~x ~y m
+  let draw_point pathstyle vp (x, y) =
+    if isnt_nan_nor_inf y then
+      match pathstyle with
+      | Lines | Impulses | Boxes _ | Interval _ -> ()
+      | Points m | Linespoints m -> V.mark vp ~x ~y m
 
   let fill_data fillcolor pathstyle vp path iter =
     let path = Path.copy path in
@@ -99,13 +105,13 @@ struct
         ?strategy ?criterion
     in
     let iter = sampler h a b in
-    let _, ha = h a in
-    let miny = ref ha and maxy = ref ha in
-    let path = Path.make_at a ha in
+    let miny = ref infinity and maxy = ref (-.infinity) in
+    let path = Path.make () in
     let data_rev = Iterator.Function.iter_cache
       (fun (hx, hy) ->
-         miny := min !miny hy; maxy := max !maxy hy;
-         draw_data pathstyle path ~base:(g hx) (hx, hy)) iter in
+          miny := min hy !miny; maxy := max hy !maxy;
+          draw_data pathstyle path ~base:(g hx) (hx, hy)) iter
+    in
     V.auto_fit vp a !miny b !maxy;
     if fill then fill_data fillcolor pathstyle vp path (sampler (fun x -> x, g x) b a);
     V.stroke ~path vp V.Data;

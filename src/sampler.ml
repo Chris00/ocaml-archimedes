@@ -22,7 +22,7 @@ type strategy = float -> float -> float
 type criterion = float -> float -> float -> float -> float -> float -> bool
 
 let strategy_midpoint t1 t2 =
-  (t1 +. t2) /. 2.
+  (t1 +. t2) *. 0.5
 
 let strategy_random t1 t2 =
   Random.self_init ();
@@ -30,7 +30,7 @@ let strategy_random t1 t2 =
 
 let strategy_center_random t1 t2 =
   let mid = strategy_midpoint t1 t2 in
-  let interval = (t2 -. t1) /. 20. in
+  let interval = (t2 -. t1) *. 0.05 in
   strategy_random (mid -. interval) (mid +. interval)
 
 let criterion_none _ _ _ _ _ _ = true
