@@ -20,7 +20,7 @@
 
 module V = Viewport.Viewport
 
-let isnt_nan_nor_inf x = x = x && 1. /. x <> 0.
+let is_finite x = (x: float) = x && 1. /. x <> 0.
 
 module type Common = sig
   type pathstyle =
@@ -64,7 +64,7 @@ struct
   let f_finish vp = V.stroke vp V.Data
 
   let draw_data ?(base=0.) pathstyle path (x, y) =
-    if isnt_nan_nor_inf y then
+    if is_finite y then
       match pathstyle with
       | Lines _ | Linespoints _-> Path.line_to path ~x ~y
       | Impulses ->
@@ -78,13 +78,13 @@ struct
         Arrows.path_line_to ~size ~head:Arrows.Stop ~tail:Arrows.Stop path x y
 
   let close_data pathstyle path (x, y) =
-    if isnt_nan_nor_inf y then
+    if is_finite y then
       match pathstyle with
       | Lines | Linespoints _ -> Path.line_to path ~x ~y
       | Impulses | Points _ | Boxes _ | Interval _ -> ()
 
   let draw_point pathstyle vp (x, y) =
-    if isnt_nan_nor_inf y then
+    if is_finite y then
       match pathstyle with
       | Lines | Impulses | Boxes _ | Interval _ -> ()
       | Points m | Linespoints m -> V.mark vp ~x ~y m
