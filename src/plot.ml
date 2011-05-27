@@ -105,7 +105,7 @@ struct
         ?strategy ?criterion
     in
     let iter = sampler h a b in
-    let miny = ref infinity and maxy = ref (-.infinity) in
+    let miny = ref infinity and maxy = ref neg_infinity in
     let path = Path.make () in
     let data_rev = Iterator.Function.iter_cache
       (fun (hx, hy) ->
