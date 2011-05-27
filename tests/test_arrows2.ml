@@ -1,5 +1,5 @@
 open Archimedes
-module V = Viewport.Viewport
+module V = Viewport
 
 let markers = Array.of_list (Pointstyle.names ())
 

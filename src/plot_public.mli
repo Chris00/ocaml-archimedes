@@ -17,12 +17,12 @@ module type T = sig
     val fx : ?strategy:Sampler.strategy -> ?criterion:Sampler.criterion ->
       ?min_step:float -> ?nsamples:int ->
       ?fill:bool -> ?fillcolor:Color.t -> ?pathstyle:pathstyle ->
-      ?g:(float -> float) -> Viewport.Viewport.t -> (float -> float) ->
+      ?g:(float -> float) -> Viewport.t -> (float -> float) ->
       float -> float -> unit
 
     val xy_param : ?min_step:float -> ?nsamples:int -> ?fill:bool ->
       ?fillcolor:Color.t -> ?pathstyle:pathstyle ->
-      Viewport.Viewport.t -> (float -> float * float) -> float -> float -> unit
+      Viewport.t -> (float -> float * float) -> float -> float -> unit
 
     (* TODO we want to have control over the stroke properties for each curve *)
   end
@@ -31,13 +31,13 @@ module type T = sig
     include Common
 
     val x : ?fill:bool -> ?fillcolor:Color.t -> ?pathstyle:pathstyle ->
-      Viewport.Viewport.t -> float array -> unit
+      Viewport.t -> float array -> unit
 
     val xy : ?fill:bool -> ?fillcolor:Color.t -> ?pathstyle:pathstyle ->
-      Viewport.Viewport.t -> float array -> float array -> unit
+      Viewport.t -> float array -> float array -> unit
 
     val stack : ?color:(Color.t array) -> ?fillcolor:(Color.t array) ->
-      ?pathstyle:pathstyle -> Viewport.Viewport.t -> float array array -> unit
+      ?pathstyle:pathstyle -> Viewport.t -> float array array -> unit
 
   end
 

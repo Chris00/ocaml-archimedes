@@ -25,12 +25,12 @@ module type T = sig
 
   val add_x_axis : ?major:(string * float) -> ?minor:(string * float) ->
     ?start:Arrows.style -> ?stop:Arrows.style ->
-    ?tics:Tics.t -> ?offset:offset -> Viewport.Viewport.t -> unit
+    ?tics:Tics.t -> ?offset:offset -> Viewport.t -> unit
 
   val add_y_axis : ?major:(string * float) -> ?minor:(string * float) ->
     ?start:Arrows.style -> ?stop:Arrows.style ->
-    ?tics:Tics.t -> ?offset:offset -> Viewport.Viewport.t -> unit
+    ?tics:Tics.t -> ?offset:offset -> Viewport.t -> unit
 
-  val box : ?tics:Tics.t -> ?tics_alt:Tics.t -> Viewport.Viewport.t -> unit
-  val cross : ?tics:Tics.t -> Viewport.Viewport.t -> unit
+  val box : ?tics:Tics.t -> ?tics_alt:Tics.t -> Viewport.t -> unit
+  val cross : ?tics:Tics.t -> Viewport.t -> unit
 end

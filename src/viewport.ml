@@ -204,9 +204,9 @@ and Viewport : sig
 
   val desync_ratio : t -> unit
   val sync_ratio : t -> t -> unit
-  (* TODO: desync_range *)
+  val desync_range : ?x:bool -> ?y:bool -> t -> unit
   val sync_range : ?x:bool -> ?y:bool -> t -> t -> unit
-  (* TODO: desync_unit_size *)
+  val desync_unit_size : ?x:bool -> ?y:bool -> t -> unit
   val sync_unit_size : ?x:bool -> ?y:bool -> t -> t -> unit
   val sync : ?x:bool -> ?y:bool -> t -> t -> unit
 
@@ -913,7 +913,7 @@ end = struct
       end else
         update_axes_system vp
     end else
-      invalid_arg "Archimedes.Viewport.Viewport.x/yrange: invalid range."
+      invalid_arg "Archimedes.Viewport.x/yrange: invalid range."
 
   let xrange vp = update_axis vp vp.axes_system.Axes.x vp.xaxis_size
   let yrange vp = update_axis vp vp.axes_system.Axes.y vp.yaxis_size
@@ -941,7 +941,20 @@ end = struct
     base_axes.Axes.ratio.Axes.vps <- vp :: base_axes.Axes.ratio.Axes.vps;
     update_axes_system vp
 
-  (* TODO: desync_range *)
+  let desync_range_axis vp axis =
+    let range = axis.Axes.range in
+    remove_from_sync vp range;
+    axis.Axes.range <- {
+      range with
+        Axes.vps = [vp];
+        Axes.value = {
+          range.Axes.value with Axes.x0 = range.Axes.value.Axes.x0 }
+    }
+
+  let desync_range ?(x=true) ?(y=true) vp =
+    if x then desync_range_axis vp vp.axes_system.Axes.x;
+    if y then desync_range_axis vp vp.axes_system.Axes.y;
+    if x || y then update_axes_system vp
 
   let sync_range ?(x=true) ?(y=true) vp vp_base =
     let sync_axis_range sync_axis axis axis_base =
@@ -977,7 +990,15 @@ end = struct
       axis.Axes.unit_size.Axes.vps
     end else [ vp ]
 
-  (* TODO: desync_unit_size *)
+  let desync_unit_size_axis vp axis =
+    let unit_size = axis.Axes.unit_size in
+    remove_from_sync vp unit_size;
+    axis.Axes.unit_size <- { unit_size with Axes.vps = [vp] }
+
+  let desync_unit_size ?(x=true) ?(y=true) vp =
+    if x then desync_unit_size_axis vp vp.axes_system.Axes.x;
+    if y then desync_unit_size_axis vp vp.axes_system.Axes.y;
+    if x || y then update_axes_system vp
 
   let sync_unit_size ?(x=true) ?(y=true) vp vp_base =
     let vps1 =
@@ -1099,7 +1120,7 @@ end = struct
   (* Border layouts, of desired sizes *)
   let layout_borders ?(north=0.) ?(south=0.) ?(west=0.) ?(east=0.) vp =
     if south +. north >= 1. || east +. west >= 1. then
-      invalid_arg "Archimedes.Viewport.Viewport.layout_borders: \
+      invalid_arg "Archimedes.Viewport.layout_borders: \
                    invalid borders dimensions (sum need to be < 1).";
     let east, vp =
       if east > 0. then fixed_right east vp else vp, vp
@@ -1207,5 +1228,6 @@ end = struct
 
   let xlog vp = vp.axes_system.Axes.x.Axes.log
   let ylog vp = vp.axes_system.Axes.y.Axes.log
-
 end
+
+include Viewport

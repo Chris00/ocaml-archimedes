@@ -35,7 +35,6 @@ let () =
   include_module "Coordinate";
   include_module "Pointstyle";
   include_module "Path";
-  include_module "Sizes";
   include_module "Tics";
   include_module "Viewport";
   include_module "Arrows";
