@@ -79,8 +79,8 @@ let label_of_float label x = match label with
 let loose_labels ?(ntics=5) log xmin xmax label =
   let range = nicenum (xmax -. xmin) false in
   let d = nicenum (range /. float (pred ntics)) true in
-  let graphmin = (floor (xmin /. d)) *. d in
-  let graphmax = (ceil (xmax /.d)) *. d in
+  let graphmin = (ceil (xmin /. d)) *. d in
+  let graphmax = (floor (xmax /.d)) *. d in
   let rec aux tics x =
     if x > graphmax +. 0.5 *. d then tics
     else aux (Major (label_of_float label x, x) :: tics) (x +. d)
