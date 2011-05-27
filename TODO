@@ -1,9 +1,22 @@
 resizing
+
 plot functions
+
 implement missing functions in viewport.ml
+
 transparency support
+
 Can't catch a Cairo.Error.
+
 Optimize behavior of empty marks.
-function labels (tags) 
+
+function labels (tags)
+
 draw axes when plotting a function with Plot.fx
+
 Add clipping.
+
+The Sizes module is not used anymore, in fact we consider that sizes are
+absolute or relative to the dimensions of the viewport it belongs to. We don't
+have any relativity of sizes from one viewport to another. Discuss if the
+feature is really wanted.

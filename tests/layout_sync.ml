@@ -14,7 +14,6 @@ let draw bk =
   V.xrange subvps.(1) (-5.) 5.;
   V.yrange subvps.(1) (-1.) 5.;*)
   Pl.fx subvps.(0) (fun x -> x *. x) 0. 5.;
-  V.set_line_width subvps.(0) 1.;
   Axes.cross ~tics:(Tics.Equidistants (Tics.Number 5, 0., 3., 1)) subvps.(0);
   V.set_color subvps.(1) Color.red;
   Axes.cross ~tics:(Tics.Equidistants (Tics.Number 5, 0., 1., 1)) subvps.(1);

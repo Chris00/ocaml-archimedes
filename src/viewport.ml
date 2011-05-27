@@ -183,9 +183,9 @@ and Viewport : sig
     mutable axes_system: Axes.t;
     mutable xaxis_size: float;
     mutable yaxis_size: float;
-    mutable sizes: Sizes.t;
-    mutable mark_size: float;
+    mutable line_width: float;
     mutable font_size: float;
+    mutable mark_size: float;
     mutable color: Color.t;
     mutable instructions: (unit -> unit) Queue.t;
     mutable immediate_drawing: bool;
@@ -354,13 +354,13 @@ end = struct
 
     (* Axes system associated to the viewport *)
     mutable axes_system: Axes.t;
-    (* TODO!!: update xaxis_size... *)
+    (* Size of axes in backend coordinates. *)
     mutable xaxis_size: float;
     mutable yaxis_size: float;
-    (* For sizing texts, tics, etc. *)
-    mutable sizes: Sizes.t;
-    mutable mark_size: float;
+    (* Sizes in backend coordinates. *)
+    mutable line_width: float;
     mutable font_size: float;
+    mutable mark_size: float;
     (* The current color, shared by all the "root" descending *)
     mutable color: Color.t;
     (* An instruction is a "thing" to plot on the device, we memorize
@@ -383,7 +383,12 @@ end = struct
 
   (* Multiplier to get "user-friendly" values (e.g. 12pt instead of 0.024) *)
   let usr_lw, usr_ts, usr_ms = 500., 500., 100.
-  let def_lw, def_ts, def_ms = 0.002, 0.02, 0.05
+
+  let def_lw, def_ts, def_ms = 1., 12., 5.
+  let def_color = Color.black
+  let def_line_cap = Backend.BUTT
+  let def_dash = (0., [| |])
+  let def_line_join = Backend.JOIN_MITER
 
 (* General functions
  ***********************************************************************)
@@ -454,6 +459,7 @@ end = struct
  ***********************************************************************)
 
   let set_line_width_direct vp lw () =
+    vp.line_width <- lw;
     Backend.set_line_width vp.backend lw
 
   let set_font_size_direct vp ts () =
@@ -530,7 +536,7 @@ end = struct
 
   let save_direct vp () =
     let save = {
-      lw = Backend.get_line_width vp.backend;
+      lw = vp.line_width;
       fs = vp.font_size;
       ms = vp.mark_size;
       c = vp.color;
@@ -552,11 +558,112 @@ end = struct
     set_dash_direct vp y x ();
     set_line_join_direct vp save.line_join ()
 
+(* Basic functions
+ ***********************************************************************)
+
+  let get_backend vp = vp.backend
+
+  let initial_scale = 1.
+
+  let blank vp =
+    let ctm = Coordinate.use vp.backend vp.coord_device in
+    Backend.save vp.backend;
+    Backend.clear_path vp.backend;
+    Backend.set_color vp.backend Color.white;
+    Backend.rectangle vp.backend 0. 0. 1. 1.;
+    Backend.fill vp.backend;
+    Backend.restore vp.backend;
+    Coordinate.restore vp.backend ctm
+
+  let add_instruction f vp = Queue.push f vp.instructions
+
+  (* Note: if a vp is synchronized with one of its children, this children
+     will be redrawn two times. *)
+  let rec do_instructions vp =
+    if vp.saves != [] then print_string "Warning: saves list is not empty\n";
+    blank vp;
+    Queue.iter (fun f -> f ()) vp.instructions;
+    List.iter do_instructions (List.rev vp.children)
+
+  let save vp = add_instruction (save_direct vp) vp
+  let restore vp = add_instruction (restore_direct vp) vp
+
+  let close vp =
+    let parent = vp.parent in
+    parent.children <- List.filter (fun x -> not (x == vp)) parent.children;
+    if vp == parent then begin
+      do_instructions vp;
+      Backend.close vp.backend
+    end
+
+
+(* Data that depends directly on viewports
+ ***********************************************************************)
+
+  let set_line_width vp lw =
+    vp.line_width <- lw;
+    add_instruction (set_line_width_direct vp lw) vp
+
+  let set_font_size vp ts =
+    vp.font_size <- ts;
+    add_instruction (set_font_size_direct vp ts) vp
+
+  let set_mark_size vp ms =
+    vp.mark_size <- ms;
+    add_instruction (set_mark_size_direct vp ms) vp
+
+  let set_rel_line_width vp lw =
+    vp.line_width <- (lw /. usr_lw *. vp.square_side);
+    add_instruction (set_rel_line_width_direct vp lw) vp
+
+  let set_rel_font_size vp ts =
+    vp.font_size <- (ts /. usr_ts *. vp.square_side);
+    add_instruction (set_rel_font_size_direct vp ts) vp
+
+  let set_rel_mark_size vp ms =
+    vp.mark_size <- (ms /. usr_ms *. vp.square_side);
+    add_instruction (set_rel_mark_size_direct vp ms) vp
+
+  let get_line_width vp = vp.line_width
+  let get_font_size vp = vp.font_size
+  let get_mark_size vp = vp.mark_size
+
+(* ......................................................................... *)
+
+  let lower_left_corner vp =
+    Coordinate.to_device vp.coord_device ~x:0. ~y:0.
+
+  let upper_right_corner vp =
+    Coordinate.to_device vp.coord_device ~x:1. ~y:1.
+
+  let dimensions vp =
+    Coordinate.to_device_distance vp.coord_device ~dx:1. ~dy:1.
+
+  let set_color vp c =
+    add_instruction (set_color_direct vp c) vp
+
+  let set_global_line_cap vp lc =
+    add_instruction (set_line_cap_direct vp lc) vp
+
+  let set_global_dash vp x y =
+    add_instruction (set_dash_direct vp x y) vp
+
+  let set_global_line_join vp join =
+    add_instruction (set_line_join_direct vp join) vp
+
+  (* FIXME: a field in viewport should be added as for line_width... *)
+  let get_line_cap vp = Backend.get_line_cap vp.backend
+  let get_dash vp = Backend.get_dash vp.backend
+  let get_line_join vp = Backend.get_line_join vp.backend
+
+  let get_color vp = vp.color
+
+
 (* Initialization functions
  ***********************************************************************)
 
-  let init ?(lines=def_lw *. usr_lw) ?(text=def_ts *. usr_ts)
-      ?(marks=def_ms *. usr_ms) ?(w=640.) ?(h=480.) ~dirs backend_name =
+  let init ?(lines=def_lw) ?(text=def_ts) ?(marks=def_ms)
+      ?(w=640.) ?(h=480.) ~dirs backend_name =
     let backend = Backend.make ~dirs backend_name w h in
     let coord_root =
       if Backend.flipy backend then
@@ -589,10 +696,10 @@ end = struct
       axes_system = Axes.default_axes_system ();
       xaxis_size = xaxis_size;
       yaxis_size = yaxis_size;
-      sizes = Sizes.make_rel (Sizes.make_root size0 1. 1. 1.) lines text marks;
-      font_size = text;
-      mark_size = marks;
-      color = Color.black;
+      line_width = nan; (* They'll be updated right after. *)
+      font_size = nan;
+      mark_size = nan;
+      color = def_color;
       instructions = Queue.create ();
       immediate_drawing = false;
       redim = (fun _ _ _ -> ());
@@ -605,9 +712,17 @@ end = struct
     axes.Axes.x.Axes.range.Axes.vps <- [ viewport ];
     axes.Axes.y.Axes.unit_size.Axes.vps <- [ viewport ];
     axes.Axes.y.Axes.range.Axes.vps <- [ viewport ];
+    set_line_width viewport lines;
+    set_font_size viewport text;
+    set_mark_size viewport marks;
+    set_color viewport Color.black;
+    (*set_line_cap viewport def_line_cap;
+    let x, y = def_dash in
+    set_dash viewport y x ();
+    set_line_join viewport def_line_join;*)
     viewport
 
-  let make ?(lines=def_lw *. usr_lw) ?(text=def_ts *. usr_ts) ?(marks=def_ms *. usr_ms)
+  let make ?(lines=def_lw) ?(text=def_ts) ?(marks=def_ms)
       vp coord_name xmin xmax ymin ymax redim =
     if coord_name = Data then
       invalid_arg "Archimedes.Viewport.make: \
@@ -644,7 +759,7 @@ end = struct
       axes_system = Axes.default_axes_system ();
       xaxis_size = xaxis_size;
       yaxis_size = yaxis_size;
-      sizes = Sizes.make_rel vp.sizes lines text marks;
+      line_width = lines;
       mark_size = marks;
       font_size = text;
       color = vp.color;
@@ -661,46 +776,15 @@ end = struct
     axes.Axes.y.Axes.unit_size.Axes.vps <- [ viewport ];
     axes.Axes.y.Axes.range.Axes.vps <- [ viewport ];
     vp.children <- viewport :: vp.children;
+    set_line_width viewport lines;
+    set_font_size viewport text;
+    set_mark_size viewport marks;
+    set_color viewport Color.black;
+    (*set_line_cap_direct viewport def_line_cap;
+    let x, y = def_dash in
+    set_dash viewport y x ();
+    set_line_join viewport def_line_join;*)
     viewport
-
-(* Basic functions
- ***********************************************************************)
-
-  let get_backend vp = vp.backend
-
-  let initial_scale = 1.
-
-  let blank vp =
-    let ctm = Coordinate.use vp.backend vp.coord_device in
-    Backend.save vp.backend;
-    Backend.clear_path vp.backend;
-    Backend.set_color vp.backend Color.white;
-    Backend.rectangle vp.backend 0. 0. 1. 1.;
-    Backend.fill vp.backend;
-    Backend.restore vp.backend;
-    Coordinate.restore vp.backend ctm
-
-  let add_instruction f vp = Queue.push f vp.instructions
-
-  (* Note: if a vp is synchronized with one of its children, this children
-     will be redrawn two times. *)
-  let rec do_instructions vp =
-    if vp.saves != [] then print_string "Warning: saves list is not empty\n";
-    blank vp;
-    set_color_direct vp vp.color ();
-    Queue.iter (fun f -> f ()) vp.instructions;
-    List.iter do_instructions (List.rev vp.children)
-
-  let save vp = add_instruction (save_direct vp) vp
-  let restore vp = add_instruction (restore_direct vp) vp
-
-  let close vp =
-    let parent = vp.parent in
-    parent.children <- List.filter (fun x -> not (x == vp)) parent.children;
-    if vp == parent then begin
-      do_instructions vp;
-      Backend.close vp.backend
-    end
 
 (* Axes update functions
  ***********************************************************************)
@@ -1031,61 +1115,6 @@ end = struct
     in
     (north, south, west, east, center)
 
-
-(* Data that depends directly on viewports
- ***********************************************************************)
-
-  let set_line_width vp lw =
-    add_instruction (set_line_width_direct vp lw) vp
-
-  let set_font_size vp ts =
-    add_instruction (set_font_size_direct vp ts) vp
-
-  let set_mark_size vp ms =
-    add_instruction (set_mark_size_direct vp ms) vp
-
-  let set_rel_line_width vp lw =
-    add_instruction (set_rel_line_width_direct vp lw) vp
-
-  let set_rel_font_size vp ts =
-    add_instruction (set_rel_font_size_direct vp ts) vp
-
-  let set_rel_mark_size vp ms =
-    add_instruction (set_rel_mark_size_direct vp ms) vp
-
-  (* Fixme: Are sizes still used ? *)
-  let get_line_width vp = (Sizes.get_lw vp.sizes) *. usr_lw
-  let get_font_size vp = (Sizes.get_ts vp.sizes) *. usr_ts
-  let get_mark_size vp = (Sizes.get_marks vp.sizes) *. usr_ms
-
-(* ......................................................................... *)
-
-  let lower_left_corner vp =
-    Coordinate.to_device vp.coord_device ~x:0. ~y:0.
-
-  let upper_right_corner vp =
-    Coordinate.to_device vp.coord_device ~x:1. ~y:1.
-
-  let dimensions vp =
-    Coordinate.to_device_distance vp.coord_device ~dx:1. ~dy:1.
-
-  let set_color vp c =
-    add_instruction (set_color_direct vp c) vp
-
-  let set_global_line_cap vp lc =
-    add_instruction (set_line_cap_direct vp lc) vp
-
-  let set_global_dash vp x y =
-    add_instruction (set_dash_direct vp x y) vp
-
-  let set_global_line_join vp join =
-    add_instruction (set_line_join_direct vp join) vp
-
-  let get_line_cap vp = Backend.get_line_cap vp.backend
-  let get_dash vp = Backend.get_dash vp.backend
-  let get_line_join vp = Backend.get_line_join vp.backend
-
-  let get_color vp = vp.color
 
 (* Viewport path manipulation
  ***********************************************************************)
