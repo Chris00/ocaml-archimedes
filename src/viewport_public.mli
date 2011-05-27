@@ -19,13 +19,7 @@
    LICENSE for more details. *)
 
 module type T = sig
-  module rec Axes : sig
-    type sign = Positive | Negative
-    (* TODO: Maybe that these should be private. *)
-    type axis
-    type t
-  end
-  and Viewport : sig
+  module Viewport : sig
     type t
 
     type coord_name = Device | Graph | Data | Orthonormal

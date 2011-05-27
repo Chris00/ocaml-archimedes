@@ -20,7 +20,6 @@
 
 module B = Backend
 module V = Viewport.Viewport
-module A = Viewport.Axes (* Corresponding to "dimensions" of a viewport *)
 
 (* FIXME: offset might benefit from better variant names such as Data |
    Graph. And, it doesn't support other coord_names. Maybe we should use
