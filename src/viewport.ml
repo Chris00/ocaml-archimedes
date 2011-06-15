@@ -945,10 +945,8 @@ end = struct
     let range = axis.Axes.range in
     remove_from_sync vp range;
     axis.Axes.range <- {
-      range with
-        Axes.vps = [vp];
-        Axes.value = {
-          range.Axes.value with Axes.x0 = range.Axes.value.Axes.x0 }
+      Axes.vps = [vp];
+      Axes.value = { range.Axes.value with Axes.x0 = range.Axes.value.Axes.x0 }
     }
 
   let desync_range ?(x=true) ?(y=true) vp =

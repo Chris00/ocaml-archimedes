@@ -76,6 +76,7 @@ let samplefx ?(xlog=false) ?(ylog=false) ?(min_step=1E-9) ?(max_yrange=1E9)
           (* FIXME: Numerical error here *)
           let x = if xlog then x0 *. step else x0 +. step in
           let y = f x in
+          (* TODO: I'm not okay with that test, check and document it ! *)
           if is_nan y || is_inf ylog max_yrange y then
             next_point (i+1) tmin x y bounds listxy (len+1) extents
           else

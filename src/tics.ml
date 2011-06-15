@@ -76,6 +76,7 @@ let label_of_float label x = match label with
   | Expnumber_named _ -> raise (Failure "Not yet implemented")
   | Custom f -> f x
 
+(* FIXME: log in unused for now, we have to take it into account. *)
 let loose_labels ?(ntics=5) log xmin xmax label =
   let range = nicenum (xmax -. xmin) false in
   let d = nicenum (range /. float (pred ntics)) true in

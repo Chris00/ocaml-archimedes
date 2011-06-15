@@ -18,6 +18,12 @@
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the file
    LICENSE for more details. *)
 
+(* TODO: That code is going to be moved in backends and rewritten to be
+   closer to the TikZ way of handling arrows (we'll have to add a
+   [shorten_path] function to the Path module in order to achieve
+   that). Cairo and Graphics may share the same code, but TikZ would
+   rather use its own implementation. *)
+
 module V = Viewport
 
 type style =
@@ -46,22 +52,22 @@ let add_to_path path size alpha style =
   | Unstyled -> ()
   | Simple -> simple ()
   | Double ->
-      simple ();
-      rel_move_to (-0.2) 0.;
-      simple ();
-      rel_move_to 0.2 0.;
+    simple ();
+    rel_move_to (-0.2) 0.;
+    simple ();
+    rel_move_to 0.2 0.;
   | Triple ->
-      simple ();
-      rel_move_to (-0.2) 0.;
-      simple ();
-      rel_move_to (-0.2) 0.;
-      simple ();
-      rel_move_to 0.4 0.
+    simple ();
+    rel_move_to (-0.2) 0.;
+    simple ();
+    rel_move_to (-0.2) 0.;
+    simple ();
+    rel_move_to 0.4 0.
   | Diamond ->
-      rel_line_to (-0.5) (-0.3);
-      rel_line_to (-0.5) 0.3;
-      rel_line_to 0.5 0.3;
-      rel_line_to 0.5 (-0.3);
+    rel_line_to (-0.5) (-0.3);
+    rel_line_to (-0.5) 0.3;
+    rel_line_to 0.5 0.3;
+    rel_line_to 0.5 (-0.3);
   | Circle -> (* TODO *) ()
   | Stop ->
       rel_move_to 0. (-0.5);
