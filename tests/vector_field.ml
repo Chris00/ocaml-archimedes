@@ -3,7 +3,7 @@ module V = Viewport
 
 let draw bk =
   let f vp x y =
-    Arrows.line ~head:(Arrows.Simple) vp x y (x -. y) (x +. y)
+    Arrows.line ~head:Arrows.Simple vp x y (x -. y) (x +. y)
   in
   let vp = V.init ~w:1024. ~h:600. ~dirs:["../src"; "./src"] bk in
   V.set_line_width vp 1.;

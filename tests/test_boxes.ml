@@ -17,6 +17,11 @@ let draw bk =
 
   Axes.box vp;
 
+  let vp0 = vps.(1) in
+  V.yrange vp0 (-2.) 2.;
+  P.fx vp0 (fun x -> 1. /. x) (-1.) 1.;
+  Axes.box vp0;
+
   V.close vp
 
 let () =

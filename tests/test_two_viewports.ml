@@ -17,7 +17,7 @@ let draw bk =
   P.fx vp1 (fun x -> sin x *. (cos x +. 1.)) 0. 10.;
   P.fx vp2 (fun x -> x ** 2.) 0. 10.;
 
-  V.rectangle vp2 ~x:0. ~y:0. ~w:1. ~h:1.;
+(*  V.rectangle vp2 ~x:0. ~y:0. ~w:1. ~h:1.;*)
   V.stroke vp2 V.Device;
 
   V.close vp
