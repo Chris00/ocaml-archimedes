@@ -9,7 +9,7 @@ let draw bk =
   let g x = sin x in
   let f x = x in
   P.fx ~g ~fill:true ~pathstyle:(P.Linespoints "o") vp f (-10.) 10.;
-  Axes.box (*~tics:(Tics.Equidistants (Tics.Number 5, 0., 1., 2)) *)vp;
+  Axes.box vp (*~tics:(Tics.Equidistants (Tics.Number 5, 0., 1., 2)) *);
   (*   P.fx (* ~g ~fill:true *) ~pathstyle:(P.Linespoints "o") vp (fun x -> x *. x) (-10.) 10.;
        Axes.cross ~tics:(Tics.Equidistants (Tics.Number 5, 0., 3., 1)) vp; *)
   V.close vp

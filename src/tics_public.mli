@@ -21,11 +21,11 @@
 module type T = sig
   type labels =
     | No_label
-    | Text of (string * float) array
+    | Text of (string * float) array (* TODO use lists *)
     | Number of int
     | Expnumber of float
     | Expnumber_named of float * string
-    | Custom of (float -> string option)
+    | Custom of (float -> string option) (* TODO no option needed *)
 
   type tic =
     | Major of string option * float
@@ -38,4 +38,5 @@ module type T = sig
     | Auto of labels
 
   val tics: bool -> float -> float -> t -> tic list
+    (* TODO log : optional *)
 end
