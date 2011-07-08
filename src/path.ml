@@ -159,7 +159,7 @@ let range_bezier x0 x1 x2 x3 =
           min f2 (min x0 x3), max f2 (max x0 x3)
         else min x0 x3, max x0 x3
 
-(** Return the smaller rectangle containing [r] and the Bézier curve
+(** Return the smaller rectangle containing [r] and the Bezier curve
     given by the control points. *)
 let update_curve e x0 y0 x1 y1 x2 y2 x3 y3 =
   let xmin, xmax = range_bezier x0 x1 x2 x3 in
@@ -228,22 +228,79 @@ let close p =
     p.y <- y
   end
 
-let do_on_backend b = function
-  | Move_to (x, y) -> Backend.move_to b x y
-  | Line_to (x, y) -> Backend.line_to b x y
-  | Rectangle (x, y, w, h) -> Backend.rectangle b x y w h
-  | Curve_to (_, _, x1, y1, x2, y2, x3, y3) ->
-      Backend.curve_to b x1 y1 x2 y2 x3 y3
-  | Close (_, _) -> Backend.close_path b
+let eps = 1E-6
+let inner_x x0 xend x = x0 -. eps <= x && x <= xend +. eps
+let inner_y y0 yend y = y0 -. eps <= y && y <= yend +. eps
+let inner (x0, xend, y0, yend) x y =
+  inner_x x0 xend x && inner_y y0 yend y
 
-let stroke_on_backend p b =
+let intersection x1 y1 x2 y2 x3 y3 x4 y4 =
+  (* Formula taken from Wikipedia; article "Line-line intersection" *)
+  let f = 1. /. ((x1 -. x2) *. (y3 -. y4) -. (y1 -. y2) *. (x3 -. x4)) in
+  let f1 = x1 *. y2 -. y1 *. x2 and f2 = x3 *. y4 -. y3 *. x4 in
+  (f1 *. (x3 -. x4) -. (x1 -. x2) *. f2) *. f,
+  (f1 *. (y3 -. y4) -. (y1 -. y2) *. f2) *. f
+
+let distance x y x' y' =
+  abs_float (x -. x') +. abs_float (y -. y')
+
+let clip_point (x0, xend, y0, yend) x y x' y' =
+  (* FIXME this code seems really improvable *)
+  let x1, y1 = intersection x0 y0 xend y0 x y x' y'
+  and x2, y2 = intersection xend y0 xend yend x y x' y'
+  and x3, y3 = intersection x0 yend xend yend x y x' y'
+  and x4, y4 = intersection x0 y0 x0 yend x y x' y' in
+  let d1 = if inner_x x0 xend x1 then distance x y x1 y1 else infinity
+  and d2 = if inner_y y0 yend y2 then distance x y x2 y2 else infinity
+  and d3 = if inner_x x0 xend x3 then distance x y x3 y3 else infinity
+  and d4 = if inner_y y0 yend y4 then distance x y x4 y4 else infinity in
+  let data = [(x1, y1, d1); (x2, y2, d2); (x3, y3, d3); (x4, y4, d4)] in
+  let third (x, y, d) = d in
+  let default = (nan, nan, infinity) in
+  let x, y, _ = List.fold_left
+    (fun a b -> if third b < third a then b else a) default data
+  in x, y
+
+let clipped_segment limits x y x' y' =
+  let x, y =
+    if inner limits x y then x, y
+    else clip_point limits x y x' y'
+  and x', y' =
+    if inner limits x' y' then x', y'
+    else clip_point limits x' y' x y
+  in
+  (x, y, x', y')
+
+let do_on_backend limits (curx, cury) b = function
+  (* FIXME limits are not respected for rectangles and curves *)
+  | Move_to (x, y) -> Backend.move_to b x y; (x, y)
+  | Line_to (x, y) ->
+      let cx, cy, cx', cy' = clipped_segment limits curx cury x y in
+      (* TODO Check if all tests are mandatory or not *)
+      if cx = cx && cy = cy && cx' = cx' && cy' = cy' then begin
+        if cx != curx || cy != cury then Backend.move_to b cx cy;
+        Backend.line_to b cx' cy';
+        if cx' != x || cy' != cury then Backend.move_to b cx' cy'
+      end;
+      (x, y)
+  | Rectangle (x, y, w, h) -> Backend.rectangle b x y w h; x, y
+  | Curve_to (_, _, x1, y1, x2, y2, x3, y3) ->
+      Backend.curve_to b x1 y1 x2 y2 x3 y3; x3, y3
+  | Close (_, _) -> Backend.close_path b; 0., 0.
+
+let stroke_on_backend ?(limits=0., 1., 0., 1.) p b =
+  let coords = ref (0., 0.) in
   Backend.clear_path b;
-  List.iter (do_on_backend b) (List.rev p.path);
+  List.iter (fun action -> coords := do_on_backend limits !coords b action)
+    (List.rev p.path);
   Backend.stroke b
 
-let fill_on_backend p b =
+let fill_on_backend ?(limits=neg_infinity, neg_infinity, infinity, infinity)
+    p b =
+  let coords = ref (0., 0.) in
   Backend.clear_path b;
-  List.iter (do_on_backend b) (List.rev p.path);
+  List.iter (fun action -> coords := do_on_backend limits !coords b action)
+    (List.rev p.path);
   Backend.fill b
 
 let current_point p = p.x, p.y

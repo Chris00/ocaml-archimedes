@@ -70,18 +70,28 @@ module type T = sig
 
   val close: t -> unit
 
-  val stroke_on_backend: t -> Backend.t -> unit
-  (** [stroke_on_backend p bk] strokes the path [p] on the backend
-      [bk]. It will not clear the path [p] but will clear the path of
-      [bk]. *)
+  val stroke_on_backend: ?limits:float * float * float * float ->
+    t -> Backend.t -> unit
+    (** [stroke_on_backend p bk] strokes the path [p] on the backend
+        [bk]. It will not clear the path [p] but will clear the path of
+        [bk].
 
-  val fill_on_backend: t -> Backend.t -> unit
-  (** [fill_on_backend p bk] fills in the path [p] on the backend
-      [bk]. It will not clear the path [p] but will clear the path of
-      [bk]. *)
+        @param limits a quartet of float indicating where to clip the
+        path. Default: the unit rectangle. One can use (-infinity,
+        -infinity, infinity, infinity) for no clip. *)
+
+  val fill_on_backend: ?limits:float * float * float * float ->
+    t -> Backend.t -> unit
+    (** [fill_on_backend p bk] fills in the path [p] on the backend
+        [bk]. It will not clear the path [p] but will clear the path of
+        [bk].
+
+        @param limits a quartet of float indicating where to clip the
+        path. Default: the unit rectangle. One can use (neg_infinity,
+        neg_infinity, infinity, infinity) for no clip. *)
 
   val current_point: t -> float * float
-  (** [current_point p] returns the current point of the path *)
+    (** [current_point p] returns the current point of the path *)
 
   val transform: t -> (float * float -> float * float) -> t
   (** [transform p f] returns a new path that is the path [p] transformed by
