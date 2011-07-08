@@ -262,26 +262,27 @@ let clip_point (x0, xend, y0, yend) x y x' y' =
   in x, y
 
 let clipped_segment limits x y x' y' =
-  let x, y =
+  let nx, ny =
     if inner limits x y then x, y
     else clip_point limits x y x' y'
-  and x', y' =
+  and nx', ny' =
     if inner limits x' y' then x', y'
     else clip_point limits x' y' x y
   in
-  (x, y, x', y')
+  (* Note: If one variable (here nx) is correct, the other are also *)
+  if nx < min x x' || nx > max x x' then (nan, nan, nan, nan)
+  else (nx, ny, nx', ny')
 
 let do_on_backend limits (curx, cury) b = function
   (* FIXME limits are not respected for rectangles and curves *)
   | Move_to (x, y) -> Backend.move_to b x y; (x, y)
   | Line_to (x, y) ->
       let cx, cy, cx', cy' = clipped_segment limits curx cury x y in
-      (* TODO Check if all tests are mandatory or not *)
-      if cx = cx && cy = cy && cx' = cx' && cy' = cy' then begin
+      if cx = cx && cx' = cx' then begin
         if cx != curx || cy != cury then Backend.move_to b cx cy;
         Backend.line_to b cx' cy';
-        if cx' != x || cy' != cury then Backend.move_to b cx' cy'
-      end;
+        if cx' != x || cy' != cury then Backend.move_to b x y
+      end else Backend.move_to b x y;
       (x, y)
   | Rectangle (x, y, w, h) -> Backend.rectangle b x y w h; x, y
   | Curve_to (_, _, x1, y1, x2, y2, x3, y3) ->
@@ -295,8 +296,7 @@ let stroke_on_backend ?(limits=0., 1., 0., 1.) p b =
     (List.rev p.path);
   Backend.stroke b
 
-let fill_on_backend ?(limits=neg_infinity, neg_infinity, infinity, infinity)
-    p b =
+let fill_on_backend ?(limits=0., 1., 0., 1.) p b =
   let coords = ref (0., 0.) in
   Backend.clear_path b;
   List.iter (fun action -> coords := do_on_backend limits !coords b action)
