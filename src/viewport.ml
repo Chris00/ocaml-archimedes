@@ -190,7 +190,8 @@ and Viewport : sig
     mutable instructions: (unit -> unit) Queue.t;
     mutable immediate_drawing: bool;
     redim: t -> float -> float -> unit;
-    mutable saves: save_data list
+    mutable clip: bool;
+    mutable saves: save_data list;
   }
   type coord_name = Device | Graph | Data | Orthonormal
   val get_coord_from_name : t -> coord_name -> Coordinate.t
@@ -375,6 +376,9 @@ end = struct
        them correctly *)
     redim: t -> float -> float -> unit;
 
+    (* Should we clip the elements out of the viewport ? *)
+    mutable clip: bool;
+
     (* internal *)
     mutable saves: save_data list;
   }
@@ -392,6 +396,11 @@ end = struct
 
 (* General functions
  ***********************************************************************)
+
+  let xmin vp = vp.axes_system.Axes.x.Axes.gx0
+  let xmax vp = vp.axes_system.Axes.x.Axes.gxend
+  let ymin vp = vp.axes_system.Axes.y.Axes.gx0
+  let ymax vp = vp.axes_system.Axes.y.Axes.gxend
 
   let get_coord_from_name vp = function
     | Device -> vp.coord_device
@@ -496,14 +505,24 @@ end = struct
     let path = get_path vp path coord_name in
     let coord = get_coord_from_name vp coord_name in
     let ctm = Coordinate.use vp.backend coord in
-    Path.stroke_on_backend path vp.backend;
+    let limits = if vp.clip then
+      if coord_name = Data then (xmin vp, xmax vp, ymin vp, ymax vp)
+      else if coord_name = Orthonormal then
+        let maxx, maxy = ortho_from vp Device (1., 1.) in (0., maxx, 0., maxy)
+      else (0., 1., 0., 1.)
+    else (neg_infinity, infinity, neg_infinity, infinity) in
+    Path.stroke_on_backend ~limits path vp.backend;
     Coordinate.restore vp.backend ctm
 
   let fill_direct ?path vp coord_name () =
     let path = get_path vp path coord_name in
     let coord = get_coord_from_name vp coord_name in
     let ctm = Coordinate.use vp.backend coord in
-    Path.fill_on_backend path vp.backend;
+    let limits = if vp.clip then
+      if coord_name = Data then xmin vp, xmax vp, ymin vp, ymax vp
+      else 0., 1., 0., 1.
+    else neg_infinity, infinity, neg_infinity, infinity in
+    Path.fill_on_backend ~limits path vp.backend;
     Coordinate.restore vp.backend ctm
 
   let clip_rectangle_direct vp ~x ~y ~w ~h () =
@@ -639,6 +658,12 @@ end = struct
   let dimensions vp =
     Coordinate.to_device_distance vp.coord_device ~dx:1. ~dy:1.
 
+  let set_clip vp =
+    vp.clip = true
+
+  let set_noclip vp =
+    vp.clip = false
+
   let set_color vp c =
     add_instruction (set_color_direct vp c) vp
 
@@ -704,6 +729,7 @@ end = struct
       immediate_drawing = false;
       redim = (fun _ _ _ -> ());
       square_side = size0;
+      clip = true;
       saves = []
     } in
     let axes = viewport.axes_system in
@@ -767,6 +793,7 @@ end = struct
       immediate_drawing = false;
       redim = redim;
       square_side = size0;
+      clip = true;
       saves = []
     } in
     let axes = viewport.axes_system in
@@ -788,11 +815,6 @@ end = struct
 
 (* Axes update functions
  ***********************************************************************)
-
-  let xmin vp = vp.axes_system.Axes.x.Axes.gx0
-  let xmax vp = vp.axes_system.Axes.x.Axes.gxend
-  let ymin vp = vp.axes_system.Axes.y.Axes.gx0
-  let ymax vp = vp.axes_system.Axes.y.Axes.gxend
 
   let update_coordinate_system vp =
     let x0, xend, y0, yend = xmin vp, xmax vp, ymin vp, ymax vp in
