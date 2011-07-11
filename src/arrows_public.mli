@@ -24,19 +24,19 @@ module type T = sig
       (** Style of the arrow end. Below are textual representations of
           those endings *)
     | Unstyled
-        (** ---- *)
+        (** ------- *)
     | Simple
-        (** ----> *)
+        (** ------> *)
     | Double
-        (** ---->> *)
+        (** ----->> *)
     | Triple
         (** ---->>> *)
     | Diamond
-        (** ----<> *)
+        (** -----<> *)
     | Circle
-        (** ----O *)
+        (** ------O *)
     | Stop
-        (** ----| *)
+        (** ------| *)
     | Custom of (Path.t -> unit)
         (** It is also possible to give a path in the Custom style,
             leading to a completely customised arrow *)
