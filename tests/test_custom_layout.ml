@@ -7,7 +7,7 @@ let pi = 4. *. atan 1.
 
 let draw bk =
   let vp = V.init ~w:1024. ~h:768. ~dirs:["../src"; "./src"] bk in
-  let trace i vp =
+  let trace _ vp =
     V.set_rel_line_width vp 1.;
 
     V.set_color vp Color.red;

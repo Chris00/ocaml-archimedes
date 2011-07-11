@@ -255,7 +255,7 @@ let clip_point (x0, xend, y0, yend) x y x' y' =
   and d3 = if inner_x x0 xend x3 then distance x y x3 y3 else infinity
   and d4 = if inner_y y0 yend y4 then distance x y x4 y4 else infinity in
   let data = [(x1, y1, d1); (x2, y2, d2); (x3, y3, d3); (x4, y4, d4)] in
-  let third (x, y, d) = d in
+  let third (_, _, d) = d in
   let default = (nan, nan, infinity) in
   let x, y, _ = List.fold_left
     (fun a b -> if third b < third a then b else a) default data

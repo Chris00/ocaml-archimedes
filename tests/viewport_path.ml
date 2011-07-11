@@ -7,7 +7,6 @@ let pi = 4. *. atan 1.
 
 let draw bk =
   let vp = V.init ~w:800. ~h:700. ~dirs:["../src"; "./src"] bk in
-  let bk = V.get_backend vp in
 
   (* Create a path *)
   let p = P.make () in
