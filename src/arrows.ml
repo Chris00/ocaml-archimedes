@@ -70,7 +70,7 @@ let add_to_path path size alpha style =
     rel_line_to (-0.5) 0.3;
     rel_line_to 0.5 0.3;
     rel_line_to 0.5 (-0.3);
-  | Circle -> (* TODO *) ()
+  | Circle -> (* TODO implement the circle ending *) ()
   | Stop ->
       rel_move_to 0. (-0.5);
       rel_line_to 0. 1.;
@@ -82,12 +82,6 @@ let path_line_to ?(size=0.01) ?(head=Simple) ?(tail=Unstyled) path x y =
   let alpha = atan2 (y -. y0) (x -. x0) in
   add_to_path path size alpha tail;
   Path.line_to path x y;
-  add_to_path path size alpha head
-
-let path_arc ?(size=0.01) ?(head=Simple) ?(tail=Unstyled) path r a1 a2 =
-  let alpha = 0. in
-  add_to_path path size alpha tail;
-  Path.arc path r a1 a2;
   add_to_path path size alpha head
 
 let line_direct ?(size=0.01) ?(head=Simple) ?(tail=Unstyled) vp x0 y0 x y () =
