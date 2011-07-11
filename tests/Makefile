@@ -16,7 +16,6 @@ TESTS = backend_line.ml viewport_path.ml marks.ml test_layout.ml \
   test_ortho_axes.ml demo_zoom.ml test_custom_labels.ml \
 	test_plot_partial.ml test_clip.ml
 
-#viewports.ml 
 .PHONY: all byte opt native
 all: byte native
 opt: native
@@ -25,6 +24,8 @@ native: $(TESTS:.ml=.com)
 
 
 include $(ROOT)/Makefile.ocaml
+%.do: %.exe
+	./$*.exe
 
 clean::
 	$(RM) $(wildcard *.exe *.com)

@@ -55,3 +55,6 @@ clean:
 dist-clean::
 	$(RM) -r aclocal.m4 autom4te.cache config.log config.status
 	$(MAKE) -C src $@
+
+tests/%.ml tests/%.do: default
+	$(MAKE) -C tests $*.do
