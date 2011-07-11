@@ -917,8 +917,7 @@ end = struct
       if is_inf yrange.Axes.data_xend || y1' > yrange.Axes.data_xend then
         (yrange.Axes.data_xend <- y1'; yupdated := true);
     (* Update x0, xend ranges, unit_size and gx0, gxend and redraw... *)
-    update_axes_ranges vp !xupdated !yupdated;
-    Printf.printf "%f %f %f %f\n" (xmin vp) (xmax vp) (ymin vp) (ymax vp)
+    update_axes_ranges vp !xupdated !yupdated
 
   (* Utility function for (x|y)range *)
   let update_axis vp axis axis_size x0 xend =

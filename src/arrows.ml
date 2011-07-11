@@ -118,6 +118,8 @@ let arc_direct ?(size=0.01) ?(head=Simple) ?(tail=Unstyled)
     (x0 +. r *. (cos a2 -. cos a1), y0 +. r *. (sin a2 -. sin a1)) in
   let tailangle = a1 +. pi /. 2. in (* FIXME adjust with V.Data ratio *)
   let tailx, taily = V.ortho_from vp V.Data (x0, y0) in
+  let headangle = headangle +. if a1 > a2 then 0. else pi in
+  let tailangle = tailangle +. if a1 > a2 then 0. else pi in
   (* arc *)
   let path_arc = Path.make_at x0 y0 in
   Path.arc path_arc ~r ~a1 ~a2;
