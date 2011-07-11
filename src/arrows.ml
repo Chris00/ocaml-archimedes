@@ -26,6 +26,8 @@
 
 module V = Viewport
 
+let pi = atan 1. *. 4.
+
 type style =
   | Unstyled
   | Simple
@@ -109,11 +111,27 @@ let line ?(size=0.01) ?(head=Simple) ?(tail=Unstyled) vp x0 y0 x y =
   V.auto_fit vp x0 y0 x y;
   V.add_instruction (line_direct ~size ~head ~tail vp x0 y0 x y) vp
 
-let arc ?(size=1.) ?(head=Simple) ?(tail=Unstyled) vp x0 y0 r a1 a2 =
-  let x0', y0' = V.ortho_from vp V.Data (x0, y0) in
-  let alpha0 = 0. in (* TODO *)
+let arc_direct ?(size=0.01) ?(head=Simple) ?(tail=Unstyled)
+    vp x0 y0 r a1 a2 () =
+  let headangle = a2 -. pi /. 2. in (* FIXME adjust with V.Data ratio *)
+  let headx, heady = V.ortho_from vp V.Data
+    (x0 +. r *. (cos a2 -. cos a1), y0 +. r *. (sin a2 -. sin a1)) in
+  let tailangle = a1 +. pi /. 2. in (* FIXME adjust with V.Data ratio *)
+  let tailx, taily = V.ortho_from vp V.Data (x0, y0) in
+  (* arc *)
   let path_arc = Path.make_at x0 y0 in
-  Path.arc path_arc r a1 a2;
-  V.stroke ~path:path_arc vp V.Data;
-  (* TODO *)
-  ()
+  Path.arc path_arc ~r ~a1 ~a2;
+  V.stroke_direct ~path:path_arc vp V.Data ();
+  (* head *)
+  let path_head = Path.make_at headx heady in
+  add_to_path path_head size headangle head;
+  V.stroke_direct ~path:path_head vp V.Orthonormal ();
+  (* tail *)
+  let path_tail = Path.make_at tailx taily in
+  add_to_path path_tail size tailangle tail;
+  V.stroke_direct ~path:path_tail vp V.Orthonormal ()
+
+let arc ?size ?head ?tail vp x0 y0 r a1 a2 =
+  let cx, cy = x0 -. cos a1 *. r, y0 -. sin a1 *. r in
+  V.auto_fit vp (cx -. r) (cy -. r) (cx +. r) (cy +. r);
+  V.add_instruction (arc_direct ?size ?head ?tail vp x0 y0 r a1 a2) vp
