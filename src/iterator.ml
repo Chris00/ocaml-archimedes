@@ -18,103 +18,85 @@
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the file
    LICENSE for more details. *)
 
-type ff = float * float
-
-type which =
-  | List of ff list * ff list
-  | Array of ff array
-  (* Le code des itérateurs sur fonctions n'est pas dans ce module mais
-     dans le module Sampler. Le but ici est simplement de fournir une
-     interface unifiée pour tous les types d'itérateurs. Par ailleurs,
-     l'itération sur deux fonctions en même temps reste à définir: Que
-     faire lorsque sur un sous-ensemble de R, la première fonction est
-     définie mais pas la seconde ? *)
-  | Function of Sampler.t
-  | C
-  | Fortran
-
-type which2 =
-  | List2 of ff list * ff list * ff list * ff list
-  | Array2 of ff array * ff array
-  | Function2 of Sampler.t * Sampler.t
-  | C2
-  | Fortran2
+module B = Bigarray
 
 exception EOI
 
+type which =
+  | List of float list * float list ref
+  | Array of float array
+  | C of (float, B.float64_elt, B.c_layout) B.Array1.t
+  | Fortran of (float, B.float64_elt, B.fortran_layout) B.Array1.t
+  | List2 of (float * float) list * (float * float) list ref
+  | Array2 of (float * float) array
+  | C2 of (float, B.float64_elt, B.c_layout) B.Array2.t
+  | Fortran2 of (float, B.float64_elt, B.fortran_layout) B.Array2.t
+  | Function of Sampler.t
+
 type t = {
-  mutable data : which;
+  data : which;
   mutable pos : int;
 }
 
-type t2 = {
-  mutable data2 : which2;
-  mutable pos2 : int;
-}
-
-let of_list l = {data = List (l, l); pos = 0}
+(* Iterators over data giving only y, using iterator's position as x *)
+let of_list l = {data = List (l, ref l); pos = 0}
 let of_array a = {data = Array a; pos = 0}
+let of_c b = {data = C b; pos = 0}
+let of_fortran b = {data = Fortran b; pos = 0}
+
+(* Iterators over data giving x and y *)
+let of_list2 l = {data = List2 (l, ref l); pos = 0}
+let of_array2 a = {data = Array2 a; pos = 0}
+let of_c2 b = {data = C2 b; pos = 0}
+let of_fortran2 b = {data = Fortran2 b; pos = 0}
 let of_function f a b = {data = Function (Sampler.create f a b); pos = 0}
 
-let of_list2 l l' = {data2 = List2 (l, l, l', l'); pos2 = 0}
-let of_array2 a a' = {data2 = Array2 (a, a'); pos2 = 0}
-let of_function2 f f' a b = {data2 = Function2 (Sampler.create f a b,
-                                               Sampler.create f' a b);
-                             pos2 = 0}
+let next iter =
+  let ret = match iter.data with
+        (*    | List (x, ref []) -> raise EOI*)
+        (*    | List (x, ref (v :: l') as l) ->
+              l := l';
+              float iter.pos, v*)
+    | List (x, l) when !l = [] -> raise EOI
+    | List (x, l) ->
+        let v = List.hd !l in
+        l := List.tl !l;
+        float iter.pos, v
+    | Array a ->
+        if iter.pos = Array.length a then raise EOI;
+        float iter.pos, a.(iter.pos)
+    | C b ->
+        if iter.pos = B.Array1.dim b then raise EOI;
+        float iter.pos, b.{iter.pos}
+    | Fortran b ->
+        if iter.pos = B.Array1.dim b then raise EOI;
+        float iter.pos, b.{iter.pos}
+    | List2 (x, l) when !l = [] -> raise EOI
+    | List2 (x, l) ->
+        let x, y = List.hd !l in
+        l := List.tl !l;
+        x, y
+    | Array2 a ->
+        if iter.pos = Array.length a then raise EOI;
+        a.(iter.pos)
+    | C2 b ->
+        if iter.pos = B.Array2.dim1 b then raise EOI;
+        b.{iter.pos, 0}, b.{iter.pos, 1}
+    | Fortran2 b ->
+        if iter.pos = B.Array2.dim1 b then raise EOI;
+        b.{iter.pos, 0}, b.{iter.pos, 1}
+    | Function f -> begin match Sampler.next f with
+      | None -> raise EOI
+      | Some p -> p
+      end
+  in
+  iter.pos <- succ iter.pos;
+  ret
 
-let next iter = match iter.data with
-  | List (x, v :: l) ->
-      iter.data <- List (x, l);
-      v
-  | List _ -> raise EOI
-  | Array a ->
-      if iter.pos = Array.length a then raise EOI;
-      iter.pos <- succ iter.pos;
-      a.(pred iter.pos)
-  | Function f -> begin match Sampler.next f with
-    | None -> raise EOI
-    | Some v -> v
-    end
-  | C -> raise EOI
-  | Fortran -> raise EOI
-
-let next2 iter = match iter.data2 with
-  | List2 (x, v :: l, x', v' :: l') ->
-      iter.data2 <- List2 (x, l, x', l');
-      v, v'
-  | List2 _ -> raise EOI
-  | Array2 (a, a') ->
-      if iter.pos2 >= min (Array.length a) (Array.length a') then raise EOI;
-      iter.pos2 <- succ iter.pos2;
-      a.(pred iter.pos2), a'.(pred iter.pos2)
-  | Function2 _ -> raise EOI (* Voir le commentaire du début *)
-  | C2 -> raise EOI
-  | Fortran2 -> raise EOI
-
-let reset iter = match iter.data with
-  | List (l, _) -> iter.data <- List(l, l)
-  | Array _ -> iter.pos <- 0
+let reset iter =
+  iter.pos <- 0;
+  match iter.data with
+  | List (l, l') -> l' := l
+  | List2 (l, l') -> l' := l
   | Function f -> Sampler.reset f
-  | C  -> ()
-  | Fortran -> ()
-
-let reset2 iter = match iter.data2 with
-  | List2 (l, _, l', _) -> iter.data2 <- List2 (l, l, l', l')
-  | Array2 _ -> iter.pos2 <- 0
-  | Function2 _ -> () (* Voir le commentaire du début *)
-  | C2 -> ()
-  | Fortran2 -> ()
-
-let () =
-  let i = of_list [(1., 4.); (4., 2.); (4., 2.)] in
-  let a, b = next i in
-  let c, d = next i in
-  let e, f = next i in
-  Printf.printf "%f %f %f %f %f %f\n" a b c d e f;
-  reset i;
-  let g, h = next i in
-  let k, l = next i in
-  let m, n = next i in
-  Printf.printf "%f %f %f %f %f %f\n" g h k l m n
-
-
+  | Array _ | C _ | Fortran _ | Array2 _ | C2 _ | Fortran2 _ -> ()

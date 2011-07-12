@@ -21,23 +21,24 @@
 (** Iterations on points (internal module). *)
 
 module type T = sig
-  type ff = float * float
   type t
-  type t2
-
   exception EOI
 
-  val of_list : ff list -> t
-  val of_list2 : ff list -> ff list -> t2
-  val of_array : ff array -> t
-  val of_array2 : ff array -> ff array -> t2
+  val of_list : float list -> t
+  val of_array : float array -> t
+  val of_c : (float, Bigarray.float64_elt, Bigarray.c_layout)
+    Bigarray.Array1.t -> t
+  val of_fortran : (float, Bigarray.float64_elt, Bigarray.fortran_layout)
+    Bigarray.Array1.t -> t
+
+  val of_list2 : (float * float) list -> t
+  val of_array2 : (float * float) array -> t
+  val of_c2 : (float, Bigarray.float64_elt, Bigarray.c_layout)
+    Bigarray.Array2.t -> t
+  val of_fortran2 : (float, Bigarray.float64_elt, Bigarray.fortran_layout)
+    Bigarray.Array2.t -> t
   val of_function : (float -> float * float) -> float -> float -> t
-  val of_function2 : (float -> float * float) ->
-    (float -> float * float) -> float -> float -> t2
 
-  val next : t -> ff
-  val next2 : t2 -> ff * ff
-
+  val next : t -> float * float
   val reset : t -> unit
-  val reset2 : t2 -> unit
 end
