@@ -114,11 +114,6 @@ let reset iter =
   let next' () = sample_interval iter iter.data.nsamples t1 x1 y1 t2 x2 y2 in
   iter.next <- next'
 
-let of_data f =
-  let iter = {data=f; p=None; next=(fun () -> ())} in
-  reset iter;
-  iter
-
 let next iter =
   let v = iter.p in
   iter.next ();
@@ -128,4 +123,6 @@ let create ?(tlog=false) ?(min_step=1E-9) ?(nsamples=100)
     ?(strategy=strategy_midpoint) ?(criterion=criterion_none) f t1 t2 =
   let d = {tlog=tlog; min_step=min_step; nsamples=nsamples;
            strategy=strategy; criterion=criterion; f=f; t1=t1; t2=t2} in
-  of_data d
+  let iter = {data = d; p = None; next = (fun () -> ())} in
+  reset iter;
+  iter

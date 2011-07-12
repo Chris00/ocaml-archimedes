@@ -58,22 +58,8 @@ module type T = sig
     (** Same criterion as criterion_angle, but one can tell that the x/y
         axis is logarithmic, and increment precision in a more wise way *)
 
-  type data = {
-    tlog: bool;
-    min_step: float;
-    nsamples: int;
-    strategy: strategy;
-    criterion: criterion;
-    f: float -> (float * float);
-    t1: float;
-    t2: float
-  }
-
-  type t = {
-    data: data;
-    mutable p: (float * float) option;
-    mutable next: unit -> unit
-  }
+  type t
+    (** A sampler *)
 
   val create : ?tlog:bool -> ?min_step:float -> ?nsamples:int ->
     ?strategy:strategy -> ?criterion:criterion ->
@@ -96,7 +82,6 @@ module type T = sig
         those in this module
     *)
 
-  val of_data : data -> t
   val reset : t -> unit
   val next : t -> (float * float) option
 end

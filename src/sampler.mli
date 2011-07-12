@@ -18,38 +18,4 @@
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the file
    LICENSE for more details. *)
 
-type strategy = float -> float -> float
-type criterion = float -> float -> float -> float -> float -> float -> bool
-
-val strategy_midpoint : strategy
-val strategy_random : strategy
-val strategy_center_random : strategy
-
-val criterion_none : criterion
-val criterion_angle : ?threshold:float -> criterion
-val criterion_angle_log : bool -> bool -> ?threshold:float -> criterion
-
-type data = {
-  tlog: bool;
-  min_step: float;
-  nsamples: int;
-  strategy: strategy;
-  criterion: criterion;
-  f: float -> (float * float);
-  t1: float;
-  t2: float
-}
-
-type t = {
-  data: data;
-  mutable p: (float * float) option;
-  mutable next: unit -> unit
-}
-
-val create : ?tlog:bool -> ?min_step:float -> ?nsamples:int ->
-  ?strategy:strategy -> ?criterion:criterion ->
-  (float -> float * float) -> float -> float -> t
-
-val of_data : data -> t
-val reset : t -> unit
-val next : t -> (float * float) option
+include Sampler_public.T

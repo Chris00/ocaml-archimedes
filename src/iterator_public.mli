@@ -64,7 +64,22 @@ module type T = sig
     ?strategy:Sampler.strategy -> ?criterion:Sampler.criterion ->
     (float -> float * float) -> float -> float -> t
     (** [of_function f a b] Create an iterator from a function (R to R x
-        R), refining when necessary to get a smooth curve *)
+        R), refining when necessary to get a smooth curve
+
+        @param tlog do we need to step in a logarithmic way ?
+
+        @param min_step don't increment precision more than this threshold
+
+        @param nsamples base number of samples wanted (cut the space
+        between t1 and t2 in nsamples fragments of equivalent size,
+        depending on tlog)
+
+        @param strategy a customized strategy, which can be chosen among
+        those in this module
+
+        @param criterion a customized criterion, which can be chosen among
+        those in this module
+    *)
 
   val next : t -> float * float
     (** [next iter] returns the next value of [iter] *)
