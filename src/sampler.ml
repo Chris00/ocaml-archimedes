@@ -69,6 +69,11 @@ type data = {
   t2: float
 }
 
+(* data contains the function to plot and the parameters associated
+   (strategy, no more refinement criterion, etc.), p contains the next
+   point to give to the user, and next contains an OCaml function that
+   will update both p and next to get a new "next point" and a new "next
+   function". *)
 type t = {
   data: data;
   mutable p: (float * float) option;
