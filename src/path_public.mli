@@ -67,8 +67,14 @@ module type T = sig
         ([x1, y1]). Sets the path's current point to ([x3], [y3]) *)
 
   val arc: t -> r:float -> a1:float -> a2:float -> unit
+    (** [arc p r a1 a2] draws an arc starting at the path's current
+        point. The starting angle is [a1], the radius [r] and the arc is
+        drawn clockwise to the angle [a2]. The angles are given in
+        radians *)
 
   val close: t -> unit
+    (** [close p] Closes the path. It is usually not required to close a
+        path, this is useful only to ensure the path won't be extended. *)
 
   val stroke_on_backend: ?limits:float * float * float * float ->
     t -> Backend.t -> unit

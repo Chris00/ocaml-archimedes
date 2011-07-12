@@ -83,5 +83,7 @@ module type T = sig
     *)
 
   val reset : t -> unit
+    (** [reset s] Resets the sampler *)
   val next : t -> (float * float) option
+    (** [next s] Returns the next point of the sampling *)
 end
