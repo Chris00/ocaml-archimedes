@@ -57,15 +57,8 @@ let of_function ?tlog ?min_step ?nsamples ?strategy ?criterion f a b =
 
 let next iter =
   let ret = match iter.data with
-        (*    | List (_, ref []) -> raise EOI*)
-        (*    | List (x, ref (v :: l') as l) ->
-              l := l';
-              float iter.pos, v*)
-    | List (_, l) when !l = [] -> raise EOI
-    | List (_, l) ->
-        let v = List.hd !l in
-        l := List.tl !l;
-        float iter.pos, v
+    | List (_, {contents = []}) -> raise EOI
+    | List (_, ({contents = v :: l'} as l)) -> l := l'; float iter.pos, v
     | Array a ->
         if iter.pos = Array.length a then raise EOI;
         float iter.pos, a.(iter.pos)
@@ -75,11 +68,8 @@ let next iter =
     | Fortran b ->
         if iter.pos = B.Array1.dim b then raise EOI;
         float iter.pos, b.{iter.pos}
-    | List2 (_, l) when !l = [] -> raise EOI
-    | List2 (_, l) ->
-        let x, y = List.hd !l in
-        l := List.tl !l;
-        x, y
+    | List2 (_, {contents = []}) -> raise EOI
+    | List2 (_, ({contents = p :: l'} as l)) -> l := l'; p
     | Array2 a ->
         if iter.pos = Array.length a then raise EOI;
         a.(iter.pos)
