@@ -100,3 +100,21 @@ let reset iter =
   | List2 (l, l') -> l' := l
   | Function f -> Sampler.reset f
   | Array _ | C _ | Fortran _ | Array2 _ | C2 _ | Fortran2 _ -> ()
+
+let iter f iter =
+  try
+    while true do f (next iter) done
+  with
+  | EOI -> ()
+
+let iter_cache f iter =
+  let cache = ref [] in
+  try
+    while true do
+      let v = next iter in
+      f v;
+      cache := v :: !cache
+    done;
+    !cache
+  with
+  | EOI -> !cache

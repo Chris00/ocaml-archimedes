@@ -41,4 +41,6 @@ module type T = sig
 
   val next : t -> float * float
   val reset : t -> unit
+  val iter : (float * float -> unit) -> t -> unit
+  val iter_cache : (float * float -> unit) -> t -> (float * float) list
 end
