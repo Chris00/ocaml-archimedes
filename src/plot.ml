@@ -91,7 +91,7 @@ struct
 
   let fill_data fillcolor pathstyle vp path iter =
     let path = Path.copy path in
-    Iterator.Function.iter (close_data pathstyle path) iter;
+    Iterator.iter (close_data pathstyle path) iter;
     V.save vp;
     V.set_color vp fillcolor;
     V.fill ~path vp V.Data;
@@ -101,13 +101,13 @@ struct
       ?(fillcolor=Color.red) ?(pathstyle=Lines) ?(g=fun _ -> 0.) vp f a b =
     let h x = x, f x +. g x in
     let sampler =
-      Iterator.Function.create ~tlog:(V.xlog vp) ?min_step ?nsamples
+      Iterator.of_function ~tlog:(V.xlog vp) ?min_step ?nsamples
         ?strategy ?criterion
     in
     let iter = sampler h a b in
     let miny = ref infinity and maxy = ref neg_infinity in
     let path = Path.make () in
-    let data_rev = Iterator.Function.iter_cache
+    let data_rev = Iterator.iter_cache
       (fun (hx, hy) ->
           miny := min hy !miny; maxy := max hy !maxy;
           draw_data pathstyle path ~base:(g hx) (hx, hy)) iter

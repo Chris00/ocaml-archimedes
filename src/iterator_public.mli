@@ -60,7 +60,9 @@ module type T = sig
     Bigarray.Array2.t -> t
     (** [of_fortran2 b] Transforms a bigarray of float couples with a
         Fortran layout into an iterator returning those couples *)
-  val of_function : (float -> float * float) -> float -> float -> t
+  val of_function : ?tlog:bool -> ?min_step:float -> ?nsamples:int ->
+    ?strategy:Sampler.strategy -> ?criterion:Sampler.criterion ->
+    (float -> float * float) -> float -> float -> t
     (** [of_function f a b] Create an iterator from a function (R to R x
         R), refining when necessary to get a smooth curve *)
 

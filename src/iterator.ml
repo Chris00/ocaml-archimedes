@@ -49,16 +49,20 @@ let of_list2 l = {data = List2 (l, ref l); pos = 0}
 let of_array2 a = {data = Array2 a; pos = 0}
 let of_c2 b = {data = C2 b; pos = 0}
 let of_fortran2 b = {data = Fortran2 b; pos = 0}
-let of_function f a b = {data = Function (Sampler.create f a b); pos = 0}
+
+let of_function ?tlog ?min_step ?nsamples ?strategy ?criterion f a b =
+  {data = Function (Sampler.create ?tlog ?min_step ?nsamples
+                      ?strategy ?criterion f a b);
+   pos = 0}
 
 let next iter =
   let ret = match iter.data with
-        (*    | List (x, ref []) -> raise EOI*)
+        (*    | List (_, ref []) -> raise EOI*)
         (*    | List (x, ref (v :: l') as l) ->
               l := l';
               float iter.pos, v*)
-    | List (x, l) when !l = [] -> raise EOI
-    | List (x, l) ->
+    | List (_, l) when !l = [] -> raise EOI
+    | List (_, l) ->
         let v = List.hd !l in
         l := List.tl !l;
         float iter.pos, v
@@ -71,8 +75,8 @@ let next iter =
     | Fortran b ->
         if iter.pos = B.Array1.dim b then raise EOI;
         float iter.pos, b.{iter.pos}
-    | List2 (x, l) when !l = [] -> raise EOI
-    | List2 (x, l) ->
+    | List2 (_, l) when !l = [] -> raise EOI
+    | List2 (_, l) ->
         let x, y = List.hd !l in
         l := List.tl !l;
         x, y
