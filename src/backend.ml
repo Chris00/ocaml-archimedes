@@ -365,8 +365,6 @@ let make ?(dirs=[Conf.plugins_dir]) b width height =
         )
       end (get_dependencies dirs base);
       (* Load the main module *)
-      print_string base;
-      print_newline ();
       let dyn = (try find_file dirs (Dynlink.adapt_filename(base ^ ".cmo"))
                  with Not_found -> raise(Error(Nonexistent backend))) in
       (try Dynlink.loadfile dyn

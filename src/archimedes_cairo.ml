@@ -18,8 +18,7 @@
 
 (** Cairo Archimedes plugin *)
 
-module M = Archimedes.Matrix
-module Backend = Archimedes.Backend
+module M = Matrix
 
 module B : Backend.Capabilities =
 struct
@@ -75,7 +74,7 @@ struct
   let flipy _ = true
 
   let set_color t c =
-    let r,g,b,a = Archimedes.Color.get_rgba c in
+    let r,g,b,a = Color.get_rgba c in
     Cairo.set_source_rgba t r g b a
 
   let arc t ~r ~a1 ~a2 =

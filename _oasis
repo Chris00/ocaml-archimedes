@@ -7,7 +7,9 @@ Authors:          Christophe Troestler, Noémie Meunier, Pierre Hauweele,
   Fabian Pijcke
 License:          LGPL-3.0 with OCaml linking exception
 Plugins:          StdFiles (0.2)
-FilesAB:          src/conf.ml.ab
+FilesAB:          src/conf.ml.ab,
+  src/archimedes_cairo.dep.ab,
+  src/archimedes_graphics.dep.ab
 PreBuildCommand:  ocaml src/public_interface.ml > src/archimedes.mli
 
 Flag graphics
@@ -29,7 +31,7 @@ Library "archimedes"
     Functions, Pointstyle, Path, Sampler, Iterator, Tics, Viewport, Arrows,
     Axes, Plot
   CSources:     
-  BuildDepends: dynlink
+  BuildDepends: dynlink, cairo2, graphics
 
 Library "archimedes_graphics"
   Build$:       flag(graphics)
@@ -37,7 +39,7 @@ Library "archimedes_graphics"
   BuildTools:   ocamlbuild
   Modules:      Archimedes_graphics
   CSources:     
-  BuildDepends: graphics
+  BuildDepends: 
 
 Library "archimedes_cairo"
   Build$:       flag(cairo)
@@ -45,7 +47,7 @@ Library "archimedes_cairo"
   BuildTools:   ocamlbuild
   Modules:      Archimedes_cairo
   CSources:     
-  BuildDepends: cairo2
+  BuildDepends: 
 
 Library "archimedes_tikz"
   Build$:       flag(tikz)
@@ -66,6 +68,6 @@ Executable "Tests"
   Path:         tests
   BuildTools:   ocamlbuild
   MainIs:       tests.ml
-  BuildDepends: archimedes, archimedes_graphics
+  BuildDepends: archimedes, archimedes_graphics, archimedes_cairo
   Install:      false
   
