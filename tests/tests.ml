@@ -6,9 +6,7 @@ let rec all bk =
                test bk) (List.tl map)
 and map = [
   ("all", all); (* To be skipped by the "all" function just above *)
-  (* BEGIN AUTOGEN_TESTS *)
-  (* Do not edit before END *)
-  (* END AUTOGEN_TESTS *)
+  (* AUTOGEN_TESTS *)
 ]
 
 let exec_test backends t =
@@ -57,5 +55,5 @@ let () =
   Array.iter options Sys.argv;
   let backends = backends !ps !pdf !png !tex !graphics in
   Array.iteri (fun i x ->
-                 if i <> 0 && String.sub x 0 2 != "--"
+                 if i <> 0 && String.sub x 0 2 <> "--"
                  then exec_test (backends x) x) Sys.argv

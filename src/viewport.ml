@@ -520,6 +520,8 @@ end = struct
     let ctm = Coordinate.use vp.backend coord in
     let limits = if vp.clip then
       if coord_name = Data then xmin vp, xmax vp, ymin vp, ymax vp
+      else if coord_name = Orthonormal then
+        let maxx, maxy = ortho_from vp Device (1., 1.) in (0., maxx, 0., maxy)
       else 0., 1., 0., 1.
     else neg_infinity, infinity, neg_infinity, infinity in
     Path.fill_on_backend ~limits path vp.backend;

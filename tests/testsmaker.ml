@@ -10,6 +10,9 @@ let skip = [
   "functions.ml";
   "simple_plot.ml";
   "test_handle.ml";
+  "test_boxes.ml";
+  "test_custom_labels.ml";
+  "test_stack.ml";
   (* do NOT edit the four following *)
   "tests.ml";
   "realtests.ml";
@@ -17,8 +20,7 @@ let skip = [
   "testsmaker.ml"
 ]
 
-let starting = "  (* BEGIN AUTOGEN_TESTS *)"
-let ending = "  (* END AUTOGEN_TESTS *)"
+let tag = "  (* AUTOGEN_TESTS *)"
 
 let is_test name =
   List.for_all (( <> ) name) skip &&
@@ -41,18 +43,10 @@ let () =
   try
     while true do
       let l = input_line ftests in
-      if !copylines && l <> starting then
+      if l = tag then
+        print_tests ()
+      else
         printf "%s\n" l
-      else if !copylines then begin
-        printf "%s\n" starting;
-        printf "  (* Do NOT edit until END AUTOGEN_TESTS *)\n";
-        print_tests ();
-        copylines := false
-      end
-      else if not !copylines && l = ending then begin
-        printf "%s\n" ending;
-        copylines := true
-      end
     done
   with End_of_file ->
     printf "\n";
