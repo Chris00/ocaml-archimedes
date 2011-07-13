@@ -7,7 +7,7 @@
 open Printf
 
 let include_module name =
-  let fh = open_in (String.lowercase name ^ "_public.mli") in
+  let fh = open_in ("src/" ^ (String.lowercase name) ^ "_public.mli") in
   try
     while true do
       let l = input_line fh in

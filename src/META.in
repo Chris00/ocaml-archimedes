@@ -1,8 +1,0 @@
-# Findlib META file for Archimedes                                 -*-conf-*-
-name = "archimedes"
-version = "@PACKAGE_VERSION@"
-description = "A 2D scientific plotting library"
-requires = "dynlink bigarray"
-archive(byte) = "archimedes.cma"
-archive(native) = "archimedes.cmxa"
-archive(byte,toploop) = "archimedes_toploop.cma"

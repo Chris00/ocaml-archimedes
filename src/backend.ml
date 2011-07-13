@@ -365,11 +365,16 @@ let make ?(dirs=[Conf.plugins_dir]) b width height =
         )
       end (get_dependencies dirs base);
       (* Load the main module *)
+      print_string base;
+      print_newline ();
       let dyn = (try find_file dirs (Dynlink.adapt_filename(base ^ ".cmo"))
                  with Not_found -> raise(Error(Nonexistent backend))) in
       (try Dynlink.loadfile dyn
-       with Dynlink.Error e -> raise(Error(Not_loadable(backend, e))));
-      (* Check that the backend correctly updated the registry *)
+       with Dynlink.Error e ->
+         print_string (Dynlink.error_message e);
+         print_newline ();
+         raise(Error(Not_loadable(backend, e))));
+        (* Check that the backend correctly updated the registry *)
       try M.find backend !registry
       with Not_found -> raise(Error(Not_registering backend))
   in

@@ -1,0 +1,71 @@
+OASISFormat: 0.2
+Name:             Archimedes
+Version:          0.3.1
+Synopsis:         This project provides a high quality, platform-indenpendent,
+  and extensible 2D plotting library for OCaml
+Authors:          Christophe Troestler, Noémie Meunier, Pierre Hauweele,
+  Fabian Pijcke
+License:          LGPL-3.0 with OCaml linking exception
+Plugins:          StdFiles (0.2)
+FilesAB:          src/conf.ml.ab
+PreBuildCommand:  ocaml src/public_interface.ml > src/archimedes.mli
+
+Flag graphics
+  Description:  Use the graphics plugin ?
+  Default:      true
+
+Flag cairo
+  Description:  Use the cairo (PNG, PS, PDF) plugin ?
+  Default:      true
+
+Flag tikz
+  Description:  Use the tikz (TEX) plugin ?
+  Default:      false
+
+Library "archimedes"
+  Path:         src
+  BuildTools:   ocamlbuild
+  Modules:      Conf, String_utils, Color, Matrix, Backend, Coordinate,
+    Functions, Pointstyle, Path, Sampler, Iterator, Tics, Viewport, Arrows,
+    Axes, Plot
+  CSources:     
+  BuildDepends: dynlink
+
+Library "archimedes_graphics"
+  Build$:       flag(graphics)
+  Path:         src
+  BuildTools:   ocamlbuild
+  Modules:      Archimedes_graphics
+  CSources:     
+  BuildDepends: graphics
+
+Library "archimedes_cairo"
+  Build$:       flag(cairo)
+  Path:         src
+  BuildTools:   ocamlbuild
+  Modules:      Archimedes_cairo
+  CSources:     
+  BuildDepends: cairo2
+
+Library "archimedes_tikz"
+  Build$:       flag(tikz)
+  Path:         src
+  BuildTools:   ocamlbuild
+  Modules:      Archimedes_tikz
+  CSources:     
+  BuildDepends: 
+
+Library "testing"
+  Path:         tests
+  BuildTools:   ocamlbuild
+  Modules:      Testing
+  CSources:     
+  BuildDepends: archimedes
+  
+Executable "Tests"
+  Path:         tests
+  BuildTools:   ocamlbuild
+  MainIs:       tests.ml
+  BuildDepends: archimedes, archimedes_graphics
+  Install:      false
+  
