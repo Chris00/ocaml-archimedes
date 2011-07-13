@@ -1,12 +1,10 @@
-open Printf
-open Archimedes
+open Testing
+
 module V = Viewport
 module P = Path
 
-let pi = 4. *. atan 1.
-
 let draw bk =
-  let vp = V.init ~w:1024. ~h:768. ~dirs:["../src"; "./src"] bk in
+  let vp = V.init ~w ~h ~dirs bk in
   let trace _ vp =
     V.set_rel_line_width vp 1.;
 
@@ -43,14 +41,3 @@ let draw bk =
   V.stroke vp V.Graph;
 
   V.close vp
-
-let () =
-  List.iter draw [ "cairo PNG test_custom_layout.png";
-                   (*"graphics hold";
-                   "tikz backend_path.tex"*)
-                 ]
-
-
-(* Local Variables: *)
-(* compile-command: "make -kB backend_path.exe" *)
-(* End: *)

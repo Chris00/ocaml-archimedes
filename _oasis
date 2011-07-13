@@ -10,7 +10,9 @@ Plugins:          StdFiles (0.2)
 FilesAB:          src/conf.ml.ab,
   src/archimedes_cairo.dep.ab,
   src/archimedes_graphics.dep.ab
-PreBuildCommand:  ocaml src/public_interface.ml > src/archimedes.mli
+PreBuildCommand:  ocaml src/public_interface.ml > src/archimedes.mli \
+  && ocaml tests/testsmaker.ml > tests/realtests.ml
+PostBuildCommand: cp _build/tests/realtests.byte tests.byte
 
 Flag graphics
   Description:  Use the graphics plugin ?
@@ -67,7 +69,7 @@ Library "testing"
 Executable "Tests"
   Path:         tests
   BuildTools:   ocamlbuild
-  MainIs:       tests.ml
+  MainIs:       realtests.ml
   BuildDepends: archimedes, archimedes_graphics, archimedes_cairo
   Install:      false
   

@@ -1,11 +1,10 @@
-open Archimedes
+open Testing
+
 module V = Viewport
 module P = Plot.Array
 
-let pi = acos (-1.)
-
 let draw bk =
-  let vp = V.init ~w:1024. ~h:600. ~dirs:["../src"; "./src"] bk in
+  let vp = V.init ~w:1024. ~h:600. ~dirs bk in
   let vp_zoom = V.make vp V.Graph 0.5 1. 0.6 1. (fun _ _ _ -> () ) in
   Axes.add_x_axis
     ~tics:(Tics.Equidistants (Tics.Number 3, 0., pi, 1))
@@ -21,14 +20,3 @@ let draw bk =
   P.fx vp_zoom sin (9. *. pi /. 4.) (11. *. pi /. 4.);
 
   V.close vp
-
-let () =
-  List.iter draw [ "cairo PNG demo_zoom.png";
-                   (*"graphics hold";
-                     "tikz backend_path.tex"*)
-                 ]
-
-
-(*Local Variables:*)
-(*compile-command: "ocamlopt -o test_axes.com -I ../src unix.cmxa dynlink.cmxa bigarray.cmxa archimedes.cmxa test_axes.ml && ocamlc -o test_axes.exe -I ../src unix.cma dynlink.cma bigarray.cma archimedes.cma test_axes.ml"*)
-(*End:*)

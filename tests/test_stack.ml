@@ -1,4 +1,5 @@
-open Archimedes
+open Testing
+
 module V = Viewport
 module P = Plot.Array
 
@@ -9,14 +10,8 @@ let data = [|
 |]
 
 let draw bk =
-  let vp = V.init ~w:1024. ~h:600. ~dirs:["../src"; "./src"] bk in
+  let vp = V.init ~w ~h ~dirs bk in
   V.set_line_width vp 1.;
   P.stack vp data;
   Axes.cross vp;
   V.close vp
-
-let () =
-  List.iter draw [ "cairo PNG test_stack.png";
-                   (*"graphics hold";
-                     "tikz backend_path.tex"*)
-                 ]

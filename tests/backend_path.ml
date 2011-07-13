@@ -1,14 +1,7 @@
-open Printf
-open Archimedes
-
-let pi = 4. *. atan 1.
+open Testing
 
 let draw bk =
-  let bk =
-    try Backend.make bk 800. 700. ~dirs:[ "./src"; "../src" ]
-    with Backend.Error e ->
-      eprintf "ERROR: %s\n" (Backend.string_of_error e);
-      exit 1 in
+  let bk = Backend.make bk 800. 700. ~dirs in
   Backend.scale bk 1.5 1.5;
 
   Backend.move_to bk 500. 300.;
@@ -86,15 +79,3 @@ let draw bk =
   Backend.stroke bk;
 
   Backend.close bk
-
-let () =
-  List.iter draw [ "cairo PDF backend_path.pdf";
-                   "cairo PNG backend_path.png"(*;
-                   "graphics hold";
-                   "tikz backend_path.tex"*)
-                 ]
-
-
-(* Local Variables: *)
-(* compile-command: "make -kB backend_path.exe" *)
-(* End: *)

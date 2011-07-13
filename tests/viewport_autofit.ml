@@ -1,12 +1,10 @@
-open Printf
-open Archimedes
+open Testing
+
 module V = Viewport
 module P = Path
 
-let pi = 4. *. atan 1.
-
 let draw bk =
-  let vp = V.init ~w:1024. ~h:768. ~dirs:["../src"; "./src"] bk in
+  let vp = V.init ~w ~h ~dirs bk in
 
   V.xrange vp (-10.) 10.;
   V.yrange vp (-2.) 8.;
@@ -45,14 +43,3 @@ let draw bk =
   Axes.add_x_axis vp;
 
   V.close vp
-
-let () =
-  List.iter draw [ "cairo PNG viewport_autofit.png"(*;
-                   "graphics hold";
-                   "tikz backend_path.tex"*)
-                 ]
-
-
-(* Local Variables: *)
-(* compile-command: "make -kB backend_path.exe" *)
-(* End: *)

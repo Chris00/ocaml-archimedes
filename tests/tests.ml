@@ -6,11 +6,9 @@ let rec all bk =
                test bk) (List.tl map)
 and map = [
   ("all", all); (* To be skipped by the "all" function just above *)
-  ("marks", Marks.draw);
-(*  ("test_arrows", Test_arrows.draw);*)
-(*  ("simple_plot", Simple_plot.draw);
-  ("vector_field", Vector_field.draw);
-  ("backend_path", Backend_path.draw)*)
+  (* BEGIN AUTOGEN_TESTS *)
+  (* Do not edit before END *)
+  (* END AUTOGEN_TESTS *)
 ]
 
 let exec_test backends t =

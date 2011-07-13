@@ -1,9 +1,10 @@
-open Archimedes
+open Testing
+
 module V = Viewport
 module P = Plot.Array
 
 let draw bk =
-  let vp = V.init ~w:1024. ~h:600. ~dirs:["../src"; "./src"] bk in
+  let vp = V.init ~w ~h ~dirs bk in
   let vps = V.layout_grid vp 2 2 in
   let vp1 = vps.(0) and vp2 = vps.(3) in
 
@@ -23,9 +24,3 @@ let draw bk =
   Axes.box vp0;
 
   V.close vp
-
-let () =
-  List.iter draw [ "cairo PNG test_boxes.png";
-                   (*"graphics hold";
-                     "tikz backend_path.tex"*)
-                 ]

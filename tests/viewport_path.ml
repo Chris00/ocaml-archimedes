@@ -1,12 +1,10 @@
-open Printf
-open Archimedes
+open Testing
+
 module V = Viewport
 module P = Path
 
-let pi = 4. *. atan 1.
-
 let draw bk =
-  let vp = V.init ~w:800. ~h:700. ~dirs:["../src"; "./src"] bk in
+  let vp = V.init ~w ~h ~dirs bk in
 
   (* Create a path *)
   let p = P.make () in
@@ -29,14 +27,3 @@ let draw bk =
   V.stroke ~path:p vp V.Device;
 
   V.close vp
-
-let () =
-  List.iter draw [ "cairo PNG viewport_path.png";
-                   (*"graphics hold";
-                   "tikz backend_path.tex"*)
-                 ]
-
-
-(* Local Variables: *)
-(* compile-command: "make -kB backend_path.exe" *)
-(* End: *)

@@ -1,4 +1,5 @@
-open Archimedes
+open Testing
+
 module V = Viewport
 module P = Plot.Array
 
@@ -10,7 +11,7 @@ let months =
      "Jul"; "Aug"; "Sep"; "Oct"; "Nov"; "Dec" |]
 
 let draw bk =
-  let vp = V.init ~w:1024. ~h:600. ~dirs:["../src"; "./src"] bk in
+  let vp = V.init ~w ~h ~dirs bk in
   let custom_month x =
     let x' = truncate x in
     let y = 2010 + x' / 12
@@ -24,9 +25,3 @@ let draw bk =
   Axes.add_y_axis vp;
   P.x vp data;
   V.close vp
-
-let () =
-  List.iter draw [ "cairo PNG test_custom_labels.png";
-                   (*"graphics hold";
-                     "tikz backend_path.tex"*)
-                 ]

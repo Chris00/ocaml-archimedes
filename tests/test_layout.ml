@@ -1,12 +1,10 @@
-open Printf
-open Archimedes
+open Testing
+
 module V = Viewport
 module P = Path
 
-let pi = 4. *. atan 1.
-
 let draw bk =
-  let vp = V.init ~w:1024. ~h:768. ~dirs:["../src"; "./src"] bk in
+  let vp = V.init ~w ~h ~dirs bk in
   let subvps = V.layout_grid vp 2 2 in
   let subsubvps = V.layout_grid subvps.(3) 2 2 in
   let subsubsubvps = V.layout_grid subsubvps.(3) 2 2 in
@@ -47,18 +45,3 @@ let draw bk =
   V.stroke vp V.Graph;
 
   V.close vp
-
-let () =
-  try
-    List.iter draw [ "cairo PNG test_layout.png"(*;
-                     "graphics hold";
-                     "tikz backend_path.tex"*)
-                   ]
-  with Backend.Error e as exn ->
-    Printf.printf "Backend.Error %s\n%!" (Backend.string_of_error e);
-    raise exn
-
-
-(* Local Variables: *)
-(* compile-command: "make -kB backend_path.exe" *)
-(* End: *)

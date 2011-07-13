@@ -1,10 +1,11 @@
-open Archimedes
+open Testing
+
 module V = Viewport
 module P = Path
 module Pl = Plot.Array
 
 let draw bk =
-  let vp = V.init ~w:1024. ~h:600. ~dirs:["../src"; "./src"] bk in
+  let vp = V.init ~w ~h ~dirs bk in
   V.set_ylog vp true;
 
   (*let p = P.make () in
@@ -17,14 +18,3 @@ let draw bk =
 
 
   V.close vp
-
-let () =
-  List.iter draw [ "cairo PNG test_log.png";
-                   (*"graphics hold";
-                     "tikz backend_path.tex"*)
-                 ]
-
-
-(*Local Variables:*)
-(*compile-command: "ocamlopt -o test_axes.com -I ../src unix.cmxa dynlink.cmxa bigarray.cmxa archimedes.cmxa test_axes.ml && ocamlc -o test_axes.exe -I ../src unix.cma dynlink.cma bigarray.cma archimedes.cma test_axes.ml"*)
-(*End:*)
