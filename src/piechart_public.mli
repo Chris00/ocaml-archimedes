@@ -75,7 +75,7 @@ module type T = sig
         @param xend
 
         @param yend these parameters delimits the area of the pie chart
-        over the viewport. They are given in Device coordinates (i.e. from
+        over the viewport. They are given in Graph coordinates (i.e. from
         0 to 1). By default, some space is left on the top for a title for
         the pie chart *)
 
