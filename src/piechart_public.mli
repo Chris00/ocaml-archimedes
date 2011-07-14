@@ -24,10 +24,13 @@ module type T = sig
         (** Sometimes it is desirable to use color to express something on
             the piechart depending on the data values, this color scheme
             permits it *)
-    | LevelValueDependant of (int -> float -> Color.t -> float -> Color.t)
-        (** For multi-levels pie charts, the color may depend of the
-            level, the upper data value/color and the actual value of the
-            data to draw *)
+    | LevelValueDependant of
+        (int -> int -> float -> Color.t -> float -> Color.t)
+          (** For multi-levels pie charts, the color may depend of the
+              level, the position (in the parent children's list), the
+              parent data value/color and the actual value of the data to
+              draw. The level 0 is the first level with at least two
+              elements *)
 
   type keyplacement =
     | Rectangle
@@ -85,7 +88,7 @@ module type T = sig
   val multilevel : ?style:style -> ?colorscheme:colorscheme ->
     ?keyplacement:keyplacement -> ?keylabels:keylabels ->
     ?x0:float -> ?y0:float -> ?xend:float -> ?yend:float ->
-    Viewport.t -> multidata list
+    Viewport.t -> multidata list -> unit
     (** [multilevel vp data] draws a multilevel pie chart on [vp]. The
         default options are tuned for a multilevel pie chart
 
@@ -93,10 +96,10 @@ module type T = sig
         is usualy lots of data)
 
         @param colorscheme default is LevelValueDependant, colors of the
-        first level to contain more than one data are chosen in the
-        "Default" way, children colors are derived from their parent color
-        and their value. Inner levels (those who contains only one data)
-        are filled with blank
+        first level to contain more than one data (= level 0) are chosen
+        in the "Default" way, children colors are derived from their
+        parent color and their value. Inner levels (those who contains
+        only one data) are filled with blank
 
         @param keyplacement default is OverPie, this is usually the better
         way to visualize data over a multilevel pie chart

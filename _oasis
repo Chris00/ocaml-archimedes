@@ -31,7 +31,7 @@ Library "archimedes"
   BuildTools:   ocamlbuild
   Modules:      Conf, String_utils, Color, Matrix, Backend, Coordinate,
     Functions, Pointstyle, Path, Sampler, Iterator, Tics, Viewport, Arrows,
-    Axes, Plot
+    Axes, Plot, Piechart
   CSources:     
   BuildDepends: dynlink, cairo2, graphics
 
