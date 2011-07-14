@@ -1,59 +1,41 @@
-let rec all bk =
-  List.iter (fun (title, test) ->
-               print_newline ();
-               print_string title;
-               print_newline ();
-               test bk) (List.tl map)
-and map = [
-  ("all", all); (* To be skipped by the "all" function just above *)
+let print_help () =
+  print_string "usage: tests [option1] [option2] ...\n\n";
+  print_string "where an option is a test name or one of the following:\n";
+  print_string "--ps\t\tactivate ps (cairo) output (default: false)\n";
+  print_string "--pdf\t\tactivate pdf (cairo) output (false)\n";
+  print_string "--png\t\tactivate png (cairo) output (false)\n";
+  print_string "--tex\t\tactivate tex (tikz) output (false)\n";
+  print_string "--graphics\t\tactivate graphics output (true)\n";
+  print_string "Available tests are:\n";
+  List.iter (fun (name, _) -> Printf.printf "%s  " name) map;
+  print_string "\n\nExample: ";
+  print_string "tests demo_zoom vector_field --nographics --pdf --png\n"
+
+let backends title =
+  let p = Printf.sprintf in
+  let ret = Array.fold_left (fun acc -> function
+    | "--ps" -> ret := (p "cairo PS %s.ps" title) :: acc
+    | "--pdf" -> ret := (p "cairo PDF %s.pdf" title) :: acc
+    | "--png" -> ret := (p "cairo PNG %s.png" title) :: acc
+    | "--tex" -> ret := (p "tikz %s.tex" title) :: acc
+    | "--graphics" -> ret := (p "graphics hold") :: acc) [] Sys.argv
+  in
+  if ret = [] then [p "graphics hold"] else ret
+
+let map = [
   (* AUTOGEN_TESTS *)
 ]
 
-let exec_test backends t =
-  match List.filter (fun x -> fst x = t) map with
-  | [] -> Printf.printf "Test not found: %s\n" t
-  | (_, test) :: [] -> List.iter test backends
-  | _ -> Printf.printf "Duplicated test: %s\n" t
-
-let print_help () =
-  print_string "--[no]ps\t\t[de]activate ps (cairo) output (default: false)\n";
-  print_string "--[no]pdf\t\t[de]activate pdf (cairo) output (false)\n";
-  print_string "--[no]png\t\t[de]activate png (cairo) output (false)\n";
-  print_string "--[no]tex\t\t[de]activate tex (tikz) output (false)\n";
-  print_string "--[no]graphics\t\t[de]activate graphics output (true)\n"
-
-let backends ps pdf png tex graphics title =
-  let ret = ref [] in
-  if ps then ret := ("cairo PS " ^ title ^ ".ps") :: !ret;
-  if pdf then ret := ("cairo PDF " ^ title ^ ".pdf") :: !ret;
-  if png then ret := ("cairo PNG " ^ title ^ ".png") :: !ret;
-  if tex then ret := ("tikz " ^ title ^ ".tex") :: !ret;
-  if graphics then ret := "graphics hold" :: !ret;
-  print_string "backends:\n";
-  List.iter (fun x -> print_string x; print_newline ()) !ret;
-  !ret
+let rec exec_test = function
+  | "all" -> List.iter exec_test (List.map fst map)
+  | name -> try
+      let test = List.assoc name map in
+      Printf.printf "%s\n" name;
+      List.iter test (backends name)
+    with Not_found -> Printf.printf "Test not found: %s" name
 
 let () =
-  let ps = ref false
-  and pdf = ref false
-  and png = ref false
-  and tex = ref false
-  and graphics = ref true in
-  let options x =
-    if x = "--ps" then ps := true;
-    if x = "--pdf" then pdf := true;
-    if x = "--png" then png := true;
-    if x = "--tex" then tex := true;
-    if x = "--graphics" then graphics := true;
-    if x = "--nops" then ps := false;
-    if x = "--nopdf" then pdf := false;
-    if x = "--nopng" then png := false;
-    if x = "--notex" then tex := false;
-    if x = "--nographics" then graphics := false;
-    if x = "--help" then print_help ()
-  in
-  Array.iter options Sys.argv;
-  let backends = backends !ps !pdf !png !tex !graphics in
-  Array.iteri (fun i x ->
-                 if i <> 0 && String.sub x 0 2 <> "--"
-                 then exec_test (backends x) x) Sys.argv
+  if Array.length Sys.argv = 1 then print_help ()
+  else Array.iteri (fun i x ->
+                      if i <> 0 && String.sub x 0 2 <> "--"
+                      then exec_test x) Sys.argv
