@@ -41,10 +41,6 @@ module type Common = sig
   val xy_param : ?min_step:float -> ?nsamples:int -> ?fill:bool ->
     ?fillcolor:Color.t -> ?pathstyle:pathstyle ->
     V.t -> (float -> float * float) -> float -> float -> unit
-
-(* TODO we want to have control over the stroke properties for each curve *)
-(*val filledcurves : V.t -> ?nsamples:int -> ?fill:filledcurves ->
-  (float -> float) -> (float -> float) -> float -> float -> unit*)
 end
 
 module Common =
@@ -248,7 +244,7 @@ struct
       V.set_color vp color.(i mod (Array.length color));
       V.stroke ~path vp V.Data;
     done;
-    V.restore vp (* TODO points *)
+    V.restore vp
 
 end
 

@@ -31,7 +31,6 @@ module rec Axes : sig
   }
 
   type range = {
-    (* TODO: check if it is better to use a variant type for auto_x0. *)
     mutable x0: float;     mutable auto_x0: bool;
     mutable xend: float;   mutable auto_xend: bool;
     (* Real extents of data. *)
@@ -1245,7 +1244,7 @@ end = struct
     add_instruction (show_text_direct vp coord_name ~rotate ~x ~y pos text) vp
 
   let mark vp ~x ~y name =
-    auto_fit vp x y x y; (* TODO we want all the mark to be included *)
+    auto_fit vp x y x y;
     add_instruction (mark_direct vp ~x ~y name) vp
 
   let xlog vp = vp.axes_system.Axes.x.Axes.log

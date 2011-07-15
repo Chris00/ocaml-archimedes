@@ -23,8 +23,6 @@ module type T = sig
     val xy_param : ?min_step:float -> ?nsamples:int -> ?fill:bool ->
       ?fillcolor:Color.t -> ?pathstyle:pathstyle ->
       Viewport.t -> (float -> float * float) -> float -> float -> unit
-
-    (* TODO we want to have control over the stroke properties for each curve *)
   end
 
   module Array : sig

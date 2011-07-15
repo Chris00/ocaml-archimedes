@@ -85,4 +85,6 @@ module type T = sig
   val add : ?op:operator -> t -> t -> t
     (**Adds the first color to the second color, according to the
        operator [op] (default : [Over]).*)
+
+(* TODO add lighten function *)
 end

@@ -27,3 +27,9 @@ Support for reversing the orientation of axes
 Arrows should be implemented in backends (since TikZ has its own implementation)
 
 Add support of multi-line custom tics labels.
+
+Fix tests in testsmaker.ml
+
+Add title function in viewports
+
+

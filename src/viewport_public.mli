@@ -107,7 +107,6 @@ module type T = sig
         @param y desync the y axis (default: true)
     *)
 
-  (* TODO: explicit what unit sizes are *)
   val sync_unit_size : ?x:bool -> ?y:bool -> t -> t -> unit
     (** [sync_unit_size vp vp_base] synchronizes [vp]'s unit sizes
         (according to ?x and ?y params) with the sizes of [vp_base].
@@ -232,12 +231,6 @@ module type T = sig
     (*  val text_extents : t -> string -> rectangle*)
   val mark : t -> x:float -> y:float -> string -> unit
     (* val mark_extents : t -> string -> rectangle *)
-
-  (* TODO Complete *)
-  (*  val fx
-      val xy
-      val box_axes
-      val centered_axes*)
 
   val axes_ratio : t -> float -> unit
     (** [axes_ratio vp ratio] forces axes to keep [ratio] ([w / h]). *)
