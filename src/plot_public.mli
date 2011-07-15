@@ -9,27 +9,16 @@ module type T = sig
     | Boxes of float
     | Interval of float
 
-  val xy : ?fill:bool -> ?fillcolor:Color.t -> ?pathstyle:pathstyle ->
+  val x : ?fill:bool -> ?fillcolor:Color.t -> ?pathstyle:pathstyle ->
     ?base:Iterator.t -> Viewport.t -> Iterator.t -> unit
 
+  val xy : ?fill:bool -> ?fillcolor:Color.t -> ?pathstyle:pathstyle ->
+    Viewport.t -> Iterator.t -> unit
+
+  val stack : ?colors:(Color.t array) -> ?fillcolor:(Color.t array) ->
+    Viewport.t -> Iterator.t array -> unit
+
   module Function : sig
-    (*type fct =
-      | X of float -> float
-      | XY of float -> float * float
-
-    type data
-
-    type sampling = {
-      strategy: Sampler.strategy;
-      criterion: Sampler.criterion;
-      min_step: float;
-      nsamples: int;
-      fct: fct;
-      t0: float;
-      tend: float;
-      data: data
-    }*)
-
     type sampling
 
     val xsampling : ?strategy:Sampler.strategy ->

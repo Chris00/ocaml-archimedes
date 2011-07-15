@@ -22,26 +22,111 @@ module V = Viewport
 
 let is_finite x = (x: float) = x && 1. /. x <> 0.
 
-module type Common = sig
-  type pathstyle =
-    | Lines
-    | Points of string
-    | Linespoints of string
-    | Impulses
-    | Boxes of float (* Width in Data coordinates (usually what we want) *)
-    | Interval of float (* Width in Data coordinates (to be consistent) *)
+type pathstyle =
+  | Lines
+  | Points of string
+  | Linespoints of string
+  | Impulses
+  | Boxes of float (* Width in Data coordinates (usually what we want) *)
+  | Interval of float (* Width in Data coordinates (to be consistent) *)
 
-  type filledcurves = Color.t * Color.t (* f1 > f2, f2 < f1 *)
+(* Factorizes the x function in most submodules (except Function) *)
+let x ?(fill=false) ?(fillcolor=Color.red) ?(pathstyle=Lines)
+    ?(base=zero_iterator) vp iterator =
+  ()
 
-  val fx : ?strategy:Sampler.strategy -> ?criterion:Sampler.criterion ->
-    ?min_step:float -> ?nsamples:int ->
-    ?fill:bool -> ?fillcolor:Color.t -> ?pathstyle:pathstyle ->
-    ?g:(float -> float) -> V.t -> (float -> float) -> float -> float -> unit
+(* Factorizes the xy function in most submodules (except Function) *)
+let xy ?(fill=false) ?(fillcolor=Color.red) ?(pathstyle=Lines)
+    vp iterator =
+  ()
 
-  val xy_param : ?min_step:float -> ?nsamples:int -> ?fill:bool ->
-    ?fillcolor:Color.t -> ?pathstyle:pathstyle ->
-    V.t -> (float -> float * float) -> float -> float -> unit
+(* Factorizes the stack function in most submodules (except Function) *)
+let stack ?(colors=[|Color.red; Color.blue|]) ?(fillcolor=[|Color.white|])
+    vp iterators =
+  ()
+
+(* The following functions simplify the implementation of x, xy and stack
+   in standard submodules *)
+let basex transform base ?fill ?fillcolor ?pathstyle vp data =
+  x ?fill ?fillcolor ?pathstyle ~base vp (transform data)
+let basexy transform ?fill ?fillcolor ?pathstyle vp data =
+  xy ?fill ?fillcolor ?pathstyle vp (transform data)
+let basestack transform ?colors ?fillcolors vp datas =
+  stack ?colors ?fillcolors vp (Array.map transform datas)
+
+module Array = struct
+  let x ?(base=[||]) = basex Iterator.of_array base
+  let xy = basexy Iterator.of_array2
+  let stack = basestack Iterator.of_array
 end
+
+module List = struct
+  let x ?(base=[||]) = basex Iterator.of_list base
+  let xy = basexy Iterator.of_list2
+  let stack = basestack Iterator.of_list
+end
+
+module Fortran = struct
+  let x ?(base=[||]) = basex Iterator.of_fortran base
+  let xy = basexy Iterator.of_fortran2
+  let stack = basestack Iterator.of_fortran
+end
+
+module C = struct
+  let x ?(base=[||]) = basex Iterator.of_c base
+  let xy = basexy Iterator.of_c2
+  let stack = basestack Iterator.of_c
+end
+
+module Function = struct
+  type fct =
+    | X of float -> float
+    | XY of float -> float * float
+
+  type sampling = {
+    strategy: Sampler.strategy;
+    criterion: Sampler.criterion;
+    min_step: float;
+    nsamples: int;
+    fct: fct;
+    t0: float;
+    tend: float;
+    mutable data: (float * float) list
+  }
+
+  let sampling ?(strategy=Sampler.strategy_midpoint)
+      ?(criterion=Sampler.criterion_none) ?(min_step=1E-9) ?(nsample=100)
+      f a b =
+    { strategy = strategy;
+      criterion = criterion;
+      min_step = min_step;
+      nsamples = nsamples;
+      fct = f;
+      t0 = a;
+      tend = b;
+      data = [] }
+
+  let xsampling f = sampling (X f)
+  let xysampling f = sampling (XY f)
+
+  let x ?pathstyle vp sampling =
+    ()
+
+  let xy ?fill ?fillcolor ?pathstyle vp sampling =
+    ()
+
+  let fill ?fillcolor vp ?(base=zerosampling) sampling =
+    ()
+end
+
+
+
+
+
+
+
+
+
 
 module Common =
 struct
