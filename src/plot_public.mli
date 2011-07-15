@@ -1,85 +1,111 @@
 (** Plotting various datatypes. *)
 module type T = sig
 
-  (************************************************************************)
-  (** Functions common to all datatype submodules. *)
-  module type Common = sig
-    type pathstyle =
-      | Lines
-      | Points of string
-      | Linespoints of string
-      | Impulses
-      | Boxes of float
-      | Interval of float
+  type pathstyle =
+    | Lines
+    | Points of string
+    | Linespoints of string
+    | Impulses
+    | Boxes of float
+    | Interval of float
 
-    type filledcurves = Color.t * Color.t (* f1 > f2, f2 < f1 *)
+  val xy : ?fill:bool -> ?fillcolor:Color.t -> ?pathstyle:pathstyle ->
+    ?base:Iterator.t -> Viewport.t -> Iterator.t -> unit
 
-    val fx : ?strategy:Sampler.strategy -> ?criterion:Sampler.criterion ->
-      ?min_step:float -> ?nsamples:int ->
-      ?fill:bool -> ?fillcolor:Color.t -> ?pathstyle:pathstyle ->
-      ?g:(float -> float) -> Viewport.t -> (float -> float) ->
-      float -> float -> unit
+  module Function : sig
+    (*type fct =
+      | X of float -> float
+      | XY of float -> float * float
 
-    val xy_param : ?min_step:float -> ?nsamples:int -> ?fill:bool ->
-      ?fillcolor:Color.t -> ?pathstyle:pathstyle ->
-      Viewport.t -> (float -> float * float) -> float -> float -> unit
+    type data
+
+    type sampling = {
+      strategy: Sampler.strategy;
+      criterion: Sampler.criterion;
+      min_step: float;
+      nsamples: int;
+      fct: fct;
+      t0: float;
+      tend: float;
+      data: data
+    }*)
+
+    type sampling
+
+    val xsampling : ?strategy:Sampler.strategy ->
+      ?criterion:Sampler.criterion -> ?min_step:float -> ?nsamples:int ->
+      (float -> float) -> float -> float -> sampling
+
+    val xysampling : ?strategy:Sampler.strategy ->
+      ?criterion:Sampler.criterion -> ?min_step:float -> ?nsamples:int ->
+      (float -> float * float) -> float -> float -> sampling
+
+    val x : ?pathstyle:pathstyle -> Viewport.t -> sampling -> unit
+
+    val xy : ?fill:bool -> ?fillcolor:Color.t -> ?pathstyle:pathstyle ->
+      Viewport.t -> sampling -> unit
+
+    val fill : ?fillcolor:Color.t -> Viewport.t -> ?base:sampling ->
+      sampling -> unit
   end
 
   module Array : sig
-    include Common
+    type data = float array
+    type data2 = (float * float) array
 
-    val x : ?fill:bool -> ?fillcolor:Color.t -> ?pathstyle:pathstyle ->
-      Viewport.t -> float array -> unit
+    val x : ?base:data -> ?fill:bool -> ?fillcolor:Color.t ->
+      ?pathstyle:pathstyle -> Viewport.t -> data -> unit
 
     val xy : ?fill:bool -> ?fillcolor:Color.t -> ?pathstyle:pathstyle ->
-      Viewport.t -> float array -> float array -> unit
+      Viewport.t -> data2 -> unit
 
-    val stack : ?color:(Color.t array) -> ?fillcolor:(Color.t array) ->
-      ?pathstyle:pathstyle -> Viewport.t -> float array array -> unit
-
+    val stack : ?colors:(Color.t array) -> ?fillcolor:(Color.t array) ->
+      Viewport.t -> data array -> unit
   end
 
-(*  module List : sig
-    include COMMON
+  module List : sig
+    type data = float list
+    type data2 = (float * float) list
 
-    val x : t -> ?color: Color.t -> ?mark:string -> ?n0:int ->
-      float list -> unit
+    val x : ?base:data -> ?fill:bool -> ?fillcolor:Color.t ->
+      ?pathstyle:pathstyle -> Viewport.t -> data -> unit
 
-    val xy : t -> ?color: Color.t -> ?mark:string ->
-      float list -> float list -> unit
+    val xy : ?fill:bool -> ?fillcolor:Color.t -> ?pathstyle:pathstyle ->
+      Viewport.t -> data2 -> unit
+
+    val stack : ?colors:(Color.t array) -> ?fillcolor:(Color.t array) ->
+      Viewport.t -> data array -> unit
   end
 
   module Fortran : sig
-    include COMMON
     open Bigarray
-    type vec = (float, float64_elt, fortran_layout) Bigarray.Array1.t
 
-    val x : t -> ?color: Color.t -> ?mark:string -> ?n0:int ->
-      vec -> unit
+    type data = (float, float64_elt, fortran_layout) Array1.t
+    type data2 = (float, float64_elt, fortran_layout) Array2.t
 
-    val xy : t -> ?color: Color.t -> ?mark:string ->
-      vec -> vec -> unit
+    val x : ?base:data -> ?fill:bool -> ?fillcolor:Color.t ->
+      ?pathstyle:pathstyle -> Viewport.t -> data -> unit
+
+    val xy : ?fill:bool -> ?fillcolor:Color.t -> ?pathstyle:pathstyle ->
+      Viewport.t -> data2 -> unit
+
+    val stack : ?colors:(Color.t array) -> ?fillcolor:(Color.t array) ->
+      Viewport.t -> data array -> unit
   end
 
   module C : sig
-    include COMMON
     open Bigarray
-    type vec = (float, float64_elt, c_layout) Bigarray.Array1.t
 
-    val x : t -> ?color: Color.t -> ?mark:string -> ?n0:int ->
-      vec -> unit
+    type data = (float, float64_elt, c_layout) Array1.t
+    type data2 = (float, float64_elt, c_layout) Array2.t
 
-    val xy : t -> ?color: Color.t -> ?mark:string ->
-      vec -> vec -> unit
+    val x : ?base:data -> ?fill:bool -> ?fillcolor:Color.t ->
+      ?pathstyle:pathstyle -> Viewport.t -> data -> unit
+
+    val xy : ?fill:bool -> ?fillcolor:Color.t -> ?pathstyle:pathstyle ->
+      Viewport.t -> data2 -> unit
+
+    val stack : ?colors:(Color.t array) -> ?fillcolor:(Color.t array) ->
+      Viewport.t -> data array -> unit
   end
-
-  module Generic : sig
-    include COMMON
-
-    val x : t -> ?color: Color.t -> ?mark:string -> ?n0:int ->
-      ((float -> unit) -> 'a -> unit) -> 'a -> unit
-
-    val xy : t -> ?color: Color.t -> ?mark:string ->
-      ((float -> float -> unit) -> 'a -> unit) -> 'a -> unit
-  end*)
 end
