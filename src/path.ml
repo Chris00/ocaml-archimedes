@@ -279,15 +279,23 @@ let do_on_backend limits (curx, cury) b = function
   | Line_to (x, y) ->
       let cx, cy, cx', cy' = clipped_segment limits curx cury x y in
       if cx = cx && cx' = cx' then begin
-        if cx != curx || cy != cury then Backend.move_to b cx cy;
+        if cx <> curx || cy <> cury then Backend.move_to b cx cy;
         Backend.line_to b cx' cy';
-        if cx' != x || cy' != cury then Backend.move_to b x y
+        if cx' <> x || cy' <> y then Backend.move_to b x y
       end else Backend.move_to b x y;
       (x, y)
   | Rectangle (x, y, w, h) -> Backend.rectangle b x y w h; x, y
   | Curve_to (_, _, x1, y1, x2, y2, x3, y3) ->
       Backend.curve_to b x1 y1 x2 y2 x3 y3; x3, y3
-  | Close (_, _) -> Backend.close_path b; 0., 0.
+  | Close (x, y) ->
+      (* Because of clipping, the beginning_of_subpath calculated by the
+         backend may be wrong, we ensure it is correct with a line_to and
+         a move_to and close the path to be sure to preserve the same
+         behavior *)
+      Backend.line_to b x y;
+      Backend.move_to b x y;
+      Backend.close_path b;
+      0., 0.
 
 let stroke_on_backend ?(limits=0., 1., 0., 1.) p b =
   let coords = ref (0., 0.) in
@@ -330,3 +338,14 @@ let transform p f =
   let x, y = f (p.x, p.y) in
   {p with path = List.map map_f p.path;
     x = x; y = y}
+
+let print_step = function
+  | Move_to (x, y) -> Printf.printf "Move_to (%f, %f)\n" x y
+  | Line_to (x, y) -> Printf.printf "Line_to (%f, %f)\n" x y
+  | Rectangle (x, y, w, h) -> Printf.printf "Rectangle (%f, %f, %f, %f)\n" x y w h
+  | Curve_to (x0, y0, x1, y1, x2, y2, x3, y3) -> Printf.printf "Curve_to (%f, %f, %f, %f, %f, %f, %f, %f)\n" x0 y0 x1 y1 x2 y2 x3 y3
+  | Close (x, y) -> Printf.printf "Close (%f, %f)\n" x y
+
+let print_path p = List.iter print_step (List.rev p.path)
+
+let add p to_add = p.path <- to_add.path @ p.path

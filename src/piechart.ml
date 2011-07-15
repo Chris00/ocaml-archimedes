@@ -66,25 +66,26 @@ let simple ?(style=Relief) ?(colorscheme=Default) ?(keyplacement=Rectangle)
   let centerx, centery = center in
   (* TODO we consider we have all the space to draw pie, we need to keep
      space for the key *)
-  let radius = min ((xend -. x0) /. 2.) ((yend -. y0) /. 2.) in
+  let radius = (min ((xend -. x0) /. 2.) ((yend -. y0) /. 2.)) in
   let sorted = List.sort (fun (_, x) (_, y) -> compare y x) data in
   let total = List.fold_left (fun acc (_, x) -> acc +. x) 0. sorted in
+  let strokepath = Path.make () in
   let draw_simple_data (position, angle) (label, value) =
     let path = Path.make_at centerx centery in
     let endangle = angle +. value /. total *. 2. *. pi in
     Path.line_to path
       (centerx +. radius *. cos angle) (centery +. radius *. sin angle);
     Path.arc path radius angle endangle;
-    Path.move_to path centerx centery;
+    Path.add strokepath path;
     Viewport.set_color vp defaultcolors.(position);
     Viewport.fill ~path vp V.Graph;
-    Viewport.set_color vp Color.black;
-    Viewport.stroke ~path vp V.Graph;
     (position + 1, endangle)
   in
   let _, finalangle =
     List.fold_left draw_simple_data (0, 0.) sorted
   in
+  Viewport.set_color vp Color.black;
+  Viewport.stroke ~path:strokepath vp V.Graph;
   if abs_float (finalangle -. 2. *. pi) > 1E-8
   then Printf.printf "warning: large numerical error in pie chart"
 

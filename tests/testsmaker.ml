@@ -25,7 +25,8 @@ let tag = "  (* AUTOGEN_TESTS *)"
 let is_test name =
   List.for_all (( <> ) name) skip &&
     String.length name > 3 &&
-    String.sub name (String.length name - 3) 3 = ".ml"
+    String.sub name (String.length name - 3) 3 = ".ml" &&
+  String.sub name 0 1 <> "."
 
 let print_test name =
   let name = String.sub name 0 (String.length name - 3) in
@@ -39,7 +40,6 @@ let print_tests () =
 
 let () =
   let ftests = open_in "tests/tests.ml" in
-  let copylines = ref true in
   try
     while true do
       let l = input_line ftests in

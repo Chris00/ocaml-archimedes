@@ -100,7 +100,13 @@ module type T = sig
     (** [current_point p] returns the current point of the path *)
 
   val transform: t -> (float * float -> float * float) -> t
-  (** [transform p f] returns a new path that is the path [p] transformed by
-      function [f]. It only modifies end points of paths primitives and
-      extents are leaved the same. *)
+    (** [transform p f] returns a new path that is the path [p] transformed by
+        function [f]. It only modifies end points of paths primitives and
+        extents are leaved the same. *)
+
+  val print_path: t -> unit
+    (** [print_path p] Debug function (TODO hide it) *)
+
+  val add: t -> t -> unit
+    (** [add p to_add] Adds the path [to_add] to the end of [p] *)
 end
