@@ -20,7 +20,26 @@
 
 module V = Viewport
 
-let is_finite x = (x: float) = x && 1. /. x <> 0.
+module Insets = struct
+  type insets = {
+    mutable xmin : float; mutable xmax : float;
+    mutable ymin : float; mutable ymax : float
+  }
+
+  let make () = {
+    xmin = infinity; xmax = neg_infinity;
+    ymin = infinity; ymax = neg_infinity
+  }
+
+  let includepoint insets (x, y) =
+    insets.xmin = min insets.xmin x;
+    insets.xmax = max insets.xmax x;
+    insets.ymin = min insets.ymin y;
+    insets.ymax = max insets.ymax y
+
+  let fit vp insets =
+    V.auto_fit vp insets.xmin insets.ymin insets.xmax insets.ymax
+end
 
 type pathstyle =
   | Lines
@@ -30,20 +49,115 @@ type pathstyle =
   | Boxes of float (* Width in Data coordinates (usually what we want) *)
   | Interval of float (* Width in Data coordinates (to be consistent) *)
 
+let is_finite x = 1. /. x <> 0.
+
+let rec draw_data ?(base=0.) pathstyle path (x, y) =
+  if is_finite y then match pathstyle with
+  | Lines | Linespoints _ -> Path.line_to path ~x ~y
+  | Impulses -> draw_data ~base (Boxes 0.) path (x, y)
+  | Points _ -> ()
+  | Boxes w ->
+      Path.rectangle path ~x:(x -. w *. 0.5) ~y:base ~w ~h:(y -. base)
+  | Interval size ->
+      Path.move_to path ~x ~y:base;
+      Arrows.path_line_to ~size ~head:Arrows.Stop ~tail:Arrows.Stop path x y
+  else Path.close path
+
+let close_data ?(base=0.) pathstyle path (x, y) =
+  if is_finite y then match pathstyle with
+  | Lines | Linespoints _ -> Path.line_to path ~x ~y
+  | Impulses | Points _ | Boxes _ | Interval _ -> ()
+  else Path.close path
+
+let draw_point pathstyle vp (x, y) =
+  if is_finite y then
+    match pathstyle with
+    | Lines | Impulses | Boxes _ | Interval _ -> ()
+    | Points m | Linespoints m -> V.mark vp ~x ~y m
+
+let fillpath vp path color =
+  V.save vp;
+  V.set_color vp color;
+  V.fill ~path vp V.Data;
+  V.restore vp
+
 (* Factorizes the x function in most submodules (except Function) *)
 let x ?(fill=false) ?(fillcolor=Color.red) ?(pathstyle=Lines)
-    ?(base=zero_iterator) vp iterator =
-  ()
+    ?(base=Iterator.zero_iterator ()) vp iterator =
+  let path = Path.make () in
+  let closingpath = ref [] in
+  let insets = Insets.make () in
+  let f p =
+    Insets.includepoint insets p;
+    let bx, by = Iterator.next base in
+    draw_data pathstyle path ~base:by p;
+    if fill then closingpath := (bx, by) :: !closingpath
+  in
+  let data_rev = Iterator.iter_cache f iterator in
+  Insets.fit vp insets;
+  if fill then begin
+    let path = Path.copy path in
+    List.iter (close_data pathstyle path) !closingpath;
+    fillpath vp path fillcolor
+  end;
+  V.stroke ~path vp V.Data;
+  List.iter (draw_point pathstyle vp) data_rev
 
 (* Factorizes the xy function in most submodules (except Function) *)
 let xy ?(fill=false) ?(fillcolor=Color.red) ?(pathstyle=Lines)
     vp iterator =
-  ()
+  let insets = Insets.make () in
+  let path = Path.make () in
+  let f p =
+    Insets.includepoint insets p;
+    draw_data pathstyle path p
+  in
+  let data_rev = Iterator.iter_cache f iterator in
+  Insets.fit vp insets;
+  if fill then fillpath vp path fillcolor;
+  V.stroke ~path vp V.Data;
+  List.iter (draw_point pathstyle vp) data_rev
 
 (* Factorizes the stack function in most submodules (except Function) *)
-let stack ?(colors=[|Color.red; Color.blue|]) ?(fillcolor=[|Color.white|])
-    vp iterators =
-  ()
+(* TODO choose a better default list of colors / fillcolors *)
+let stack ?(colors=[|Color.red; Color.blue|]) ?(fillcolors=[||])
+    ?(pathstyle=Boxes 0.5) vp iterators =
+  let fill = fillcolors <> [||] in
+  let m = Array.length iterators in
+  let insets = Insets.make () in
+  let curx = ref neg_infinity in
+  let curbase = ref 0. in
+  let paths = Array.init m (fun _ -> Path.make ()) in
+  let backpaths = Array.init (succ m) (fun _ -> []) in
+  let stacking i iterator =
+    let (x, y) = Iterator.next iterator in
+    Insets.includepoint insets (x, y);
+    if i = 0 then begin
+      curx := x;
+      curbase := 0.;
+    end
+    else assert (!curx = x);
+    draw_data ~base:(!curbase) pathstyle paths.(i) (x, y);
+    backpaths.(i) <- (x, !curbase) :: backpaths.(i);
+    curbase := !curbase +. y;
+    if i = pred m then backpaths.(m) <- (x, !curbase) :: backpaths.(m)
+  in
+  try while true do Array.iteri stacking iterators done
+  with Iterator.EOI ->
+    Insets.fit vp insets;
+    V.save vp;
+    let draw i path =
+      if fill then begin
+        let path = Path.copy path in
+        List.iter (close_data pathstyle path) backpaths.(i);
+        fillpath vp path fillcolors.(i mod (Array.length fillcolors))
+      end;
+      (* TODO setcolor *)
+      V.stroke ~path vp V.Data;
+      List.iter (draw_point pathstyle vp) backpaths.(succ i)
+    in
+    Array.iteri draw paths;
+    V.restore vp
 
 (* The following functions simplify the implementation of x, xy and stack
    in standard submodules *)
@@ -51,51 +165,82 @@ let basex transform base ?fill ?fillcolor ?pathstyle vp data =
   x ?fill ?fillcolor ?pathstyle ~base vp (transform data)
 let basexy transform ?fill ?fillcolor ?pathstyle vp data =
   xy ?fill ?fillcolor ?pathstyle vp (transform data)
-let basestack transform ?colors ?fillcolors vp datas =
-  stack ?colors ?fillcolors vp (Array.map transform datas)
+let basestack transform ?colors ?fillcolors ?pathstyle vp datas =
+  stack ?colors ?fillcolors ?pathstyle vp (Array.map transform datas)
+
+module type Common = sig
+  type data
+  type data2
+
+  val x : ?base:data -> ?fill:bool -> ?fillcolor:Color.t ->
+    ?pathstyle:pathstyle -> Viewport.t -> data -> unit
+
+  val xy : ?fill:bool -> ?fillcolor:Color.t -> ?pathstyle:pathstyle ->
+    Viewport.t -> data2 -> unit
+
+  val stack : ?colors:(Color.t array) -> ?fillcolors:(Color.t array) ->
+    ?pathstyle:pathstyle -> Viewport.t -> data array -> unit
+end
+
 
 module Array = struct
-  let x ?(base=[||]) = basex Iterator.of_array base
+  type data = float array
+  type data2 = (float * float) array
+
+  let x ?(base=[||]) = basex Iterator.of_array (Iterator.of_array base)
   let xy = basexy Iterator.of_array2
   let stack = basestack Iterator.of_array
 end
 
 module List = struct
-  let x ?(base=[||]) = basex Iterator.of_list base
+  type data = float list
+  type data2 = (float * float) list
+
+  let x ?(base=[]) = basex Iterator.of_list (Iterator.of_list base)
   let xy = basexy Iterator.of_list2
   let stack = basestack Iterator.of_list
 end
 
 module Fortran = struct
-  let x ?(base=[||]) = basex Iterator.of_fortran base
+  open Bigarray
+
+  type data = (float, float64_elt, fortran_layout) Array1.t
+  type data2 = (float, float64_elt, fortran_layout) Array2.t
+
+  let base = Array1.create float64 fortran_layout 0
+
+  let x ?(base=base) = basex Iterator.of_fortran (Iterator.of_fortran base)
   let xy = basexy Iterator.of_fortran2
   let stack = basestack Iterator.of_fortran
 end
 
 module C = struct
-  let x ?(base=[||]) = basex Iterator.of_c base
+  open Bigarray
+
+  type data = (float, float64_elt, c_layout) Array1.t
+  type data2 = (float, float64_elt, c_layout) Array2.t
+
+  let base = Array1.create float64 c_layout 0
+
+  let x ?(base=base) = basex Iterator.of_c (Iterator.of_c base)
   let xy = basexy Iterator.of_c2
   let stack = basestack Iterator.of_c
 end
 
 module Function = struct
-  type fct =
-    | X of float -> float
-    | XY of float -> float * float
-
-  type sampling = {
+  type 'a sampling = {
     strategy: Sampler.strategy;
     criterion: Sampler.criterion;
     min_step: float;
     nsamples: int;
-    fct: fct;
+    fct: (float -> 'a);
     t0: float;
     tend: float;
     mutable data: (float * float) list
   }
 
   let sampling ?(strategy=Sampler.strategy_midpoint)
-      ?(criterion=Sampler.criterion_none) ?(min_step=1E-9) ?(nsample=100)
+      ?(criterion=Sampler.criterion_none) ?(min_step=1E-9) ?(nsamples=100)
       f a b =
     { strategy = strategy;
       criterion = criterion;
@@ -106,308 +251,12 @@ module Function = struct
       tend = b;
       data = [] }
 
-  let xsampling f = sampling (X f)
-  let xysampling f = sampling (XY f)
-
   let x ?pathstyle vp sampling =
     ()
 
   let xy ?fill ?fillcolor ?pathstyle vp sampling =
     ()
 
-  let fill ?fillcolor vp ?(base=zerosampling) sampling =
+  let fill ?fillcolor vp ?base sampling =
     ()
 end
-
-
-
-
-
-
-
-
-
-
-module Common =
-struct
-
-  type pathstyle =
-    | Lines
-    | Points of string
-    | Linespoints of string
-    | Impulses
-    | Boxes of float
-    | Interval of float
-
-  type filledcurves = Color.t * Color.t (* f1 > f2, f2 < f1 *)
-
-  let f_line_to vp (x, y) = V.line_to vp x y
-  let f_finish vp = V.stroke vp V.Data
-
-  let draw_data ?(base=0.) pathstyle path (x, y) =
-    if is_finite y then
-      match pathstyle with
-      | Lines _ | Linespoints _-> Path.line_to path ~x ~y
-      | Impulses ->
-        Path.move_to path ~x ~y:base;
-        Path.line_to path ~x ~y
-      | Points _ -> ()
-      | Boxes w ->
-        Path.rectangle path ~x:(x -. w *. 0.5) ~y:base ~w ~h:(y -. base)
-      | Interval size ->
-        Path.move_to path ~x ~y:base;
-        Arrows.path_line_to ~size ~head:Arrows.Stop ~tail:Arrows.Stop path x y
-
-  let close_data pathstyle path (x, y) =
-    if is_finite y then
-      match pathstyle with
-      | Lines | Linespoints _ -> Path.line_to path ~x ~y
-      | Impulses | Points _ | Boxes _ | Interval _ -> ()
-
-  let draw_point pathstyle vp (x, y) =
-    if is_finite y then
-      match pathstyle with
-      | Lines | Impulses | Boxes _ | Interval _ -> ()
-      | Points m | Linespoints m -> V.mark vp ~x ~y m
-
-  let fill_data fillcolor pathstyle vp path iter =
-    let path = Path.copy path in
-    Iterator.iter (close_data pathstyle path) iter;
-    V.save vp;
-    V.set_color vp fillcolor;
-    V.fill ~path vp V.Data;
-    V.restore vp
-
-  let fx ?strategy ?criterion ?min_step ?nsamples ?(fill=false)
-      ?(fillcolor=Color.red) ?(pathstyle=Lines) ?(g=fun _ -> 0.) vp f a b =
-    let h x = x, f x +. g x in
-    let sampler =
-      Iterator.of_function ~tlog:(V.xlog vp) ?min_step ?nsamples
-        ?strategy ?criterion
-    in
-    let iter = sampler h a b in
-    let miny = ref infinity and maxy = ref neg_infinity in
-    let path = Path.make () in
-    let data_rev = Iterator.iter_cache
-      (fun (hx, hy) ->
-          miny := min hy !miny; maxy := max hy !maxy;
-          draw_data pathstyle path ~base:(g hx) (hx, hy)) iter
-    in
-    V.auto_fit vp a !miny b !maxy;
-    if fill then fill_data fillcolor pathstyle vp path (sampler (fun x -> x, g x) b a);
-    V.stroke ~path vp V.Data;
-    List.iter (draw_point pathstyle vp) data_rev
-
-  let xy_param ?min_step ?nsamples ?(fill=false) ?(fillcolor=Color.red)
-      ?(pathstyle=Lines) vp f a b =
-    let _, r, data = Functions.samplefxy ?nsamples ?min_step f b a in
-    let x1 = r.Matrix.x and y1 = r.Matrix.y in
-    let x2 = x1 +. r.Matrix.w and y2 = y1 +. r.Matrix.h in
-    V.auto_fit vp x1 y1 x2 y2;
-    let x, y = f a in
-    let path = Path.make_at x y in
-    List.iter (draw_data pathstyle path) data;
-    let pathcopy = Path.copy path in
-    if fill then begin
-      V.set_color vp fillcolor;
-      V.fill ~path vp V.Data;
-      V.set_color vp Color.black
-    end;
-    V.stroke ~path:pathcopy vp V.Data;
-    List.iter (draw_point pathstyle vp) data
-
-end
-
-(************************************************************************)
-
-module Array =
-struct
-  include Common
-
-  let x ?(fill=false) ?(fillcolor=Color.red) ?(pathstyle=Boxes 0.5) vp data =
-    let ymin = ref data.(0)
-    and ymax = ref data.(0) in
-    let n = Array.length data in
-    let path = Path.make_at 0. data.(0) in
-    for x = 0 to n - 1 do
-      let y = data.(x) in
-      ymin := min !ymin y;
-      ymax := max !ymax y;
-      draw_data pathstyle path (float x, y)
-    done;
-    V.auto_fit vp 0. !ymin (float n) !ymax;
-    if fill then begin
-      let pathcopy = Path.copy path in
-      Path.line_to pathcopy (float (n - 1)) 0.;
-      Path.line_to pathcopy 0. 0.;
-      let instruction () =
-        let c = V.get_color vp in
-        V.set_color_direct vp fillcolor ();
-        V.fill_direct ~path:pathcopy vp V.Data ();
-        V.set_color_direct vp c ()
-      in
-      V.add_instruction instruction vp;
-    end;
-    V.stroke ~path vp V.Data;
-    (match pathstyle with
-     | Linespoints m | Points m ->
-         Array.iteri (fun i y -> V.mark vp ~x:(float i) ~y m) data
-     | Lines | Impulses | Boxes _ | Interval _ -> ())
-
-  let xy ?(fill=false) ?(fillcolor=Color.red) ?(pathstyle=Boxes 0.5)
-      vp data_x data_y =
-    let n = Array.length data_x in
-    assert (n = Array.length data_y);
-    let xmin = ref data_x.(0)
-    and xmax = ref data_x.(0)
-    and ymin = ref data_y.(0)
-    and ymax = ref data_y.(0) in
-    let path = Path.make_at data_x.(0) data_y.(0) in
-    for i = 0 to n - 1 do
-      let x, y = data_x.(i), data_y.(i) in
-      xmin := min !xmin x;
-      xmax := max !xmax x;
-      ymin := min !ymin y;
-      ymax := max !ymax y;
-      draw_data pathstyle path (x, y)
-    done;
-    V.auto_fit vp !xmin !ymin !xmax !ymax;
-    if fill then begin
-      let instruction () =
-        let c = V.get_color vp in
-        V.set_color_direct vp fillcolor ();
-        V.fill_direct ~path vp V.Data ();
-        V.set_color_direct vp c ()
-      in
-      V.add_instruction instruction vp;
-    end;
-    V.stroke ~path vp V.Data;
-    (match pathstyle with
-     | Linespoints m | Points m ->
-         Array.iteri (fun i x -> V.mark vp ~x ~y:(data_y.(i)) m) data_x
-     | Lines | Impulses | Boxes _ | Interval _ -> ())
-
-  let stack ?(color=[|Color.rgb 0.8 0.8 0.8|])
-      ?(fillcolor=[|Color.rgb 0.95 0.95 0.95|])
-      ?(pathstyle=Boxes 0.5) vp data =
-    let m = Array.length data in
-    let n = Array.length data.(0) in
-    let xmax = float (n - 1) in
-    let ymin = ref data.(0).(0)
-    and ymax = ref data.(0).(0) in
-    (* Stacking *)
-    let curdata = Array.copy data.(0) in
-    let stacking i j x =
-      if x < 0. then begin
-        print_string "Warning: stack containing negative values,\n";
-        print_string "this may produce unexpected results\n"
-      end;
-      curdata.(j) <- if i = 0 then x else x +. curdata.(j);
-      ymin := min !ymin curdata.(j);
-      ymax := max !ymax curdata.(j);
-      curdata.(j)
-    in
-    let data = Array.init m (fun i -> Array.mapi (stacking i) data.(i)) in
-    V.auto_fit vp (-1.) !ymin (xmax +. 1.) (!ymax +. abs_float !ymax *. 0.02);
-    (* Drawing *)
-    V.save vp;
-    for i = m - 1 downto 0 do
-      let path = Path.make_at 0. data.(i).(0) in
-      for j = 0 to n - 1 do
-        let base = if i = 0 then 0. else data.(i-1).(j) in
-        draw_data ~base pathstyle path (float j, data.(i).(j))
-      done;
-      if fillcolor != [||] then begin
-        let pathcopy = Path.copy path in
-        for j = n - 1 downto 0 do
-          let y = if i = 0 then 0. else data.(i-1).(j) in
-          close_data pathstyle pathcopy (float j, y)
-        done;
-        V.set_color vp fillcolor.(i mod (Array.length fillcolor));
-        V.fill ~path:pathcopy vp V.Data;
-      end;
-      V.set_color vp color.(i mod (Array.length color));
-      V.stroke ~path vp V.Data;
-    done;
-    V.restore vp
-
-end
-
-(*module L = List
-module List =
-struct
-  include Common
-
-  let x p ?color ?mark ?(n0=0) x =
-    let i = ref (n0-1) in
-    let n = List.map (fun _ -> incr i; float(!i)) x in
-    let iter = Iterator.of_lists n x in
-    (*draw_axes p;*)
-    V.xy p.h ?color ?mark iter
-
-  let xy p ?color ?mark x y =
-    let iter = Iterator.of_lists x y in
-    (*draw_axes p;*)
-    V.xy p.h ?color ?mark iter
-end
-
-module Generic =
-struct
-  include Common
-
-  (* Ugly, temporary solution *)
-  let x p ?color ?mark ?(n0=0) iter data =
-    let x = ref [] in
-    iter (fun xi -> x := xi :: !x) data;
-    List.x p ?color ?mark ~n0 (L.rev !x)
-
-  let xy p ?color ?mark iter data =
-    let x = ref [] in
-    let y = ref [] in
-    iter (fun xi yi -> x := xi :: !x; y := yi :: !y) data;
-    List.xy p ?color ?mark (L.rev !x) (L.rev !y)
-end
-
-module Fortran =
-struct
-  include Common
-  type vec = (float, float64_elt, fortran_layout) Array1.t
-
-  let x p ?color ?mark ?(n0=1) x =
-    let dim = Array1.dim x in
-    let n = Array1.create float64 fortran_layout dim in
-    for i = 1 to dim do
-      n.{i} <- float(n0 + i);
-    done;
-    let iter = Iterator.of_bigarrays n x ~xclayout:false ~yclayout:false in
-    (*draw_axes p;*)
-    V.xy p.h ?color ?mark iter
-
-  let xy p ?color ?mark x y =
-    let iter = Iterator.of_bigarrays x y ~xclayout:false ~yclayout:false in
-    (*draw_axes p;*)
-    V.xy p.h ?color ?mark iter
-end
-
-module C =
-struct
-  include Common
-  type vec = (float, float64_elt, c_layout) Array1.t
-
-  let x p ?color ?mark ?(n0=1) x =
-    let dim = Array1.dim x in
-    let n = Array1.create float64 c_layout dim in
-    for i = 1 to dim do
-      n.{i} <- float(n0 + i);
-    done;
-    let iter = Iterator.of_bigarrays n x ~xclayout:true ~yclayout:true in
-    (*draw_axes p;*)
-    V.xy p.h ?color ?mark iter
-
-  let xy p ?color ?mark x y =
-    let iter = Iterator.of_bigarrays x y ~xclayout:true ~yclayout:true in
-    (*draw_axes p;*)
-    V.xy p.h ?color ?mark iter
-
-end
-*)

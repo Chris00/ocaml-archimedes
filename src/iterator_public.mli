@@ -80,6 +80,10 @@ module type T = sig
         @param criterion a customized criterion, which can be chosen among
         those in this module
     *)
+  val of_last : (float * float -> float * float) -> float * float -> t
+    (** [of_last f start] Create an iterator which creates its next
+        element from the last he has computed using the function [f], starting
+        from [start] *)
 
   val next : t -> float * float
     (** [next iter] returns the next value of [iter] *)
@@ -92,4 +96,10 @@ module type T = sig
     (** [iter_cache f iter] apply the function [f] to all values left in
         the iterator. Those values are stored reversed in a list which is
         returned *)
+
+  val constant_iterator : float -> t
+    (** [constant_iterator c] Creates an iterator which starts at (0.,
+        [c]) and just increment the x value *)
+  val zero_iterator : unit -> t
+    (** [zero_iterator ()] Alias for (constant_iterator 0.) *)
 end

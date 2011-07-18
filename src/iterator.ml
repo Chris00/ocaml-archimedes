@@ -32,6 +32,8 @@ type which =
   | C2 of (float, B.float64_elt, B.c_layout) B.Array2.t
   | Fortran2 of (float, B.float64_elt, B.fortran_layout) B.Array2.t
   | Function of Sampler.t
+  | From_last of ((float * float -> float * float) * (float * float) ref)
+  (* | From_2last of ((float * float) * (float * float) -> float * float *)
 
 type t = {
   data : which;
@@ -54,6 +56,10 @@ let of_function ?tlog ?min_step ?nsamples ?strategy ?criterion f a b =
   {data = Function (Sampler.create ?tlog ?min_step ?nsamples
                       ?strategy ?criterion f a b);
    pos = 0}
+let of_last f start = {data = From_last (f, ref start); pos = 0}
+
+let constant_iterator c = of_last (fun (x, y) -> (x +. 1., y)) (0., c)
+let zero_iterator () = constant_iterator 0.
 
 let next iter =
   let ret = match iter.data with
@@ -83,6 +89,10 @@ let next iter =
       | None -> raise EOI
       | Some p -> p
       end
+    | From_last (f, ({contents = p} as last)) ->
+        let v = f p in
+        last := v;
+        v
   in
   iter.pos <- succ iter.pos;
   ret
