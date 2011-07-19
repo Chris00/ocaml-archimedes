@@ -29,8 +29,8 @@ let backends title =
 let rec exec_test = function
   | "all" -> List.iter exec_test (List.map fst map)
   | name -> try
-      let test = List.assoc name map in
-      Printf.printf "%s\n" name;
+      let test, description = List.assoc name map in
+      Printf.printf "%s: %s\n%!" name description;
       List.iter test (backends name)
     with Not_found -> Printf.printf "Test not found: %s" name
 

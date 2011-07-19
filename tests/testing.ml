@@ -6,3 +6,5 @@ let dirs = ["./src"; "../src"; "_build/src"]
 let w = 800.
 let h = 600.
 
+let description = "No description for this test"
+

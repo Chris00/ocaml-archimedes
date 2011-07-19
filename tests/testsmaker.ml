@@ -28,7 +28,8 @@ let is_test name =
 
 let print_test name =
   let name = String.sub name 0 (String.length name - 3) in
-  printf "  (\"%s\", %s.draw);\n" name (String.capitalize name)
+  let cname = String.capitalize name in
+  printf "  (\"%s\", (%s.draw, %s.description));\n" name cname cname
 
 let print_tests () =
   let files = Array.to_list (Sys.readdir "tests") in

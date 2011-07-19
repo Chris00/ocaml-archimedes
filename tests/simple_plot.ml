@@ -1,4 +1,4 @@
-open Testing
+include Testing
 module P = Plot.Generic
 
 let draw backend =

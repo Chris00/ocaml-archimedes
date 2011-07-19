@@ -1,4 +1,4 @@
-open Testing
+include Testing
 
 let draw backend =
   let vp = Viewport.init ~w ~h ~dirs backend in

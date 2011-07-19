@@ -1,4 +1,4 @@
-open Testing
+include Testing
 
 let draw bk =
   let bk = Backend.make bk 800. 700. ~dirs in

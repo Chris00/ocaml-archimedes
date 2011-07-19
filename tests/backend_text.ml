@@ -1,4 +1,4 @@
-open Testing
+include Testing
 
 let half_pi = pi /. 2.
 let two_pi = 2. *. pi

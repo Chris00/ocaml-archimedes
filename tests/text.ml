@@ -1,4 +1,4 @@
-open Testing
+include Testing
 module B = Backend
 
 let draw bk =

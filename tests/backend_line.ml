@@ -1,4 +1,6 @@
-open Testing
+include Testing
+
+let description = "Some drawings on backend (arcs, equal sign, huge line)"
 
 let draw bk =
   let bk = Backend.make bk 700. 700. ~dirs in
