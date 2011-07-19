@@ -418,7 +418,9 @@ struct
           if h >= 0. then y, h
           else y +. h, -. h
         in
-        Graphics.draw_rect (round x) (round y) (round w) (round h)
+        let x = round x and y = round y
+        and w = round (x +. w) - round x and h = round (y +. h) - round y in
+        Graphics.draw_rect x y w h
     | CURVE_TO(_, _, x1,y1, x2,y2, x3,y3) ->
         Graphics.curveto
           (round x1, round y1) (round x2, round y2) (round x3, round y3)
@@ -467,8 +469,11 @@ struct
           if h >= 0. then y, h
           else y +. h, -. h
         in
-        let x = round x and y = round y in
-        let w = round w and h = round h in
+
+        (*let x = round x and y = round y in
+        let w = round w and h = round h in*)
+        let x = round x and y = round y
+        and w = round (x +. w) - round x and h = round (y +. h) - round y in
         (* If there was no "MOVE_TO" after the rectangle, the base
            point of the rectangle is used. *)
         if coords = [] then
