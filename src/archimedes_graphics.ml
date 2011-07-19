@@ -410,6 +410,14 @@ struct
     | MOVE_TO(x,y) -> Graphics.moveto (round x) (round y)
     | LINE_TO(x,y) -> Graphics.lineto (round x) (round y)
     | RECTANGLE(x,y,w,h) ->
+        let x, w =
+          if w >= 0. then x, w
+          else x +. w, -. w
+        in
+        let y, h =
+          if h >= 0. then y, h
+          else y +. h, -. h
+        in
         Graphics.draw_rect (round x) (round y) (round w) (round h)
     | CURVE_TO(_, _, x1,y1, x2,y2, x3,y3) ->
         Graphics.curveto
@@ -451,6 +459,14 @@ struct
     | LINE_TO(x,y) :: tl ->
         gather_subpath tl ((round x, round y) :: coords)
     | RECTANGLE(x,y,w,h) :: tl ->
+        let x, w =
+          if w >= 0. then x, w
+          else x +. w, -. w
+        in
+        let y, h =
+          if h >= 0. then y, h
+          else y +. h, -. h
+        in
         let x = round x and y = round y in
         let w = round w and h = round h in
         (* If there was no "MOVE_TO" after the rectangle, the base
