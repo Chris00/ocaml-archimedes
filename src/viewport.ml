@@ -113,21 +113,21 @@ end = struct
     match range.auto_x0, range.auto_xend with
     | false, false -> ()
     | false, true ->
-      (* TODO: test if using the magnitude of the values for interval
-         epsilon is good looking or not. *)
-      range.xend <- max range.data_xend (range.x0 +. 0.01);
+        (* TODO: test if using the magnitude of the values for interval
+           epsilon is good looking or not. *)
+        range.xend <- max range.data_xend (range.x0 +. 0.01);
     | true, false ->
-      range.x0 <- min range.data_x0 (range.xend -. 0.01);
+        range.x0 <- min range.data_x0 (range.xend -. 0.01);
     | true, true ->
-      assert (range.data_x0 = infinity || range.data_x0 > -.infinity);
-      assert (range.data_xend = -.infinity || range.data_xend < infinity);
-      if range.data_x0 = infinity && range.data_xend = -.infinity then begin
-        range.x0 <- 0.;
-        range.xend <- 1.
-      end else begin
-        range.x0 <- min range.data_x0 (range.data_xend -. 0.01);
-        range.xend <- max range.data_xend (range.data_x0 +. 0.01)
-      end
+        assert (range.data_x0 = infinity || range.data_x0 > -.infinity);
+        assert (range.data_xend = -.infinity || range.data_xend < infinity);
+        if range.data_x0 = infinity && range.data_xend = -.infinity then begin
+          range.x0 <- 0.;
+          range.xend <- 1.
+        end else begin
+          range.x0 <- min range.data_x0 (range.data_xend -. 0.01);
+          range.xend <- max range.data_xend (range.data_x0 +. 0.01)
+        end
 
   let resize_axis axis size =
     let r = axis.range.value in

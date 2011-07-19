@@ -2,7 +2,7 @@ open Testing
 
 module V = Viewport
 module P = Path
-module Pl = Plot.Array
+module Pl = Plot.Function
 
 let draw bk =
   let vp = V.init ~w:1024. ~h:768. ~dirs bk in
@@ -13,7 +13,8 @@ let draw bk =
   V.yrange subvps.(0) (-3.) 5.;
   V.xrange subvps.(1) (-5.) 5.;
   V.yrange subvps.(1) (-1.) 5.;*)
-  Pl.fx subvps.(0) (fun x -> x *. x) 0. 5.;
+  let sampling = Pl.sampling (fun x -> x *. x) 0. 5. in
+  Pl.x subvps.(0) sampling;
   Axes.cross ~tics:(Tics.Equidistants (Tics.Number 5, 0., 3., 1)) subvps.(0);
   V.set_color subvps.(1) Color.red;
   Axes.cross ~tics:(Tics.Equidistants (Tics.Number 5, 0., 1., 1)) subvps.(1);

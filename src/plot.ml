@@ -32,10 +32,10 @@ module Insets = struct
   }
 
   let includepoint insets (x, y) =
-    insets.xmin = min insets.xmin x;
-    insets.xmax = max insets.xmax x;
-    insets.ymin = min insets.ymin y;
-    insets.ymax = max insets.ymax y
+    insets.xmin <- min insets.xmin x;
+    insets.xmax <- max insets.xmax x;
+    insets.ymin <- min insets.ymin y;
+    insets.ymax <- max insets.ymax y
 
   let fit vp insets =
     V.auto_fit vp insets.xmin insets.ymin insets.xmax insets.ymax
@@ -108,9 +108,9 @@ let xy ?(fill=false) ?(fillcolor=Color.red) ?(pathstyle=Lines)
     vp iterator =
   let insets = Insets.make () in
   let path = Path.make () in
-  let f p =
-    Insets.includepoint insets p;
-    draw_data pathstyle path p
+  let f p = ()
+    (*Insets.includepoint insets p;
+    draw_data pathstyle path p*)
   in
   let data_rev = Iterator.iter_cache f iterator in
   Insets.fit vp insets;
@@ -120,9 +120,8 @@ let xy ?(fill=false) ?(fillcolor=Color.red) ?(pathstyle=Lines)
 
 (* Factorizes the stack function in most submodules (except Function) *)
 (* TODO choose a better default list of colors / fillcolors *)
-let stack ?(colors=[|Color.red; Color.blue|]) ?(fillcolors=[||])
+let stack ?(colors=[|Color.black|]) ?(fillcolors=[| |])
     ?(pathstyle=Boxes 0.5) vp iterators =
-  let fill = fillcolors <> [||] in
   let m = Array.length iterators in
   let insets = Insets.make () in
   let curx = ref neg_infinity in
@@ -132,27 +131,23 @@ let stack ?(colors=[|Color.red; Color.blue|]) ?(fillcolors=[||])
   let stacking i iterator =
     let (x, y) = Iterator.next iterator in
     Insets.includepoint insets (x, y);
-    if i = 0 then begin
-      curx := x;
-      curbase := 0.;
-    end
-    else assert (!curx = x);
-    draw_data ~base:(!curbase) pathstyle paths.(i) (x, y);
+    if i = 0 then curx := x else assert (!curx = x);
+    draw_data ~base:(!curbase) pathstyle paths.(i) (x, y +. !curbase);
     backpaths.(i) <- (x, !curbase) :: backpaths.(i);
     curbase := !curbase +. y;
     if i = pred m then backpaths.(m) <- (x, !curbase) :: backpaths.(m)
   in
-  try while true do Array.iteri stacking iterators done
+  try while true do curbase := 0.; Array.iteri stacking iterators done
   with Iterator.EOI ->
     Insets.fit vp insets;
     V.save vp;
     let draw i path =
-      if fill then begin
+      if fillcolors <> [| |] then begin
         let path = Path.copy path in
         List.iter (close_data pathstyle path) backpaths.(i);
         fillpath vp path fillcolors.(i mod (Array.length fillcolors))
       end;
-      (* TODO setcolor *)
+      V.set_color vp (colors.(i mod (Array.length colors)));
       V.stroke ~path vp V.Data;
       List.iter (draw_point pathstyle vp) backpaths.(succ i)
     in
@@ -161,8 +156,8 @@ let stack ?(colors=[|Color.red; Color.blue|]) ?(fillcolors=[||])
 
 (* The following functions simplify the implementation of x, xy and stack
    in standard submodules *)
-let basex transform base ?fill ?fillcolor ?pathstyle vp data =
-  x ?fill ?fillcolor ?pathstyle ~base vp (transform data)
+let basex transform ?base ?fill ?fillcolor ?pathstyle vp data =
+  x ?fill ?fillcolor ?pathstyle ?base vp (transform data)
 let basexy transform ?fill ?fillcolor ?pathstyle vp data =
   xy ?fill ?fillcolor ?pathstyle vp (transform data)
 let basestack transform ?colors ?fillcolors ?pathstyle vp datas =
@@ -182,12 +177,14 @@ module type Common = sig
     ?pathstyle:pathstyle -> Viewport.t -> data array -> unit
 end
 
-
 module Array = struct
   type data = float array
   type data2 = (float * float) array
 
-  let x ?(base=[||]) = basex Iterator.of_array (Iterator.of_array base)
+  let x ?base = match base with
+    | None -> basex Iterator.of_array ?base:None
+    | Some a -> basex Iterator.of_array ~base:(Iterator.of_array a)
+
   let xy = basexy Iterator.of_array2
   let stack = basestack Iterator.of_array
 end
@@ -196,7 +193,9 @@ module List = struct
   type data = float list
   type data2 = (float * float) list
 
-  let x ?(base=[]) = basex Iterator.of_list (Iterator.of_list base)
+  let x ?base = match base with
+    | None -> basex Iterator.of_list ?base:None
+    | Some l -> basex Iterator.of_list ~base:(Iterator.of_list l)
   let xy = basexy Iterator.of_list2
   let stack = basestack Iterator.of_list
 end
@@ -207,9 +206,9 @@ module Fortran = struct
   type data = (float, float64_elt, fortran_layout) Array1.t
   type data2 = (float, float64_elt, fortran_layout) Array2.t
 
-  let base = Array1.create float64 fortran_layout 0
-
-  let x ?(base=base) = basex Iterator.of_fortran (Iterator.of_fortran base)
+  let x ?base = match base with
+    | None -> basex Iterator.of_fortran ?base:None
+    | Some b -> basex Iterator.of_fortran ~base:(Iterator.of_fortran b)
   let xy = basexy Iterator.of_fortran2
   let stack = basestack Iterator.of_fortran
 end
@@ -222,7 +221,9 @@ module C = struct
 
   let base = Array1.create float64 c_layout 0
 
-  let x ?(base=base) = basex Iterator.of_c (Iterator.of_c base)
+  let x ?base = match base with
+    | None -> basex Iterator.of_c ?base:None
+    | Some b ->  basex Iterator.of_c ~base:(Iterator.of_c b)
   let xy = basexy Iterator.of_c2
   let stack = basestack Iterator.of_c
 end

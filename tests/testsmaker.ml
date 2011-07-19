@@ -4,15 +4,13 @@ open Printf
 
 let skip = [
   (* TODO drop those tests or fix them *)
-  "arrays.ml";
   "test_layer.ml";
   "cairo_backend.ml";
   "functions.ml";
   "simple_plot.ml";
   "test_handle.ml";
-  "test_boxes.ml";
   "test_custom_labels.ml";
-  "test_stack.ml";
+  "test_log.ml";
   (* do NOT edit the four following *)
   "tests.ml";
   "realtests.ml";

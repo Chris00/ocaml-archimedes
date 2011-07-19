@@ -1,7 +1,7 @@
 open Testing
 
 module V = Viewport
-module P = Plot.Array
+module P = Plot.Function
 
 let draw bk =
   let vp = V.init ~w:1024. ~h:600. ~dirs bk in
@@ -15,8 +15,10 @@ let draw bk =
   Axes.add_y_axis vp_zoom;
   V.axes_ratio vp pi;
   V.sync_ratio vp_zoom vp;
-  P.fx vp sin 0. 10.;
+  let sampling = P.sampling sin 0. 10. in
+  P.x vp sampling;
   V.yrange vp (- 1.5) 2.;
-  P.fx vp_zoom sin (9. *. pi /. 4.) (11. *. pi /. 4.);
+  let sampling_zoom = P.sampling sin (9. *. pi /. 4.) (11. *. pi /. 4.) in
+  P.x vp_zoom sampling_zoom;
 
   V.close vp

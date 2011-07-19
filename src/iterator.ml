@@ -71,9 +71,9 @@ let next iter =
     | C b ->
         if iter.pos = B.Array1.dim b then raise EOI;
         float iter.pos, b.{iter.pos}
-    | Fortran b ->
-        if iter.pos = B.Array1.dim b then raise EOI;
-        float iter.pos, b.{iter.pos}
+    | Fortran b -> (* Warning: In Fortran layout, the first index is 1 ! *)
+        if succ iter.pos > B.Array1.dim b then raise EOI;
+        float iter.pos, B.Array1.get b (succ iter.pos)
     | List2 (_, {contents = []}) -> raise EOI
     | List2 (_, ({contents = p :: l'} as l)) -> l := l'; p
     | Array2 a ->
@@ -82,9 +82,9 @@ let next iter =
     | C2 b ->
         if iter.pos = B.Array2.dim1 b then raise EOI;
         b.{iter.pos, 0}, b.{iter.pos, 1}
-    | Fortran2 b ->
-        if iter.pos = B.Array2.dim1 b then raise EOI;
-        b.{iter.pos, 0}, b.{iter.pos, 1}
+    | Fortran2 b -> (* Warning: In Fortran layout, the first index is 1 ! *)
+        if iter.pos > B.Array2.dim1 b then raise EOI;
+        b.{(succ iter.pos), 0}, b.{(succ iter.pos), 1}
     | Function f -> begin match Sampler.next f with
       | None -> raise EOI
       | Some p -> p
@@ -102,8 +102,9 @@ let reset iter =
   match iter.data with
   | List (l, l') -> l' := l
   | List2 (l, l') -> l' := l
-  | Function f -> Sampler.reset f
   | Array _ | C _ | Fortran _ | Array2 _ | C2 _ | Fortran2 _ -> ()
+  | Function f -> Sampler.reset f
+  | From_last _ -> ()
 
 let iter f iter =
   try
@@ -113,12 +114,14 @@ let iter f iter =
 
 let iter_cache f iter =
   let cache = ref [] in
-  try
-    while true do
-      let v = next iter in
-      f v;
-      cache := v :: !cache
-    done;
-    !cache
-  with
-  | EOI -> !cache
+  begin
+    try
+      while true do
+        let (x, y) = next iter in
+        f (x, y);
+        cache := (x, y) :: !cache
+      done
+    with
+    | EOI -> ()
+  end;
+  !cache

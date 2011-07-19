@@ -1,7 +1,7 @@
 open Testing
 
 module V = Viewport
-module P = Plot.Array
+module P = Plot.Function
 
 let draw bk =
   let vp = V.init ~w ~h ~dirs bk in
@@ -11,6 +11,7 @@ let draw bk =
   (* NOTE: when fill:true, with some value of nsamples, the fill has a bad
      point. This will be fixed with the new functions fill implementation
      (WIP). *)
-  P.fx ~fill:false vp f (-10.) 10.;
+  let sampling = P.sampling f (-10.) 10. in
+  P.x vp sampling;
   Axes.box vp;
   V.close vp
