@@ -1,7 +1,7 @@
 open Backend
 
 let is_nan (x: float) = x <> x
-let is_inf log max y = log && 1. /. y = 0. || not log && y > max
+let is_inf y = 1. /. y = 0.
 
 let update_extents e px py =
   let x, w, xupdated =
@@ -76,8 +76,8 @@ let samplefx ?(xlog=false) ?(ylog=false) ?(min_step=1E-9) ?(max_yrange=1E9)
           (* FIXME: Numerical error here *)
           let x = if xlog then x0 *. step else x0 +. step in
           let y = f x in
-          (* TODO: I'm not okay with that test, check and document it ! *)
-          if is_nan y || is_inf ylog max_yrange y then
+          (* TODO: I'm not okay with that test, check it and document ! *)
+          if is_nan y || (ylog && 1. /. y = 0. || not ylog && y > max_yrange) then
             next_point (i+1) tmin x y bounds listxy (len+1) extents
           else
             let diffx = if xlog then log x -. log x0 else x -. x0 in

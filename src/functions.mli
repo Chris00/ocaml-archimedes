@@ -15,6 +15,9 @@
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the file
    LICENSE for more details. *)
 
+val is_nan : float -> bool
+val is_inf : float -> bool
+
 val update_extents : Matrix.rectangle -> float -> float -> Matrix.rectangle
 
 val samplefxy :
