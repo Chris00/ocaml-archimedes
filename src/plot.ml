@@ -258,6 +258,6 @@ module Function = struct
   let xy ?fill ?fillcolor ?pathstyle vp sampling =
     ()
 
-  let fill ?fillcolor vp ?base sampling =
+  let fill ?fillcolor ?base vp sampling =
     ()
 end
