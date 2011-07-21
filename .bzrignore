@@ -29,3 +29,13 @@ src/conf.ml
 *.log
 *.dvi
 auto/
+# OASIS generated
+AUTHORS.txt
+INSTALL.txt
+README.txt
+_build/
+_tags
+myocamlbuild.ml
+setup.data
+*.mllib
+tests/realtests.ml
