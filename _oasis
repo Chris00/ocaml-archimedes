@@ -35,9 +35,10 @@ Flag tikz
 Library "archimedes"
   Path:         src
   BuildTools:   ocamlbuild
-  Modules:      Conf, String_utils, Color, Matrix, Backend, Coordinate,
-    Functions, Pointstyle, Path, Sampler, Iterator, Tics, Viewport, Arrows,
-    Axes, Plot, Piechart
+  #Pack:	true
+  Modules:      Color, Matrix, Backend, Coordinate, Functions, Pointstyle,
+    Path, Tics, Viewport, Arrows, Axes, Piechart
+  InternalModules: Conf, String_utils, Sampler, Iterator
   BuildDepends: dynlink, cairo2, graphics
 
 Library "archimedes_graphics"

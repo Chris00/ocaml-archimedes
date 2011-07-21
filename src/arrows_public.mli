@@ -1,4 +1,3 @@
-
 (* File: arrows_public.mli
 
    Copyright (C) 2009-2011
