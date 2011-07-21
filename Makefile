@@ -41,6 +41,8 @@ clean:
 	$(RM) $(wildcard *~ *.pdf *.ps *.png *.svg) setup.data
 #	$(MAKE) -C doc $@
 
+COMA = ,
 distclean dist-clean::
 	ocaml setup.ml -distclean
 	$(RM) $(wildcard *.ba[0-9] *.bak *~ *.odocl) setup.log
+	$(RM) $(subst $(COMA),,$(subst .ab,,$(shell oasis query FilesAB)))
