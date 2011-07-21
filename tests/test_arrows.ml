@@ -1,6 +1,7 @@
 open Testing
 
-module V = Viewport
+module V = Archimedes.Viewport
+module Arrows = Archimedes.Arrows
 
 let draw bk =
   let vp = V.init ~w ~h ~dirs bk in
@@ -10,5 +11,5 @@ let draw bk =
   Arrows.arc vp ~tail:Arrows.Simple 1. 1. 0.5 (pi /. 4.) pi;
   V.xrange vp 0. 4.;
   V.yrange vp 0. 4.;
-  Axes.box vp;
+  Archimedes.Axes.box vp;
   V.close vp

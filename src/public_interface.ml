@@ -41,4 +41,5 @@ let () =
   include_module "Axes";
   include_module "Sampler";
   include_module "Iterator";
-  include_module "Plot"
+  include_module "Plot";
+  include_module "Piechart"

@@ -1,7 +1,7 @@
 open Testing
 
-module V = Viewport
-module P = Path
+module V = Archimedes.Viewport
+module P = Archimedes.Path
 
 let draw bk =
   let vp = V.init ~w ~h ~dirs bk in
@@ -13,17 +13,17 @@ let draw bk =
 
   (* Draw it (absolute) *)
   V.set_line_width vp 42.;
-  V.set_color vp Color.red;
+  V.set_color vp Archimedes.Color.red;
   V.stroke ~path:p vp V.Device;
 
   (* Draw it (relative) *)
   V.set_rel_line_width vp 5.;
-  V.set_color vp Color.black;
+  V.set_color vp Archimedes.Color.black;
   V.stroke ~path:p vp V.Device;
 
   (* Draw it (relative) *)
   V.set_rel_line_width vp 1.;
-  V.set_color vp Color.white;
+  V.set_color vp Archimedes.Color.white;
   V.stroke ~path:p vp V.Device;
 
   V.close vp

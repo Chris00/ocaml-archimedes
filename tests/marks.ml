@@ -1,6 +1,6 @@
 open Testing
 (*module P = Plot.List*)
-module V = Viewport
+module V = Archimedes.Viewport
 
 (* The names of all implemented markers. *)
 (*let markers =
@@ -13,7 +13,7 @@ module V = Viewport
      "P";   "h";   "H";   "tic_up";
      "tic_down"; "tic_left"; "tic_right"; "" |]*)
 
-let markers = Array.of_list (Pointstyle.names ())
+let markers = Array.of_list (Archimedes.Pointstyle.names ())
 
 let draw backend =
   let vp = V.init ~w ~h ~dirs backend in

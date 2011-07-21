@@ -1,7 +1,7 @@
 open Testing
 
-module V = Viewport
-module P = Path
+module V = Archimedes.Viewport
+module P = Archimedes.Path
 
 let draw bk =
   let vp = V.init ~w ~h ~dirs bk in
@@ -11,7 +11,8 @@ let draw bk =
   for i = 0 to 11 do
     V.rectangle subvps.(i) ~x:0. ~y:0. ~w:1. ~h:1.;
     V.stroke subvps.(i) V.Device;
-    Axes.cross ~tics:(Tics.Equidistants (Tics.Number 3, 0., 2., 1)) subvps.(i)
+    Archimedes.Axes.cross subvps.(i)
+      ~tics:(Archimedes.Tics.Equidistants(Archimedes.Tics.Number 3, 0., 2., 1))
   done;
 
   V.close vp

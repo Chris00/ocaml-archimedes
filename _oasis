@@ -36,9 +36,8 @@ Library "archimedes"
   Path:         src
   BuildTools:   ocamlbuild
   #Pack:	true
-  Modules:      Color, Matrix, Backend, Coordinate, Functions, Pointstyle,
-    Path, Tics, Viewport, Arrows, Axes, Piechart
-  InternalModules: Conf, String_utils, Sampler, Iterator
+  # src/archimedes.mlpack and _tags contain the list of modules
+  Modules:      Archimedes
   BuildDepends: dynlink, cairo2, graphics
 
 Library "archimedes_graphics"

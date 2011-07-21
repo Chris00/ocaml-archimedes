@@ -1,8 +1,10 @@
 open Testing
 
-module V = Viewport
-module P = Path
-module Pl = Plot.Function
+module V = Archimedes.Viewport
+module P = Archimedes.Path
+module Pl = Archimedes.Plot.Function
+module Axes = Archimedes.Axes
+module Tics = Archimedes.Tics
 
 let draw bk =
   let vp = V.init ~w:1024. ~h:768. ~dirs bk in
@@ -16,10 +18,10 @@ let draw bk =
   let sampling = Pl.sampling (fun x -> x *. x) 0. 5. in
   Pl.x subvps.(0) sampling;
   Axes.cross ~tics:(Tics.Equidistants (Tics.Number 5, 0., 3., 1)) subvps.(0);
-  V.set_color subvps.(1) Color.red;
+  V.set_color subvps.(1) Archimedes.Color.red;
   Axes.cross ~tics:(Tics.Equidistants (Tics.Number 5, 0., 1., 1)) subvps.(1);
-  V.set_color subvps.(2) Color.blue;
+  V.set_color subvps.(2) Archimedes.Color.blue;
   Axes.cross ~tics:(Tics.Equidistants (Tics.Number 5, 0., 1.5, 1)) subvps.(2);
-  V.set_color subvps.(3) Color.green;
+  V.set_color subvps.(3) Archimedes.Color.green;
   Axes.cross ~tics:(Tics.Equidistants (Tics.Number 5, 0., 2.5, 1)) subvps.(3);
   V.close vp
