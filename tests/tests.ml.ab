@@ -1,6 +1,5 @@
-let map = [
-  (* AUTOGEN_TESTS *)
-]
+(*                                                              -*-tuareg-*- *)
+let map = [ $(tests) ]
 
 let print_help () =
   print_string "usage: tests [option1] [option2] ...\n\n";

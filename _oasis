@@ -16,9 +16,9 @@ Homepage:    http://forge.ocamlcore.org/projects/archimedes/
 Plugins:     META (0.2), StdFiles (0.2)
 FilesAB:     src/conf.ml.ab,
   src/archimedes_cairo.dep.ab,
-  src/archimedes_graphics.dep.ab
-PreBuildCommand:  ocaml src/public_interface.ml > src/archimedes.mli \
-  && ocaml tests/testsmaker.ml > tests/realtests.ml
+  src/archimedes_graphics.dep.ab,
+  tests/tests.ml.ab
+PreBuildCommand:  ocaml src/public_interface.ml > src/archimedes.mli
 
 Flag graphics
   Description:  Use the graphics plugin ?
@@ -77,6 +77,6 @@ Library "archimedes_toploop"
 Executable "Tests"
   Path:         tests
   BuildTools:   ocamlbuild
-  MainIs:       realtests.ml
+  MainIs:       tests.ml
   BuildDepends: archimedes, archimedes.graphics, archimedes.cairo
   Install:      false
