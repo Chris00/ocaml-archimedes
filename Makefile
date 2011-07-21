@@ -32,7 +32,7 @@ dist tar: $(DISTFILES)
 	mkdir $(PKGNAME)-$(PKGVERSION)
 	cp --parents -r $(DISTFILES) $(PKGNAME)-$(PKGVERSION)/
 	tar -zcvf $(PKG_TARBALL) $(PKGNAME)-$(PKGVERSION)
-	rm -rf $(PKGNAME)-$(PKGVERSION)
+	$(RM) -rf $(PKGNAME)-$(PKGVERSION)
 
 .PHONY: clean distclean dist-clean
 clean:

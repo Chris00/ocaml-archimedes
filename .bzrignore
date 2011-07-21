@@ -33,7 +33,6 @@ AUTHORS.txt
 INSTALL.txt
 README.txt
 _build/
-_tags
 myocamlbuild.ml
 setup.data
 *.mllib
