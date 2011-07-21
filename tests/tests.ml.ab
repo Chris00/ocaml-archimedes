@@ -4,7 +4,7 @@ open Printf
 let map = [ $(tests) ]
 
 let print_help () =
-  printf "usage: tests [option1] [option2] ...\n\n";
+  printf "usage: tests [option1] [option2] ...\n";
   printf "where an option is a test name or one of the following:\n";
   printf "--ps\t\tactivate ps (cairo) output (default: false)\n";
   printf "--pdf\t\tactivate pdf (cairo) output (false)\n";

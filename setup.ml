@@ -5306,6 +5306,7 @@ let is_test fname =
 let list_tests () =
   let files = Array.to_list (Sys.readdir "tests") in
   let files = List.filter is_test files in
+  let files = List.sort String.compare files in
   let to_string f =
     let name = String.capitalize(Filename.chop_suffix f ".ml") in
     Printf.sprintf "(%S, %s.draw)" name name in
