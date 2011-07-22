@@ -10,7 +10,7 @@ let print_help () =
   printf "--pdf\t\tactivate pdf (cairo) output (false)\n";
   printf "--png\t\tactivate png (cairo) output (false)\n";
   printf "--tex\t\tactivate tex (tikz) output (false)\n";
-  printf "--graphics\t\tactivate graphics output (true)\n";
+  printf "--graphics\tactivate graphics output (true)\n";
   printf "Available tests are:\n";
   List.iter (fun (name, _) -> printf "%s  " name) map;
   printf "\n\nExample: ";
