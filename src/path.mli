@@ -19,6 +19,8 @@
    LICENSE for more details. *)
 
 
+(** Creating abstract paths. *)
+
 type t
 
 val make: unit -> t

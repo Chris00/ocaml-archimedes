@@ -19,7 +19,10 @@
    LICENSE for more details. *)
 
 
+(** Area on which graphs can be made. *)
+
 type t
+(** Viewport handle. *)
 
 type coord_name = Device | Graph | Data | Orthonormal
 
