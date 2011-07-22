@@ -1,6 +1,6 @@
 (* File: axes.mli
 
-   Copyright (C) 2009-2011
+   Copyright (C) 2009-2015
 
      Christophe Troestler <Christophe.Troestler@umons.ac.be>
      Pierre Hauweele <antegallya@gmail.com>
@@ -18,4 +18,66 @@
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the file
    LICENSE for more details. *)
 
-include Axes_public.T
+(** Routines to draw basic axes systems in a 2-dimensional space. One can
+    either draw axes separately using add_(x|y)_axis or use a full default
+    axes system with box or cross. *)
+
+(** The axis can be padded using an offset. It is used to control
+    where to place the axis (according to the other axis) *)
+type offset =
+| Relative of float
+(** A relative offset is given in the Data coordinate system. So
+    you can ensure that the axis is drawn at the other axis'
+    origin (offset: Relative 0.) *)
+| Absolute of float
+(** An absolute offset is given in the Graph coordinate system and
+    should have a value between 0 and 1. Using this kind of
+    offset, one can ensure to always get the same rendering *)
+
+val add_x_axis : ?major:(string * float) -> ?minor:(string * float) ->
+  ?start:Arrows.style -> ?stop:Arrows.style ->
+  ?tics:Tics.t -> ?offset:offset -> Viewport.t -> unit
+(** [add_x_axis vp] adds an x-axis to the viewport [vp].
+
+    @param start the arrow ending style on the left (x0) (see the
+    Arrows module)
+
+    @param stop the arrow ending style on the right (xend) (see the
+    Arrows module)
+
+    @param tics the "tics policy" for this axis (see the Tics module)
+
+    @param offset where to place the axis (y-coordinate) *)
+
+val add_y_axis : ?major:(string * float) -> ?minor:(string * float) ->
+  ?start:Arrows.style -> ?stop:Arrows.style ->
+  ?tics:Tics.t -> ?offset:offset -> Viewport.t -> unit
+(** [add_y_axis vp] adds an y-axis to the viewport [vp].
+
+    @param start the arrow ending style on the bottom (y0) (see the
+    Arrows module)
+
+    @param stop the arrow ending style on the top (yend) (see the
+    Arrows module)
+
+    @param tics the "tics policy" for this axis (see the Tics module)
+
+    @param offset where to place the axis (x-coordinate) *)
+
+val box : ?tics:Tics.t -> ?tics_alt:Tics.t -> Viewport.t -> unit
+(** [box vp] A default axes system consisting of four axes, one at
+    each border of the viewport [vp], resulting in a box surrounding
+    the viewport.
+
+    @param tics the "tics policy" for the left and bottom axes (see
+    the Tics module for more information over tics policies)
+
+    @param tics_alt the "tics policy" for the right and top axes (see
+    the Tics module for more information over tics policies) *)
+
+val cross : ?tics:Tics.t -> Viewport.t -> unit
+(** [cross vp] A default axes system consisting of two axes, centered
+    on the origin ((0, 0) in Data coordinates).
+
+    @param tics the "tics policy" of the axes (see the Tics module for
+    more information over tics policies) *)

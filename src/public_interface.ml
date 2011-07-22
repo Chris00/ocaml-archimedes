@@ -6,17 +6,29 @@
 
 open Printf
 
+let start_with s p =
+  let lenp = String.length p in
+  String.length s >= lenp && String.sub s 0 lenp = p
+
+let end_with s p =
+  let lens = String.length s and lenp = String.length p in
+  lens >= lenp && String.sub s (lens - lenp) lenp = p
+
+let rec skip_simple_comment fh l =
+  if not(end_with l "*)") then skip_simple_comment fh (input_line fh)
+
 let include_module name =
-  let fh = open_in ("src/" ^ (String.lowercase name) ^ "_public.mli") in
+  printf "module %s :\nsig\n" name;
+  let fh = open_in ("src/" ^ (String.lowercase name) ^ ".mli") in
   try
     while true do
       let l = input_line fh in
-      if l = "module type T = sig" then
-        printf "module %s :\nsig\n" name
-      else printf "%s\n" l
+      if l = "(**/**)" then raise End_of_file;
+      if start_with l "(* " then skip_simple_comment fh l
+      else if l = "" then printf "\n" else printf "  %s\n" l
     done
   with End_of_file ->
-    printf "\n";
+    printf "end\n";
     close_in fh
 
 let section msg =
