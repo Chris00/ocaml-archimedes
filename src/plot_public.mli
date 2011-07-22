@@ -70,14 +70,14 @@ module type T = sig
       (** A sampling, the only interresting values for 'a are float and
           float * float *)
 
-    val sampling : ?strategy:Sampler.strategy ->
+    val sampling : ?tlog:bool -> ?strategy:Sampler.strategy ->
       ?criterion:Sampler.criterion -> ?min_step:float -> ?nsamples:int ->
       (float -> 'a) -> float -> float -> 'a sampling
       (** [sampling f a b] Creates a sampling for the function [f] between
           [a] and [b], see Sampler for more explanations over the
           optional arguments *)
 
-    val x : ?pathstyle:pathstyle -> Viewport.t -> float sampling -> unit
+    val x : ?pathstyle:pathstyle -> ?base:(float -> float) -> Viewport.t -> float sampling -> unit
       (** [x vp sampling] Plots [sampling] on [vp], the sampling needs to
           be a function sampling, and not a curve sampling
 
