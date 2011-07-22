@@ -18,7 +18,7 @@ FilesAB:     src/conf.ml.ab,
   src/archimedes_cairo.dep.ab,
   src/archimedes_graphics.dep.ab,
   tests/tests.ml.ab
-PreBuildCommand:  ocaml src/public_interface.ml > src/archimedes.mli
+PostConfCommand: ocaml src/public_interface.ml > src/archimedes.mli
 
 Flag graphics
   Description:  Use the graphics plugin ?
@@ -72,6 +72,14 @@ Library "archimedes_toploop"
   Modules:      Archimedes_toploop
   FindlibParent: archimedes
   FindlibName:   top
+
+Document API
+  Title:           API reference for Archimedes
+  Type:            OCamlbuild (0.2)
+  InstallDir:      $docdir/api
+  BuildTools:      ocamldoc, ocamlbuild
+  XOCamlbuildPath: src
+  XOCamlbuildLibraries: archimedes
 
   
 Executable "Tests"

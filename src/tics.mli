@@ -18,6 +18,8 @@
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the file
    LICENSE for more details. *)
 
+(** Tics position and labels. *)
+
 
 type labels =
 | No_label

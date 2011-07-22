@@ -37,3 +37,6 @@ myocamlbuild.ml
 setup.data
 *.mllib
 tests/realtests.ml
+src/API.odocl
+API.docdir
+tests/tests.ml

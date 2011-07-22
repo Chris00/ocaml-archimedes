@@ -53,11 +53,11 @@ val simple : ?style:style -> ?colorscheme:colorscheme ->
 
     @param keylabels what are the labels, default is WithValues
 
-    @param x0
+    @param x0 the x-coordinate of the center (default: [0.]).
 
-    @param y0
+    @param y0 the y-coordinate of the center (default: [0.]).
 
-    @param xend
+    @param xend (default: [1.]).
 
     @param yend these parameters delimits the area of the pie chart
     over the viewport. They are given in Graph coordinates (i.e. from
@@ -93,11 +93,11 @@ val multilevel : ?style:style -> ?colorscheme:colorscheme ->
     idea of the values, it is preferable to save space by hiding the
     values / percentages of the data
 
-    @param x0
+    @param x0 the x-coordinate of the center (default: [0.]).
 
-    @param y0
+    @param y0 the y-coordinate of the center (default: [0.]).
 
-    @param xend
+    @param xend (default: [1.]).
 
     @param yend by default, space is left for the title, as for the
     simple pie charts *)

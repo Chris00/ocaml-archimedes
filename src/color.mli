@@ -1,4 +1,4 @@
-(** Abstract representation of colors.*)
+(** Abstract representation of colors (suitable for RGBA). *)
 
 type t
 (** The type for colors*)

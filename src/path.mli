@@ -45,32 +45,32 @@ val line_to: t -> x:float -> y:float -> unit
 
 val rel_move_to: ?rot:float -> t -> x:float -> y:float -> unit
 (** [rel_move_to p x y] shifts the path's current point of [x]
-    horizontally and [y] vertically]
+    horizontally and [y] vertically.
 
-    @param rot (default: 0.) to consider a rotation of [rot] radians *)
+    @param rot to consider a rotation of [rot] radians (default: [0.]). *)
 
 val rel_line_to: ?rot:float -> t -> x:float -> y:float -> unit
 (** [rel_line_to p x y] shifts the path's current point of [x]
-    horizontally and [y] vertically and draws a line between the current
-    and the new point
+    horizontally and [y] vertically and draws a line between the
+    current and the new point.
 
     @param rot (default: 0.) to consider a rotation of [rot] radians *)
 
 val rectangle: t -> x:float -> y:float -> w:float -> h:float -> unit
 (** [rectangle p x y w h] draws a rectangle specified by ([x], [y], [w],
-    [h]) but does not move the path's current point *)
+    [h]) but does not move the path's current point. *)
 
 val curve_to: t -> x1:float -> y1:float -> x2:float -> y2:float ->
   x3:float -> y3:float -> unit
 (** [curve_to p x1 y1 x2 y2 x3 y3] draws a cubic Bezier curve using the
     path's current point as first point (x0, y0) if it is set, else
-    ([x1, y1]). Sets the path's current point to ([x3], [y3]) *)
+    ([x1, y1]).  Sets the path's current point to ([x3], [y3]) *)
 
 val arc: t -> r:float -> a1:float -> a2:float -> unit
 (** [arc p r a1 a2] draws an arc starting at the path's current
     point. The starting angle is [a1], the radius [r] and the arc is
     drawn clockwise to the angle [a2]. The angles are given in
-    radians *)
+    radians.  *)
 
 val close: t -> unit
 (** [close p] Closes the path. It is usually not required to close a

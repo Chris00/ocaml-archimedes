@@ -38,12 +38,12 @@ type style =
 val path_line_to : ?size:float -> ?head:style -> ?tail:style ->
   Path.t -> float -> float -> unit
 (** [path_line_to p x y] Adds an arrow to ([x], [y]) into the path
-    [p]. See @line for explantation on the optional arguments *)
+    [p].  See {!line} for explantation on the optional arguments. *)
 
 val line_direct : ?size:float -> ?head:style -> ?tail:style ->
   Viewport.t -> float -> float -> float -> float -> unit -> unit
 (** [line_direct vp x0 y0 x y ()] draws a line directly on the
-    viewport, withtout using an instruction (see @line for usage) *)
+    viewport, withtout using an instruction (see {!line} for usage) *)
 
 val line : ?size:float -> ?head:style -> ?tail:style ->
   Viewport.t -> float -> float -> float -> float -> unit
@@ -60,7 +60,7 @@ val line : ?size:float -> ?head:style -> ?tail:style ->
 val arc_direct : ?size:float -> ?head:style -> ?tail:style ->
   Viewport.t -> float -> float -> float -> float -> float -> unit -> unit
 (** [arc_direct vp x0 y0 r a1 a2 ()] draws an arc directly on the
-    viewport, withtout using an instruction (see @arc for usage) *)
+    viewport, withtout using an instruction (see {!arc} for usage) *)
 
 val arc : ?size:float -> ?head:style -> ?tail:style ->
   Viewport.t -> float -> float -> float -> float -> float -> unit
