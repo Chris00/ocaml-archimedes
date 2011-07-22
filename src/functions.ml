@@ -1,7 +1,7 @@
 open Backend
 
 let is_nan (x: float) = x <> x
-let is_inf log max y = log && 1. /. y = 0. || not log && y > max
+let is_inf log max y = (log && 1. /. y = 0.) || (not log && y > max)
 
 let update_extents e px py =
   let x, w, xupdated =
