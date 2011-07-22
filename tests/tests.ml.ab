@@ -1,42 +1,44 @@
 (*                                                              -*-tuareg-*- *)
 open Printf
 
-let map = [ $(tests) ]
+(* A list of couples (test_name, function_to_run). *)
+let alltests = [ $(tests) ]
 
-let print_help () =
-  printf "usage: tests [option1] [option2] ...\n";
-  printf "where an option is a test name or one of the following:\n";
-  printf "--ps\t\tactivate ps (cairo) output (default: false)\n";
-  printf "--pdf\t\tactivate pdf (cairo) output (false)\n";
-  printf "--png\t\tactivate png (cairo) output (false)\n";
-  printf "--tex\t\tactivate tex (tikz) output (false)\n";
-  printf "--graphics\tactivate graphics output (true)\n";
-  printf "Available tests are:\n";
-  List.iter (fun (name, _) -> printf "%s  " name) map;
-  printf "\n\nExample: ";
-  printf "tests demo_zoom vector_field --nographics --pdf --png\n"
+let backends = ref []
+let output out ext () =
+  backends := (fun fname -> sprintf "cairo %s %s.%s" out fname ext) :: !backends
+let graphics () =
+  backends := (fun fname -> "graphics hold") :: !backends
 
-let backends title =
-  let ret = Array.fold_left (fun acc -> function
-    | "--ps" -> (sprintf "cairo PS %s.ps" title) :: acc
-    | "--pdf" -> (sprintf "cairo PDF %s.pdf" title) :: acc
-    | "--png" -> (sprintf "cairo PNG %s.png" title) :: acc
-    | "--tex" -> (sprintf "tikz %s.tex" title) :: acc
-    | "--graphics" -> "graphics hold" :: acc
-    | _ -> acc) [] Sys.argv
-  in
-  if ret = [] then ["graphics hold"] else ret
+let list_tests () =
+  List.iter (fun (name,_) -> Format.printf "%s@ " name) alltests;
+  exit 0
 
-let rec exec_test = function
-  | "all" -> List.iter exec_test (List.map fst map)
-  | name -> try
-      let test = List.assoc name map in
-      printf "%s\n" name;
-      List.iter test (backends name)
-    with Not_found -> Printf.printf "Test not found: %s" name
+let specs = Arg.align [
+  "--ps",  Arg.Unit(output "PS" "ps"), " activate ps (cairo) output";
+  "--pdf", Arg.Unit(output "PDF" "pdf"), " activate pdf (cairo) output";
+  "--png", Arg.Unit(output "PNG" "png"), " activate png (cairo) output";
+  "--tex", Arg.Unit(output "tikz" "tex"), " activate LaTeX (tikz) output";
+  "--graphics", Arg.Unit graphics, " activate graphics output (done if no \
+    option is given)";
+  "--tests", Arg.Unit list_tests, " list all possible tests and stop";
+]
+
+let tests =
+  let usage = "tests [option1] [option2] ...\n\
+    where an option is a test name or one of the following:" in
+  let tests = ref [] in
+  Arg.parse specs (fun t -> tests := t :: !tests) usage;
+  if !backends = [] then graphics();
+  if !tests = [] then alltests
+  else (
+    let add acc t =
+      try List.find (fun (name,_) -> name = t) alltests :: acc
+      with Not_found -> printf "Test not found: %s\n" t; acc in
+    List.fold_left add [] !tests
+  )
 
 let () =
-  if Array.length Sys.argv = 1 then print_help ()
-  else Array.iteri (fun i x ->
-                      if i <> 0 && String.sub x 0 2 <> "--"
-                      then exec_test x) Sys.argv
+  List.iter (fun (name, test) ->
+    List.iter (fun b -> test(b name)) !backends
+  ) tests
