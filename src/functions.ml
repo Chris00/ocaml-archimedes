@@ -141,10 +141,11 @@ type extend = NONE | PAD | REPEAT | REFLECT
 let color_level f ?(extend=PAD) ~xmin ~xmax ~ymin ~ymax fmin cmin fmax cmax =
   let cr, cg, cb, ca = Color.get_rgba cmin
   and cr', cg', cb', ca' = Color.get_rgba cmax in
-  let conv a b t = a +. t *. (b -. a) in
+  let dr = cr' -. cr and dg = cg' -. cg
+  and db = cb' -. cb and da = ca' -. ca in
   let make_color fxy =
     let make_in t =
-      Color.rgba (conv cr cr' t) (conv cg cg' t) (conv cb cb' t) (conv ca ca' t)
+      Color.rgba (cr +. t *. dr) (cg +. t *. dg) (cb +. t *. db) (ca +. t *. da)
     in
     let t = (fxy -. fmin) /. (fmax -. fmin) in
     if t > 0. && t < 1. then make_in t
@@ -162,5 +163,6 @@ let color_level f ?(extend=PAD) ~xmin ~xmax ~ymin ~ymax fmin cmin fmax cmax =
         make_in t'
   in
   fun t u ->
-    let x = conv xmin xmax t and y = conv ymin ymax u in
+    let x = xmin +. t *. (xmax -. xmin)
+    and y = ymin +. u *. (ymax -. ymin) in
     make_color (f x y)
