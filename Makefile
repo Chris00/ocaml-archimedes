@@ -2,6 +2,9 @@ PKGNAME = $(shell oasis query name)
 PKGVERSION = $(shell oasis query version)
 PKG_TARBALL = $(PKGNAME)-$(PKGVERSION).tar.gz
 
+COMA = ,
+FILESAB = $(subst $(COMA),,$(shell oasis query FilesAB))
+
 DISTFILES = AUTHORS.txt INSTALL.txt README.txt _oasis _tags myocamlbuild.ml \
   setup.ml Makefile src/META src/API.odocl \
   $(wildcard $(addprefix src/, *.ml *.mli *.mllib *.mlpack)) \
@@ -13,7 +16,7 @@ all byte native: configure
 	ocaml setup.ml -build
 
 configure: setup.data
-setup.data: setup.ml src/public_interface.ml
+setup.data: setup.ml src/public_interface.ml $(FILESAB)
 	ocaml $< -configure
 
 setup.ml: _oasis
@@ -41,8 +44,7 @@ clean:
 	$(RM) $(wildcard *~ *.pdf *.ps *.png *.svg) setup.data
 #	$(MAKE) -C doc $@
 
-COMA = ,
 distclean dist-clean::
 	ocaml setup.ml -distclean
 	$(RM) $(wildcard *.ba[0-9] *.bak *~ *.odocl) setup.log
-	$(RM) $(subst $(COMA),,$(subst .ab,,$(shell oasis query FilesAB)))
+	$(RM) $(subst .ab,,$(FILESAB))

@@ -19,7 +19,7 @@
 (** Graphics Archimedes plugin *)
 
 open Printf
-(*open Archimedes*)
+open Archimedes
 
 (* Re-export the labels so we do not have to qualify them with [Matrix]. *)
 type matrix = Matrix.t = { mutable xx: float; mutable yx: float;

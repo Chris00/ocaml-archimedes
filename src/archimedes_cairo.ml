@@ -18,6 +18,7 @@
 
 (** Cairo Archimedes plugin *)
 
+open Archimedes
 module M = Matrix
 
 module B : Backend.Capabilities =
