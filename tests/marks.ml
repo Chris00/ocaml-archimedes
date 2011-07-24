@@ -16,7 +16,7 @@ module V = Archimedes.Viewport
 let markers = Array.of_list (Archimedes.Pointstyle.names ())
 
 let draw backend =
-  let vp = V.init ~w ~h ~dirs backend in
+  let vp = Archimedes.init ~w ~h ~dirs backend in
   V.set_mark_size vp 20.;
   V.set_line_width vp 1.;
   for i = 0 to Array.length markers - 1 do
@@ -26,4 +26,4 @@ let draw backend =
   (*V.set_line_width vp 1.;
   V.f vp (fun _ -> -1.) (-1.) 8.;
   V.f vp (fun _ -> 8.) (-1.) 8.;*)
-  V.close vp
+  Archimedes.close vp

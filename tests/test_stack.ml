@@ -11,8 +11,8 @@ let data = [|
 |]
 
 let draw bk =
-  let vp = V.init ~w ~h ~dirs bk in
+  let vp = Archimedes.init ~w ~h ~dirs bk in
   V.set_line_width vp 1.;
   P.stack vp data;
   Archimedes.Axes.cross vp;
-  V.close vp
+  Archimedes.close vp

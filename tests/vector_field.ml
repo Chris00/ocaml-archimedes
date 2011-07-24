@@ -5,7 +5,7 @@ module V = Archimedes.Viewport
 let draw bk =
   let f vp x y = Archimedes.Arrows.line vp x y (x -. y) (x +. y)
     ~head:Archimedes.Arrows.Simple in
-  let vp = V.init ~w ~h ~dirs bk in
+  let vp = Archimedes.init ~w ~h ~dirs bk in
   V.set_line_width vp 1.;
   for x = -5 to 5 do
     for y = -5 to 5 do
@@ -13,4 +13,4 @@ let draw bk =
     done
   done;
   Archimedes.Axes.box vp;
-  V.close vp
+  Archimedes.close vp

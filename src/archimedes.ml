@@ -31,3 +31,6 @@ module Axes       = Archimedes_impl.Axes
 module Plot       = Archimedes_impl.Plot
 module Piechart   = Archimedes_impl.Piechart
 
+let init = Viewport.init
+
+let close = Viewport.close

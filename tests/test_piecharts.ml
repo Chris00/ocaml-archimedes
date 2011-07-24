@@ -4,7 +4,7 @@ module V = Archimedes.Viewport
 module PC = Archimedes.Piechart
 
 let draw bk =
-  let vp = V.init ~w ~h ~dirs bk in
+  let vp = Archimedes.init ~w ~h ~dirs bk in
   let vps = V.layout_columns vp 2 in
   let vp1 = vps.(0) and vp2 = vps.(1) in
 
@@ -17,4 +17,4 @@ let draw bk =
   PC.simple vp1 data1;
   PC.simple vp2 data2;
 
-  V.close vp
+  Archimedes.close vp

@@ -4,7 +4,7 @@ module V = Archimedes.Viewport
 module P = Archimedes.Path
 
 let draw bk =
-  let vp = V.init ~w ~h ~dirs bk in
+  let vp = Archimedes.init ~w ~h ~dirs bk in
   let trace _ vp =
     V.set_rel_line_width vp 1.;
 
@@ -40,4 +40,4 @@ let draw bk =
   V.rectangle vp ~x:0. ~y:0. ~w:1. ~h:1.;
   V.stroke vp V.Graph;
 
-  V.close vp
+  Archimedes.close vp

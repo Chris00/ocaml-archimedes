@@ -4,7 +4,7 @@ module V = Archimedes.Viewport
 module P = Archimedes.Plot.Function
 
 let draw bk =
-  let vp = V.init ~w:1024. ~h:600. ~dirs bk in
+  let vp = Archimedes.init ~w:1024. ~h:600. ~dirs bk in
   let vp_zoom = V.make vp V.Graph 0.5 1. 0.6 1. (fun _ _ _ -> () ) in
   Archimedes.Axes.add_x_axis
     ~tics:(Archimedes.Tics.Equidistants (Archimedes.Tics.Number 3, 0., pi, 1))
@@ -22,4 +22,4 @@ let draw bk =
   let sampling_zoom = P.sampling sin (9. *. pi /. 4.) (11. *. pi /. 4.) in
   P.x vp_zoom sampling_zoom;
 
-  V.close vp
+  Archimedes.close vp

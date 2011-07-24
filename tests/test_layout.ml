@@ -5,7 +5,7 @@ module P = Archimedes.Path
 module Color = Archimedes.Color
 
 let draw bk =
-  let vp = V.init ~w ~h ~dirs bk in
+  let vp = Archimedes.init ~w ~h ~dirs bk in
   let subvps = V.layout_grid vp 2 2 in
   let subsubvps = V.layout_grid subvps.(3) 2 2 in
   let subsubsubvps = V.layout_grid subsubvps.(3) 2 2 in
@@ -33,7 +33,7 @@ let draw bk =
   in
   Array.iteri trace (Array.concat [subvps; subsubvps; subsubsubvps]);
 
-  V.close subvps.(0);
+  Archimedes.close subvps.(0);
 
   V.move_to vp 0.3 0.;
   V.line_to vp 0.3 1.;
@@ -45,4 +45,4 @@ let draw bk =
   V.rectangle vp ~x:0. ~y:0. ~w:1. ~h:1.;
   V.stroke vp V.Graph;
 
-  V.close vp
+  Archimedes.close vp

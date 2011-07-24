@@ -195,7 +195,7 @@ and Viewport : sig
   type coord_name = Device | Graph | Data | Orthonormal
   val get_coord_from_name : t -> coord_name -> Coordinate.t
   val init : ?lines:float -> ?text:float -> ?marks:float -> ?w:float ->
-    ?h:float -> dirs:string list -> string -> t
+    ?h:float -> ?dirs:string list -> string -> t
   val make : ?lines:float -> ?text:float -> ?marks:float ->
     t -> coord_name -> float -> float -> float -> float ->
     (t -> float -> float -> unit) -> t
@@ -689,8 +689,8 @@ end = struct
  ***********************************************************************)
 
   let init ?(lines=def_lw) ?(text=def_ts) ?(marks=def_ms)
-      ?(w=640.) ?(h=480.) ~dirs backend_name =
-    let backend = Backend.make ~dirs backend_name w h in
+      ?(w=640.) ?(h=480.) ?dirs backend_name =
+    let backend = Backend.make ?dirs backend_name w h in
     let coord_root =
       if Backend.flipy backend then
         let flip =

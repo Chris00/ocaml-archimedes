@@ -11,7 +11,7 @@ let months =
      "Jul"; "Aug"; "Sep"; "Oct"; "Nov"; "Dec" |]
 
 let draw bk =
-  let vp = V.init ~w ~h ~dirs bk in
+  let vp = Archimedes.init ~w ~h ~dirs bk in
   let custom_month x =
     let x' = truncate x in
     let y = 2010 + x' / 12
@@ -24,4 +24,4 @@ let draw bk =
     ~tics:(Tics.Equidistants ((Tics.Custom custom_month), 0., 1., 0));
   Axes.add_y_axis vp;
   P.x vp data;
-  V.close vp
+  Archimedes.close vp

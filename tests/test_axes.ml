@@ -2,7 +2,7 @@ open Testing
 module V = Archimedes.Viewport
 
 let draw bk =
-  let vp = V.init ~w ~h ~dirs bk in
+  let vp = Archimedes.init ~w ~h ~dirs bk in
   V.rectangle vp 0. 0. 1. 1.;
   V.stroke vp V.Data;
   V.xrange vp 0. 10.;
@@ -15,4 +15,4 @@ let draw bk =
     ~tics:(Archimedes.Tics.Equidistants (Archimedes.Tics.Number 5, 0., 3., 1));
   V.set_rel_font_size vp 16.;
 
-  V.close vp
+  Archimedes.close vp

@@ -4,7 +4,7 @@ module V = Archimedes.Viewport
 module P = Archimedes.Plot.Function
 
 let draw bk =
-  let vp = V.init ~w ~h ~dirs bk in
+  let vp = Archimedes.init ~w ~h ~dirs bk in
   let vps = V.layout_rows vp 2 in
   let vp1 = vps.(0) and vp2 = vps.(1) in
 
@@ -22,4 +22,4 @@ let draw bk =
 (*  V.rectangle vp2 ~x:0. ~y:0. ~w:1. ~h:1.;*)
   V.stroke vp2 V.Device;
 
-  V.close vp
+  Archimedes.close vp

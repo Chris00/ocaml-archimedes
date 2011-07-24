@@ -3,7 +3,7 @@ module V = Archimedes.Viewport
 module P = Archimedes.Plot
 
 let draw backend =
-  let vp = V.init ~w ~h ~dirs backend in
+  let vp = Archimedes.init ~w ~h ~dirs backend in
   let vps = V.layout_columns vp 2 in
   let vp1 = vps.(0) and vp2 = vps.(1) in
 
@@ -20,4 +20,4 @@ let draw backend =
   Archimedes.Axes.box vp1;
   Archimedes.Axes.box vp2;
 
-  V.close vp
+  Archimedes.close vp

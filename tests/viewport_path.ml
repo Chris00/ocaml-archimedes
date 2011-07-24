@@ -4,7 +4,7 @@ module V = Archimedes.Viewport
 module P = Archimedes.Path
 
 let draw bk =
-  let vp = V.init ~w ~h ~dirs bk in
+  let vp = Archimedes.init ~w ~h ~dirs bk in
 
   (* Create a path *)
   let p = P.make () in
@@ -26,4 +26,4 @@ let draw bk =
   V.set_color vp Archimedes.Color.white;
   V.stroke ~path:p vp V.Device;
 
-  V.close vp
+  Archimedes.close vp

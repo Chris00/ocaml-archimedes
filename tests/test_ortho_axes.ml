@@ -3,7 +3,7 @@ open Testing
 module V = Archimedes.Viewport
 
 let draw bk =
-  let vp = V.init ~w ~h ~dirs bk in
+  let vp = Archimedes.init ~w ~h ~dirs bk in
   V.rectangle vp 0. 0. 1. 1.;
   V.stroke vp V.Data;
   V.xrange vp (-10.) 10.;
@@ -11,4 +11,4 @@ let draw bk =
   V.set_line_width vp 1.;
   V.axes_ratio vp 1.;
   Archimedes.Axes.cross vp;
-  V.close vp
+  Archimedes.close vp

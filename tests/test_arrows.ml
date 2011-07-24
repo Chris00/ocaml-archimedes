@@ -4,7 +4,7 @@ module V = Archimedes.Viewport
 module Arrows = Archimedes.Arrows
 
 let draw bk =
-  let vp = V.init ~w ~h ~dirs bk in
+  let vp = Archimedes.init ~w ~h ~dirs bk in
   V.set_line_width vp 1.;
   Arrows.line ~head:(Arrows.Simple) vp 1. 1. 3. 3.;
   Arrows.arc vp ~tail:Arrows.Simple 2. 2. 0.5 pi (pi /. 4.);
@@ -12,4 +12,4 @@ let draw bk =
   V.xrange vp 0. 4.;
   V.yrange vp 0. 4.;
   Archimedes.Axes.box vp;
-  V.close vp
+  Archimedes.close vp

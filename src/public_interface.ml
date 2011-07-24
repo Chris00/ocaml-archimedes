@@ -21,6 +21,15 @@ let rec copy_comment fh l =
   printf "%s\n" l;
   if not(end_with l "*)") then copy_comment fh (input_line fh)
 
+let include_file fname =
+  let fh = open_in (Filename.concat "src" fname) in
+  let buf = String.create 4096 in
+  let len = ref (-1) in
+  while !len <> 0 do
+    len := input fh buf 0 4096;
+    output stdout buf 0 !len;
+  done;
+  close_in fh
 
 let include_module name =
   let fh = open_in ("src/" ^ (String.lowercase name) ^ ".mli") in
@@ -73,4 +82,5 @@ let () =
   include_module "Sampler";
   include_module "Iterator";
   include_module "Plot";
-  include_module "Piechart"
+  include_module "Piechart";
+  include_file "archimedes_top.mli";

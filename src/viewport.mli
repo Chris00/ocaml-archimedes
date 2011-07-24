@@ -31,29 +31,7 @@ val get_coord_from_name : t -> coord_name -> Coordinate.t
     coordinate systems of the viewport *)
 
 (** {2 Create new viewports} *)
-val init : ?lines:float -> ?text:float -> ?marks:float ->
-  ?w:float -> ?h:float -> dirs:string list -> string -> t
-(** [init backend_name] initializes the whole Archimedes stuff,
-    returning a main viewport using the backend given
 
-    @param lines the width of the lines (default: 1. corresponds to
-    fullfilling a biggest square of the viewport with 500 lines)
-
-    @param text the size of the text in (default: 12. corresponds to
-    fullfilling a biggest square of the viewport with about 42 lines of
-    text)
-
-    @param marks the size of the marks in pixels (default:
-    1. corresponds to fullfilling a biggest square the viewport with 100
-    "lines of marks")
-
-    @param w the width of the main viewport (in backend's unit)
-
-    @param h the height of the main viewport (in backend's unit)
-
-    @param dirs a list of output files, useful for backends supporting
-    several output formats (e.g. ["mytest.eps", "tex/mytest.tex"])
-*)
 val make : ?lines:float -> ?text:float -> ?marks:float ->
   t -> coord_name -> float -> float -> float -> float ->
   (t -> float -> float -> unit) -> t
@@ -272,7 +250,6 @@ val mark_direct : t -> x:float -> y:float -> string -> unit -> unit
 val save_direct : t -> unit -> unit
 val restore_direct : t -> unit -> unit
 
-val close : t -> unit
 
 val add_instruction : (unit -> unit) -> t -> unit
 val do_instructions : t -> unit
@@ -284,3 +261,11 @@ val auto_fit : t -> float -> float -> float -> float -> unit
 val save : t -> unit
 val restore : t -> unit
 
+(**/**)
+
+val init : ?lines:float -> ?text:float -> ?marks:float ->
+  ?w:float -> ?h:float -> ?dirs:string list -> string -> t
+(** See archimedes_top.mli *)
+
+val close : t -> unit
+(** See archimedes_top.mli *)

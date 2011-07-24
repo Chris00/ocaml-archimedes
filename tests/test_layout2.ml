@@ -4,7 +4,7 @@ module V = Archimedes.Viewport
 module P = Archimedes.Path
 
 let draw bk =
-  let vp = V.init ~w ~h ~dirs bk in
+  let vp = Archimedes.init ~w ~h ~dirs bk in
   let subvps = V.layout_grid ~syncs:(true, true, false, true) vp 3 4 in
   V.xrange subvps.(4) (-.2.) 7.;
   V.yrange subvps.(4) (-.5.) 5.;
@@ -15,4 +15,4 @@ let draw bk =
       ~tics:(Archimedes.Tics.Equidistants(Archimedes.Tics.Number 3, 0., 2., 1))
   done;
 
-  V.close vp
+  Archimedes.close vp

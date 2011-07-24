@@ -4,7 +4,7 @@ module V = Archimedes.Viewport
 module P = Archimedes.Plot.Function
 
 let draw bk =
-  let vp = V.init ~w ~h ~dirs bk in
+  let vp = Archimedes.init ~w ~h ~dirs bk in
   let vps = V.layout_grid vp 2 2 in
   let vp1 = vps.(0) and vp2 = vps.(3) in
 
@@ -27,4 +27,4 @@ let draw bk =
   P.x vp0 sampling;
   Archimedes.Axes.box vp0;
 
-  V.close vp
+  Archimedes.close vp

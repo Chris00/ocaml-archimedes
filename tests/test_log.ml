@@ -5,7 +5,7 @@ module P = Path
 module Pl = Plot.Function
 
 let draw bk =
-  let vp = V.init ~w ~h ~dirs bk in
+  let vp = Archimedes.init ~w ~h ~dirs bk in
   V.set_ylog vp true;
 
   (*let p = P.make () in
@@ -22,4 +22,4 @@ let draw bk =
   print_string "test\n";
 
 
-  V.close vp
+  Archimedes.close vp

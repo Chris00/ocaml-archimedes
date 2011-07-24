@@ -4,7 +4,7 @@ module V = Archimedes.Viewport
 module P = Archimedes.Path
 
 let draw bk =
-  let vp = V.init ~w ~h ~dirs bk in
+  let vp = Archimedes.init ~w ~h ~dirs bk in
 
   V.xrange vp (-10.) 10.;
   V.yrange vp (-2.) 8.;
@@ -42,4 +42,4 @@ let draw bk =
   V.set_color vp Archimedes.Color.black;
   Archimedes.Axes.add_x_axis vp;
 
-  V.close vp
+  Archimedes.close vp

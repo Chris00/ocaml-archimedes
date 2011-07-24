@@ -3,7 +3,7 @@ open Testing
 module Arrows = Archimedes.Arrows
 
 let draw backend =
-  let vp = Archimedes.Viewport.init ~w ~h ~dirs backend in
+  let vp = Archimedes.init ~w ~h ~dirs backend in
 
   Archimedes.Viewport.set_line_width vp 1.;
   Arrows.line ~head:(Arrows.Unstyled) vp 0. 0.6 0.2 0.6;
@@ -14,4 +14,4 @@ let draw backend =
   Arrows.line ~head:(Arrows.Circle) vp 0.6 0.3 0.8 0.3;
   Arrows.line ~head:(Arrows.Stop) vp 0. 0.1 0.2 0.1;
 
-  Archimedes.Viewport.close vp
+  Archimedes.close vp
