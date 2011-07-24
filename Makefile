@@ -16,7 +16,7 @@ all byte native: configure
 	ocaml setup.ml -build
 
 configure: setup.data
-setup.data: setup.ml src/public_interface.ml $(FILESAB) src/archimedes_top.mli
+setup.data: setup.ml $(FILESAB)
 	ocaml $< -configure
 
 setup.ml: _oasis

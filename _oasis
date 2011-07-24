@@ -18,7 +18,7 @@ FilesAB:     src/conf.ml.ab,
   src/archimedes_cairo.dep.ab,
   src/archimedes_graphics.dep.ab,
   tests/tests.ml.ab
-PostConfCommand: ocaml src/public_interface.ml > src/archimedes.mli
+PreBuildCommand: ocaml src/public_interface.ml > src/archimedes.mli
 
 Flag graphics
   Description:  Use the graphics plugin ?
