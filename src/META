@@ -1,5 +1,5 @@
 # OASIS_START
-# DO NOT EDIT (digest: 85aedbc53db62196e821de6723c17d4e)
+# DO NOT EDIT (digest: caa79e6a0cedd29cf7877d695cc10c0b)
 version = "0.3.1"
 description = "Extensible 2D plotting library."
 requires = "dynlink cairo2 graphics"
@@ -9,7 +9,7 @@ exists_if = "archimedes.cma"
 package "graphics" (
  version = "0.3.1"
  description = "Extensible 2D plotting library."
- requires = "graphics"
+ requires = "graphics archimedes"
  archive(byte) = "archimedes_graphics.cma"
  archive(native) = "archimedes_graphics.cmxa"
  exists_if = "archimedes_graphics.cma"
@@ -18,7 +18,7 @@ package "graphics" (
 package "cairo" (
  version = "0.3.1"
  description = "Extensible 2D plotting library."
- requires = "cairo2"
+ requires = "cairo2 archimedes"
  archive(byte) = "archimedes_cairo.cma"
  archive(native) = "archimedes_cairo.cmxa"
  exists_if = "archimedes_cairo.cma"
@@ -27,6 +27,7 @@ package "cairo" (
 package "tikz" (
  version = "0.3.1"
  description = "Extensible 2D plotting library."
+ requires = "archimedes"
  archive(byte) = "archimedes_tikz.cma"
  archive(native) = "archimedes_tikz.cmxa"
  exists_if = "archimedes_tikz.cma"
@@ -35,6 +36,7 @@ package "tikz" (
 package "top" (
  version = "0.3.1"
  description = "Extensible 2D plotting library."
+ requires = "archimedes"
  archive(byte) = "archimedes_toploop.cma"
  archive(native) = "archimedes_toploop.cmxa"
  exists_if = "archimedes_toploop.cma"
