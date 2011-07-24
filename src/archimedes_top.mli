@@ -28,3 +28,8 @@ val init : ?lines:float -> ?text:float -> ?marks:float ->
 *)
 
 val close : Viewport.t -> unit
+
+
+val fx : Viewport.t ->
+  ?fill:bool -> ?fillcolor:Color.t -> ?pathstyle:Plot.pathstyle ->
+  (float -> float) -> float -> float -> unit

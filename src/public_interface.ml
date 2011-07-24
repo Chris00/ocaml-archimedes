@@ -81,7 +81,6 @@ let () =
   include_module "Axes";
   include_module "Sampler";
   include_module "Iterator";
-  include_module "Functions";
   include_module "Plot";
   include_module "Piechart";
   include_file "archimedes_top.mli";

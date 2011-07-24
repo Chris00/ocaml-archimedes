@@ -20,3 +20,11 @@ include Archimedes_impl
 let init = Viewport.init
 
 let close = Viewport.close
+
+
+let fx vp ?fill ?fillcolor ?pathstyle f a b =
+  (* FIXME: sampler adapted to 1D function?  To avoid duplicate code,
+     macro for speed? *)
+  (* FIXME: how can we know if we said we want log scale? *)
+  let it = Iterator.of_function (fun x -> (x, f x)) a b in
+  Plot.xy vp it ?fill ?fillcolor ?pathstyle
