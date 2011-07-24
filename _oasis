@@ -36,8 +36,10 @@ Library "archimedes"
   Path:         src
   BuildTools:   ocamlbuild
   #Pack:	true
-  # src/archimedes.mlpack and _tags contain the list of modules
+  # src/archimedes_impl.mlpack and _tags contain the list of modules;
+  # Archimedes re-exports some functions as toplevel ones.
   Modules:      Archimedes
+  InternalModules: Archimedes_impl
   BuildDepends: dynlink, cairo2, graphics
 
 Library "archimedes_graphics"
