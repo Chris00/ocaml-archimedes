@@ -1,18 +1,24 @@
+#								-*-conf-*-
 OASISFormat: 0.2
-Name:             Archimedes
-Version:          0.3.1
-Synopsis:         This project provides a high quality, platform-indenpendent,
-  and extensible 2D plotting library for OCaml
-Authors:          Christophe Troestler, Noémie Meunier, Pierre Hauweele,
-  Fabian Pijcke
-License:          LGPL-3.0 with OCaml linking exception
-Plugins:          StdFiles (0.2)
-FilesAB:          src/conf.ml.ab,
+Name:        archimedes
+Version:     0.3.1
+Synopsis:    Extensible 2D plotting library.
+Description: Archimedes is a high quality, platform-independent,
+  extensible 2D plotting library.  It provides dynamically loaded
+  backends such as Graphics and Cairo.
+Authors:     Christophe Troestler <Christophe.Troestler@umons.ac.be>,
+  Pierre Hauweele <antegallya@gmail.com>,
+  Fabian Pijcke <fabian.pijcke@gmail.com>,
+  Noémie Meunier <noemie_6462@hotmail.com>,
+  Bertrand Desmons <bibi-6@hotmail.fr>
+License:     LGPL-3.0 with OCaml linking exception
+Homepage:    http://forge.ocamlcore.org/projects/archimedes/
+Plugins:     META (0.2), StdFiles (0.2)
+FilesAB:     src/conf.ml.ab,
   src/archimedes_cairo.dep.ab,
-  src/archimedes_graphics.dep.ab
-PreBuildCommand:  ocaml src/public_interface.ml > src/archimedes.mli \
-  && ocaml tests/testsmaker.ml > tests/realtests.ml
-PostBuildCommand: cp _build/tests/realtests.byte tests.byte
+  src/archimedes_graphics.dep.ab,
+  tests/tests.ml.ab
+PostConfCommand: ocaml src/public_interface.ml > src/archimedes.mli
 
 Flag graphics
   Description:  Use the graphics plugin ?
@@ -23,16 +29,15 @@ Flag cairo
   Default:      true
 
 Flag tikz
-  Description:  Use the tikz (TEX) plugin ?
+  Description:  Use the tikz (TeX) plugin ?
   Default:      false
 
 Library "archimedes"
   Path:         src
   BuildTools:   ocamlbuild
-  Modules:      Conf, String_utils, Color, Matrix, Backend, Coordinate,
-    Functions, Pointstyle, Path, Sampler, Iterator, Tics, Viewport, Arrows,
-    Axes, Plot, Piechart
-  CSources:     
+  #Pack:	true
+  # src/archimedes.mlpack and _tags contain the list of modules
+  Modules:      Archimedes
   BuildDepends: dynlink, cairo2, graphics
 
 Library "archimedes_graphics"
@@ -40,36 +45,46 @@ Library "archimedes_graphics"
   Path:         src
   BuildTools:   ocamlbuild
   Modules:      Archimedes_graphics
-  CSources:     
-  BuildDepends: 
+  BuildDepends: graphics
+  FindlibParent: archimedes
+  FindlibName:   graphics
 
 Library "archimedes_cairo"
   Build$:       flag(cairo)
   Path:         src
   BuildTools:   ocamlbuild
   Modules:      Archimedes_cairo
-  CSources:     
-  BuildDepends: 
+  BuildDepends: cairo2
+  FindlibParent: archimedes
+  FindlibName:   cairo
 
 Library "archimedes_tikz"
   Build$:       flag(tikz)
   Path:         src
   BuildTools:   ocamlbuild
   Modules:      Archimedes_tikz
-  CSources:     
-  BuildDepends: 
+  FindlibParent: archimedes
+  FindlibName:   tikz
 
-Library "testing"
-  Path:         tests
+Library "archimedes_toploop"
+  Path:         src
   BuildTools:   ocamlbuild
-  Modules:      Testing
-  CSources:     
-  BuildDepends: archimedes
+  Modules:      Archimedes_toploop
+  FindlibParent: archimedes
+  FindlibName:   top
+
+Document API
+  Title:           API reference for Archimedes
+  Type:            OCamlbuild (0.2)
+  InstallDir:      $docdir/api
+  BuildTools:      ocamldoc, ocamlbuild
+  XOCamlbuildPath: src
+  XOCamlbuildLibraries: archimedes
+
   
 Executable "Tests"
   Path:         tests
   BuildTools:   ocamlbuild
-  MainIs:       realtests.ml
-  BuildDepends: archimedes, archimedes_graphics, archimedes_cairo
+  MainIs:       tests.ml
+  BuildDepends: archimedes, archimedes.graphics, archimedes.cairo
   Install:      false
-  

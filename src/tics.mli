@@ -1,6 +1,6 @@
 (* File: tics.mli
 
-   Copyright (C) 2009-2015
+   Copyright (C) 2009-present
 
      Christophe Troestler <Christophe.Troestler@umons.ac.be>
      Pierre Hauweele <antegallya@gmail.com>
@@ -18,4 +18,27 @@
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the file
    LICENSE for more details. *)
 
-include Tics_public.T
+(** Tics position and labels. *)
+
+
+type labels =
+| No_label
+| Text of (string * float) array (* TODO use lists *)
+| Number of int
+| Expnumber of float
+| Expnumber_named of float * string
+| Custom of (float -> string option) (* TODO no option needed *)
+
+type tic =
+| Major of string option * float
+| Minor of float
+
+type t =
+| Fixed of labels * float list
+| Fixed_norm of labels * float list
+| Equidistants of labels * float * float * int
+| Auto of labels
+
+val tics: bool -> float -> float -> t -> tic list
+(* TODO log : optional *)
+

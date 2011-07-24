@@ -1,15 +1,15 @@
 include Testing
 
-module V = Viewport
-module P = Plot.Function
+module V = Archimedes.Viewport
+module P = Archimedes.Plot.Function
 
 let draw bk =
   let vp = V.init ~w ~h ~dirs bk in
   let vps = V.layout_rows vp 2 in
   let vp1 = vps.(0) and vp2 = vps.(1) in
 
-  let path = Path.make () in
-  Path.rectangle path 0. 0. 1. 1.;
+  let path = Archimedes.Path.make () in
+  Archimedes.Path.rectangle path 0. 0. 1. 1.;
 
   V.stroke ~path vp1 V.Graph;
   V.stroke ~path vp2 V.Graph;

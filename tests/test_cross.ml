@@ -1,6 +1,6 @@
 include Testing
 
-module V = Viewport
+module V = Archimedes.Viewport
 
 let draw bk =
   let vp = V.init ~w ~h ~dirs bk in
@@ -9,5 +9,5 @@ let draw bk =
   V.xrange vp (-10.) 10.;
   V.yrange vp (-3.) 5.;
   V.set_line_width vp 1.;
-  Axes.cross vp;
+  Archimedes.Axes.cross vp;
   V.close vp

@@ -1,7 +1,7 @@
 include Testing
 
-module V = Viewport
-module P = Plot.Function
+module V = Archimedes.Viewport
+module P = Archimedes.Plot.Function
 
 let draw bk =
   let vp = V.init ~w ~h ~dirs bk in
@@ -13,5 +13,5 @@ let draw bk =
      (WIP). *)
   let sampling = P.sampling f (-10.) 10. in
   P.x vp sampling;
-  Axes.box vp;
+  Archimedes.Axes.box vp;
   V.close vp

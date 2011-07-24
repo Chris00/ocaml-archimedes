@@ -1,0 +1,47 @@
+(*                                                              -*-tuareg-*- *)
+open Printf
+
+(* A list of couples (test_name, function_to_run). *)
+let alltests = [ $(tests) ]
+
+let backends = ref []
+let output out ext () =
+  backends := (fun fname -> sprintf "cairo %s %s.%s" out fname ext) :: !backends
+let graphics () =
+  backends := (fun fname -> "graphics hold") :: !backends
+
+let list_tests () =
+  List.iter (fun (name,_,_) -> Format.printf "%s@ " name) alltests;
+  exit 0
+
+let specs = Arg.align [
+  "--ps",  Arg.Unit(output "PS" "ps"), " activate ps (cairo) output";
+  "--pdf", Arg.Unit(output "PDF" "pdf"), " activate pdf (cairo) output";
+  "--png", Arg.Unit(output "PNG" "png"), " activate png (cairo) output";
+  "--tex", Arg.Unit(output "tikz" "tex"), " activate LaTeX (tikz) output";
+  "--graphics", Arg.Unit graphics, " activate graphics output (done if no \
+    option is given)";
+  "--tests", Arg.Unit list_tests, " list all possible tests and stop";
+]
+
+let tests =
+  let usage = "tests [option1] [option2] ...\n\
+    where an option is a test name or one of the following:" in
+  let tests = ref [] in
+  Arg.parse specs (fun t -> tests := t :: !tests) usage;
+  if !backends = [] then graphics();
+  if !tests = [] then alltests
+  else (
+    let add acc t =
+      try List.find (fun (name,_,_) -> name = t) alltests :: acc
+      with Not_found -> printf "Test not found: %s\n" t; acc in
+    List.fold_left add [] !tests
+  )
+
+let () =
+  List.iter (fun (name, description, test) ->
+    List.iter (fun b ->
+      Format.printf "@[%s@;- %s@]@." name description;
+      test(b name)
+    ) !backends
+  ) tests

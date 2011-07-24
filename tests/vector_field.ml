@@ -1,11 +1,10 @@
 include Testing
 
-module V = Viewport
+module V = Archimedes.Viewport
 
 let draw bk =
-  let f vp x y =
-    Arrows.line ~head:Arrows.Simple vp x y (x -. y) (x +. y)
-  in
+  let f vp x y = Archimedes.Arrows.line vp x y (x -. y) (x +. y)
+    ~head:Archimedes.Arrows.Simple in
   let vp = V.init ~w ~h ~dirs bk in
   V.set_line_width vp 1.;
   for x = -5 to 5 do
@@ -13,5 +12,5 @@ let draw bk =
       f vp (float x +. 0.5) (float y +. 0.5)
     done
   done;
-  Axes.box vp;
+  Archimedes.Axes.box vp;
   V.close vp

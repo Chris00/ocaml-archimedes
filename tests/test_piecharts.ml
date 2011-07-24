@@ -1,7 +1,7 @@
 include Testing
 
-module V = Viewport
-module PC = Piechart
+module V = Archimedes.Viewport
+module PC = Archimedes.Piechart
 
 let draw bk =
   let vp = V.init ~w ~h ~dirs bk in

@@ -1,7 +1,7 @@
 include Testing
 
-module V = Viewport
-module P = Plot.Function
+module V = Archimedes.Viewport
+module P = Archimedes.Plot.Function
 
 let draw bk =
   let vp = V.init ~w ~h ~dirs bk in
@@ -9,6 +9,7 @@ let draw bk =
   V.set_line_width vp 1.;
   let f t = (cos t, sin t) in
   let sampling = P.sampling f 0. (2. *. pi) in
-  P.xy ~fill:true ~pathstyle:(Plot.Linespoints "o") vp sampling;
-  Axes.box ~tics:(Tics.Equidistants (Tics.Number 5, 0., 1., 2)) vp;
+  P.xy vp sampling ~fill:true ~pathstyle:(Archimedes.Plot.Linespoints "o");
+  Archimedes.Axes.box vp
+    ~tics:(Archimedes.Tics.Equidistants (Archimedes.Tics.Number 5, 0., 1., 2));
   V.close vp

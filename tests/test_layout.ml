@@ -1,7 +1,8 @@
 include Testing
 
-module V = Viewport
-module P = Path
+module V = Archimedes.Viewport
+module P = Archimedes.Path
+module Color = Archimedes.Color
 
 let draw bk =
   let vp = V.init ~w ~h ~dirs bk in

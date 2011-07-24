@@ -1,5 +1,5 @@
 include Testing
-module V = Viewport
+module V = Archimedes.Viewport
 
 let draw bk =
   let vp = V.init ~w ~h ~dirs bk in
@@ -8,10 +8,11 @@ let draw bk =
   V.xrange vp 0. 10.;
   V.yrange vp 0. 5.;
   V.set_line_width vp 1.;
-  Axes.add_x_axis ~major:("|", 4.2)
-    ~tics:(Tics.Equidistants (Tics.Number 5, 0., 3., 2))
-    ~offset:(Axes.Relative 2.) vp;
-  Axes.add_y_axis ~tics:(Tics.Equidistants (Tics.Number 5, 0., 3., 1)) vp;
+  Archimedes.Axes.add_x_axis vp ~major:("|", 4.2)
+    ~tics:(Archimedes.Tics.Equidistants (Archimedes.Tics.Number 5, 0., 3., 2))
+    ~offset:(Archimedes.Axes.Relative 2.);
+  Archimedes.Axes.add_y_axis vp
+    ~tics:(Archimedes.Tics.Equidistants (Archimedes.Tics.Number 5, 0., 3., 1));
   V.set_rel_font_size vp 16.;
 
   V.close vp

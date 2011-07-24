@@ -1,0 +1,28 @@
+# OASIS_START
+# DO NOT EDIT (digest: 1003e84a643c4f74f6f7e1dca2503f47)
+# Library archimedes_graphics
+# Library archimedes_cairo
+# Library archimedes
+<src/*.ml{,i}>: pkg_graphics
+<src/*.ml{,i}>: pkg_dynlink
+<src/*.ml{,i}>: pkg_cairo2
+# Executable Tests
+"tests/tests.byte": use_archimedes
+"tests/tests.byte": use_archimedes_cairo
+"tests/tests.byte": use_archimedes_graphics
+"tests/tests.byte": pkg_graphics
+"tests/tests.byte": pkg_dynlink
+"tests/tests.byte": pkg_cairo2
+<tests/*.ml{,i}>: use_archimedes
+<tests/*.ml{,i}>: use_archimedes_cairo
+<tests/*.ml{,i}>: use_archimedes_graphics
+<tests/*.ml{,i}>: pkg_graphics
+<tests/*.ml{,i}>: pkg_dynlink
+<tests/*.ml{,i}>: pkg_cairo2
+# Library archimedes_tikz
+# Library archimedes_toploop
+"src": include
+# OASIS_STOP
+
+<**/*.ml>: annot
+<src/{conf,string_utils,color,matrix,backend,coordinate,functions,pointstyle,path,sampler,iterator,tics,viewport,arrows,axes,plot,piechart}.cmx>: for-pack(Archimedes)

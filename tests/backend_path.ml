@@ -1,4 +1,5 @@
 include Testing
+module Backend = Archimedes.Backend
 
 let draw bk =
   let bk = Backend.make bk 800. 700. ~dirs in
@@ -13,7 +14,7 @@ let draw bk =
   Backend.arc bk 100. 0. (1.5 *. pi);
   Backend.fill bk;
 
-  Backend.set_color bk (Color.rgb 0.5 0. 0.5);
+  Backend.set_color bk (Archimedes.Color.rgb 0.5 0. 0.5);
   Backend.move_to bk 20. 430.;
   Backend.curve_to bk 30. 480. 100. 450. 130. 430.;
   Backend.line_to bk 50. 440.;
@@ -29,12 +30,12 @@ let draw bk =
 
   Backend.save bk;
   begin
-    Backend.set_color bk (Color.rgb 0.9 0. 0.2);
+    Backend.set_color bk (Archimedes.Color.rgb 0.9 0. 0.2);
     Backend.move_to bk 450. 400.;
     Backend.scale bk 3. 1.;
     Backend.arc bk 50. 0. (2. *. pi);
     Backend.stroke bk;
-    Backend.set_color bk (Color.rgba 0.9 0. 0. 0.5);
+    Backend.set_color bk (Archimedes.Color.rgba 0.9 0. 0. 0.5);
     Backend.move_to bk 150. 400.;
     (* Backend.arc bk 20. 0. (2. *. pi); *)
     Backend.curve_to bk 150. 480.  80. 420.  50. 400.;
@@ -49,7 +50,7 @@ let draw bk =
   Backend.fill bk;
 
   (* Path made of several subpaths *)
-  Backend.set_color bk (Color.rgb 0. 0. 0.7);
+  Backend.set_color bk (Archimedes.Color.rgb 0. 0. 0.7);
   Backend.move_to bk 30. 300.;
   Backend.line_to bk 100. 280.;
   Backend.line_to bk 100. 320.;
@@ -60,7 +61,7 @@ let draw bk =
   Backend.fill bk;
 
   (* Paths and save/restore *)
-  Backend.set_color bk (Color.rgb 0. 0.8 0.);
+  Backend.set_color bk (Archimedes.Color.rgb 0. 0.8 0.);
   Backend.move_to bk 220. 100.;
   Backend.line_to bk 300. 150.;
   Backend.save bk;

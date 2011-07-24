@@ -1,18 +1,19 @@
 include Testing
 
-module V = Viewport
-module P = Plot.Function
+module V = Archimedes.Viewport
+module P = Archimedes.Plot.Function
 
 let draw bk =
   let vp = V.init ~w:1024. ~h:600. ~dirs bk in
   let vp_zoom = V.make vp V.Graph 0.5 1. 0.6 1. (fun _ _ _ -> () ) in
-  Axes.add_x_axis
-    ~tics:(Tics.Equidistants (Tics.Number 3, 0., pi, 1))
-    ~offset:(Axes.Relative 0.) vp;
-  Axes.add_y_axis ~tics:(Tics.Equidistants (Tics.Number 3, 0., 1., 1)) ~offset:(Axes.Relative 0.) vp;
-  Axes.add_x_axis
-    ~tics:(Tics.Equidistants (Tics.Number 3, 0., pi, 1)) vp_zoom;
-  Axes.add_y_axis vp_zoom;
+  Archimedes.Axes.add_x_axis
+    ~tics:(Archimedes.Tics.Equidistants (Archimedes.Tics.Number 3, 0., pi, 1))
+    ~offset:(Archimedes.Axes.Relative 0.) vp;
+  Archimedes.Axes.add_y_axis vp ~offset:(Archimedes.Axes.Relative 0.)
+    ~tics:(Archimedes.Tics.Equidistants (Archimedes.Tics.Number 3, 0., 1., 1));
+  Archimedes.Axes.add_x_axis vp_zoom
+    ~tics:(Archimedes.Tics.Equidistants (Archimedes.Tics.Number 3, 0., pi, 1));
+  Archimedes.Axes.add_y_axis vp_zoom;
   V.axes_ratio vp pi;
   V.sync_ratio vp_zoom vp;
   let sampling = P.sampling sin 0. 10. in

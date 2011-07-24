@@ -6,22 +6,53 @@
 
 open Printf
 
+let start_with s p =
+  let lenp = String.length p in
+  String.length s >= lenp && String.sub s 0 lenp = p
+
+let end_with s p =
+  let lens = String.length s and lenp = String.length p in
+  lens >= lenp && String.sub s (lens - lenp) lenp = p
+
+let rec skip_simple_comment fh l =
+  if not(end_with l "*)") then skip_simple_comment fh (input_line fh)
+
+let rec copy_comment fh l =
+  printf "%s\n" l;
+  if not(end_with l "*)") then copy_comment fh (input_line fh)
+
+
 let include_module name =
-  let fh = open_in ("src/" ^ (String.lowercase name) ^ "_public.mli") in
+  let fh = open_in ("src/" ^ (String.lowercase name) ^ ".mli") in
   try
+    let module_comment = ref true in
     while true do
       let l = input_line fh in
-      if l = "module type T = sig" then
-        printf "module %s :\nsig\n" name
-      else printf "%s\n" l
+      if l = "(**/**)" then raise End_of_file;
+      if start_with l "(* " then skip_simple_comment fh l
+      else if !module_comment && start_with l "(**" then (
+        printf "\n"; (* separate comment from previous module *)
+        copy_comment fh l;
+        printf "module %s :\nsig\n" name;
+        module_comment := false;
+      )
+      else if l = "" then printf "\n"
+      else (
+        (* If no module comment: *)
+        if !module_comment then (
+          printf "module %s :\nsig\n" name;
+          module_comment := false;
+        );
+        printf "  %s\n" l
+      )
     done
   with End_of_file ->
-    printf "\n";
+    printf "end\n";
     close_in fh
 
 let section msg =
-  printf "(**************************************************************\
-    **********)\n(** {2 %s} *)\n\n" msg
+  printf "(*-----------------------------------------------------------\
+    -----------*)\n(** {2 %s} *)\n\n" msg
 
 let () =
   printf "(** A 2D plotting library with various backends. *)\n\n";
@@ -41,4 +72,5 @@ let () =
   include_module "Axes";
   include_module "Sampler";
   include_module "Iterator";
-  include_module "Plot"
+  include_module "Plot";
+  include_module "Piechart"
