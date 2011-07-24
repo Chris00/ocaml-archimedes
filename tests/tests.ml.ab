@@ -40,5 +40,6 @@ let tests =
 
 let () =
   List.iter (fun (name, test) ->
+    printf "%s%!" name;
     List.iter (fun b -> test(b name)) !backends
   ) tests
