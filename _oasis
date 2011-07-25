@@ -22,15 +22,15 @@ FilesAB:     src/conf.ml.ab,
 PreBuildCommand: ocaml src/public_interface.ml > src/archimedes.mli
 
 Flag graphics
-  Description:  Use the graphics plugin ?
+  Description:  Use the graphics plugin?
   Default:      true
 
 Flag cairo
-  Description:  Use the cairo (PNG, PS, PDF) plugin ?
+  Description:  Use the cairo (PNG, PS, PDF) plugin?
   Default:      true
 
 Flag tikz
-  Description:  Use the tikz (TeX) plugin ?
+  Description:  Use the tikz (TeX) plugin?
   Default:      false
 
 Library "archimedes"
@@ -41,7 +41,7 @@ Library "archimedes"
   # Archimedes re-exports some functions as toplevel ones.
   Modules:      Archimedes
   InternalModules: Archimedes_impl
-  BuildDepends: dynlink
+  BuildDepends: dynlink, bigarray
 
 Library "archimedes_graphics"
   Build$:       flag(graphics)
@@ -91,7 +91,7 @@ Executable "Tests"
   Path:         tests
   BuildTools:   ocamlbuild
   MainIs:       tests.ml
-  BuildDepends: archimedes, archimedes.graphics, archimedes.cairo
+  BuildDepends: archimedes
   Install:      false
 
 

@@ -1,5 +1,5 @@
 # OASIS_START
-# DO NOT EDIT (digest: bebba3444134de57ff514d25fa12e03b)
+# DO NOT EDIT (digest: 943fc04bcb0c7c2eb7975a5cf743cc56)
 # Ignore VCS directories, you can use the same kind of rule outside 
 # OASIS_START/STOP if you want to exclude directories that contains 
 # useless stuff for the build process
@@ -15,32 +15,27 @@
 "_darcs": not_hygienic
 # Library archimedes
 "src/archimedes.cmxs": use_archimedes
-# Library archimedes_graphics
-"src/archimedes_graphics.cmxs": use_archimedes_graphics
-<src/*.ml{,i}>: pkg_graphics
 # Library archimedes_cairo
 "src/archimedes_cairo.cmxs": use_archimedes_cairo
 <src/*.ml{,i}>: pkg_cairo2
 # Library archimedes_tikz
 "src/archimedes_tikz.cmxs": use_archimedes_tikz
 # Library archimedes_toploop
-"src": include
 "src/archimedes_toploop.cmxs": use_archimedes_toploop
-<src/*.ml{,i}>: use_archimedes
-<src/*.ml{,i}>: pkg_dynlink
 # Executable Tests
-"tests/tests.byte": use_archimedes_cairo
-"tests/tests.byte": use_archimedes_graphics
 "tests/tests.byte": use_archimedes
-"tests/tests.byte": pkg_graphics
 "tests/tests.byte": pkg_dynlink
-"tests/tests.byte": pkg_cairo2
-<tests/*.ml{,i}>: use_archimedes_cairo
-<tests/*.ml{,i}>: use_archimedes_graphics
+"tests/tests.byte": pkg_bigarray
 <tests/*.ml{,i}>: use_archimedes
-<tests/*.ml{,i}>: pkg_graphics
 <tests/*.ml{,i}>: pkg_dynlink
-<tests/*.ml{,i}>: pkg_cairo2
+<tests/*.ml{,i}>: pkg_bigarray
+# Library archimedes_graphics
+"src": include
+"src/archimedes_graphics.cmxs": use_archimedes_graphics
+<src/*.ml{,i}>: use_archimedes
+<src/*.ml{,i}>: pkg_graphics
+<src/*.ml{,i}>: pkg_dynlink
+<src/*.ml{,i}>: pkg_bigarray
 # OASIS_STOP
 
 <**/*.ml>: annot
