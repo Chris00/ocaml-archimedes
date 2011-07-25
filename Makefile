@@ -20,7 +20,7 @@ setup.data: setup.ml $(FILESAB)
 	ocaml $< -configure
 
 setup.ml: _oasis
-	oasis setup
+	oasis.dev setup
 
 doc install uninstall reinstall: all
 	ocaml setup.ml -$@
