@@ -5326,8 +5326,3 @@ let get_destdir() =
 let _ = BaseEnv.var_define "ocamlfind_destdir" (lazy(get_destdir()))
 
 let () = setup ();;
-
-(* Fix until OASIS supports packs *)
-let () =
-  try Sys.remove "src/archimedes.mllib"
-  with Sys_error _ -> ()
