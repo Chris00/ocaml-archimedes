@@ -1,4 +1,4 @@
-open Testing
+include Testing
 
 module Arrows = Archimedes.Arrows
 

@@ -1,4 +1,4 @@
-open Testing
+include Testing
 (*module P = Plot.List*)
 module V = Archimedes.Viewport
 

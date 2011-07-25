@@ -18,6 +18,8 @@
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the file
    LICENSE for more details. *)
 
+open Functions
+
 module V = Viewport
 
 module Insets = struct
@@ -49,8 +51,6 @@ type pathstyle =
   | Boxes of float (* Width in Data coordinates (usually what we want) *)
   | Interval of float (* Width in Data coordinates (to be consistent) *)
 
-let is_finite x = 1. /. x <> 0.
-
 let rec draw_data ?(base=0.) pathstyle path (x, y) =
   if is_finite y then match pathstyle with
   | Lines | Linespoints _ -> Path.line_to path ~x ~y
@@ -79,6 +79,150 @@ let fillpath vp path color =
   V.save vp;
   V.set_color vp color;
   V.fill ~path vp V.Data;
+  V.restore vp
+
+(** [advance_samplings swap_up_down] advance in samplings, doing what is
+    told by [u_do] and [d_do], until a condition is satisfied and then
+    call [next] or stop when there won't be anymore fill regions and
+    finally call [last] in that case.
+
+    [swap_up_down] tells wheter or not [f] and [g] samples are swapped
+    (used in recursive calls).
+
+    In the following, "up" and "down" refer to the order of advancement,
+    not to the vertical alignment. The "up" samples are the samples in
+    which we're advancing, and "down" are the fixed ones.
+
+    [uy'] sample means y coordinate of the last "up" sample.
+
+    That roughly ressemble that :
+    ----------------(ux', uy')=advance=>(ux,uy)--------------
+    ---(dx', dy')---------------------------------(dx, dy)---
+*)
+let rec advance_samplings ~u_samples ~d_samples ~acc
+    ~u_do ~d_do ~ux'' ~uy'' ~ux' ~uy' ~dx'' ~dy'' ~dx' ~dy'
+    ~until ~next ~last swap_up_down =
+  Printf.printf "advance_samplings ~ux':%f ~uy':%f ~dx':%f ~dy':%f  swap:%b\n%!" ux' uy' dx' dy' swap_up_down;
+  let advance_up_sample u_samples d_samples u_do d_do
+      ux'' uy'' ux' uy' dx'' dy'' dx' dy' swap_up_down =
+    match u_samples with
+    | [] -> (* No more samples, thus no more region. *)
+      last ~acc ~ux' ~uy' ~dx'' ~dy'' ~dx' ~dy' swap_up_down
+    | (ux, uy) :: utl ->
+      Printf.printf "advance_up_sample ux':%f uy':%f ux:%f uy:%f dx':%f dy':%f swap:%b\n%!" ux' uy' ux uy dx' dy' swap_up_down;
+      if until ~ux' ~uy' ~ux ~uy ~dx' ~dy' then begin
+        Printf.printf "until verified.\n%!";
+        next ~u_samples ~d_samples ~acc
+          ~ux'' ~uy'' ~ux' ~uy' ~ux ~uy ~dx'' ~dy'' ~dx' ~dy' swap_up_down
+      end else begin
+        let acc = u_do acc ux' uy' in
+        advance_samplings ~u_samples:utl ~d_samples ~acc
+          ~u_do ~d_do
+          ~ux'':ux' ~uy'':uy' ~ux':ux ~uy':uy
+          ~dx'' ~dy'' ~dx' ~dy'
+          ~until ~next ~last swap_up_down
+      end
+  in
+  if ux' < dx' then
+    advance_up_sample u_samples d_samples u_do d_do
+      ux'' uy'' ux' uy' dx'' dy'' dx' dy' swap_up_down
+  else
+    advance_up_sample d_samples u_samples d_do u_do
+      dx'' dy'' dx' dy' ux'' uy'' ux' uy' (not swap_up_down)
+
+let fill_samplings vp fillcolor f_samples g_samples =
+  let path = Path.make () in
+  let rec advance_out_of_region ~u_samples ~d_samples ~acc:_
+      ~ux'' ~uy'' ~ux' ~uy' ~ux ~uy ~dx'' ~dy'' ~dx' ~dy' swap_up_down =
+    Printf.printf "===Advance out of region\n%!";
+    let oriented_advance_samplings =
+      if swap_up_down then
+        advance_samplings
+          ~u_samples:d_samples ~d_samples:u_samples ~acc:[]
+          ~u_do:(fun _ _ _ -> []) ~d_do:(fun _ _ _-> [])
+          ~ux'':dx'' ~uy'':dy'' ~ux':dx' ~uy':dy'
+          ~dx'':ux'' ~dy'':uy'' ~dx':ux' ~dy':uy'
+      else
+        advance_samplings
+          ~u_samples ~d_samples ~acc:[]
+          ~u_do:(fun _ _ _ -> []) ~d_do:(fun _ _ _-> [])
+          ~ux'' ~uy'' ~ux' ~uy'
+          ~dx'' ~dy'' ~dx' ~dy'
+    in
+    oriented_advance_samplings
+      ~until:(fun ~ux' ~uy' ~ux ~uy ~dx' ~dy' ->
+        not (Functions.is_nan uy') && not (Functions.is_nan uy)
+        && not (Functions.is_nan dy')
+        && ux >= dx')
+      ~next:advance_in_region
+      ~last:(fun ~acc:_ ~ux':_ ~uy':_ ~dx'':_ ~dy'':_ ~dx':_ ~dy':_ _ -> ())
+      false
+  and advance_in_region ~u_samples ~d_samples ~acc:_
+      ~ux'' ~uy'' ~ux' ~uy' ~ux ~uy ~dx'' ~dy'' ~dx' ~dy' swap_up_down =
+    Printf.printf "===Advance in region\n%!";
+    let interp_uy = uy' +. (uy -. uy') /. (ux -. ux') *. (dx' -. ux') in
+    let oriented_advance_samplings =
+      let u_do acc fx' fy' =
+        Printf.printf "line_to %f %f\n%!" fx' fy';
+        Path.line_to path fx' fy';
+        acc
+      and d_do acc gx' gy' =
+        (gx', gy') :: acc
+      in
+      if swap_up_down then
+        advance_samplings
+          ~u_samples:d_samples ~d_samples:u_samples ~acc:[(dx', interp_uy)]
+          ~u_do:d_do ~d_do:u_do
+          ~ux'':dx'' ~uy'':dy'' ~ux':dx' ~uy':dy'
+          ~dx'':ux' ~dy'':uy' ~dx':ux ~dy':uy
+      else
+        advance_samplings
+          ~u_samples ~d_samples ~acc:[(dx', dy')]
+          ~u_do ~d_do
+          ~ux'' ~uy'' ~ux':dx' ~uy':interp_uy
+          ~dx'' ~dy'' ~dx' ~dy'
+    in
+    oriented_advance_samplings
+      ~until:(fun ~ux':_ ~uy':_ ~ux:_ ~uy ~dx':_ ~dy':_ -> Functions.is_nan uy)
+      ~next:close_region_and_advance
+      ~last:close_region
+      swap_up_down
+  and close_region ~acc ~ux' ~uy' ~dx'' ~dy'' ~dx' ~dy' swap_up_down =
+    Printf.printf "===Close region\n%!";
+    (* Descend from [f] to [g]. *)
+    let interp_dy = dy'' +. (dy' -. dy'') /. (dx' -. dx'') *. (ux' -. dx'') in
+    Printf.printf "interp_dy:%f  swap:%b\n%!" interp_dy swap_up_down;
+    if swap_up_down then begin
+      Printf.printf "continue to ux':%f interp_dy:%f\n%!" ux' interp_dy;
+      Path.line_to path ux' interp_dy;
+      Printf.printf "descend to ux':%f uy':%f\n%!" ux' uy';
+      Path.line_to path ux' uy';
+    end else begin
+      Printf.printf "continue to ux':%f uy':%f\n%!" ux' uy';
+      Path.line_to path ux' uy';
+      Printf.printf "descend to ux':%f interp_dy:%f\n%!" ux' interp_dy;
+      Path.line_to path ux' interp_dy
+    end;
+    (* Draw the path of [g] on that region. *)
+    List.iter (fun (x, y) -> Path.line_to path x y) acc;
+    V.fill ~path vp V.Data;
+    Path.clear path;
+  and close_region_and_advance ~u_samples ~d_samples ~acc
+      ~ux'' ~uy'' ~ux' ~uy' ~ux ~uy ~dx'' ~dy'' ~dx' ~dy' swap_up_down =
+    Printf.printf "===Found end of region in samples.\n%!";
+    close_region ~acc ~ux' ~uy' ~dx'' ~dy'' ~dx' ~dy' swap_up_down;
+    (* If we've called [close_region_and_advance], it's because we've
+       reached and end of region. Therefore, we have to
+       [advance_OUT_of_region]. *)
+    advance_out_of_region ~u_samples ~d_samples ~acc:[]
+      ~ux'' ~uy'' ~ux' ~uy' ~ux ~uy ~dx'' ~dy'' ~dx' ~dy' swap_up_down
+  in
+  V.save vp;
+  V.set_color vp fillcolor;
+  advance_out_of_region ~u_samples:f_samples ~d_samples:g_samples ~acc:[]
+    ~ux'':neg_infinity ~uy'':nan ~ux':neg_infinity ~uy':nan
+    ~ux:neg_infinity ~uy:nan
+    ~dx'':neg_infinity ~dy'':nan ~dx':neg_infinity ~dy':nan false;
   V.restore vp
 
 (* Factorizes the x function in most submodules (except Function) *)
@@ -189,7 +333,8 @@ module Array = struct
   let stack = basestack Iterator.of_array
 end
 
-module List = struct
+(* Avoid module name clash. *)
+module List_ = struct
   type data = float list
   type data2 = (float * float) list
 
@@ -233,6 +378,7 @@ module Function = struct
     strategy: Sampler.strategy;
     criterion: Sampler.criterion;
     min_step: float;
+    tlog: bool;
     nsamples: int;
     fct: (float -> 'a);
     t0: float;
@@ -240,11 +386,12 @@ module Function = struct
     mutable data: (float * float) list
   }
 
-  let sampling ?(strategy=Sampler.strategy_midpoint)
+  let sampling ?(tlog=false) ?(strategy=Sampler.strategy_midpoint)
       ?(criterion=Sampler.criterion_none) ?(min_step=1E-9) ?(nsamples=100)
       f a b =
     { strategy = strategy;
       criterion = criterion;
+      tlog = tlog;
       min_step = min_step;
       nsamples = nsamples;
       fct = f;
@@ -252,12 +399,43 @@ module Function = struct
       tend = b;
       data = [] }
 
-  let x ?pathstyle vp sampling =
-    ()
+  let update_samples_x (sampling:float sampling) =
+    (* TODO: We should maybe fuse the old and new samples with a new
+       criterion or something ? *)
+    if sampling.data = [] then
+      let sampler = Iterator.of_function ~tlog:sampling.tlog
+        ~min_step:sampling.min_step ~nsamples:sampling.nsamples
+        ~strategy:sampling.strategy ~criterion:sampling.criterion
+        (fun x -> x, sampling.fct x) sampling.t0 sampling.tend
+      in
+      sampling.data <- List.rev (Iterator.iter_cache (fun _ -> ()) sampler)
+
+  let x ?(pathstyle=Lines) ?(base=fun _ -> 0.) vp sampling =
+    let path = Path.make () in
+    let insets = Insets.make () in
+    update_samples_x sampling;
+    let f p =
+      Insets.includepoint insets p;
+      let x, _ = p in
+      draw_data pathstyle path ~base:(base x) p
+    in
+    List.iter f sampling.data;
+    Insets.fit vp insets;
+    V.stroke ~path vp V.Data;
+    List.iter (draw_point pathstyle vp) sampling.data
 
   let xy ?fill ?fillcolor ?pathstyle vp sampling =
     ()
 
-  let fill ?fillcolor vp ?base sampling =
-    ()
+  let fill ?(fillcolor=Color.red) ?base vp f_sampling =
+    let base = match base with
+      | None -> sampling (fun x -> 0.) f_sampling.t0 f_sampling.tend
+      | Some base_sampling -> base_sampling
+    in
+    update_samples_x f_sampling;
+    update_samples_x base;
+    fill_samplings vp fillcolor f_sampling.data base.data
 end
+
+(* Avoid module name clash. *)
+module List = List_

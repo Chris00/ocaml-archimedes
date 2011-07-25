@@ -1,4 +1,4 @@
-open Testing
+include Testing
 module Backend = Archimedes.Backend
 
 let draw bk =

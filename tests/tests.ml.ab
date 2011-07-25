@@ -5,20 +5,22 @@ open Printf
 let alltests = [ $(tests) ]
 
 let backends = ref []
-let output out ext () =
+let cairo out ext () =
   backends := (fun fname -> sprintf "cairo %s %s.%s" out fname ext) :: !backends
+let tikz () =
+  backends := (fun fname -> sprintf "tikz %s.tex" fname) :: !backends
 let graphics () =
-  backends := (fun fname -> "graphics hold") :: !backends
+  backends := (fun _ -> "graphics hold") :: !backends
 
 let list_tests () =
-  List.iter (fun (name,_) -> Format.printf "%s@ " name) alltests;
+  List.iter (fun (name,_,_) -> Format.printf "%s@ " name) alltests;
   exit 0
 
 let specs = Arg.align [
-  "--ps",  Arg.Unit(output "PS" "ps"), " activate ps (cairo) output";
-  "--pdf", Arg.Unit(output "PDF" "pdf"), " activate pdf (cairo) output";
-  "--png", Arg.Unit(output "PNG" "png"), " activate png (cairo) output";
-  "--tex", Arg.Unit(output "tikz" "tex"), " activate LaTeX (tikz) output";
+  "--ps",  Arg.Unit(cairo "PS" "ps"), " activate ps (cairo) output";
+  "--pdf", Arg.Unit(cairo "PDF" "pdf"), " activate pdf (cairo) output";
+  "--png", Arg.Unit(cairo "PNG" "png"), " activate png (cairo) output";
+  "--tex", Arg.Unit tikz, " activate LaTeX (tikz) output";
   "--graphics", Arg.Unit graphics, " activate graphics output (done if no \
     option is given)";
   "--tests", Arg.Unit list_tests, " list all possible tests and stop";
@@ -33,13 +35,19 @@ let tests =
   if !tests = [] then alltests
   else (
     let add acc t =
-      try List.find (fun (name,_) -> name = t) alltests :: acc
+      try List.find (fun (name,_,_) -> name = t) alltests :: acc
       with Not_found -> printf "Test not found: %s\n" t; acc in
     List.fold_left add [] !tests
   )
 
 let () =
-  List.iter (fun (name, test) ->
-    printf "%s%!" name;
-    List.iter (fun b -> test(b name)) !backends
+  List.iter (fun (name, description, test) ->
+    List.iter (fun b ->
+      try
+        Format.printf "@[%s@;- %s@]@." name description;
+        test(b name)
+      with Archimedes.Backend.Error e ->
+        failwith (sprintf "Backend Error: %s"
+                    (Archimedes.Backend.string_of_error e))
+    ) !backends
   ) tests

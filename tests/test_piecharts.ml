@@ -1,4 +1,4 @@
-open Testing
+include Testing
 
 module V = Archimedes.Viewport
 module PC = Archimedes.Piechart

@@ -1,4 +1,4 @@
-open Testing
+include Testing
 module B = Archimedes.Backend
 module Matrix = Archimedes.Matrix
 

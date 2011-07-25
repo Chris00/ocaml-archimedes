@@ -32,4 +32,6 @@ Fix tests in testsmaker.ml
 
 Add title function in viewports
 
+Add support for "auto-ratio" syncing (don't require to specify a fixed ratio to
+share).
 

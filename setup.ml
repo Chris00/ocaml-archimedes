@@ -5326,7 +5326,7 @@ let list_tests () =
   let files = List.sort String.compare files in
   let to_string f =
     let name = String.capitalize(Filename.chop_suffix f ".ml") in
-    Printf.sprintf "(%S, %s.draw)" name name in
+    Printf.sprintf "(%S, %s.description, %s.draw)" name name name in
   String.concat ";\n  " (List.map to_string files)
 
 let _ = BaseEnv.var_define "tests" (lazy(list_tests()))
