@@ -64,7 +64,7 @@ let section msg =
     -----------*)\n(** {2 %s} *)\n\n" msg
 
 let () =
-  printf "(** A 2D plotting library with various backends. *)\n\n";
+  include_file "archimedes_header.mli";
   include_module "Color";
 
   section "Affine transformations";
@@ -83,4 +83,4 @@ let () =
   include_module "Iterator";
   include_module "Plot";
   include_module "Piechart";
-  include_file "archimedes_top.mli";
+  include_file "archimedes_footer.mli";

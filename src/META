@@ -1,8 +1,8 @@
 # OASIS_START
-# DO NOT EDIT (digest: caa79e6a0cedd29cf7877d695cc10c0b)
+# DO NOT EDIT (digest: ed9b2cfd024bc61898204d9c70c4f3e1)
 version = "0.3.1"
 description = "Extensible 2D plotting library."
-requires = "dynlink cairo2 graphics"
+requires = "dynlink"
 archive(byte) = "archimedes.cma"
 archive(native) = "archimedes.cmxa"
 exists_if = "archimedes.cma"

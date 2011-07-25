@@ -289,25 +289,15 @@ let show_text t = t.show_text
 
 type error =
   | Corrupted_dependency of string
-  | Non_loadable_dependency of string
+  | Non_loadable_dependency of string * Dynlink.error
   | Nonexistent of string
   | Not_loadable of string * Dynlink.error
   | Not_registering of string
 
-let string_of_error = function
-  | Corrupted_dependency fname ->
-      sprintf "The dependency file %s is corrupted." fname
-  | Non_loadable_dependency fname ->
-      sprintf "The library %s (occurring as a plugin dependency) cannot \
-        be loaded" fname
-  | Nonexistent bk -> sprintf "The backend %S is not found" bk
-  | Not_loadable(bk, e) ->
-      sprintf "The backend %S is not loadable because:\n%s"
-        bk (Dynlink.error_message e)
-  | Not_registering bk ->
-      sprintf "The backend %S does not register itself properly" bk
-
-exception Error of error
+exception Error of error * string
+(* Include the error message in the exception.  This is seldom raised
+   but, when it is, it is nice that the user see a nice explanation on
+   the screen. *)
 
 let registered () = M.fold (fun name _ l -> name :: l) !registry []
 
@@ -339,7 +329,9 @@ let get_dependencies dirs basename =
         while true do lines := input_line fh :: !lines done;
         assert false
       with End_of_file -> List.rev !lines
-    with Sys_error _ -> raise(Error(Corrupted_dependency dep))
+    with Sys_error _ ->
+      let msg = sprintf "The dependency file %s is corrupted." dep in
+      raise(Error(Corrupted_dependency dep, msg))
   with Not_found -> [] (* assuming it implies no deps *)
 
 
@@ -361,20 +353,30 @@ let make ?(dirs=[Conf.plugins_dir]) b width height =
           try
             Dynlink.loadfile fdep;
             loaded_dependencies := dep :: !loaded_dependencies
-          with Dynlink.Error e -> raise(Error(Not_loadable(fdep, e)))
+          with Dynlink.Error e ->
+            let msg = sprintf "The library %s (occurring as a plugin \
+              dependency) cannot be loaded because:\n%s"
+              fdep (Dynlink.error_message e) in
+            raise(Error(Non_loadable_dependency(fdep, e), msg))
         )
       end (get_dependencies dirs base);
       (* Load the main module *)
       let dyn = (try find_file dirs (Dynlink.adapt_filename(base ^ ".cmo"))
-                 with Not_found -> raise(Error(Nonexistent backend))) in
+                 with Not_found ->
+                   let msg = sprintf "The backend %S could not be found; \
+                     searched in dirs: %s" backend (String.concat ", " dirs) in
+                   raise(Error(Nonexistent backend, msg))) in
       (try Dynlink.loadfile dyn
        with Dynlink.Error e ->
-         print_string (Dynlink.error_message e);
-         print_newline ();
-         raise(Error(Not_loadable(backend, e))));
+         let msg = sprintf "The backend %S is not loadable because:\n%s"
+           backend (Dynlink.error_message e) in
+         raise(Error(Not_loadable(backend, e), msg)));
         (* Check that the backend correctly updated the registry *)
       try M.find backend !registry
-      with Not_found -> raise(Error(Not_registering backend))
+      with Not_found ->
+        let msg = sprintf "The backend %S does not register itself properly"
+          backend in
+        raise(Error(Not_registering backend, msg))
   in
   make options width height
 

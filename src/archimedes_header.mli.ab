@@ -1,0 +1,21 @@
+(** A 2D plotting library with various backends.
+
+    @version $(pkg_version)
+    @author Christophe Troestler
+    @author Pierre Hauweele
+    @author Fabian Pijcke
+    @author Noémie Meunier
+    @author Bertrand Desmons
+*)
+
+(** {2 Introduction}
+
+    {[
+    module A = Archimedes
+    let vp = A.init "graphic hold" in
+    A.Axes.box vp;
+    A.fx vp sin 0. 10.;
+    A.close vp
+    ]}
+
+*)

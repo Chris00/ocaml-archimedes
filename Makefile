@@ -22,7 +22,7 @@ setup.data: setup.ml $(FILESAB)
 setup.ml: _oasis
 	oasis setup
 
-doc install uninstall reinstall: setup.data
+doc install uninstall reinstall: all
 	ocaml setup.ml -$@
 
 upload-doc: doc
@@ -36,6 +36,10 @@ dist tar: $(DISTFILES)
 	cp --parents -r $(DISTFILES) $(PKGNAME)-$(PKGVERSION)/
 	tar -zcvf $(PKG_TARBALL) $(PKGNAME)-$(PKGVERSION)
 	$(RM) -rf $(PKGNAME)-$(PKGVERSION)
+
+.PHONY: svn
+svn:
+	bzr push svn+ssh://svn.forge.ocamlcore.org/svn/archimedes/trunk
 
 .PHONY: clean distclean dist-clean
 clean:

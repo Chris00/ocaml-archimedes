@@ -156,16 +156,15 @@ end
 
 type error =
 | Corrupted_dependency of string
-| Non_loadable_dependency of string
+| Non_loadable_dependency of string * Dynlink.error
 | Nonexistent of string  (** Cannot find the backend in the directories *)
 | Not_loadable of string * Dynlink.error
     (** Cannot load the backend because of the dynlink error. *)
 | Not_registering of string (** Not applying the {!Backend.Register}
                                 functor. *)
 
-val string_of_error : error -> string
-
-exception Error of error
+exception Error of error * string
+(** Exception raised when a backend cannot be loaded. *)
 
 include T
 
