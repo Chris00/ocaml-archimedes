@@ -174,7 +174,7 @@ struct
       (* Re-enable previous settings in case they were changed *)
       Graphics.set_color st.color
     with Stack.Empty ->
-      invalid_arg "Archimedes_graphics.restore: no save issued.\n%!"
+      invalid_arg "Archimedes_graphics.restore: no save issued."
 
   (* On windows, the size given to open_graph is the one of the window
      WITH decorations.  These quantities tell how much need to be
@@ -224,7 +224,6 @@ struct
       if t.hold then (
         Graphics.set_window_title "Archimedes [Press a key to close]";
         ignore(Graphics.wait_next_event [Graphics.Key_pressed]);
-        printf "\n";
       );
       Graphics.close_graph();
       t.closed <- true;

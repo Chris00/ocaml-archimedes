@@ -174,7 +174,7 @@ struct
       (* Re-enable previous settings in case they were changed *)
       fprintf t.fh "\\end{scope}";
     with Stack.Empty ->
-      invalid_arg "Archimedes_tikz.restore: no save issued.\n%!"
+      invalid_arg "Archimedes_tikz.restore: no save issued."
 
   let backend_to_device _ = Matrix.make_identity()
 

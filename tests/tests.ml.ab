@@ -43,7 +43,7 @@ let tests =
 let () =
   List.iter (fun (name, description, test) ->
     List.iter (fun b ->
-      Format.printf "@[%s@;- %s@]@." name description;
+      Format.printf "@[<2>%s@;- %s@]@." name description;
       test(b name)
     ) !backends
   ) tests
