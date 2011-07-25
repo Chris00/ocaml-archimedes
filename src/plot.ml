@@ -387,8 +387,12 @@ module Function = struct
   }
 
   let sampling ?(tlog=false) ?(strategy=Sampler.strategy_midpoint)
-      ?(criterion=Sampler.criterion_none) ?(min_step=1E-9) ?(nsamples=100)
+      ?(criterion=Sampler.criterion_none) ?min_step ?(nsamples=100)
       f a b =
+    let min_step = match min_step with
+      | None -> (b -. a) *. 1E-5
+      | Some x -> x
+    in
     { strategy = strategy;
       criterion = criterion;
       tlog = tlog;
@@ -427,7 +431,7 @@ module Function = struct
   let xy ?fill ?fillcolor ?pathstyle vp sampling =
     ()
 
-  let fill ?(fillcolor=Color.red) ?base vp f_sampling =
+  let fill ?(fillcolor=Color.rgb 0.95 0.95 0.95) ?base vp f_sampling =
     let base = match base with
       | None -> sampling (fun x -> 0.) f_sampling.t0 f_sampling.tend
       | Some base_sampling -> base_sampling

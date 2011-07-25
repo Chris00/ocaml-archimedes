@@ -30,6 +30,9 @@ val init : ?lines:float -> ?text:float -> ?marks:float ->
 val close : Viewport.t -> unit
 
 
-val fx : Viewport.t ->
-  ?fill:bool -> ?fillcolor:Color.t -> ?pathstyle:Plot.pathstyle ->
+val fx : ?tlog:bool ->
+  ?strategy:Sampler.strategy -> ?criterion:Sampler.criterion ->
+  ?min_step:float -> ?nsamples:int ->
+  ?fill:bool -> ?fill_base:(float -> float) -> ?fillcolor:Color.t ->
+  ?pathstyle:Plot.pathstyle -> Viewport.t ->
   (float -> float) -> float -> float -> unit
