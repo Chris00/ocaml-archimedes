@@ -5281,7 +5281,6 @@ let skip = [
   "test_layer.ml";
   "cairo_backend.ml";
   "functions.ml";
-  "simple_plot.ml";
   "test_handle.ml";
   "test_custom_labels.ml";
   "test_log.ml";

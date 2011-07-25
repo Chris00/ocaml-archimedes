@@ -1,10 +1,11 @@
 include Testing
-module P = Plot.Generic
 
-let draw backend =
-  (* The directories are only added so it is not necessary to install
-     the software to execute this test.  This should be seldom needed. *)
-  let p = P.make backend w h ~dirs in
-  P.f p (fun x -> x *. sin(1. /. x)) (-3.) 3. ~nsamples:500;
-  P.close p
+module A = Archimedes
 
+let f x = x *. sin (1. /. x)
+
+let draw bk =
+  let vp = A.init ~w ~h ~dirs bk in
+  A.fx vp ~fill:true f (-0.4) 0.4;
+  A.Axes.box vp;
+  A.close vp

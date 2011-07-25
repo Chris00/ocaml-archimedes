@@ -43,11 +43,7 @@ let tests =
 let () =
   List.iter (fun (name, description, test) ->
     List.iter (fun b ->
-      try
-        Format.printf "@[%s@;- %s@]@." name description;
-        test(b name)
-      with Archimedes.Backend.Error e ->
-        failwith (sprintf "Backend Error: %s"
-                    (Archimedes.Backend.string_of_error e))
+      Format.printf "@[%s@;- %s@]@." name description;
+      test(b name)
     ) !backends
   ) tests
