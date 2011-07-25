@@ -1,7 +1,7 @@
 (*                                                              -*-tuareg-*- *)
 open Printf
 
-(* A list of couples (test_name, function_to_run). *)
+(* A list of couples (test_name, description, function_to_run). *)
 let alltests = [ $(tests) ]
 
 let backends = ref []
