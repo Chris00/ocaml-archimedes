@@ -5347,7 +5347,7 @@ let _ = BaseEnv.var_define "tests" (lazy(list_tests()))
 
 (** Determine the installation directory.  It is needed to dynamically
     find the backend modules. *)
-let get_install_dir() =
+let get_destdir() =
   (* BaseStandardVar.pkg_name not available at this point *)
   let inst = BaseExec.run_read_output (BaseCheck.ocamlfind ())
     ["install"; "-help"] in
@@ -5356,8 +5356,7 @@ let get_install_dir() =
     (try
        let path_beg = String.index destdir '/' in
        let cl_brace = String.index destdir ')' in
-       let dir = String.sub destdir path_beg (cl_brace - path_beg) in
-       Filename.concat dir setup_t.BaseSetup.package.name
+       String.sub destdir path_beg (cl_brace - path_beg)
      with _ ->
        Printf.printf "ERROR: The line %S does not allow to determine the \
          installation directory.\n" destdir;
@@ -5366,7 +5365,7 @@ let get_install_dir() =
     Printf.printf "ERROR: 'ocamlfind install -help' output is incompatible.\n";
     exit 1
 
-let _ = BaseEnv.var_define "dyn_lib_dir" (lazy(get_install_dir()))
+let _ = BaseEnv.var_define "ocamlfind_destdir" (lazy(get_destdir()))
 
 let () = setup ();;
 
