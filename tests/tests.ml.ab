@@ -31,7 +31,7 @@ let tests =
     where an option is a test name or one of the following:" in
   let tests = ref [] in
   Arg.parse specs (fun t -> tests := t :: !tests) usage;
-  if !backends = [] then graphics();
+  if !backends = [] then cairo "PNG" "png" ();
   if !tests = [] then alltests
   else (
     let add acc t =
