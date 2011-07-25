@@ -252,9 +252,9 @@ let xy ?(fill=false) ?(fillcolor=Color.red) ?(pathstyle=Lines)
     vp iterator =
   let insets = Insets.make () in
   let path = Path.make () in
-  let f p = ()
-    (*Insets.includepoint insets p;
-    draw_data pathstyle path p*)
+  let f p =
+    Insets.includepoint insets p;
+    draw_data pathstyle path p
   in
   let data_rev = Iterator.iter_cache f iterator in
   Insets.fit vp insets;
