@@ -33,7 +33,8 @@ let max a b = if (a:float) > b then a else b
 let round x = truncate(if x >= 0. then x +. 0.5 else x -. 0.5)
 
 let fourth_pi = atan 1.
-let two_pi = 8. *. fourth_pi
+let pi = 4. *. fourth_pi
+let two_pi = 2. *. pi
 
 (** Return the smaller rectangle including the rectangle [r] and the
     segment joining [(x0,y0)] and [(x1,y1)]. *)
@@ -552,6 +553,31 @@ struct
     let w, h = Graphics.text_size txt in
     { Matrix.x = 0.; y = 0.; w = float w ; h = float h }
 
+  let rotate_extents angle x0 y0 w0 h0 =
+    Printf.printf "Before: %f %f %f %f\n%!" x0 y0 w0 h0;
+    let angle = mod_float angle (2. *. pi) in
+    let sina, cosa = sin angle, cos angle in
+    let x, y, w, h = -. w0 /. 2., -. h0 /. 2., w0, h0 in
+    Printf.printf "Normalized: %f %f %f %f\n%!" x y w h;
+    let xproj x y = cosa *. x -. sina *. y in
+    let yproj x y = sina *. x +. cosa *. y in
+    let x =
+      if angle < pi /. 2. then xproj x (y +. h)
+      else if angle < pi then xproj (x +. w) (y +. h)
+      else if angle < 1.5 *. pi then xproj (x +. w) y
+      else xproj x y
+    and y =
+      if angle < pi /. 2. then yproj x y
+      else if angle < pi then yproj x (y +. h)
+      else if angle < 1.5 *. pi then yproj (x +. w) (y +. h)
+      else yproj (x +. w) y
+    in
+    Printf.printf "%f %f\n%!" x y;
+    let retw, reth = -. 2. *. x, -. 2. *. y in
+    let retx, rety = x0 -. (retw -. w0) /. 2., y0 -. (reth -. h0) /. 2. in
+    Printf.printf "After: %f %f %f %f\n%!" retx rety retw reth;
+    retx, rety, retw, reth
+
   let show_text t ~rotate ~x ~y pos txt =
     let st = get_state t in
     (* Compute the angle between the desired direction and the X axis
@@ -559,35 +585,56 @@ struct
     let dx, dy = Matrix.transform_distance st.ctm (cos rotate) (sin rotate) in
     let angle = atan2 dy dx in
     let x', y' = Matrix.transform_point st.ctm x y in
+    let w', h' = Graphics.text_size txt in
+    (* text_size returns size already in device coords.*)
+    let x'' = match pos with
+      | Backend.CC | Backend.CT | Backend.CB -> x' -. float w' *. 0.5
+      | Backend.RC | Backend.RT | Backend.RB -> x'
+      | Backend.LC | Backend.LT | Backend.LB -> x' -. float w'
+    and y'' =  match pos with
+      | Backend.CC | Backend.RC | Backend.LC -> y' -. float h' *. 0.5
+      | Backend.CT | Backend.RT | Backend.LT -> y'
+      | Backend.CB | Backend.RB | Backend.LB -> y' -. float h'
+    in let x'' = round x'' and y'' = round y'' in
+    Graphics.moveto x'' y'';
     if abs_float angle <= 1e-6 then
-      let w', h' = Graphics.text_size txt in
-      (* text_size returns size already in device coords.*)
-      (*let wx, wy = Matrix.transform_distance st.ctm (float w) 0.
-      and hx, hy = Matrix.transform_distance st.ctm 0. (float h) in*)
-      let wx = float w' and wy = 0. in
-      let hx = 0. and hy = float h' in
-      let x'' =  match pos with
-        | Backend.CC | Backend.CT | Backend.CB ->
-            x' -. (wx +. hx) *. 0.5
-        | Backend.RC | Backend.RT | Backend.RB ->
-            x'
-        | Backend.LC | Backend.LT | Backend.LB ->
-            x' -. wx -. hx
-      and y'' = match pos with
-        | Backend.CC | Backend.RC | Backend.LC ->
-            y' -. (hy +. wy) *. 0.5
-        | Backend.CT | Backend.RT | Backend.LT ->
-            y'
-        | Backend.CB | Backend.RB | Backend.LB ->
-            y' -. hy -. wy
-      in
-      Graphics.moveto (round x'') (round y'');
       Graphics.draw_string txt
-    else (
-      (* Text rotation is not possible with graphics.  Just display
-         the text along the desired direction. *)
-      (* FIXME: rotations *)
-    )
+    else begin
+      save t;
+      (* Sauvegarde de la portion de travail *)
+      let backup = Graphics.get_image x'' y'' w' h' in
+      let invisx, invisy, invisw, invish =
+        rotate_extents angle (float x'') (float y'') (float w') (float h')
+      in
+      Graphics.display_mode false;
+      Graphics.set_color Graphics.white;
+      Printf.printf "%f %f %f %f\n%!" invisx invisy invisw invish;
+      Graphics.fill_rect (round invisx) (round invisy)
+        (round invisw) (round invish);
+      Graphics.moveto x'' y'';
+      restore t;
+      Graphics.draw_string txt;
+      let img = Graphics.get_image x'' y'' w' h' in
+      let m = Graphics.dump_image img in
+      let m2 = Array.make_matrix (round invish) (round invish) (-1) in
+      let place y x v =
+        if v <> Graphics.white then
+          let sina = sin angle and cosa = cos angle in
+          let xcentered, ycentered = float (x - w' / 2), float (y - h' / 2) in
+          let xrotated, yrotated =
+            cosa *. xcentered -. sina *. ycentered +. invisw /. 2.,
+            sina *. xcentered +. cosa *. ycentered +. invish /. 2.
+          in
+          try
+            m2.(round yrotated).(round xrotated) <- v
+          with _ -> ()
+      in
+      Array.iteri (fun y -> Array.iteri (place y)) m;
+      let img2 = Graphics.make_image m2 in
+      Graphics.display_mode true;
+      Graphics.draw_image backup x'' y'';
+      Graphics.draw_image img2 (round invisx) (round invisy);
+    end
 
   let flipy _t = false
 end
