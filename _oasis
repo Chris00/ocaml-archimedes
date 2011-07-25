@@ -41,7 +41,7 @@ Library "archimedes"
   # Archimedes re-exports some functions as toplevel ones.
   Modules:      Archimedes
   InternalModules: Archimedes_impl
-  BuildDepends: dynlink, cairo2, graphics
+  BuildDepends: dynlink
 
 Library "archimedes_graphics"
   Build$:       flag(graphics)
@@ -93,3 +93,9 @@ Executable "Tests"
   MainIs:       tests.ml
   BuildDepends: archimedes, archimedes.graphics, archimedes.cairo
   Install:      false
+
+
+SourceRepository trunk
+  Type:       svn
+  Location:   svn://scm.ocamlcore.org/svn/archimedes/trunk
+  Browser:    http://forge.ocamlcore.org/scm/browser.php?group_id=105

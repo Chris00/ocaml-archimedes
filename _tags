@@ -1,8 +1,10 @@
 # OASIS_START
-# DO NOT EDIT (digest: 069d036a2bec1bcc5a2fa61fa8accdee)
+# DO NOT EDIT (digest: f8576b3ecc7bb1e0d2cd3dc196161d57)
 # Library archimedes
 # Library archimedes_graphics
+<src/*.ml{,i}>: pkg_graphics
 # Library archimedes_cairo
+<src/*.ml{,i}>: pkg_cairo2
 # Executable Tests
 "tests/tests.byte": use_archimedes_cairo
 "tests/tests.byte": use_archimedes_graphics
@@ -20,9 +22,7 @@
 # Library archimedes_toploop
 "src": include
 <src/*.ml{,i}>: use_archimedes
-<src/*.ml{,i}>: pkg_graphics
 <src/*.ml{,i}>: pkg_dynlink
-<src/*.ml{,i}>: pkg_cairo2
 # OASIS_STOP
 
 <**/*.ml>: annot

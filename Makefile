@@ -37,6 +37,10 @@ dist tar: $(DISTFILES)
 	tar -zcvf $(PKG_TARBALL) $(PKGNAME)-$(PKGVERSION)
 	$(RM) -rf $(PKGNAME)-$(PKGVERSION)
 
+.PHONY: svn
+svn:
+	bzr push svn+ssh://svn.forge.ocamlcore.org/svn/archimedes/trunk
+
 .PHONY: clean distclean dist-clean
 clean:
 	ocaml setup.ml -clean
