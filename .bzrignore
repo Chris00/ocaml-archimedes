@@ -7,18 +7,12 @@
 .depend.ocaml
 src/META
 src/Makefile
-configure
-config.status
-config.log
-autom4te.cache
-aclocal.m4
 Makefile.ocaml
-*.com
-*.exe
 doc/html/
 # Generated files
 *.dep
 src/archimedes.mli
+src/archimedes_header.mli
 src/conf.ml
 # Tests and examples (images and TeX files)
 *.pdf
@@ -36,8 +30,6 @@ _build/
 myocamlbuild.ml
 setup.data
 *.mllib
-tests/realtests.ml
 src/API.odocl
 API.docdir
 tests/tests.ml
-src/archimedes_header.mli
