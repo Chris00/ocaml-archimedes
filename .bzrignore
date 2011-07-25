@@ -4,6 +4,7 @@
 *.annot
 *.com
 *.exe
+*.byte
 .depend.ocaml
 src/META
 src/Makefile
