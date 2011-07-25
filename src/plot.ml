@@ -102,16 +102,13 @@ let fillpath vp path color =
 let rec advance_samplings ~u_samples ~d_samples ~acc
     ~u_do ~d_do ~ux'' ~uy'' ~ux' ~uy' ~dx'' ~dy'' ~dx' ~dy'
     ~until ~next ~last swap_up_down =
-  Printf.printf "advance_samplings ~ux':%f ~uy':%f ~dx':%f ~dy':%f  swap:%b\n%!" ux' uy' dx' dy' swap_up_down;
   let advance_up_sample u_samples d_samples u_do d_do
       ux'' uy'' ux' uy' dx'' dy'' dx' dy' swap_up_down =
     match u_samples with
     | [] -> (* No more samples, thus no more region. *)
       last ~acc ~ux' ~uy' ~dx'' ~dy'' ~dx' ~dy' swap_up_down
     | (ux, uy) :: utl ->
-      Printf.printf "advance_up_sample ux':%f uy':%f ux:%f uy:%f dx':%f dy':%f swap:%b\n%!" ux' uy' ux uy dx' dy' swap_up_down;
       if until ~ux' ~uy' ~ux ~uy ~dx' ~dy' then begin
-        Printf.printf "until verified.\n%!";
         next ~u_samples ~d_samples ~acc
           ~ux'' ~uy'' ~ux' ~uy' ~ux ~uy ~dx'' ~dy'' ~dx' ~dy' swap_up_down
       end else begin
@@ -134,7 +131,6 @@ let fill_samplings vp fillcolor f_samples g_samples =
   let path = Path.make () in
   let rec advance_out_of_region ~u_samples ~d_samples ~acc:_
       ~ux'' ~uy'' ~ux' ~uy' ~ux ~uy ~dx'' ~dy'' ~dx' ~dy' swap_up_down =
-    Printf.printf "===Advance out of region\n%!";
     let oriented_advance_samplings =
       if swap_up_down then
         advance_samplings
@@ -159,11 +155,9 @@ let fill_samplings vp fillcolor f_samples g_samples =
       false
   and advance_in_region ~u_samples ~d_samples ~acc:_
       ~ux'' ~uy'' ~ux' ~uy' ~ux ~uy ~dx'' ~dy'' ~dx' ~dy' swap_up_down =
-    Printf.printf "===Advance in region\n%!";
     let interp_uy = uy' +. (uy -. uy') /. (ux -. ux') *. (dx' -. ux') in
     let oriented_advance_samplings =
       let u_do acc fx' fy' =
-        Printf.printf "line_to %f %f\n%!" fx' fy';
         Path.line_to path fx' fy';
         acc
       and d_do acc gx' gy' =
@@ -188,19 +182,13 @@ let fill_samplings vp fillcolor f_samples g_samples =
       ~last:close_region
       swap_up_down
   and close_region ~acc ~ux' ~uy' ~dx'' ~dy'' ~dx' ~dy' swap_up_down =
-    Printf.printf "===Close region\n%!";
     (* Descend from [f] to [g]. *)
     let interp_dy = dy'' +. (dy' -. dy'') /. (dx' -. dx'') *. (ux' -. dx'') in
-    Printf.printf "interp_dy:%f  swap:%b\n%!" interp_dy swap_up_down;
     if swap_up_down then begin
-      Printf.printf "continue to ux':%f interp_dy:%f\n%!" ux' interp_dy;
       Path.line_to path ux' interp_dy;
-      Printf.printf "descend to ux':%f uy':%f\n%!" ux' uy';
       Path.line_to path ux' uy';
     end else begin
-      Printf.printf "continue to ux':%f uy':%f\n%!" ux' uy';
       Path.line_to path ux' uy';
-      Printf.printf "descend to ux':%f interp_dy:%f\n%!" ux' interp_dy;
       Path.line_to path ux' interp_dy
     end;
     (* Draw the path of [g] on that region. *)
@@ -209,7 +197,6 @@ let fill_samplings vp fillcolor f_samples g_samples =
     Path.clear path;
   and close_region_and_advance ~u_samples ~d_samples ~acc
       ~ux'' ~uy'' ~ux' ~uy' ~ux ~uy ~dx'' ~dy'' ~dx' ~dy' swap_up_down =
-    Printf.printf "===Found end of region in samples.\n%!";
     close_region ~acc ~ux' ~uy' ~dx'' ~dy'' ~dx' ~dy' swap_up_down;
     (* If we've called [close_region_and_advance], it's because we've
        reached and end of region. Therefore, we have to
