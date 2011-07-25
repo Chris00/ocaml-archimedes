@@ -17,5 +17,5 @@
 
 (** Configuration values, possibly put by the 'configure' script. *)
 
-let destdir = "$(bindir)"
+let destdir = "$(dyn_lib_dir)"
 let plugins_dir = Filename.concat destdir "archimedes"
