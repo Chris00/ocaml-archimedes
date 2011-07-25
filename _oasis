@@ -17,6 +17,7 @@ Plugins:     META (0.2), StdFiles (0.2)
 FilesAB:     src/conf.ml.ab,
   src/archimedes_cairo.dep.ab,
   src/archimedes_graphics.dep.ab,
+  src/archimedes_header.mli.ab,
   tests/tests.ml.ab
 PreBuildCommand: ocaml src/public_interface.ml > src/archimedes.mli
 

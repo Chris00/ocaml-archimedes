@@ -22,7 +22,7 @@ setup.data: setup.ml $(FILESAB)
 setup.ml: _oasis
 	oasis setup
 
-doc install uninstall reinstall: setup.data
+doc install uninstall reinstall: all
 	ocaml setup.ml -$@
 
 upload-doc: doc
