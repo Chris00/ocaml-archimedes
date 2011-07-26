@@ -191,9 +191,10 @@ struct
     List.iter (fun o ->
                  if o = "hold" then hold := true;
               ) options;
-    Graphics.open_graph(sprintf " %.0fx%.0f"
+    Graphics.open_graph(sprintf " %.0fx%.0f-10+10"
                           (width +. !ofsw) (height +. !ofsh));
     Graphics.set_window_title "Archimedes";
+    Graphics.auto_synchronize false;
     in_use := true;
     let state = {
       color = 0x0; (* black *)
@@ -425,7 +426,8 @@ struct
         Graphics.curveto
           (round x1, round y1) (round x2, round y2) (round x3, round y3)
     | CLOSE_PATH(x,y) -> Graphics.lineto (round x) (round y)
-    end (List.rev t.current_path)
+    end (List.rev t.current_path);
+    Graphics.synchronize()
 
   let stroke t = stroke_preserve t; clear_path t
 
@@ -500,7 +502,8 @@ struct
 
   let fill_preserve t =
     (* Line width does not matter for "fill". *)
-    gather_subpath t.current_path []
+    gather_subpath t.current_path [];
+    Graphics.synchronize()
 
   let fill t = fill_preserve t; clear_path t
 
@@ -553,11 +556,11 @@ struct
     { Matrix.x = 0.; y = 0.; w = float w ; h = float h }
 
   let rotate_extents angle x0 y0 w0 h0 =
-    Printf.printf "Before: %f %f %f %f\n%!" x0 y0 w0 h0;
+    Printf.printf "DEBUG: Before: %f %f %f %f\n%!" x0 y0 w0 h0;
     let angle = mod_float angle (2. *. pi) in
     let sina, cosa = sin angle, cos angle in
     let x, y, w, h = -. w0 /. 2., -. h0 /. 2., w0, h0 in
-    Printf.printf "Normalized: %f %f %f %f\n%!" x y w h;
+    Printf.printf "DEBUG: Normalized: %f %f %f %f\n%!" x y w h;
     let xproj x y = cosa *. x -. sina *. y in
     let yproj x y = sina *. x +. cosa *. y in
     let x =
@@ -571,10 +574,10 @@ struct
       else if angle < 1.5 *. pi then yproj (x +. w) (y +. h)
       else yproj (x +. w) y
     in
-    Printf.printf "%f %f\n%!" x y;
+    Printf.printf "DEBUG: %f %f\n%!" x y;
     let retw, reth = -. 2. *. x, -. 2. *. y in
     let retx, rety = x0 -. (retw -. w0) /. 2., y0 -. (reth -. h0) /. 2. in
-    Printf.printf "After: %f %f %f %f\n%!" retx rety retw reth;
+    Printf.printf "DEBUG: After: %f %f %f %f\n%!" retx rety retw reth;
     retx, rety, retw, reth
 
   let show_text t ~rotate ~x ~y pos txt =
@@ -605,16 +608,16 @@ struct
       let invisx, invisy, invisw, invish =
         rotate_extents angle (float x'') (float y'') (float w') (float h')
       in
-      Graphics.display_mode false;
+      (* Graphics.display_mode false; *)
       Graphics.set_color Graphics.white;
-      Printf.printf "%f %f %f %f\n%!" invisx invisy invisw invish;
+      Printf.printf "DEBUG(show_text): %f %f %f %f\n%!"
+        invisx invisy invisw invish;
       Graphics.fill_rect (round invisx) (round invisy)
         (round invisw) (round invish);
       Graphics.moveto x'' y'';
       restore t;
       Graphics.draw_string txt;
-      let img = Graphics.get_image x'' y'' w' h' in
-      let m = Graphics.dump_image img in
+      let m = Graphics.dump_image(Graphics.get_image x'' y'' w' h') in
       let m2 = Array.make_matrix (round invish) (round invish) (-1) in
       let place y x v =
         if v <> Graphics.white then
@@ -630,9 +633,10 @@ struct
       in
       Array.iteri (fun y -> Array.iteri (place y)) m;
       let img2 = Graphics.make_image m2 in
-      Graphics.display_mode true;
       Graphics.draw_image backup x'' y'';
+      (* Graphics.display_mode true; *)
       Graphics.draw_image img2 (round invisx) (round invisy);
+      Graphics.synchronize()
     end
 
   let flipy _t = false
@@ -652,5 +656,5 @@ let () =
 
 
 (* Local Variables: *)
-(* compile-command: "make -k archimedes_graphics.cmo archimedes_graphics.cmxs" *)
+(* compile-command: "ocamlbuild -classic-display archimedes_graphics.cmo" *)
 (* End: *)
