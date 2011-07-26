@@ -31,7 +31,7 @@ open Printf
 let modules = [ "graphics.cma";
                 (* "dynlink.cma";*) (* already loaded by META *)
                 "archimedes.cma";
-                "archimedes_graphics.cmo";
+                "archimedes_graphics.cma";
               ]
 
 let eval_string
