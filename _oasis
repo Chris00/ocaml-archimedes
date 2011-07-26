@@ -49,6 +49,7 @@ Library "archimedes_graphics"
   BuildTools:   ocamlbuild
   Modules:      Archimedes_graphics
   BuildDepends: graphics, archimedes
+  DataFiles:    archimedes_graphics.dep
   FindlibParent: archimedes
   FindlibName:   graphics
 
@@ -58,6 +59,7 @@ Library "archimedes_cairo"
   BuildTools:   ocamlbuild
   Modules:      Archimedes_cairo
   BuildDepends: cairo2, archimedes
+  DataFiles:    archimedes_cairo.dep
   FindlibParent: archimedes
   FindlibName:   cairo
 

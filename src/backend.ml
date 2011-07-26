@@ -337,7 +337,7 @@ let get_dependencies dirs basename =
 
 let loaded_dependencies = ref []
 
-let make ?(dirs=[Conf.plugins_dir]) b width height =
+let make ?(dirs=[Conf.plugins_dir; Conf.datadir]) b width height =
   let backend, options = backend_options b in
   let make =
     try M.find backend !registry (* backend already loaded *)
@@ -361,10 +361,12 @@ let make ?(dirs=[Conf.plugins_dir]) b width height =
         )
       end (get_dependencies dirs base);
       (* Load the main module *)
-      let dyn = (try find_file dirs (Dynlink.adapt_filename(base ^ ".cmo"))
+      let dyn_name = Dynlink.adapt_filename(base ^ ".cma") in
+      let dyn = (try find_file dirs dyn_name
                  with Not_found ->
                    let msg = sprintf "The backend %S could not be found; \
-                     searched in dirs: %s" backend (String.concat ", " dirs) in
+                     searched %S in dirs: %s"
+                     backend dyn_name (String.concat ", " dirs) in
                    raise(Error(Nonexistent backend, msg))) in
       (try Dynlink.loadfile dyn
        with Dynlink.Error e ->

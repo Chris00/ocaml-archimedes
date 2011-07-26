@@ -18,4 +18,6 @@
 (** Configuration values, possibly put by the 'configure' script. *)
 
 let destdir = "$(ocamlfind_destdir)"
-let plugins_dir = Filename.concat destdir "archimedes"
+let plugins_dir = Filename.concat destdir "$(pkg_name)"
+
+let datadir = Filename.concat "$(datarootdir)" "$(pkg_name)"
