@@ -19,7 +19,6 @@
    LICENSE for more details. *)
 
 let fourth_pi = atan 1.
-let two_pi = fourth_pi /. 2.
 
 type data =
   | Move_to of float * float

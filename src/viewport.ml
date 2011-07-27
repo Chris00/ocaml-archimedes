@@ -210,11 +210,11 @@ and Viewport : sig
   val sync_unit_size : ?x:bool -> ?y:bool -> t -> t -> unit
   val sync : ?x:bool -> ?y:bool -> t -> t -> unit
 
-  val layout_grid : ?syncs:(bool * bool * bool * bool) ->
-    t -> int -> int -> t array
-  val layout_rows : ?syncs:(bool * bool) -> t ->
+  val grid : ?syncs:(bool * bool * bool * bool) ->
+    t -> int -> int -> t array array
+  val rows : ?syncs:(bool * bool) -> t ->
     int -> t array
-  val layout_columns : ?syncs:(bool * bool) -> t ->
+  val columns : ?syncs:(bool * bool) -> t ->
     int -> t array
   val fixed_left : float -> t -> t * t
   val fixed_right : float -> t -> t * t
@@ -1040,34 +1040,50 @@ end = struct
 (* Layouts
  ***********************************************************************)
 
+  let do_nothing_when_redim _ _ _ = ()
+
   (* Uniform grid; redim: identity *)
-  let layout_grid ?(syncs=(false, false, false, false)) vp rows cols =
+  let gen_grid vp nx ny ~cols_sync_x ~cols_sync_y ~rows_sync_x ~rows_sync_y
+      set get =
+    let xstep = 1. /. (float nx) and ystep = 1. /. (float ny) in
+    for x = 0 to nx - 1 do
+      for y = 0 to ny - 1 do
+        let xmin = float x *. xstep
+        and ymin = float y *. ystep in
+        let xmax = xmin +. xstep
+        and ymax = ymin +. ystep in
+        set x y (make vp Device xmin xmax ymin ymax do_nothing_when_redim);
+        if y > 0 then
+          sync ~x:cols_sync_x ~y:cols_sync_y (get x y) (get x 0);
+        if x > 0 then
+          sync ~x:rows_sync_x ~y:rows_sync_y (get x y) (get 0 y);
+      done
+    done
+
+  let grid ?(syncs=(false, false, false, false)) vp nx ny =
     let cols_sync_x, cols_sync_y, rows_sync_x, rows_sync_y = syncs in
-    let redim _ _ _ = () in
-    let xstep = 1. /. (float cols) and ystep = 1. /. (float rows) in
-    let ret = Array.make (rows * cols) vp in
-    let init_viewport i =
-      let x = i / rows and y = i mod rows in
-      let xmin = float x *. xstep
-      and ymin = float y *. ystep in
-      let xmax = xmin +. xstep
-      and ymax = ymin +. ystep in
-      ret.(i) <- make vp Device xmin xmax ymin ymax redim;
-      if i >= rows then
-        sync ~x:cols_sync_x ~y:cols_sync_y ret.(i) ret.(i mod rows);
-      if i mod rows > 0 then
-        sync ~x:rows_sync_x ~y:rows_sync_y ret.(i) ret.(i - (i mod rows))
-    in
-    for i = 0 to rows * cols - 1 do init_viewport i done;
+    let ret = Array.make_matrix nx ny vp in
+    let set x y v = ret.(x).(y) <- v
+    and get x y = ret.(x).(y) in
+    gen_grid vp nx ny ~cols_sync_x ~cols_sync_y ~rows_sync_x ~rows_sync_y
+      set get;
     ret
 
-  let layout_rows ?(syncs=false, false) vp n =
-    let sync_x, sync_y = syncs in
-    layout_grid ~syncs:(false, false, sync_x, sync_y) vp n 1
+  let rows ?syncs:((rows_sync_x, rows_sync_y)=(false, false)) vp n =
+    let ret = Array.make n vp in
+    let set _ y v = ret.(y) <- v
+    and get _ y = ret.(y) in
+    gen_grid vp 1 n ~cols_sync_x:false ~cols_sync_y:false
+      ~rows_sync_x ~rows_sync_y set get;
+    ret
 
-  let layout_columns ?(syncs=false, false) vp n =
-    let sync_x, sync_y = syncs in
-    layout_grid ~syncs:(sync_x, sync_y, false, false) vp 1 n
+  let columns ?syncs:((cols_sync_x, cols_sync_y)=(false, false)) vp n =
+    let ret = Array.make n vp in
+    let set x _ v = ret.(x) <- v
+    and get x _ = ret.(x) in
+    gen_grid vp n 1 ~cols_sync_x ~cols_sync_y
+      ~rows_sync_x:false ~rows_sync_y:false set get;
+    ret
 
   let fixed_left init_prop vp =
     let redim_fixed vp xfactor _ = begin

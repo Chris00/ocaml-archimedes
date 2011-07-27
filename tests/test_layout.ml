@@ -6,9 +6,9 @@ module Color = Archimedes.Color
 
 let draw bk =
   let vp = Archimedes.init ~w ~h ~dirs bk in
-  let subvps = V.layout_grid vp 2 2 in
-  let subsubvps = V.layout_grid subvps.(3) 2 2 in
-  let subsubsubvps = V.layout_grid subsubvps.(3) 2 2 in
+  let subvp = V.grid vp 2 2 in
+  let subsubvp = V.grid subvp.(1).(1) 2 2 in
+  let subsubsubvp = V.grid subsubvp.(1).(1) 2 2 in
   let colors = [| Color.red; Color.blue; Color.green; Color.black |] in
   let trace i vp =
     V.set_rel_line_width vp 1.;
@@ -31,13 +31,14 @@ let draw bk =
     V.line_to vp ~x:0. ~y:0.;
     V.stroke vp V.Device
   in
-  Array.iteri trace (Array.concat [subvps; subsubvps; subsubsubvps]);
+  let vps = List.map Array.to_list [subvp; subsubvp; subsubsubvp] in
+  Array.iteri trace (Array.concat(List.concat vps));
 
-  Archimedes.close subvps.(0);
+  Archimedes.close subvp.(0).(0);
 
   V.move_to vp 0.3 0.;
   V.line_to vp 0.3 1.;
-  V.set_color vp Color.yellow;
+  V.set_color vp (Color.hex 0xe0b715);
   V.stroke vp V.Device;
 
   V.set_color vp Color.red;

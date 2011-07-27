@@ -99,26 +99,27 @@ val sync_unit_size : ?x:bool -> ?y:bool -> t -> t -> unit
 
 val sync : ?x:bool -> ?y:bool -> t -> t -> unit
 
-val layout_grid : ?syncs:(bool * bool * bool * bool) ->
-  t -> int -> int -> t array
-(** [layout_grid parent n_cols n_rows] creates [n_cols] * [n_rows]
-    viewports layouted in a grid and returns them in an array of
-    viewports
+val grid : ?syncs:(bool * bool * bool * bool) -> t -> int -> int -> t array array
+(** [grid parent nx ny] returns [vp] an array of [nx] * [ny]
+    sub-viewports of [parent]  arranged in a grid of [nx] columns and
+    [ny] rows.  The bottom left viewport is [vp.(0).(0)], the one to
+    its right (resp. abobve) is [vp.(1).(0)] (resp. [vp.(0).(1)]).
 
-    @param syncs (cx, cy, rx, ry) should we synchronize the x axis
-    along the columns ? The y axis alon the columns ? The x axis
-    along the rows ? The y axis along the rows ?
+    @param syncs (cx, cy, rx, ry) where [cx] (resp. [cy]) says whether
+    to synchronize the X-axis (resp. the [Y-axis]) along the columns
+    and [rx] (resp. [ry]) says whether to synchronize the X-axis
+    (resp. the Y-axis) along the rows.  Default: all [false].
 *)
-val layout_rows : ?syncs:(bool * bool) -> t ->
-  int -> t array
-(** [layout_rows parent n_rows] creates [n_rows] viewports layouted in a
-    column and returns them in an array of viewpors
 
-    @param syncs the axes to synchronize (x, y)
+val rows : ?syncs:(bool * bool) -> t -> int -> t array
+(** [rows parent ny] returns [vp] an array of [ny] viewports arranged
+    in a column, the bottom one being [vp.(0)].
+
+    @param syncs the axes to synchronize (x, y).  Default: both [false].
 *)
-val layout_columns : ?syncs:(bool * bool) -> t ->
-  int -> t array
-(** [layout_cols parent n_cols] creates [n_cols] viewports layouted in a
+
+val columns : ?syncs:(bool * bool) -> t -> int -> t array
+(** [colimns parent nx] creates [n_cols] viewports layouted in a
     row and returns them in an array of viewports
 
     @param syncs the axes to synchronize (x, y)

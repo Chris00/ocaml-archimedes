@@ -4,7 +4,7 @@ module P = Archimedes.Plot
 
 let draw backend =
   let vp = Archimedes.init ~w ~h ~dirs backend in
-  let vps = V.layout_columns vp 2 in
+  let vps = V.columns vp 2 in
   let vp1 = vps.(0) and vp2 = vps.(1) in
 
   V.set_color vp1 Archimedes.Color.red;
