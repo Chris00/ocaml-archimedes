@@ -14,6 +14,12 @@ val rgba : float -> float -> float -> float -> t
     component [r], green component [g] and blue component [b]. All values
     must be between [0.] and [1.]; raises [Invalid_argument] otherwise.*)
 
+val hex : int -> t
+(** [hex c] returns a color from its specification in "hexadecimal
+    form", that is as [0xRRGGBB] where [R], [G] and [B] are
+    hexadecimal digits giving the red, green, and blue components.  It
+    is the form used by [Graphics]. *)
+
 val r : t -> float
 (** Returns the red component of a color.*)
 

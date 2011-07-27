@@ -1,8 +1,10 @@
 type t = {r:float; g:float; b:float; a:float}
 
+let in_interval ~max x = x >= 0. && x <= max
+
 let rgba r g b a =
-  let in_interval ?(min=0.) ?(max=1.) x = x >= min && x <= max in
-  if in_interval r && in_interval g && in_interval b && in_interval a then
+  if in_interval 1. r && in_interval 1. g && in_interval 1. b
+    && in_interval 1. a then
     if in_interval ~max:a r
       && in_interval ~max:a g
       && in_interval ~max:a b then
@@ -16,6 +18,12 @@ let rgba r g b a =
     invalid_arg msg
 
 let rgb r g b = rgba r g b 1.
+
+let hex c =
+  let r = (c lsr 16) land 0xFF
+  and g = (c lsr 8) land 0xFF
+  and b = c land 0xFF in
+  rgb (float r /. 256.) (float g /. 256.) (float b /. 256.)
 
 let r t = t.r
 
