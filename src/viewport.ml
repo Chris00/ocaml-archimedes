@@ -504,26 +504,26 @@ end = struct
     let path = get_path vp path coord_name in
     let coord = get_coord_from_name vp coord_name in
     let ctm = Coordinate.use vp.backend coord in
-    let limits = if vp.clip then
+    let clip = if vp.clip then
       if coord_name = Data then (xmin vp, xmax vp, ymin vp, ymax vp)
       else if coord_name = Orthonormal then
         let maxx, maxy = ortho_from vp Device (1., 1.) in (0., maxx, 0., maxy)
       else (0., 1., 0., 1.)
     else (neg_infinity, infinity, neg_infinity, infinity) in
-    Path.stroke_on_backend ~limits path vp.backend;
+    Path.stroke_on_backend ~clip path vp.backend;
     Coordinate.restore vp.backend ctm
 
   let fill_direct ?path vp coord_name () =
     let path = get_path vp path coord_name in
     let coord = get_coord_from_name vp coord_name in
     let ctm = Coordinate.use vp.backend coord in
-    let limits = if vp.clip then
+    let clip = if vp.clip then
       if coord_name = Data then xmin vp, xmax vp, ymin vp, ymax vp
       else if coord_name = Orthonormal then
         let maxx, maxy = ortho_from vp Device (1., 1.) in (0., maxx, 0., maxy)
       else 0., 1., 0., 1.
     else neg_infinity, infinity, neg_infinity, infinity in
-    Path.fill_on_backend ~limits path vp.backend;
+    Path.fill_on_backend ~clip path vp.backend;
     Coordinate.restore vp.backend ctm
 
   let clip_rectangle_direct vp ~x ~y ~w ~h () =

@@ -98,7 +98,10 @@ sig
 
   val clip_rectangle : t -> x:float -> y:float -> w:float -> h:float -> unit
   (** Establishes a new clip rectangle by intersecting the current
-      clip rectangle.  This {i may clear} the current path. *)
+      clip rectangle.  This {i may clear} the current path.  Calling
+      {clip_rectangle} can only make the clip region smaller, never
+      larger.  For [clip_rectangle] to have only a local effect, put
+      it in a {!save} / {!restore} group. *)
 
   val save : t -> unit
   (** Save the current state of the backend.  Note that

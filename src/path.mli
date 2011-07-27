@@ -78,17 +78,18 @@ val close: t -> unit
 (** [close p] Closes the path. It is usually not required to close a
     path, this is useful only to ensure the path won't be extended. *)
 
-val stroke_on_backend: ?limits:float * float * float * float ->
+val stroke_on_backend: ?clip:float * float * float * float ->
   t -> Backend.t -> unit
 (** [stroke_on_backend p bk] strokes the path [p] on the backend
     [bk]. It will not clear the path [p] but will clear the path of
-    [bk].
+    [bk].  The coordinates of the path are interpreted according to
+    the current backend CTM.
 
     @param limits a quartet of float indicating where to clip the
-    path. Default: the unit rectangle. One can use (-infinity,
+    path.  Default: the unit rectangle.  One can use (-infinity,
     -infinity, infinity, infinity) for no clip. *)
 
-val fill_on_backend: ?limits:float * float * float * float ->
+val fill_on_backend: ?clip:float * float * float * float ->
   t -> Backend.t -> unit
 (** [fill_on_backend p bk] fills in the path [p] on the backend
     [bk]. It will not clear the path [p] but will clear the path of
@@ -106,9 +107,10 @@ val transform: t -> (float * float -> float * float) -> t
     function [f]. It only modifies end points of paths primitives and
     extents are leaved the same. *)
 
-val print_path: t -> unit
-(** [print_path p] Debug function (TODO hide it) *)
-
 val add: t -> t -> unit
 (** [add p to_add] Adds the path [to_add] to the end of [p] *)
 
+(**/**)
+
+val print_path: t -> unit
+(** [print_path p] Debug function. *)

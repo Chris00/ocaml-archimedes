@@ -272,11 +272,11 @@ let clipped_segment limits x y x' y' =
   if nx < min x x' || nx > max x x' then (nan, nan, nan, nan)
   else (nx, ny, nx', ny')
 
-let do_on_backend limits (curx, cury) b = function
-  (* FIXME limits are not respected for rectangles and curves *)
+let do_on_backend clip (curx, cury) b = function
+  (* FIXME clip are not respected for rectangles and curves *)
   | Move_to (x, y) -> Backend.move_to b x y; (x, y)
   | Line_to (x, y) ->
-      let cx, cy, cx', cy' = clipped_segment limits curx cury x y in
+      let cx, cy, cx', cy' = clipped_segment clip curx cury x y in
       if cx = cx && cx' = cx' then begin
         if cx <> curx || cy <> cury then Backend.move_to b cx cy;
         Backend.line_to b cx' cy';
@@ -296,17 +296,17 @@ let do_on_backend limits (curx, cury) b = function
       Backend.close_path b;
       0., 0.
 
-let stroke_on_backend ?(limits=0., 1., 0., 1.) p b =
+let stroke_on_backend ?(clip=0., 1., 0., 1.) p b =
   let coords = ref (0., 0.) in
   Backend.clear_path b;
-  List.iter (fun action -> coords := do_on_backend limits !coords b action)
+  List.iter (fun action -> coords := do_on_backend clip !coords b action)
     (List.rev p.path);
   Backend.stroke b
 
-let fill_on_backend ?(limits=0., 1., 0., 1.) p b =
+let fill_on_backend ?(clip=0., 1., 0., 1.) p b =
   let coords = ref (0., 0.) in
   Backend.clear_path b;
-  List.iter (fun action -> coords := do_on_backend limits !coords b action)
+  List.iter (fun action -> coords := do_on_backend clip !coords b action)
     (List.rev p.path);
   Backend.fill b
 
