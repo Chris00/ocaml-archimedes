@@ -18,7 +18,9 @@
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the file
    LICENSE for more details. *)
 
-open Functions
+let is_nan (x: float) = x <> x
+let is_inf y = 1. /. y = 0.
+let is_finite x = not (is_nan x) && not (is_inf x)
 
 module V = Viewport
 
@@ -147,9 +149,7 @@ let fill_samplings vp fillcolor f_samples g_samples =
     in
     oriented_advance_samplings
       ~until:(fun ~ux' ~uy' ~ux ~uy ~dx' ~dy' ->
-        not (Functions.is_nan uy') && not (Functions.is_nan uy)
-        && not (Functions.is_nan dy')
-        && ux >= dx')
+        not (is_nan uy') && not (is_nan uy) && not(is_nan dy') && ux >= dx')
       ~next:advance_in_region
       ~last:(fun ~acc:_ ~ux':_ ~uy':_ ~dx'':_ ~dy'':_ ~dx':_ ~dy':_ _ -> ())
       false
@@ -177,7 +177,7 @@ let fill_samplings vp fillcolor f_samples g_samples =
           ~dx'' ~dy'' ~dx' ~dy'
     in
     oriented_advance_samplings
-      ~until:(fun ~ux':_ ~uy':_ ~ux:_ ~uy ~dx':_ ~dy':_ -> Functions.is_nan uy)
+      ~until:(fun ~ux':_ ~uy':_ ~ux:_ ~uy ~dx':_ ~dy':_ -> is_nan uy)
       ~next:close_region_and_advance
       ~last:close_region
       swap_up_down
