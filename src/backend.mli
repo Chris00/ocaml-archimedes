@@ -58,7 +58,16 @@ sig
   val get_line_join: t -> line_join
 
   val move_to : t -> x:float -> y:float -> unit
+  (** Begin a new sub-path.  After this call the current point will be
+      [(x, y)]. *)
   val line_to : t -> x:float -> y:float -> unit
+  (** [line_to bk x y] Adds a line to the path from the current point
+      to position [(x, y)] in the current backend coordinates.  After
+      this call the current point will be [(x, y)].
+
+      If there is no current point before the call to [line_to] this
+      function will behave as {!move_to}[ bk x y]. *)
+
   val rel_move_to : t -> x:float -> y:float -> unit
   val rel_line_to : t -> x:float -> y:float -> unit
 

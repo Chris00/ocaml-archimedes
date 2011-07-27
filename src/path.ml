@@ -18,22 +18,36 @@
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the file
    LICENSE for more details. *)
 
+open Printf
+open Bigarray
+type vec = (float, float64_elt, fortran_layout) Array1.t
+
 let fourth_pi = atan 1.
 
+(* Even though the paths contains mutable structures, these will not
+   be modified.  Thus, from the point of view of path, [data] can be
+   considered immutable. *)
 type data =
   | Move_to of float * float
   | Line_to of float * float
   | Rectangle of float * float * float * float
-      (* RECTANGLE(x, y, width, height) *)
+    (* RECTANGLE(x, y, width, height) *)
   | Curve_to of float * float * float * float * float * float * float * float
   | Close of float * float
+  (* Optimizations for some specific data structures that are used
+     for caching data points.  These can continue [Curve_to] and
+     [Line_to] subpaths. *)
+  | Array of float array * float array * Pointstyle.name
+    (* Array(x, y, pt), the x and y indices increase along the path.
+       [x] and [y] have the same length and are not empty. *)
+  | Fortran of vec * vec * Pointstyle.name
 
 type t = {
-  mutable path: data list;
+  mutable path: data list; (* Instructions of the path. *)
   mutable extents: Matrix.rectangle;
-  mutable x: float;
-  mutable y: float;
-  mutable curr_pt: bool;
+  mutable x: float; (* the X-coord of the current point (if [curr_pt]) *)
+  mutable y: float; (* the Y-coord of the current point (if [curr_pt]) *)
+  mutable curr_pt: bool; (* whether the current point is set *)
 }
 
 let make () =
@@ -44,7 +58,7 @@ let make () =
     curr_pt = false }
 
 let copy p =
-  { path = List.map (fun x -> x) p.path;
+  { path = p.path;
     extents = { p.extents with Matrix.x = p.extents.Matrix.x };
     x = p.x;
     y = p.y;
@@ -62,11 +76,17 @@ let extents p =
 
 let beginning_of_subpath p =
   let rec aux = function
-    | [] -> failwith "Archimedes: No subpath"
+    | [] -> failwith "Archimedes.Path.beginning_of_subpath: path empty"
     | Move_to (x, y) :: _ -> (x, y)
     | Close (x, y) :: _ -> (x, y)
     | Rectangle (x, y, _, _) :: _ -> (x, y)
-    | (Curve_to _ | Line_to _) :: tl -> aux tl
+    | [Array(x, y, _)]
+    | Array(x, y, _) :: (Move_to _ | Close _ | Rectangle _) :: _ ->
+      (x.(0), y.(0))
+    | [Fortran(x, y, _)]
+    | Fortran(x, y, _) :: (Move_to _ | Close _ | Rectangle _) :: _ ->
+      (x.{0}, y.{0})
+    | (Curve_to _ | Line_to _ | Array _ | Fortran _) :: tl -> aux tl
   in
   aux p.path
 
@@ -96,6 +116,45 @@ let line_to p ~x ~y =
     p.x <- x;
     p.y <- y
   end else move_to p ~x ~y
+
+let unsafe_line_of_array p ~pointstyle x y =
+  p.path <- Array(x, y, pointstyle) :: p.path;
+  let lastx = Array.length x - 1 in
+  p.x <- x.(lastx);
+  p.y <- y.(lastx);
+  p.curr_pt <- true
+
+let line_of_array p ?(pointstyle="") ?(const_x=false) x ?(const_y=false) y =
+  let lenx = Array.length x in
+  if lenx <> Array.length y then
+    failwith "Archimedes.Path.line_of_array: x and y have different lengths";
+  if lenx <> 0 then (
+    let x = if const_x then x else Array.copy x in
+    let y = if const_y then y else Array.copy y in
+    unsafe_line_of_array p ~pointstyle x y
+  )
+
+let unsafe_line_of_fortran p ~pointstyle (x: vec) (y: vec) =
+  p.path <- Fortran(x, y, pointstyle) :: p.path;
+  let lastx = Array1.dim x in
+  p.x <- x.{lastx};
+  p.y <- y.{lastx};
+  p.curr_pt <- true
+
+let ba_copy x =
+  let x' = Array1.create (Array1.kind x) (Array1.layout x) (Array1.dim x) in
+  Array1.blit x x';
+  x'
+
+let line_of_fortran p ?(pointstyle="") ?(const_x=false) x ?(const_y=false) y =
+  let dimx = Array1.dim x in
+  if dimx <> Array1.dim y then
+    failwith "Archimedes.Path.line_of_array: x and y have different lengths";
+  if dimx <> 0 then (
+    let x = if const_x then x else ba_copy x in
+    let y = if const_y then y else ba_copy y in
+    unsafe_line_of_fortran p ~pointstyle x y
+  )
 
 let rotate alpha x y =
   x *. cos alpha +. y *. sin alpha, y *. cos alpha -. x *. sin alpha
@@ -287,7 +346,7 @@ let do_on_backend clip (curx, cury) b = function
   | Curve_to (_, _, x1, y1, x2, y2, x3, y3) ->
       Backend.curve_to b x1 y1 x2 y2 x3 y3; x3, y3
   | Close (x, y) ->
-      (* Because of clipping, the beginning_of_subpath calculated by the
+      (* FIXME: Because of clipping, the beginning_of_subpath calculated by the
          backend may be wrong, we ensure it is correct with a line_to and
          a move_to and close the path to be sure to preserve the same
          behavior *)
@@ -295,6 +354,26 @@ let do_on_backend clip (curx, cury) b = function
       Backend.move_to b x y;
       Backend.close_path b;
       0., 0.
+  | Array(x, y, pointstyle) ->
+    Backend.line_to b x.(0) y.(0); (* must exist *)
+    for i = 1 to Array.length x - 1 do
+      Backend.line_to b x.(i) y.(i)
+    done;
+    (* FIXME: pointstyle rendering (in a save/restore not to affect
+       the current path?  play well with fill?? => Should we move these
+       instructions at the end of the subpath??) [seems yes]
+       FIXME: Render on a viewport (instead of a backend) ? *)
+    
+    (x.(Array.length x - 1), y.(Array.length y - 1))
+  | Fortran(x, y, pointstyle) ->
+    Backend.line_to b x.{1} y.{1}; (* must exist *)
+    for i = 2 to Array1.dim x do
+      Backend.line_to b x.{i} y.{i}
+    done;
+    (* FIXME: pointstyle rendering (in a save/restore?) *)
+    
+    (x.{Array1.dim x}, y.{Array1.dim y})
+
 
 let stroke_on_backend ?(clip=0., 1., 0., 1.) p b =
   let coords = ref (0., 0.) in
@@ -312,7 +391,7 @@ let fill_on_backend ?(clip=0., 1., 0., 1.) p b =
 
 let current_point p = p.x, p.y
 
-let transform p f =
+let map p f =
   let map_f = function
     | Move_to (x, y) ->
       let x, y = f (x, y) in
@@ -331,19 +410,53 @@ let transform p f =
       and x3, y3 = f (x3, y3) in
       Curve_to (x0, y0, x1, y1, x2, y2, x3, y3)
     | Close (x, y) ->
-      let x, y = f (x, y) in
+      let x, y = f(x, y) in
       Close (x, y)
+    | Array(x, y, ptstyle) ->
+      let len = Array.length x in
+      let x' = Array.make len 0. and y' = Array.make len 0. in
+      for i = 0 to len - 1 do
+        let fx, fy = f (x.(i), y.(i)) in
+        x'.(i) <- fx;
+        y'.(i) <- fy;
+      done;
+      Array(x', y', ptstyle)
+    | Fortran(x, y, ptstyle) ->
+      let len = Array1.dim x in
+      let x' = Array1.create float64 fortran_layout len
+      and y' = Array1.create float64 fortran_layout len in
+      for i = 1 to len do
+        let fx, fy = f (x.{i}, y.{i}) in
+        x'.{i} <- fx;
+        y'.{i} <- fy;
+      done;
+      Fortran(x', y', ptstyle)
   in
   let x, y = f (p.x, p.y) in
   {p with path = List.map map_f p.path;
     x = x; y = y}
 
 let print_step = function
-  | Move_to (x, y) -> Printf.printf "Move_to (%f, %f)\n" x y
-  | Line_to (x, y) -> Printf.printf "Line_to (%f, %f)\n" x y
-  | Rectangle (x, y, w, h) -> Printf.printf "Rectangle (%f, %f, %f, %f)\n" x y w h
-  | Curve_to (x0, y0, x1, y1, x2, y2, x3, y3) -> Printf.printf "Curve_to (%f, %f, %f, %f, %f, %f, %f, %f)\n" x0 y0 x1 y1 x2 y2 x3 y3
-  | Close (x, y) -> Printf.printf "Close (%f, %f)\n" x y
+  | Move_to (x, y) -> printf "Move_to (%f, %f)\n" x y
+  | Line_to (x, y) -> printf "Line_to (%f, %f)\n" x y
+  | Rectangle (x, y, w, h) -> printf "Rectangle (%f, %f, %f, %f)\n" x y w h
+  | Curve_to (x0, y0, x1, y1, x2, y2, x3, y3) ->
+    printf "Curve_to (%f, %f, %f, %f, %f, %f, %f, %f)\n" x0 y0 x1 y1 x2 y2 x3 y3
+  | Close (x, y) -> printf "Close (%f, %f)\n" x y
+  | Array(x, y, ptstyle) ->
+    printf "Array(x, y, %S) with\n" ptstyle;
+    printf "  x = [|";
+    Array.iter (fun x -> printf "%g; " x) x;
+    printf "|]\n  y = [|";
+    Array.iter (fun y -> printf "%g; " y) y;
+    printf "|]\n"
+  | Fortran(x, y, ptstyle) ->
+    printf "Fortran(x, y, %S) with\n" ptstyle;
+    printf "  x = {|";
+    for i = 1 to Array1.dim x do printf "%g; " x.{i} done;
+    printf "|}\n  y = {|";
+    for i = 1 to Array1.dim x do printf "%g; " y.{i} done;
+    printf "|}\n"
 
 let print_path p = List.iter print_step (List.rev p.path)
 

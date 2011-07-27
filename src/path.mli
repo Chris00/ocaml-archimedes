@@ -45,6 +45,25 @@ val line_to: t -> x:float -> y:float -> unit
 (** [line_to p x y] draws a line from the path's current point to ([x],
     [y]) and sets the current point to ([x], [y]) *)
 
+val line_of_array: t -> ?pointstyle:string ->
+  ?const_x:bool -> float array -> ?const_y:bool -> float array -> unit
+(** [line_of_array p x y] continue the current line (or start a new
+    one) with the line formed by joining the points [x.(i), y.(i)],
+    [i=0, 1,...].
+
+    @param const_x by setting it to [true], you indicate that you will
+    not modify [x] (so it will not be copied).  Default: false.
+    @param const_y Same as [const_x] but for [y].
+    @raise Failure if [x] and [y] do not have the same length. *)
+
+type vec =
+  (float, Bigarray.float64_elt, Bigarray.fortran_layout) Bigarray.Array1.t
+
+val line_of_fortran: t -> ?pointstyle:string ->
+  ?const_x:bool -> vec -> ?const_y:bool -> vec -> unit
+(** Same as {!line_of_array} but for FORTRAN bigarrays. *)
+
+
 val rel_move_to: ?rot:float -> t -> x:float -> y:float -> unit
 (** [rel_move_to p x y] shifts the path's current point of [x]
     horizontally and [y] vertically.
@@ -102,15 +121,28 @@ val fill_on_backend: ?clip:float * float * float * float ->
 val current_point: t -> float * float
 (** [current_point p] returns the current point of the path *)
 
-val transform: t -> (float * float -> float * float) -> t
-(** [transform p f] returns a new path that is the path [p] transformed by
-    function [f]. It only modifies end points of paths primitives and
-    extents are leaved the same. *)
-
 val add: t -> t -> unit
 (** [add p to_add] Adds the path [to_add] to the end of [p] *)
 
 (**/**)
 
+
 val print_path: t -> unit
 (** [print_path p] Debug function. *)
+
+val unsafe_line_of_array : t -> pointstyle:string ->
+  float array -> float array -> unit
+(** Same as {!line_of_array} except that the arrays are ASSUMED to be
+    of the same length, non-empty, and are NOT copied. *)
+
+val unsafe_line_of_fortran: t -> pointstyle:string -> vec -> vec -> unit
+(** Same as {!line_of_fortran} except that the arrays are ASSUMED to
+    be of the same length, non-empty, and are NOT copied. *)
+
+val map: t -> (float * float -> float * float) -> t
+(** [transform p f] returns a new path that is the path [p] where all
+    points (xi, yi) are substituted by their image [f xi yi].  It
+    only modifies end points of paths, primitives and extents are
+    leaved the same.
+
+    FIXME: that means the path extent is invalid! That breaks an invariant! *)
