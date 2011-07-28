@@ -134,6 +134,30 @@ val transform : Matrix.t -> t -> t
 
 (**/**)
 
+(*----------------------------------------------------------------------*)
+(** {4 Internal functions for efficient path rendering} *)
+
+type data = private
+  | Move_to of float * float
+  | Line_to of float * float
+  | Rectangle of float * float * float * float
+    (* RECTANGLE(x, y, width, height) *)
+  | Curve_to of float * float * float * float * float * float * float * float
+    (* Bézier curve *)
+  | Close of float * float
+  (* Optimizations for some specific data structures that are used
+     for caching data points.  These can continue [Curve_to] and
+     [Line_to] subpaths. *)
+  | Array of float array * float array * Pointstyle.name
+    (* Array(x, y, pt), the x and y indices increase along the path.
+       [x] and [y] have the same length and are not empty. *)
+  | Fortran of vec * vec * Pointstyle.name
+
+
+val path_data : t -> data list
+
+val extents : t -> Matrix.rectangle
+
 
 val print_path: t -> unit
 (** [print_path p] Debug function. *)

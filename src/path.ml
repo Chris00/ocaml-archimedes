@@ -52,6 +52,9 @@ type t = {
   mutable curr_pt: bool; (* whether the current point is set *)
 }
 
+let path_data p = p.path
+let extents p = p.extents
+
 let make () =
   { path = [];
     extents = { Matrix.x = nan; y = nan; w = nan; h = nan };

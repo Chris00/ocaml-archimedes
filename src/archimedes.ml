@@ -15,7 +15,7 @@
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the file
    LICENSE for more details. *)
 
-include Archimedes_impl
+include Archimedes_internals
 
 let init = Viewport.init
 

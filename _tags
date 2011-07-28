@@ -46,4 +46,4 @@
 # OASIS_STOP
 
 <**/*.ml>: annot
-<src/{conf,string_utils,color,matrix,backend,coordinate,functions,pointstyle,path,sampler,iterator,tics,viewport,arrows,axes,plot,piechart}.cmx>: for-pack(Archimedes_impl)
+<src/{conf,string_utils,color,matrix,path,backend,coordinate,pointstyle,sampler,iterator,tics,viewport,arrows,axes,plot,piechart}.cmx>: for-pack(Archimedes_internals)

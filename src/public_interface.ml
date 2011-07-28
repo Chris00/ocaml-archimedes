@@ -21,42 +21,39 @@ let rec copy_comment fh l =
   printf "%s\n" l;
   if not(end_with l "*)") then copy_comment fh (input_line fh)
 
-let include_file fname =
-  let fh = open_in (Filename.concat "src" fname) in
-  let buf = String.create 4096 in
-  let len = ref (-1) in
-  while !len <> 0 do
-    len := input fh buf 0 4096;
-    output stdout buf 0 !len;
-  done;
-  close_in fh
-
-let include_module name =
+let include_file ?(as_module=true) ?(header="") name =
   let fh = open_in ("src/" ^ (String.lowercase name) ^ ".mli") in
   try
-    let module_comment = ref true in
+    let copy_line = ref true in
+    let module_comment = ref true in (* first doc comment *)
+    let prefix =
+      if as_module then "  "
+      else (printf "%s\n" header; "") in
     while true do
       let l = input_line fh in
-      if l = "(**/**)" then raise End_of_file;
-      if start_with l "(* " then skip_simple_comment fh l
-      else if !module_comment && start_with l "(**" then (
-        printf "\n"; (* separate comment from previous module *)
-        copy_comment fh l;
-        printf "module %s :\nsig\n" name;
-        module_comment := false;
-      )
-      else if l = "" then printf "\n"
-      else (
-        (* If no module comment: *)
-        if !module_comment then (
-          printf "module %s :\nsig\n" name;
+      if l = "(**/**)" then
+        copy_line := not !copy_line
+      else if !copy_line then (
+        if start_with l "(* " then skip_simple_comment fh l
+        else if as_module && !module_comment && start_with l "(**" then (
+          printf "\n"; (* separate comment from previous module *)
+          copy_comment fh l;
+          printf "module %s :\nsig\n%s" name header;
           module_comment := false;
-        );
-        printf "  %s\n" l
+        )
+        else if l = "" then printf "\n"
+        else (
+          (* If no module comment: *)
+          if as_module && !module_comment then (
+            printf "module %s :\nsig\n%s" name header;
+            module_comment := false;
+          );
+          printf "%s%s\n" prefix l
+        )
       )
     done
   with End_of_file ->
-    printf "end\n";
+    if as_module then printf "end\n";
     close_in fh
 
 let section msg =
@@ -64,23 +61,27 @@ let section msg =
     -----------*)\n(** {2 %s} *)\n\n" msg
 
 let () =
-  include_file "archimedes_header.mli";
-  include_module "Color";
+  include_file "archimedes_header" ~as_module:false;
 
   section "Affine transformations";
-  include_module "Matrix";
+  include_file "Matrix";
 
-  section "Registering backends and extending the library";
-  include_module "Backend";
-  include_module "Coordinate";
-  include_module "Pointstyle";
-  include_module "Path";
-  include_module "Tics";
-  include_module "Viewport";
-  include_module "Arrows";
-  include_module "Axes";
-  include_module "Sampler";
-  include_module "Iterator";
-  include_module "Plot";
-  include_module "Piechart";
-  include_file "archimedes_footer.mli";
+  section "Base elements of a plot";
+  include_file "Color";
+
+  section "Registering backends";
+  include_file "Backend";
+  include_file "Path"; (* for now needs the backend but it will be
+                          the other way around. *)
+
+  include_file "Coordinate";
+  include_file "Viewport";
+  include_file "Pointstyle";
+  include_file "Arrows";
+  include_file "Tics";
+  include_file "Axes";
+  include_file "Sampler";
+  include_file "Iterator";
+  include_file "Plot";
+  include_file "Piechart";
+  include_file "archimedes_footer" ~as_module:false;

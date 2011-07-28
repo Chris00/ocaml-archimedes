@@ -36,11 +36,14 @@ Flag tikz
 Library "archimedes"
   Path:         src
   BuildTools:   ocamlbuild
-  #Pack:	true
-  # src/archimedes_impl.mlpack and _tags contain the list of modules;
-  # Archimedes re-exports some functions as toplevel ones.
+  # src/archimedes_internals.mlpack and _tags contain the list of
+  # modules.  The "internal" functions are potentially useful to
+  # backends; using Archimedes_internals.cmi (not installed) a backend
+  # using these functions can be compiled -- it can be installed
+  # without the cmi needing to be.  Archimedes re-exports some
+  # functions as toplevel ones.
   Modules:      Archimedes
-  InternalModules: Archimedes_impl
+  InternalModules: Archimedes_internals
   BuildDepends: dynlink, bigarray
 
 Library "archimedes_graphics"
