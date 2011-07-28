@@ -128,6 +128,10 @@ val append: t -> t -> unit
 (** [add p1 p2] append the path [p2] to the end of [p1].  [p2] is
     unmodified.  The current point of [p1] becomes the one of [p2]. *)
 
+val transform : Matrix.t -> t -> t
+(** [transform m p] returns a new path resulting from applying the
+    affine transformation [m] to [p]. *)
+
 (**/**)
 
 

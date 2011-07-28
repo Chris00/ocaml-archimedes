@@ -96,6 +96,16 @@ Executable "Tests"
   BuildDepends: archimedes
   Install:      false
 
+# Examples
+######################################################################
+
+Executable "pythagoras_tree"
+  Path:	        examples/
+  BuildTools:   ocamlbuild
+  MainIs:       pythagoras_tree.ml
+  BuildDepends: archimedes
+  Install:      false
+
 
 SourceRepository trunk
   Type:       svn

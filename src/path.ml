@@ -33,6 +33,7 @@ type data =
   | Rectangle of float * float * float * float
     (* RECTANGLE(x, y, width, height) *)
   | Curve_to of float * float * float * float * float * float * float * float
+    (* Bézier curve *)
   | Close of float * float
   (* Optimizations for some specific data structures that are used
      for caching data points.  These can continue [Curve_to] and
@@ -411,27 +412,33 @@ let fill_on_backend ?(clip=0., 1., 0., 1.) p b =
     (List.rev p.path);
   Backend.fill b
 
+
 let map p f =
-  let map_f = function
+  let map_f data p = match data with
     | Move_to (x, y) ->
       let x, y = f (x, y) in
-      Move_to (x, y)
+      Move_to (x, y) :: p
     | Line_to (x, y) ->
       let x, y = f (x, y) in
-      Line_to (x, y)
+      Line_to (x, y) :: p
     | Rectangle (x, y, w, h) ->
-      let x, y = f (x, y) in
-      let x', y' = f (x +. w, y +. h) in
-      Rectangle (x, y, x' -. x, y' -. y)
+      let x0, y0 = f (x, y) in
+      (* FIXME: Need a special form for log scale ?  Eliminate rectangles
+         from paths..? *)
+      let x1, y1 = f (x +. w, y)
+      and x2, y2 = f (x +. w, y +. h)
+      and x3, y3 = f (x, y +. h) in
+      Close(x0,y0) :: Line_to(x3,y3) :: Line_to(x2,y2)
+      :: Line_to(x1, y1) :: Move_to(x0,y0) :: p
     | Curve_to (x0, y0, x1, y1, x2, y2, x3, y3) ->
       let x0, y0 = f (x0, y0)
       and x1, y1 = f (x1, y1)
       and x2, y2 = f (x2, y2)
       and x3, y3 = f (x3, y3) in
-      Curve_to (x0, y0, x1, y1, x2, y2, x3, y3)
+      Curve_to (x0, y0, x1, y1, x2, y2, x3, y3) :: p
     | Close (x, y) ->
       let x, y = f(x, y) in
-      Close (x, y)
+      Close (x, y) :: p
     | Array(x, y, ptstyle) ->
       let len = Array.length x in
       let x' = Array.make len 0. and y' = Array.make len 0. in
@@ -440,7 +447,7 @@ let map p f =
         x'.(i) <- fx;
         y'.(i) <- fy;
       done;
-      Array(x', y', ptstyle)
+      Array(x', y', ptstyle) :: p
     | Fortran(x, y, ptstyle) ->
       let len = Array1.dim x in
       let x' = Array1.create float64 fortran_layout len
@@ -450,11 +457,18 @@ let map p f =
         x'.{i} <- fx;
         y'.{i} <- fy;
       done;
-      Fortran(x', y', ptstyle)
+      Fortran(x', y', ptstyle) :: p
   in
   let x, y = f (p.x, p.y) in
-  {p with path = List.map map_f p.path;
+  {p with path = List.fold_right map_f p.path [];
     x = x; y = y}
+
+
+let transform m p =
+  let p = map p (fun (x,y) -> Matrix.transform_point m x y) in
+  (* FIXME: recompute the extent. *)
+  p
+
 
 let print_step = function
   | Move_to (x, y) -> printf "Move_to (%f, %f)\n" x y
