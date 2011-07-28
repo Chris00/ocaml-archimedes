@@ -229,13 +229,13 @@ sig
       some final work need to be done for some of them. *)
 end
 
-  module Register(B: Capabilities) : sig end
-    (** The {i side effect} of this functor application is to register
-        the functions of the backend [B] under the name [B.name].
+module Register(B: Capabilities) : sig end
+(** The {i side effect} of this functor application is to register
+    the functions of the backend [B] under the name [B.name].
 
-        A backend [B] must be declared in a file archimedes_[B.name]
-        (compiled to a .cmo and/or .cmxs library) and the functor
-        application must be executed as part of the initialisation code.
-        We recommend the use of [let module U = Register(B) in ()] to
-        perform the registration.  *)
+    A backend [B] must be declared in a file archimedes_[B.name]
+    (compiled to a .cmo and/or .cmxs library) and the functor
+    application must be executed as part of the initialisation code.
+    We recommend the use of [let module U = Register(B) in ()] to
+    perform the registration.  *)
 
