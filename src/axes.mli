@@ -34,7 +34,8 @@ type offset =
     should have a value between 0 and 1. Using this kind of
     offset, one can ensure to always get the same rendering *)
 
-val add_x_axis : ?major:(string * float) -> ?minor:(string * float) ->
+val add_x_axis : ?grid:bool ->
+  ?major:(string * float) -> ?minor:(string * float) ->
   ?start:Arrows.style -> ?stop:Arrows.style ->
   ?tics:Tics.t -> ?offset:offset -> Viewport.t -> unit
 (** [add_x_axis vp] adds an x-axis to the viewport [vp].
@@ -49,7 +50,8 @@ val add_x_axis : ?major:(string * float) -> ?minor:(string * float) ->
 
     @param offset where to place the axis (y-coordinate) *)
 
-val add_y_axis : ?major:(string * float) -> ?minor:(string * float) ->
+val add_y_axis : ?grid:bool ->
+  ?major:(string * float) -> ?minor:(string * float) ->
   ?start:Arrows.style -> ?stop:Arrows.style ->
   ?tics:Tics.t -> ?offset:offset -> Viewport.t -> unit
 (** [add_y_axis vp] adds an y-axis to the viewport [vp].
@@ -64,7 +66,7 @@ val add_y_axis : ?major:(string * float) -> ?minor:(string * float) ->
 
     @param offset where to place the axis (x-coordinate) *)
 
-val box : ?tics:Tics.t -> ?tics_alt:Tics.t -> Viewport.t -> unit
+val box : ?grid:bool -> ?tics:Tics.t -> ?tics_alt:Tics.t -> Viewport.t -> unit
 (** [box vp] A default axes system consisting of four axes, one at
     each border of the viewport [vp], resulting in a box surrounding
     the viewport.
