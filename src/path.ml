@@ -113,13 +113,13 @@ let line_to p ~x ~y =
     p.path <- Line_to (x, y) :: p.path;
     let e = p.extents in
     let e =
-      if x < e.Matrix.x then
-        { e with Matrix.x = x;  w = e.Matrix.w +. e.Matrix.x -. x }
-      else { e with Matrix.w = max e.Matrix.w (x -. e.Matrix.x) } in
+      if x >= e.Matrix.x then
+        { e with Matrix.w = max e.Matrix.w (x -. e.Matrix.x) }
+      else { e with Matrix.x = x;  w = e.Matrix.w +. e.Matrix.x -. x } in
     let e =
-      if y < e.Matrix.y then
-        { e with Matrix.y = y;  h = e.Matrix.h +. e.Matrix.y -. y }
-      else { e with Matrix.h = max e.Matrix.h (y -. e.Matrix.y) } in
+      if y >= e.Matrix.y then
+        { e with Matrix.h = max e.Matrix.h (y -. e.Matrix.y) }
+      else { e with Matrix.y = y;  h = e.Matrix.h +. e.Matrix.y -. y } in
     p.extents <- e;
     p.x <- x;
     p.y <- y
