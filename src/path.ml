@@ -24,69 +24,75 @@ type vec = (float, float64_elt, fortran_layout) Array1.t
 
 let fourth_pi = atan 1.
 
-(* Even though the paths contains mutable structures, these will not
-   be modified.  Thus, from the point of view of path, [data] can be
+(* Even though the paths data contains mutable structures, these will not
+   be modified. Thus, from the point of view of path, [data] can be
    considered immutable. *)
 type data =
   | Move_to of float * float
   | Line_to of float * float
   | Rectangle of float * float * float * float
-    (* RECTANGLE(x, y, width, height) *)
+  (* Rectangle(x, y, width, height) *)
   | Curve_to of float * float * float * float * float * float * float * float
-    (* BÃ©zier curve *)
+  (* Bézier curve *)
   | Close of float * float
-  (* Optimizations for some specific data structures that are used
-     for caching data points.  These can continue [Curve_to] and
-     [Line_to] subpaths. *)
+  (* Optimizations for some specific data structures that are used for
+     caching data points.  These can continue [Curve_to] and [Line_to]
+     subpaths. *)
   | Array of float array * float array * Pointstyle.name
-    (* Array(x, y, pt), the x and y indices increase along the path.
-       [x] and [y] have the same length and are not empty. *)
+  (* Array(x, y, pt), the x and y indices increase along the path.
+     [x] and [y] have the same length and are not empty. *)
   | Fortran of vec * vec * Pointstyle.name
 
 type t = {
   mutable path: data list; (* Instructions of the path, the first being
                               the more recent. *)
-  mutable extents: Matrix.rectangle;
+  mutable ex0: float;  (* Path extents. *)
+  mutable ey0: float;
+  mutable exend: float;
+  mutable eyend: float;
   mutable x: float; (* the X-coord of the current point (if [curr_pt]) *)
   mutable y: float; (* the Y-coord of the current point (if [curr_pt]) *)
   mutable curr_pt: bool; (* whether the current point is set *)
 }
 
 let path_data p = p.path
-let extents p = p.extents
+
+let extents p =
+  { Matrix.x = p.ex0;
+    Matrix.y = p.ey0;
+    Matrix.w = p.exend -. p.ex0;
+    Matrix.h = p.eyend -. p.ey0 }
 
 let make () =
   { path = [];
-    extents = { Matrix.x = nan; y = nan; w = nan; h = nan };
+    ex0 = nan;
+    ey0 = nan;
+    exend = nan;
+    eyend = nan;
     x = 0.;
     y = 0.;
     curr_pt = false }
 
 let copy p =
-  { path = p.path;
-    extents = { p.extents with Matrix.x = p.extents.Matrix.x };
-    x = p.x;
-    y = p.y;
-    curr_pt = p.curr_pt }
+  { p with path = p.path }
 
 let clear p =
   p.path <- [];
-  p.extents <- { Matrix.x = nan; y = nan; w = nan; h = nan };
+  p.ex0 <- nan;
+  p.ey0 <- nan;
+  p.exend <- nan;
+  p.eyend <- nan;
   p.x <- 0.;
   p.y <- 0.;
   p.curr_pt <- false
-
-let extents p =
-  { p.extents with Matrix.x = p.extents.Matrix.x }
 
 let current_point p =
   if p.curr_pt then p.x, p.y
   else failwith "Archimedes.Path.current_point"
 
-
 let beginning_of_subpath p =
   let rec aux = function
-    | [] -> failwith "Archimedes.Path.beginning_of_subpath: path empty"
+    | [] -> failwith "Archimedes.Path.beginning_of_subpath: empty path"
     | Move_to (x, y) :: _ -> (x, y)
     | Close (x, y) :: _ -> (x, y)
     | Rectangle (x, y, _, _) :: _ -> (x, y)
@@ -114,27 +120,17 @@ let make_at x y =
 let line_to p ~x ~y =
   if p.curr_pt then begin
     p.path <- Line_to (x, y) :: p.path;
-    let e = p.extents in
-    let e =
-      if x >= e.Matrix.x then
-        { e with Matrix.w = max e.Matrix.w (x -. e.Matrix.x) }
-      else { e with Matrix.x = x;  w = e.Matrix.w +. e.Matrix.x -. x } in
-    let e =
-      if y >= e.Matrix.y then
-        { e with Matrix.h = max e.Matrix.h (y -. e.Matrix.y) }
-      else { e with Matrix.y = y;  h = e.Matrix.h +. e.Matrix.y -. y } in
-    p.extents <- e;
+    if x >= p.ex0 then p.exend <- max p.exend x else p.ex0 <- x;
+    if x >= p.ey0 then p.eyend <- max p.eyend y else p.ey0 <- y;
     p.x <- x;
     p.y <- y
   end else move_to p ~x ~y
 
-let update_rectangle p x0 y0 w h =
-  let e = p.extents in
-  let x = min e.Matrix.x x0
-  and y = min e.Matrix.y y0
-  and x' = max (e.Matrix.x +. e.Matrix.w) (x0 +. w)
-  and y' = max (e.Matrix.y +. e.Matrix.h) (y0 +. h) in
-  p.extents <- { Matrix.x = x; y = y; w = x' -. x; h = y' -. y }
+let update_rectangle p x0 y0 xend yend =
+  p.ex0 <- min p.ex0 x0;
+  p.ey0 <- min p.ey0 y0;
+  p.exend <- max p.exend xend;
+  p.eyend <- max p.eyend yend
 
 let unsafe_line_of_array p ~pointstyle x y =
   p.path <- Array(x, y, pointstyle) :: p.path;
@@ -188,15 +184,14 @@ let rel_line_to ?(rot=0.) p ~x ~y =
 
 let rectangle p ~x ~y ~w ~h =
   p.path <- Rectangle (x, y, w, h) :: p.path;
-  update_rectangle p x y w h;
+  update_rectangle p x y (x +. w) (y +. h);
   p.x <- x;
   p.y <- y;
   p.curr_pt <- true
 
 let append p1 p2 =
   p1.path <- p2.path @ p1.path;
-  let e2 = p2.extents in
-  update_rectangle p1 e2.Matrix.x e2.Matrix.y e2.Matrix.w e2.Matrix.h;
+  update_rectangle p1 p2.ex0 p2.ey0 p2.exend p2.eyend;
   p1.x <- p2.x;
   p1.y <- p2.y
 
@@ -243,16 +238,15 @@ let range_bezier x0 x1 x2 x3 =
           min f2 (min x0 x3), max f2 (max x0 x3)
         else min x0 x3, max x0 x3
 
-(** Return the smaller rectangle containing [r] and the Bezier curve
-    given by the control points. *)
-let update_curve e x0 y0 x1 y1 x2 y2 x3 y3 =
-  let xmin, xmax = range_bezier x0 x1 x2 x3 in
-  let xmin = min xmin e.Matrix.x in
-  let w = max xmax (e.Matrix.x +. e.Matrix.w) -. xmin in
-  let ymin, ymax = range_bezier y0 y1 y2 y3 in
-  let ymin = min ymin e.Matrix.y in
-  let h = max ymax (e.Matrix.y +. e.Matrix.h) -. ymin in
-  { Matrix.x = xmin;  y = ymin; w = w; h = h }
+(** Update the extents of the path [p] to contain th Bezier curve given by
+    the control points. *)
+let update_curve p x0 y0 x1 y1 x2 y2 x3 y3 =
+  let xmin, xmax = range_bezier x0 x1 x2 x3
+  and ymin, ymax = range_bezier y0 y1 y2 y3 in
+  p.ex0 <- min xmin p.ex0;
+  p.exend <- max xmax p.exend;
+  p.ey0 <- min ymin p.ey0;
+  p.eyend <- max ymax p.eyend
 
 let internal_curve_to p ~x1 ~y1 ~x2 ~y2 ~x3 ~y3 =
   let x0, y0 =
@@ -266,8 +260,7 @@ let internal_curve_to p ~x1 ~y1 ~x2 ~y2 ~x3 ~y3 =
   p.path <-
     Curve_to(x0, y0, x1, y1, x2, y2, x3, y3) :: p.path;
   (* Update the current point and extents *)
-  p.extents <-
-    update_curve p.extents x0 y0 x1 y1 x2 y2 x3 y3;
+  update_curve p x0 y0 x1 y1 x2 y2 x3 y3;
   p.x <- x3;
   p.y <- y3
 
