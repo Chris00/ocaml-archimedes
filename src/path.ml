@@ -43,7 +43,8 @@ type data =
   | Fortran of vec * vec * Pointstyle.name
 
 type t = {
-  mutable path: data list; (* Instructions of the path. *)
+  mutable path: data list; (* Instructions of the path, the first being
+                              the more recent. *)
   mutable extents: Matrix.rectangle;
   mutable x: float; (* the X-coord of the current point (if [curr_pt]) *)
   mutable y: float; (* the Y-coord of the current point (if [curr_pt]) *)
@@ -74,6 +75,11 @@ let clear p =
 let extents p =
   { p.extents with Matrix.x = p.extents.Matrix.x }
 
+let current_point p =
+  if p.curr_pt then p.x, p.y
+  else failwith "Archimedes.Path.current_point"
+
+
 let beginning_of_subpath p =
   let rec aux = function
     | [] -> failwith "Archimedes.Path.beginning_of_subpath: path empty"
@@ -90,14 +96,6 @@ let beginning_of_subpath p =
   in
   aux p.path
 
-let update_rectangle p x0 y0 x1 y1 =
-  let e = p.extents in
-  let x = min e.Matrix.x (min x0 x1)
-  and y = min e.Matrix.y (min y0 y1)
-  and x' = max (e.Matrix.x +. e.Matrix.w) (max x0 x1)
-  and y' = max (e.Matrix.y +. e.Matrix.h) (max y0 y1) in
-  p.extents <- { Matrix.x = x; y = y; w = x' -. x; h = y' -. y }
-
 let move_to p ~x ~y =
   p.path <- Move_to (x, y) :: p.path;
   p.x <- x;
@@ -112,10 +110,27 @@ let make_at x y =
 let line_to p ~x ~y =
   if p.curr_pt then begin
     p.path <- Line_to (x, y) :: p.path;
-    update_rectangle p p.x p.y x y;
+    let e = p.extents in
+    let e =
+      if x < e.Matrix.x then
+        { e with Matrix.x = x;  w = e.Matrix.w +. e.Matrix.x -. x }
+      else { e with Matrix.w = max e.Matrix.w (x -. e.Matrix.x) } in
+    let e =
+      if y < e.Matrix.y then
+        { e with Matrix.y = y;  h = e.Matrix.h +. e.Matrix.y -. y }
+      else { e with Matrix.h = max e.Matrix.h (y -. e.Matrix.y) } in
+    p.extents <- e;
     p.x <- x;
     p.y <- y
   end else move_to p ~x ~y
+
+let update_rectangle p x0 y0 w h =
+  let e = p.extents in
+  let x = min e.Matrix.x x0
+  and y = min e.Matrix.y y0
+  and x' = max (e.Matrix.x +. e.Matrix.w) (x0 +. w)
+  and y' = max (e.Matrix.y +. e.Matrix.h) (y0 +. h) in
+  p.extents <- { Matrix.x = x; y = y; w = x' -. x; h = y' -. y }
 
 let unsafe_line_of_array p ~pointstyle x y =
   p.path <- Array(x, y, pointstyle) :: p.path;
@@ -169,10 +184,17 @@ let rel_line_to ?(rot=0.) p ~x ~y =
 
 let rectangle p ~x ~y ~w ~h =
   p.path <- Rectangle (x, y, w, h) :: p.path;
-  update_rectangle p x y (x +. w) (y +. h);
+  update_rectangle p x y w h;
   p.x <- x;
   p.y <- y;
   p.curr_pt <- true
+
+let append p1 p2 =
+  p1.path <- p2.path @ p1.path;
+  let e2 = p2.extents in
+  update_rectangle p1 e2.Matrix.x e2.Matrix.y e2.Matrix.w e2.Matrix.h;
+  p1.x <- p2.x;
+  p1.y <- p2.y
 
 (** Returns the range of the function f = t -> (1-t)**3 x0 + 3
     (1-t)**2 t x1 + 3 (1-t) t**2 x2 + t**3 x3, 0 <= t <= 1, under the
@@ -389,8 +411,6 @@ let fill_on_backend ?(clip=0., 1., 0., 1.) p b =
     (List.rev p.path);
   Backend.fill b
 
-let current_point p = p.x, p.y
-
 let map p f =
   let map_f = function
     | Move_to (x, y) ->
@@ -459,5 +479,3 @@ let print_step = function
     printf "|}\n"
 
 let print_path p = List.iter print_step (List.rev p.path)
-
-let add p to_add = p.path <- to_add.path @ p.path

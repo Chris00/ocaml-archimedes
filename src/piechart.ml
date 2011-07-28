@@ -76,7 +76,7 @@ let simple ?(style=Relief) ?(colorscheme=Default) ?(keyplacement=Rectangle)
     Path.line_to path
       (centerx +. radius *. cos angle) (centery +. radius *. sin angle);
     Path.arc path radius angle endangle;
-    Path.add strokepath path;
+    Path.append strokepath path;
     Viewport.set_color vp defaultcolors.(position);
     Viewport.fill ~path vp V.Graph;
     (position + 1, endangle)

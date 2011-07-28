@@ -22,6 +22,7 @@
 (** Creating abstract paths. *)
 
 type t
+(** Abstract mutable path. *)
 
 val make: unit -> t
 (** [make ()] creates a new empty path *)
@@ -119,10 +120,13 @@ val fill_on_backend: ?clip:float * float * float * float ->
     neg_infinity, infinity, infinity) for no clip. *)
 
 val current_point: t -> float * float
-(** [current_point p] returns the current point of the path *)
+(** [current_point p] returns the current point of the path.
 
-val add: t -> t -> unit
-(** [add p to_add] Adds the path [to_add] to the end of [p] *)
+    @raise Failure if no current point exists. *)
+
+val append: t -> t -> unit
+(** [add p1 p2] append the path [p2] to the end of [p1].  [p2] is
+    unmodified.  The current point of [p1] becomes the one of [p2]. *)
 
 (**/**)
 
