@@ -121,7 +121,7 @@ let line_to p ~x ~y =
   if p.curr_pt then begin
     p.path <- Line_to (x, y) :: p.path;
     if x >= p.ex0 then p.exend <- max p.exend x else p.ex0 <- x;
-    if x >= p.ey0 then p.eyend <- max p.eyend y else p.ey0 <- y;
+    if y >= p.ey0 then p.eyend <- max p.eyend y else p.ey0 <- y;
     p.x <- x;
     p.y <- y
   end else move_to p ~x ~y
