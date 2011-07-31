@@ -500,10 +500,7 @@ end = struct
   let set_line_join_direct vp join () =
     Backend.set_line_join vp.backend join
 
-  let stroke_direct ?path vp coord_name () =
-    let path = get_path vp path coord_name in
-    let coord = get_coord_from_name vp coord_name in
-    let ctm = Coordinate.use vp.backend coord in
+  let apply_clip vp coord_name =
     if vp.clip then (
       match coord_name with
       | Data ->
@@ -514,27 +511,27 @@ end = struct
         Backend.clip_rectangle vp.backend 0. 0. maxx maxy
       | Device | Graph ->
         Backend.clip_rectangle vp.backend 0. 0. 1. 1.
-    );
+    )
+
+  let stroke_direct ?path vp coord_name () =
+    let path = get_path vp path coord_name in
+    let coord = get_coord_from_name vp coord_name in
+    Backend.save vp.backend;
+    let ctm = Coordinate.use vp.backend coord in
+    apply_clip vp coord_name;
     Backend.stroke_path_preserve vp.backend path;
-    Coordinate.restore vp.backend ctm
+    (* Coordinate.restore vp.backend ctm *) (* no need, CTM restored too *)
+    Backend.restore vp.backend
 
   let fill_direct ?path vp coord_name () =
     let path = get_path vp path coord_name in
     let coord = get_coord_from_name vp coord_name in
+    Backend.save vp.backend;
     let ctm = Coordinate.use vp.backend coord in
-    if vp.clip then (
-      match coord_name with
-      | Data ->
-        let x = xmin vp and y = ymin vp in
-        Backend.clip_rectangle vp.backend x y (xmax vp -. x) (ymax vp -. y);
-      | Orthonormal ->
-        let maxx, maxy = ortho_from vp Device (1., 1.) in
-        Backend.clip_rectangle vp.backend 0. 0. maxx maxy
-      | Device | Graph ->
-        Backend.clip_rectangle vp.backend 0. 0. 1. 1.
-    );
+    apply_clip vp coord_name;
     Backend.fill_path_preserve vp.backend path;
-    Coordinate.restore vp.backend ctm
+    (* Coordinate.restore vp.backend ctm *) (* no need, CTM restored too *)
+    Backend.restore vp.backend
 
   let clip_rectangle_direct vp ~x ~y ~w ~h () =
     Backend.clip_rectangle vp.backend x y w h
