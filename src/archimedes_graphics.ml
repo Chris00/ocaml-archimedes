@@ -428,20 +428,25 @@ struct
   let rec gather_subpath b to_bk coords = function
     | P.Move_to(x,y) ->
       fill_subpath !coords;  (* previous subpath *)
+      let x, y = to_bk x y in
       coords := [(round x, round y)]
     | P.Line_to(x,y)
     | P.Close(x,y) ->
+      let x, y = to_bk x y in
       coords := (round x, round y) :: !coords
     | P.Array(x, y) ->
       for i = 0 to Array.length x - 1 do
-        coords := (round x.(i), round y.(i)) :: !coords
+        let x, y = to_bk x.(i) y.(i) in
+        coords := (round x, round y) :: !coords
       done
     | P.Fortran(x, y) ->
       for i = 1 to Array1.dim x do
-        coords := (round x.{i}, round y.{i}) :: !coords
+        let x, y = to_bk x.{i} y.{i} in
+        coords := (round x, round y) :: !coords
       done
     | P.Curve_to(x0,y0, x1,y1, x2,y2, x3,y3) ->
       add_curve_sampling x0 y0 x1 y1 x2 y2 x3 y3 coords
+
 
   let fill_preserve t =
     let st = get_state t in
