@@ -339,6 +339,7 @@ let curve_to p ~x1 ~y1 ~x2 ~y2 ~x3 ~y3 =
     end in
   curve_to_with_curr_pt p ~x0 ~y0 ~x1 ~y1 ~x2 ~y2 ~x3 ~y3
 
+(* FIXME: use the same procedure than in cairo for 100% compatibility. *)
 (* Constant to determine the control points so that the bezier curve
    passes by middle point of the arc. *)
 let arc_control = 4. /. 3. (* (1 - cos(b))/(sin b),  b = (a1 - a2)/2 *)
@@ -472,12 +473,12 @@ let transform m p =
   map p (fun (x,y) -> Matrix.transform_point m x y)
 
 let print_data out = function
-  | Move_to (x, y) -> fprintf out "Move_to (%f, %f)\n" x y
-  | Line_to (x, y) -> fprintf out "Line_to (%f, %f)\n" x y
+  | Move_to (x, y) -> fprintf out "Move_to (%g, %g)\n" x y
+  | Line_to (x, y) -> fprintf out "Line_to (%g, %g)\n" x y
   | Curve_to (x0, y0, x1, y1, x2, y2, x3, y3) ->
-    fprintf out "Curve_to (%f, %f, %f, %f, %f, %f, %f, %f)\n"
+    fprintf out "Curve_to (%g, %g, %g, %g, %g, %g, %g, %g)\n"
       x0 y0 x1 y1 x2 y2 x3 y3
-  | Close (x, y) -> fprintf out "Close (%f, %f)\n" x y
+  | Close (x, y) -> fprintf out "Close (%g, %g)\n" x y
   | Array(x, y) ->
     fprintf out "Array(x, y) with\n  x = [|";
     Array.iter (fun x -> fprintf out "%g; " x) x;
@@ -491,7 +492,9 @@ let print_data out = function
     for i = 1 to Array1.dim x do fprintf out "%g; " y.{i} done;
     fprintf out "|}\n"
 
-let fprint out p = iter p (print_data out)
+let fprint out p =
+  iter p (print_data out);
+  flush out
 
 (* Local Variables: *)
 (* compile-command: "make -C .. -k" *)

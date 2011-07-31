@@ -47,10 +47,10 @@ let rec load_modules = function
 
 let () =
   if load_modules modules then (
-    if eval_string "open Archimedes;;" then
-      Format.eprintf "Module Archimedes loaded and opened.@."
+    if eval_string "module A = Archimedes;;" then
+      Format.eprintf "Module Archimedes loaded and aliased as A.@."
     else
-      Format.eprintf "Problem opening the Archimedes module!@."
+      Format.eprintf "Problem aliasing the Archimedes module!@."
   )
   else
-    Format.eprintf "Problem loading Archimedes modules@."
+    Format.eprintf "Problem loading Archimedes module@."

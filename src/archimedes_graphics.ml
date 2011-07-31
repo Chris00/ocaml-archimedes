@@ -23,11 +23,6 @@ open Bigarray
 open Archimedes
 module P = Archimedes_internals.Path
 
-(* Re-export the labels so we do not have to qualify them with [Matrix]. *)
-type matrix = Matrix.t = { mutable xx: float; mutable yx: float;
-                           mutable xy: float; mutable yy: float;
-                           mutable x0: float; mutable y0: float; }
-
 let min a b = if (a:float) < b then a else b
 let max a b = if (a:float) > b then a else b
 
@@ -110,7 +105,7 @@ struct
 
   (* FIXME: options "x=" and "y=" for the position *)
   let make ~options width height =
-    if !in_use then failwith "Archimedes_graphics.make: in use";
+    if !in_use then failwith "Archimedes_graphics.make: already in use";
     (* Parse options *)
     let hold = ref false in
     List.iter (fun o ->
@@ -144,7 +139,7 @@ struct
 
   let close ~options:_ t =
     if not(t.closed) then (
-      (* FIXME: Temprary solution, the interactive module must handle this. *)
+      (* FIXME: Temporary solution, the interactive module must handle this. *)
       if t.hold then (
         Graphics.set_window_title "Archimedes [Press a key to close]";
         ignore(Graphics.wait_next_event [Graphics.Key_pressed]);
@@ -225,9 +220,7 @@ struct
     Path.rel_line_to t.current_path w'x w'y;
     Path.rel_line_to t.current_path h'x h'y;
     Path.rel_line_to t.current_path (-. w'x) (-. w'y);
-    (* Call line_to which is less expensive than Path.close and is the
-       same for graphics as there are no line caps. *)
-    Path.line_to t.current_path x' y'
+    Path.close t.current_path
 
   let internal_curve_to t st ~x1 ~y1 ~x2 ~y2 ~x3 ~y3 =
     (* Suffices to transform the control point by the affine
@@ -261,6 +254,8 @@ struct
 
   let clip_rectangle t ~x ~y ~w ~h =
     let st = get_state t in
+    let x, y = Matrix.transform_point st.ctm x y in
+    let w, h = Matrix.transform_distance st.ctm w h in
     st.clip <- { Matrix.x = x; y = y; w = w; h = h };
     st.clip_set <- true
 
@@ -281,12 +276,24 @@ struct
   (* Real plotting procedures (perform clipping)
    ***********************************************************************)
 
-  let eps = 1E-6
-  let inner_x x0 xend x = x0 -. eps <= x && x <= xend +. eps
-  let inner_y y0 yend y = y0 -. eps <= y && y <= yend +. eps
-  let inner (x0, xend, y0, yend) x y =
-    inner_x x0 xend x && inner_y y0 yend y
+  type box_curr_pt = {
+    x0: float; y0: float; x1: float; y1: float; (* clipping box *)
+    must_clip: bool;
+    mutable x: float;  mutable y: float; (* current point *) }
 
+  let box st =
+    let m = st.clip in
+    { x0 = m.Matrix.x;  y0 = m.Matrix.y;
+      x1 = m.Matrix.x +. m.Matrix.w;  y1 = m.Matrix.y +. m.Matrix.h;
+      must_clip = st.clip_set;
+      x = nan; y = nan; }
+
+  let eps = 1E-6
+  let inside x0 x1 x = x0 -. eps <= x && x <= x1 +. eps
+  let inside_box box x y =
+    inside box.x0 box.x1 x && inside box.y0 box.y1 y
+
+  (** Return the point of intersection between *)
   let intersection x1 y1 x2 y2 x3 y3 x4 y4 =
     (* Formula taken from Wikipedia; article "Line-line intersection" *)
     let f = 1. /. ((x1 -. x2) *. (y3 -. y4) -. (y1 -. y2) *. (x3 -. x4)) in
@@ -294,19 +301,19 @@ struct
     (f1 *. (x3 -. x4) -. (x1 -. x2) *. f2) *. f,
     (f1 *. (y3 -. y4) -. (y1 -. y2) *. f2) *. f
 
-  let distance x y x' y' =
+  let distance1 x y x' y' =
     abs_float (x -. x') +. abs_float (y -. y')
 
-  let clip_point (x0, xend, y0, yend) x y x' y' =
+  let clip_point box x y x' y' =
     (* FIXME this code seems really improvable *)
-    let x1, y1 = intersection x0 y0 xend y0 x y x' y'
-    and x2, y2 = intersection xend y0 xend yend x y x' y'
-    and x3, y3 = intersection x0 yend xend yend x y x' y'
-    and x4, y4 = intersection x0 y0 x0 yend x y x' y' in
-    let d1 = if inner_x x0 xend x1 then distance x y x1 y1 else infinity
-    and d2 = if inner_y y0 yend y2 then distance x y x2 y2 else infinity
-    and d3 = if inner_x x0 xend x3 then distance x y x3 y3 else infinity
-    and d4 = if inner_y y0 yend y4 then distance x y x4 y4 else infinity in
+    let x1, y1 = intersection box.x0 box.y0 box.x1 box.y0 x y x' y'
+    and x2, y2 = intersection box.x1 box.y0 box.x1 box.y1 x y x' y'
+    and x3, y3 = intersection box.x0 box.y1 box.x1 box.y1 x y x' y'
+    and x4, y4 = intersection box.x0 box.y0 box.x0 box.y1 x y x' y' in
+    let d1 = if inside box.x0 box.x1 x1 then distance1 x y x1 y1 else infinity
+    and d2 = if inside box.y0 box.y1 y2 then distance1 x y x2 y2 else infinity
+    and d3 = if inside box.x0 box.x1 x3 then distance1 x y x3 y3 else infinity
+    and d4 = if inside box.y0 box.y1 y4 then distance1 x y x4 y4 else infinity in
     let data = [(x1, y1, d1); (x2, y2, d2); (x3, y3, d3); (x4, y4, d4)] in
     let third (_, _, d) = d in
     let default = (nan, nan, infinity) in
@@ -314,67 +321,79 @@ struct
       (fun a b -> if third b < third a then b else a) default data
     in x, y
 
-  let clipped_segment limits x y x' y' =
-    let nx, ny =
-      if inner limits x y then x, y
-      else clip_point limits x y x' y'
-    and nx', ny' =
-      if inner limits x' y' then x', y'
-      else clip_point limits x' y' x y
-    in
+  let clipped_segment b x y x' y' =
+    if b.must_clip then (
+      let nx, ny =
+        if inside_box b x y then x, y
+        else clip_point b x y x' y'
+      and nx', ny' =
+        if inside_box b x' y' then x', y'
+        else clip_point b x' y' x y
+      in
     (* Note: If one variable (here nx) is correct, the other are also *)
-    if nx < min x x' || nx > max x x' then (nan, nan, nan, nan)
-    else (nx, ny, nx', ny')
+      if nx < min x x' || nx > max x x' then (nan, nan, nan, nan)
+      else (nx, ny, nx', ny')
+    )
+    else (x, y, x', y')
+
+  let stroke_line_to b x y =
+    let cx, cy, cx', cy' = clipped_segment b b.x b.y x y in
+    if cx = cx && cx' = cx' (* no NaN *) then begin
+      if cx <> b.x || cy <> b.y then Graphics.moveto (round cx) (round cy);
+      Graphics.lineto (round cx') (round cy');
+      if cx' <> x || cy' <> y then Graphics.moveto (round x) (round y)
+    end
+    else Graphics.moveto (round x) (round y);
+    b.x <- x;
+    b.y <- y
 
   (* FIXME: macro to avoid the call [to_bk] ? *)
   (* [to_bk x y]: transform coordinates to the graphics ones. *)
-  let stroke_on_backend st to_bk = function
+  let stroke_on_backend b to_bk = function
     | P.Move_to(x,y) ->
       let x, y = to_bk x y in
-      Graphics.moveto (round x) (round y)
-    | P.Line_to(x,y) ->
-      let x, y = to_bk x y in
-        (* let cx, cy, cx', cy' = clipped_segment clip curx cury x y in
-           if cx = cx && cx' = cx' then begin
-           if cx <> curx || cy <> cury then Backend.move_to b cx cy;
-           Backend.line_to b cx' cy';
-           if cx' <> x || cy' <> y then Backend.move_to b x y
-           end
-           else Backend.move_to b x y; *)
-      Graphics.lineto (round x) (round y)
-    | P.Curve_to(_, _, x1, y1, x2, y2, x3, y3) ->
-      let x1, y1 = to_bk x1 y1
-      and x2, y2 = to_bk x2 y2
-      and x3, y3 = to_bk x3 y3 in
-      Graphics.curveto
-        (round x1, round y1) (round x2, round y2) (round x3, round y3)
+      Graphics.moveto (round x) (round y);
+      b.x <- x;
+      b.y <- y;
+    | P.Line_to(x,y)
     | P.Close(x, y) ->
       let x, y = to_bk x y in
-      Graphics.lineto (round x) (round y)
+      stroke_line_to b x y
     | P.Array(x, y) ->
       for i = 0 to Array.length x - 1 do
         let x, y = to_bk x.(i) y.(i) in
-        Graphics.lineto (round x) (round y)
+        stroke_line_to b x y
       done
     | P.Fortran(x, y) ->
       for i = 1 to Array1.dim x do
         let x, y = to_bk x.{i} y.{i} in
-        Graphics.lineto (round x) (round y)
+        stroke_line_to b x y
       done
+    | P.Curve_to(_, _, x1, y1, x2, y2, x3, y3) ->
+      let x1, y1 = to_bk x1 y1
+      and x2, y2 = to_bk x2 y2
+      and x3, y3 = to_bk x3 y3 in
+      (* FIXME: clip Bézier curve *)
+      Graphics.curveto
+        (round x1, round y1) (round x2, round y2) (round x3, round y3)
 
   (* When the path is already in the backend coordinates, no need for
      the CTM. *)
   let id x y = (x, y)
   let stroke_preserve t =
     let st = get_state t in
-    let clip = st.clip in
-    P.iter t.current_path (stroke_on_backend st id);
+    graphics_set_line_width st;
+    P.iter t.current_path (stroke_on_backend (box st) id);
     Graphics.synchronize()
 
   let stroke t = stroke_preserve t; clear_path t
 
   let stroke_path_preserve t path =
-    failwith "FIXME: to be implemented"
+    let st = get_state t in
+    graphics_set_line_width st;
+    let to_bk x y = Matrix.transform_point st.ctm x y in
+    P.iter t.current_path (stroke_on_backend (box st) to_bk);
+    Graphics.synchronize()
 
 
   (* We will use the fill_poly primitive of graphics for all fillings.
@@ -382,11 +401,11 @@ struct
   let curve_nsamples = 20 (* curve_nsamples + 1 points *)
   let curve_dt = 1. /. float curve_nsamples
 
-  (* Add some points on the Bezier curve to [coords] in *reverse*
-     order, except the 1st point which is sopposed to be added by the
-     previous component of the path. *)
+  (* Add some points on the Bezier curve to [coords], except the 1st
+     point which is supposed to be added by the previous component of
+     the path. *)
   let add_curve_sampling x0 y0  x1 y1  x2 y2  x3 y3 coords =
-    for i = curve_nsamples downto 1 do
+    for i = 1 to curve_nsamples do
       let t = float i *. curve_dt in
       let tm = 1. -. t in
       let t2 = t *. t   and tm2 = tm *. tm in
@@ -400,20 +419,16 @@ struct
   let fill_subpath = function
     | [] | [ _ ] -> ()
     | [ (x1,y1); (x0,y0) ] ->
-          Graphics.moveto x0 y0;  Graphics.lineto x1 y1
+      Graphics.moveto x0 y0;  Graphics.lineto x1 y1
     | coords -> Graphics.fill_poly (Array.of_list coords)
 
-  let rec gather_subpath coords = function
+  let rec gather_subpath b to_bk coords = function
     | P.Move_to(x,y) ->
-      fill_subpath !coords;
+      fill_subpath !coords;  (* previous subpath *)
       coords := [(round x, round y)]
-    | P.Line_to(x,y) ->
-      coords := (round x, round y) :: !coords
+    | P.Line_to(x,y)
     | P.Close(x,y) ->
-      fill_subpath ((round x, round y) :: !coords);
-      coords := []
-    | P.Curve_to(x0,y0, x1,y1, x2,y2, x3,y3) ->
-      add_curve_sampling x0 y0 x1 y1 x2 y2 x3 y3 coords
+      coords := (round x, round y) :: !coords
     | P.Array(x, y) ->
       for i = 0 to Array.length x - 1 do
         coords := (round x.(i), round y.(i)) :: !coords
@@ -422,18 +437,28 @@ struct
       for i = 1 to Array1.dim x do
         coords := (round x.{i}, round y.{i}) :: !coords
       done
+    | P.Curve_to(x0,y0, x1,y1, x2,y2, x3,y3) ->
+      add_curve_sampling x0 y0 x1 y1 x2 y2 x3 y3 coords
 
   let fill_preserve t =
-    check_valid_handle t;
+    let st = get_state t in
     (* Line width does not matter for "fill". *)
-    let path = ref [] in
-    P.iter t.current_path (gather_subpath path);
+    let coords = ref [] in
+    P.iter t.current_path (gather_subpath (box st) id coords);
+    (* fill the last gathered path (even if no close was issued). *)
+    fill_subpath !coords;
     Graphics.synchronize()
 
   let fill t = fill_preserve t; clear_path t
 
   let fill_path_preserve t path =
-    failwith "FIXME: to be implemented"
+    let st = get_state t in
+    let to_bk x y = Matrix.transform_point st.ctm x y in
+    (* Line width does not matter for "fill". *)
+    let coords = ref [] in
+    P.iter t.current_path (gather_subpath (box st) to_bk coords);
+    fill_subpath !coords;
+    Graphics.synchronize()
 
   (* Fonts
    ***********************************************************************)

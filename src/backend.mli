@@ -124,7 +124,10 @@ sig
       clip rectangle.  This {i may clear} the current path.  Calling
       {clip_rectangle} can only make the clip region smaller, never
       larger.  For [clip_rectangle] to have only a local effect, put
-      it in a {!save} / {!restore} group. *)
+      it in a {!save} / {!restore} group.
+
+      [clip_rectangle] is garantee to respect the CTM only if the
+      components [xy] and [yx] of the matrix are both [0.]. *)
 
   val save : t -> unit
   (** Save the current state of the backend.  Note that
