@@ -137,9 +137,9 @@ type data = private
   | Fortran of vec * vec
 
 
-val data : t -> data Queue.t
+val iter : t ->  (data -> unit) -> unit
 
-val print_path: t -> unit
+val fprint: out_channel -> t -> unit
 (** [print_path p] Debug function. *)
 
 val unsafe_line_of_array : t -> float array -> float array -> unit
@@ -162,6 +162,4 @@ val map: t -> (float * float -> float * float) -> t
 (** [transform p f] returns a new path that is the path [p] where all
     points (xi, yi) are substituted by their image [f xi yi].  It
     only modifies end points of paths, primitives and extents are
-    leaved the same.
-
-    FIXME: that means the path extent is invalid! That breaks an invariant! *)
+    leaved the same. *)

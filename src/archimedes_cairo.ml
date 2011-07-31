@@ -150,12 +150,12 @@ struct
      The clipping is taken care of by the cairo backend. *)
   let stroke_path_preserve cr p =
     clear_path cr;
-    Queue.iter (path_to_cairo cr) (P.data p);
+    P.iter p (path_to_cairo cr);
     stroke_preserve cr
 
   let fill_path_preserve cr p =
     clear_path cr;
-    Queue.iter (path_to_cairo cr) (P.data p);
+    P.iter p (path_to_cairo cr);
     fill_preserve cr
 
 

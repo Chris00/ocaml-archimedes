@@ -368,7 +368,7 @@ struct
   let stroke_preserve t =
     let st = get_state t in
     let clip = st.clip in
-    Queue.iter (stroke_on_backend st id) (P.data t.current_path);
+    P.iter t.current_path (stroke_on_backend st id);
     Graphics.synchronize()
 
   let stroke t = stroke_preserve t; clear_path t
@@ -427,7 +427,7 @@ struct
     check_valid_handle t;
     (* Line width does not matter for "fill". *)
     let path = ref [] in
-    Queue.iter (gather_subpath path) (P.data t.current_path);
+    P.iter t.current_path (gather_subpath path);
     Graphics.synchronize()
 
   let fill t = fill_preserve t; clear_path t

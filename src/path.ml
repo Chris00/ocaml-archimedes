@@ -35,15 +35,6 @@ let fourth_pi = atan 1.
 let pi = 4. *. fourth_pi
 let two_pi = 2. *. pi
 
-(** Return the smaller rectangle including the rectangle [r] and the
-    segment joining [(x0,y0)] and [(x1,y1)]. *)
-let update_rectangle r x0 y0 x1 y1 =
-  let x = min r.Matrix.x (min x0 x1)
-  and y = min r.Matrix.y (min y0 y1)
-  and x' = max (r.Matrix.x +. r.Matrix.w) (max x0 x1)
-  and y' = max (r.Matrix.y +. r.Matrix.h) (max y0 y1) in
-  { Matrix.x = x;  y = y;  w = x' -. x;  h = y' -. y }
-
 (** Returns the range of the function f = t -> (1-t)**3 x0 + 3
     (1-t)**2 t x1 + 3 (1-t) t**2 x2 + t**3 x3, 0 <= t <= 1, under the
     form of an interval [xmin, xmax] *)
@@ -86,18 +77,6 @@ let range_bezier x0 x1 x2 x3 =
           let f2 = f root2 in
           min f2 (min x0 x3), max f2 (max x0 x3)
         else min x0 x3, max x0 x3
-;;
-
-(** Return the smaller rectangle containing [r] and the Bézier curve
-    given by the control points. *)
-let update_curve r x0 y0 x1 y1 x2 y2 x3 y3 =
-  let xmin, xmax = range_bezier x0 x1 x2 x3 in
-  let xmin = min xmin r.Matrix.x in
-  let w = max xmax (r.Matrix.x +. r.Matrix.w) -. xmin in
-  let ymin, ymax = range_bezier y0 y1 y2 y3 in
-  let ymin = min ymin r.Matrix.y in
-  let h = max ymax (r.Matrix.y +. r.Matrix.h) -. ymin in
-  { Matrix.x = xmin;  y = ymin; w = w; h = h }
 
 
 (* Path definition
@@ -124,72 +103,171 @@ type data =
   | Fortran of vec * vec
 
 type t = {
-  (* Instructions of the path. *)
-  mutable path: data Queue.t;
-  mutable extents: Matrix.rectangle;
   mutable x: float; (* the X-coord of the current point (if [curr_pt]) *)
   mutable y: float; (* the Y-coord of the current point (if [curr_pt]) *)
   mutable curr_pt: bool; (* whether the current point is set *)
+  mutable sub_x: float; (* beginning of subpath *)
+  mutable sub_y: float;
+  mutable sub: bool; (* beginning of subpath set *)
+  (* Instructions of the path. *)
+  path_with_extents: data Queue.t; (* Portion of the path for which
+                                      the extents was computed. *)
+  path: data Queue.t; (* portion of the path for which
+                         no extents was computed yet *)
+  mutable e_curr_x: float; (* current point of path_with_extents,
+                              needed if its last instruction is a move_to *)
+  mutable e_curr_y: float;
+  (* Extents, rectangle of diagonal (x0,y0) -- (x1,y1).
+     Invariant: x0 <= x1, y0 <= y1 (unless empty) *)
+  mutable x0: float;
+  mutable y0: float;
+  mutable x1: float;
+  mutable y1: float;
 }
 
-let is_empty p = Queue.is_empty p.path
-let data p = p.path
-let extents p = p.extents
+let is_empty p =
+  Queue.is_empty p.path && Queue.is_empty p.path_with_extents
+
+let iter p f =
+  Queue.iter f p.path_with_extents;
+  Queue.iter f p.path
 
 let make () =
-  { path = Queue.create();
-    extents = { Matrix.x = nan; y = nan; w = 0.; h = 0. };
-    x = 0.;
+  { x = 0.;
     y = 0.;
-    curr_pt = false }
+    curr_pt = false;
+    sub_x = nan;
+    sub_y = nan;
+    sub = false;
+    path = Queue.create();
+    path_with_extents = Queue.create();
+    e_curr_x = nan;  e_curr_y = nan;
+    (* Default values so we are sure they will be updated when
+       computing the extents *)
+    x0 = infinity;  y0 = infinity;
+    x1 = neg_infinity;  y1 = neg_infinity }
 
 let copy p =
-  { path = Queue.copy p.path;
-    extents = p.extents; (* immutable *)
-    x = p.x;
-    y = p.y;
-    curr_pt = p.curr_pt }
+  { p with
+    path = Queue.copy p.path;
+    path_with_extents = Queue.copy p.path_with_extents }
 
 let clear p =
-  Queue.clear p.path;
-  p.extents <- { Matrix.x = nan; y = nan; w = 0.; h = 0. };
   p.x <- 0.;
   p.y <- 0.;
-  p.curr_pt <- false
+  p.curr_pt <- false;
+  p.sub_x <- nan;
+  p.sub_y <- nan;
+  p.sub <- false;
+  Queue.clear p.path;
+  Queue.clear p.path_with_extents;
+  p.e_curr_x <- nan;  p.e_curr_y <- nan;
+  p.x0 <- infinity;  p.y0 <- infinity;
+  p.x1 <- neg_infinity;  p.y1 <- neg_infinity
 
 let current_point p =
   if p.curr_pt then p.x, p.y
   else failwith "Archimedes.Path.current_point"
 
+(* Compute extents
+ ***********************************************************************)
+
+(** Update [p] extents to include the point (x,y). *)
+let update_point p x y =
+  if x < p.x0 then p.x0 <- x
+  else if x > p.x1 then p.x1 <- x;
+  if y < p.y0 then p.y0 <- y
+  else if y > p.y1 then p.y1 <- y
+
+(** Updaye [p] to contain the Bézier curve given by the control
+    points. *)
+let update_curve p x0 y0 x1 y1 x2 y2 x3 y3 =
+  let xmin, xmax = range_bezier x0 x1 x2 x3 in
+  let ymin, ymax = range_bezier y0 y1 y2 y3 in
+  update_point p xmin ymin;
+  update_point p xmax ymax
+
+let update_extents_data p = function
+  | Move_to(x, y) ->
+    (* move_to only updates the current point but not the path extents
+       (one can move elsewhere without drawing anything). *)
+    p.e_curr_x <- x;
+    p.e_curr_y <- y
+  | Line_to(x, y) ->
+    (* Need to include (e_curr_x, e_curr_y) because the previous
+       instruction possibly was a move_to which did not update the
+       extents. *)
+    update_point p p.e_curr_x p.e_curr_y;
+    update_point p x y;
+    p.e_curr_x <- x;
+    p.e_curr_y <- y
+  | Curve_to(x0, y0, x1, y1, x2, y2, x3, y3) ->
+    update_curve p x0 y0 x1 y1 x2 y2 x3 y3;
+    p.e_curr_x <- x3;
+    p.e_curr_y <- y3
+  | Close(x, y) ->
+    p.e_curr_x <- x;
+    p.e_curr_y <- y
+  | Array(x, y) ->
+    update_point p p.e_curr_x p.e_curr_y;
+    let last = Array.length x - 1 in
+    for i = 0 to last do update_point p x.(i) y.(i) done;
+    p.e_curr_x <- x.(last);
+    p.e_curr_y <- y.(last)
+  | Fortran(x, y) ->
+    update_point p p.e_curr_x p.e_curr_y;
+    let last = Array1.dim x in
+    for i = 1 to last do update_point p x.{i} y.{i} done;
+    p.e_curr_x <- x.{last};
+    p.e_curr_y <- y.{last}
+
+let update_extents p =
+  Queue.iter (update_extents_data p) p.path;
+  Queue.transfer p.path p.path_with_extents
+
+let extents p =
+  if not(Queue.is_empty p.path) then update_extents p;
+  { Matrix.x = p.x0;  y = p.y0;
+    w = p.x1 -. p.x0;  h = p.y1 -. p.y0 }
+
+(* Creating paths
+ ***********************************************************************)
+
 let move_to p ~x ~y =
   Queue.add (Move_to(x, y)) p.path;
-  (* move_to only updates the current point but not the path extents
-     (one can move elsewhere without drawing anything). *)
   p.x <- x;
   p.y <- y;
-  p.curr_pt <- true
+  p.curr_pt <- true;
+  p.sub_x <- x;
+  p.sub_y <- y;
+  p.sub <- true
 
 let rel_move_to p ~x ~y =
+  if not p.curr_pt then failwith "Archimedes.Path.rel_move_to";
   move_to p (p.x +. x) (p.y +. y)
 
 let line_to p ~x ~y =
   (* Note: if there's no current point then line_to behaves as move_to. *)
   if p.curr_pt then (
     Queue.add (Line_to(x, y)) p.path;
-    (* Need to include (p.x, p.y) because the previous instruction
-       possibly was a move_to which did not update the extents. *)
-    p.extents <- update_rectangle p.extents p.x p.y x y;
     p.x <- x;
     p.y <- y
   )
   else move_to p ~x ~y
 
-let rel_line_to p ~x ~y = line_to p (p.x +. x) (p.y +. y)
+let rel_line_to p ~x ~y =
+  if not p.curr_pt then failwith "Archimedes.Path.rel_line_to";
+  line_to p (p.x +. x) (p.y +. y)
 
 
 let unsafe_line_of_array p x y =
+  if not p.curr_pt then (
+    (* No current point, so line_to(x.(0), y.(0)) behaves like move_to *)
+    p.sub_x <- x.(0);
+    p.sub_y <- y.(0);
+    p.sub <- true;
+  );
   Queue.add (Array(x, y)) p.path;
-  (* FIXME: update extents *)
   let lastx = Array.length x - 1 in
   p.x <- x.(lastx);
   p.y <- y.(lastx);
@@ -206,8 +284,13 @@ let line_of_array p ?(const_x=false) x ?(const_y=false) y =
   )
 
 let unsafe_line_of_fortran p (x: vec) (y: vec) =
+  if not p.curr_pt then (
+    (* No current point, so line_to(x.{1}, y.{1}) behaves like move_to *)
+    p.sub_x <- x.{1};
+    p.sub_y <- y.{1};
+    p.sub <- true;
+  );
   Queue.add (Fortran(x, y)) p.path;
-  (* FIXME: update extents *)
   let lastx = Array1.dim x in
   p.x <- x.{lastx};
   p.y <- y.{lastx};
@@ -236,23 +319,13 @@ let rectangle p ~x ~y ~w ~h =
   Queue.add (Line_to(x1, y1)) p.path;
   Queue.add (Line_to(x,  y1)) p.path;
   Queue.add (Close(x, y)) p.path;
-  p.extents <- update_rectangle p.extents x y x1 y1;
   p.x <- x;
   p.y <- y;
-  p.curr_pt <- true
-
-let append p1 p2 =
-  Queue.transfer p2.path p1.path;
-  let e2 = p2.extents in
-  p1.extents <-
-    update_rectangle p1.extents e2.Matrix.x e2.Matrix.y e2.Matrix.w e2.Matrix.h;
-  p1.x <- p2.x;
-  p1.y <- p2.y;
-  clear p2
+  p.curr_pt <- true;
+  p.sub <- false
 
 let curve_to_with_curr_pt p ~x0 ~y0 ~x1 ~y1 ~x2 ~y2 ~x3 ~y3 =
   Queue.add (Curve_to(x0, y0, x1, y1, x2, y2, x3, y3)) p.path;
-  p.extents <- update_curve p.extents x0 y0 x1 y1 x2 y2 x3 y3;
   p.x <- x3;
   p.y <- y3
 
@@ -301,34 +374,46 @@ let arc p ~r ~a1 ~a2 =
   if not p.curr_pt then failwith "archimedes_graphics.arc: no current point";
   bezier_of_arc p curve_to_with_curr_pt ~x0:p.x ~y0:p.y ~r ~a1 ~a2
 
-exception Beginning_of_subpath of (float * float)
-
-(* FIXME: conditions for Array, Fortran *)
-let find_beginning_of_subpath = function
-  | Move_to(x, y) | Close(x, y) ->
-    raise(Beginning_of_subpath(x, y))
-  | Array(x, y) -> 
-    (* | Array(x, y) :: (Move_to _ | Close _ | Rectangle _) :: _ -> *)
-    raise(Beginning_of_subpath(x.(0), y.(0)))
-  | Fortran(x, y) -> 
-    (* | Fortran(x, y) :: (Move_to _ | Close _ | Rectangle _) :: _ -> *)
-    raise(Beginning_of_subpath(x.{0}, y.{0}))
-  | (Curve_to _ | Line_to _ | Array _ | Fortran _) -> ()
-
-let beginning_of_subpath p =
-  try
-    Queue.iter find_beginning_of_subpath p.path;
-    failwith "Archimedes.close: no subpath to close"
-  with Beginning_of_subpath pt -> pt
 
 let close p =
   if p.curr_pt then begin
-    (* Search for the beginning of the current sub-path, if any *)
-    let x, y = beginning_of_subpath p in
-    Queue.add (Close(x, y)) p.path;
-    p.x <- x;
-    p.y <- y
+    if not p.sub then failwith "Archimedes.close: no subpath to close";
+    Queue.add (Close(p.sub_x, p.sub_y)) p.path;
+    p.x <- p.sub_x;
+    p.y <- p.sub_y;
+    p.sub <- false
   end
+
+
+let append p1 p2 =
+  if p2.curr_pt then ( (* if p2 is empty, do not change p1 *)
+    p1.x <- p2.x;
+    p1.y <- p2.y;
+    p1.curr_pt <- true;
+    p1.sub_x <- p2.sub_x;
+    p1.sub_y <- p2.sub_y;
+    p1.sub <- p2.sub;
+  );
+  (* If p1 contains a part for which the extents was not computed one
+     must update the extents of p1 or append p2 to p1 and loose its
+     extents.  We use a naïve heuristic (does not take in account the
+     number of operations of< embedded arrays, a better cost could be
+     added to the path type) *)
+  if Queue.is_empty p1.path_with_extents
+    || Queue.length p1.path > 2 * Queue.length p2.path_with_extents then (
+      Queue.transfer p2.path_with_extents p1.path;
+      Queue.transfer p2.path p1.path;
+    )
+  else (
+    update_extents p1; (* => p1.path empty *)
+    Queue.transfer p2.path_with_extents p1.path_with_extents;
+    Queue.transfer p2.path p1.path;
+    update_point p1 p2.x0 p2.y0;
+    update_point p1 p2.x1 p2.y1;
+    p1.e_curr_x <- p2.e_curr_x;
+    p1.e_curr_y <- p2.e_curr_y;
+  );
+  clear p2
 
 
 let map_data_to f p' = function
@@ -366,43 +451,47 @@ let map_data_to f p' = function
       y'.{i} <- fy;
     done;
     Queue.add (Fortran(x', y')) p'
-;;
+
 let map p f =
   let p' = make () in
-  Queue.iter (map_data_to f p'.path) p.path;
+  (* Keep p'.path_with_extents empty because the extents need to be
+     recomputed. *)
+  iter p (map_data_to f p'.path);
   let x', y' = f(p.x, p.y) in
   p'.x <- x';
   p'.y <- y';
-  (* FIXME: recompute the extent. *)
+  p'.curr_pt <- p.curr_pt;
+  let x', y' = f(p.sub_x, p.sub_y) in
+  p'.sub_x <- x';
+  p'.sub_y <- y';
+  p'.sub <- p.sub;
   p'
 
 
 let transform m p =
-  let p = map p (fun (x,y) -> Matrix.transform_point m x y) in
-  (* FIXME: recompute the extent. *)
-  p
+  map p (fun (x,y) -> Matrix.transform_point m x y)
 
-
-let print_step = function
-  | Move_to (x, y) -> printf "Move_to (%f, %f)\n" x y
-  | Line_to (x, y) -> printf "Line_to (%f, %f)\n" x y
+let print_data out = function
+  | Move_to (x, y) -> fprintf out "Move_to (%f, %f)\n" x y
+  | Line_to (x, y) -> fprintf out "Line_to (%f, %f)\n" x y
   | Curve_to (x0, y0, x1, y1, x2, y2, x3, y3) ->
-    printf "Curve_to (%f, %f, %f, %f, %f, %f, %f, %f)\n" x0 y0 x1 y1 x2 y2 x3 y3
-  | Close (x, y) -> printf "Close (%f, %f)\n" x y
+    fprintf out "Curve_to (%f, %f, %f, %f, %f, %f, %f, %f)\n"
+      x0 y0 x1 y1 x2 y2 x3 y3
+  | Close (x, y) -> fprintf out "Close (%f, %f)\n" x y
   | Array(x, y) ->
-    printf "Array(x, y) with\n  x = [|";
-    Array.iter (fun x -> printf "%g; " x) x;
-    printf "|]\n  y = [|";
-    Array.iter (fun y -> printf "%g; " y) y;
-    printf "|]\n"
+    fprintf out "Array(x, y) with\n  x = [|";
+    Array.iter (fun x -> fprintf out "%g; " x) x;
+    fprintf out "|]\n  y = [|";
+    Array.iter (fun y -> fprintf out "%g; " y) y;
+    fprintf out "|]\n"
   | Fortran(x, y) ->
-    printf "Fortran(x, y) with\n  x = {|";
-    for i = 1 to Array1.dim x do printf "%g; " x.{i} done;
-    printf "|}\n  y = {|";
-    for i = 1 to Array1.dim x do printf "%g; " y.{i} done;
-    printf "|}\n"
+    fprintf out "Fortran(x, y) with\n  x = {|";
+    for i = 1 to Array1.dim x do fprintf out "%g; " x.{i} done;
+    fprintf out "|}\n  y = {|";
+    for i = 1 to Array1.dim x do fprintf out "%g; " y.{i} done;
+    fprintf out "|}\n"
 
-let print_path p = Queue.iter print_step p.path
+let fprint out p = iter p (print_data out)
 
 (* Local Variables: *)
 (* compile-command: "make -C .. -k" *)
