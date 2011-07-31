@@ -3,12 +3,12 @@ module B = Archimedes.Backend
 module Matrix = Archimedes.Matrix
 
 let draw bk =
-  let backend = B.make ~dirs bk 300. 300. in
+  let backend = B.make ~dirs bk 500. 300. in
   B.scale backend 1. 2.;
   let matrix = B.get_matrix backend in
   let inv_matrix = Matrix.copy matrix in
   Matrix.invert inv_matrix;
-  B.set_font_size backend 14.;
+  B.set_font_size backend 16.;
   let text = "Test with a y."  in
   let extents = B.text_extents backend text in
   (* let wx,wy = Matrix.inv_transform_distance matrix rect.w 0.
@@ -17,7 +17,7 @@ let draw bk =
   let rect =
     Matrix.transform_rectangle ~dist_basepoint:true inv_matrix extents
   in
-  let w = 140. and h = 40. in
+  let w = 200. and h = 40. in
   let w' = 2.*.w and h' = 2.*.h in
   let plot_text (x,y,pos,r,g,b) =
     let dx =  match pos with
