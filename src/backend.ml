@@ -93,9 +93,9 @@ sig
   val stroke_preserve : t -> unit
   val fill : t -> unit
   val fill_preserve : t -> unit
-
   val stroke_path_preserve : t -> Path.t -> unit
   val fill_path_preserve : t -> Path.t -> unit
+  val show : t -> unit
 
   val clip_rectangle : t -> x:float -> y:float -> w:float -> h:float -> unit
 
@@ -157,6 +157,7 @@ type t = {
   fill_preserve : unit -> unit;
   stroke_path_preserve : Path.t -> unit;
   fill_path_preserve : Path.t -> unit;
+  show : unit -> unit;
   clip_rectangle : x:float -> y:float -> w:float -> h:float -> unit;
 
   save: unit -> unit;
@@ -227,6 +228,7 @@ struct
         fill_preserve = (fun () -> B.fill_preserve handle);
         stroke_path_preserve = B.stroke_path_preserve handle;
         fill_path_preserve = B.fill_path_preserve handle;
+        show = (fun () -> B.show handle);
         clip_rectangle = B.clip_rectangle handle;
 
         save = (fun () -> B.save handle);
@@ -282,6 +284,7 @@ let fill t = t.fill()
 let fill_preserve t = t.fill_preserve()
 let stroke_path_preserve t p = t.stroke_path_preserve p
 let fill_path_preserve t p = t.fill_path_preserve p
+let show t = t.show()
 let clip_rectangle t = t.clip_rectangle
 let save t = t.save()
 let restore t = t.restore()

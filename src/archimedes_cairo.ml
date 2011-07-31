@@ -102,6 +102,9 @@ struct
     stroke_preserve t;
     Cairo.restore t
 
+  let show t =
+    Cairo.Surface.flush (get_target t)
+
   let clip_rectangle t ~x ~y ~w ~h =
     Cairo.Path.clear t;
     Cairo.rectangle t ~x ~y ~w ~h;

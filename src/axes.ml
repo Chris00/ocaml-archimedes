@@ -18,7 +18,6 @@
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the file
    LICENSE for more details. *)
 
-module B = Backend
 module V = Viewport
 
 (* FIXME: offset might benefit from better variant names such as Data |
@@ -74,7 +73,7 @@ let draw_x_axis grid major minor start stop tics offset vp () =
   let text x lbl =
     let x, y = V.ortho_from vp V.Data (x, offset) in
     let y = y +. 0.0375 *. pos in
-    let align = if pos < 0. then B.CB else B.CT in
+    let align = if pos < 0. then Backend.CB else Backend.CT in
     V.show_text_direct vp V.Orthonormal ~x ~y align lbl () in
   let grid_line = function
     | Tics.Major (_, x) -> let path = Path.make() in
@@ -102,7 +101,7 @@ let draw_y_axis grid major minor start stop tics offset vp () =
   let text y lbl =
     let x, y = V.ortho_from vp V.Data (offset, y) in
     let x = x +. 0.0375 *. pos in
-    let align = if pos < 0. then B.LC else B.RC in
+    let align = if pos < 0. then Backend.LC else Backend.RC in
     V.show_text_direct vp V.Orthonormal ~x ~y align lbl () in
   let grid_line = function
     | Tics.Major (_, y) -> let path = Path.make() in
@@ -125,6 +124,7 @@ let add_x_axis ?(grid=false)
   V.save vp;
   V.add_instruction
     (draw_x_axis grid major minor start stop tics offset vp) vp;
+  V.add_instruction (fun () -> Backend.show(V.get_backend vp)) vp;
   V.restore vp
 
 let add_y_axis ?(grid=false)
@@ -134,6 +134,7 @@ let add_y_axis ?(grid=false)
   V.save vp;
   V.add_instruction
     (draw_y_axis grid major minor start stop tics offset vp) vp;
+  V.add_instruction (fun () -> Backend.show(V.get_backend vp)) vp;
   V.restore vp
 
 let box ?(grid=true) ?tics ?tics_alt vp =

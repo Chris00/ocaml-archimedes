@@ -118,6 +118,11 @@ sig
   (** [fill_path_preserve] is similar to [stroke_path_preserve] except
       that it fills the path. *)
 
+  val show : t -> unit
+  (** Some backends may not show immediately the action of {!stroke},
+      {!fill}, {!stroke_path_preserve},... immediately (usually
+      because it is expensive but also to avoid flicker during
+      animations).  [show bk] forces the backend to update.  *)
 
   val clip_rectangle : t -> x:float -> y:float -> w:float -> h:float -> unit
   (** Establishes a new clip rectangle by intersecting the current

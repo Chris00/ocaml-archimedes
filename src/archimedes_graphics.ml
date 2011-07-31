@@ -137,6 +137,8 @@ struct
       current_path = Path.make();
     }
 
+  let show _t = Graphics.synchronize()
+
   let close ~options:_ t =
     if not(t.closed) then (
       (* FIXME: Temporary solution, the interactive module must handle this. *)
@@ -384,8 +386,7 @@ struct
   let stroke_preserve t =
     let st = get_state t in
     graphics_set_line_width st;
-    P.iter t.current_path (stroke_on_backend (box st) id);
-    Graphics.synchronize()
+    P.iter t.current_path (stroke_on_backend (box st) id)
 
   let stroke t =
     stroke_preserve t;
@@ -395,8 +396,7 @@ struct
     let st = get_state t in
     graphics_set_line_width st;
     let to_bk x y = Matrix.transform_point st.ctm x y in
-    P.iter path (stroke_on_backend (box st) to_bk);
-    Graphics.synchronize()
+    P.iter path (stroke_on_backend (box st) to_bk)
 
 
   (* We will use the fill_poly primitive of graphics for all fillings.
@@ -466,8 +466,7 @@ struct
     let coords = ref [] in
     P.iter t.current_path (gather_subpath (box st) id coords);
     (* fill the last gathered path (even if no close was issued). *)
-    fill_subpath !coords;
-    Graphics.synchronize()
+    fill_subpath !coords
 
   let fill t =
     fill_preserve t;
@@ -479,8 +478,7 @@ struct
     (* Line width does not matter for "fill". *)
     let coords = ref [] in
     P.iter path (gather_subpath (box st) to_bk coords);
-    fill_subpath !coords;
-    Graphics.synchronize()
+    fill_subpath !coords
 
   (* Fonts
    ***********************************************************************)
@@ -594,8 +592,7 @@ struct
       let img2 = Graphics.make_image m2 in
       Graphics.draw_image backup x'' y'';
       (* Graphics.display_mode true; *)
-      Graphics.draw_image img2 (round invisx) (round invisy);
-      Graphics.synchronize()
+      Graphics.draw_image img2 (round invisx) (round invisy)
     end
 
   let flipy _t = false
