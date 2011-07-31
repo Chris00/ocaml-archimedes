@@ -404,10 +404,20 @@ struct
   let curve_nsamples = 20 (* curve_nsamples + 1 points *)
   let curve_dt = 1. /. float curve_nsamples
 
+  let fill_line_to b x y coords =
+    let cbx, cby, cx, cy = clipped_segment b b.x b.y x y in
+    if cbx = cbx && cx = cx (* no NaN *) then begin
+      if cbx <> b.x || cby <> b.y then
+        coords := (round cbx, round cby) :: !coords;
+      coords := (round cx, round cy) :: !coords
+    end;
+    b.x <- x;
+    b.y <- y
+
   (* Add some points on the Bezier curve to [coords], except the 1st
      point which is supposed to be added by the previous component of
      the path. *)
-  let add_curve_sampling x0 y0  x1 y1  x2 y2  x3 y3 coords =
+  let add_curve_sampling b x0 y0  x1 y1  x2 y2  x3 y3 coords =
     for i = 1 to curve_nsamples do
       let t = float i *. curve_dt in
       let tm = 1. -. t in
@@ -416,7 +426,8 @@ struct
       let t' = 3. *. t2 *. tm  and t'' = 3. *. t *. tm2 in
       let x = tm3 *. x0 +. t'' *. x1 +. t' *. x2 +. t3 *. x3
       and y = tm3 *. y0 +. t'' *. y1 +. t' *. y2 +. t3 *. y3 in
-      coords := (round x, round y) :: !coords;
+      (* FIXME: Clipping each subsegment is very expensive *)
+      fill_line_to b x y coords
     done
 
   let fill_subpath = function
@@ -429,23 +440,24 @@ struct
     | P.Move_to(x,y) ->
       fill_subpath !coords;  (* previous subpath *)
       let x, y = to_bk x y in
-      coords := [(round x, round y)]
+      b.x <- x;
+      b.y <- y;  (* Do no put the pt in coords in case 2 Move_to follow *)
     | P.Line_to(x,y)
     | P.Close(x,y) ->
       let x, y = to_bk x y in
-      coords := (round x, round y) :: !coords
+      fill_line_to b x y coords
     | P.Array(x, y) ->
       for i = 0 to Array.length x - 1 do
         let x, y = to_bk x.(i) y.(i) in
-        coords := (round x, round y) :: !coords
+        fill_line_to b x y coords
       done
     | P.Fortran(x, y) ->
       for i = 1 to Array1.dim x do
         let x, y = to_bk x.{i} y.{i} in
-        coords := (round x, round y) :: !coords
+        fill_line_to b x y coords
       done
     | P.Curve_to(x0,y0, x1,y1, x2,y2, x3,y3) ->
-      add_curve_sampling x0 y0 x1 y1 x2 y2 x3 y3 coords
+      add_curve_sampling b x0 y0 x1 y1 x2 y2 x3 y3 coords
 
 
   let fill_preserve t =
