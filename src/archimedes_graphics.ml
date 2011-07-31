@@ -141,6 +141,7 @@ struct
     if not(t.closed) then (
       (* FIXME: Temporary solution, the interactive module must handle this. *)
       if t.hold then (
+        Graphics.synchronize();
         Graphics.set_window_title "Archimedes [Press a key to close]";
         ignore(Graphics.wait_next_event [Graphics.Key_pressed]);
       );
@@ -386,13 +387,15 @@ struct
     P.iter t.current_path (stroke_on_backend (box st) id);
     Graphics.synchronize()
 
-  let stroke t = stroke_preserve t; clear_path t
+  let stroke t =
+    stroke_preserve t;
+    Path.clear t.current_path
 
   let stroke_path_preserve t path =
     let st = get_state t in
     graphics_set_line_width st;
     let to_bk x y = Matrix.transform_point st.ctm x y in
-    P.iter t.current_path (stroke_on_backend (box st) to_bk);
+    P.iter path (stroke_on_backend (box st) to_bk);
     Graphics.synchronize()
 
 
@@ -449,14 +452,16 @@ struct
     fill_subpath !coords;
     Graphics.synchronize()
 
-  let fill t = fill_preserve t; clear_path t
+  let fill t =
+    fill_preserve t;
+    Path.clear t.current_path
 
   let fill_path_preserve t path =
     let st = get_state t in
     let to_bk x y = Matrix.transform_point st.ctm x y in
     (* Line width does not matter for "fill". *)
     let coords = ref [] in
-    P.iter t.current_path (gather_subpath (box st) to_bk coords);
+    P.iter path (gather_subpath (box st) to_bk coords);
     fill_subpath !coords;
     Graphics.synchronize()
 
