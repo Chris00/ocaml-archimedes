@@ -27,14 +27,14 @@ let check_suffixes fname s1 s2 =
 
 let backend_of_filename fname =
   if check_suffixes fname ".png" ".PNG" then
-    sprintf "cairo PNG %s" fname
+    ["cairo"; "PNG"; fname]
   else if check_suffixes fname ".pdf" ".PDF" then
-    sprintf "cairo PDF %s" fname
-  else if check_suffixes fname ".svg" ".SVG" then
-    sprintf "cairo SVG %s" fname
+    ["cairo"; "PDF"; fname]
+  else if check_suffixes fname ".ps" ".PS" then
+    ["cairo"; "PS"; fname]
   else if check_suffixes fname ".tex" ".TEX" then
-    sprintf "tikz %s" fname
-  else "graphics hold"
+    ["tikz"; fname]
+  else ["graphics"; "hold"]
 
 let fx ?tlog ?(strategy=Sampler.strategy_midpoint)
     ?(criterion=Sampler.criterion_angle ~threshold:3.1) ?min_step ?nsamples

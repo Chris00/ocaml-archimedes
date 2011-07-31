@@ -6,11 +6,11 @@ let alltests = [ $(tests) ]
 
 let backends = ref []
 let cairo out ext () =
-  backends := (fun fname -> sprintf "cairo %s %s.%s" out fname ext) :: !backends
+  backends := (fun fname -> ["cairo"; out; sprintf "%s.%s" fname ext]) :: !backends
 let tikz () =
-  backends := (fun fname -> sprintf "tikz %s.tex" fname) :: !backends
+  backends := (fun fname -> ["tikz"; sprintf "%s.tex" fname]) :: !backends
 let graphics () =
-  backends := (fun _ -> "graphics hold") :: !backends
+  backends := (fun _ -> ["graphics"; "hold"]) :: !backends
 
 let list_tests () =
   List.iter (fun (name,_,_) -> Format.printf "%s@ " name) alltests;

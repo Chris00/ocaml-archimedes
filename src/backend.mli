@@ -202,18 +202,21 @@ exception Error of error * string
 
 include T
 
-val make : ?dirs:string list -> string -> float -> float -> t
-  (** [make backend width height] creates a new backend of the given
-      dimensions.  The units of the dimensions are backend dependent.
+val make : ?dirs:string list -> string list -> float -> float -> t
+(** [make backend width height] creates a new backend of the
+    given dimensions.  The units of the dimensions are backend
+    dependent.
 
-      [backend] is the name of the underlying engine, followed by one
-      or several options separated by spaces.  For example, "Graphics"
-      for the graphics backend or "Cairo PNG filename" for the Cairo
-      backend, using a PNG surface to be saved to [filename]. *)
+    The first element of [backend] is the name (case insensitive) of
+    the underlying engine.  It may be followed by one or several
+    options.  For example, ["Graphics"] for the graphics backend or
+    ["Cairo"; "PNG"; filename] for the Cairo backend, using a PNG
+    surface to be saved to [filename].  The empty list selects the
+    graphics backend. *)
 
 val close : t -> unit
-  (** Close the handle.  For some backends, the output will not be
-      complete until this function is called. *)
+(** Close the handle.  For some backends, the output will not be
+    complete until this function is called. *)
 
 val height : t -> float
   (** Returns the width of the backend canvas. *)

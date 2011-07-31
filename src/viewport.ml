@@ -195,7 +195,7 @@ and Viewport : sig
   type coord_name = Device | Graph | Data | Orthonormal
   val get_coord_from_name : t -> coord_name -> Coordinate.t
   val init : ?lines:float -> ?text:float -> ?marks:float -> ?w:float ->
-    ?h:float -> ?dirs:string list -> string -> t
+    ?h:float -> ?dirs:string list -> string list -> t
   val make : ?lines:float -> ?text:float -> ?marks:float ->
     t -> coord_name -> float -> float -> float -> float ->
     (t -> float -> float -> unit) -> t

@@ -314,13 +314,6 @@ exception Error of error * string
 
 let registered () = M.fold (fun name _ l -> name :: l) !registry []
 
-open String_utils
-
-(* Split the backend from its option list. Backend name is put in
-   lowercase letters.*)
-let backend_options b =
-  let s,l = first_and_list b in
-  String.lowercase s, l
 
 (* Return a fully qualified path to the [fname] or raise [Not_found]. *)
 let rec find_file dirs fname =
@@ -351,7 +344,9 @@ let get_dependencies dirs basename =
 let loaded_dependencies = ref []
 
 let make ?(dirs=[Conf.plugins_dir; Conf.datadir]) b width height =
-  let backend, options = backend_options b in
+  let backend, options = match b with
+    | [] -> "graphics", ["hold"]
+    | b :: o -> String.lowercase b, o in
   let make =
     try M.find backend !registry (* backend already loaded *)
     with Not_found ->
@@ -401,7 +396,7 @@ let available ~dirs =
     try
       let files = Sys.readdir d in
       Array.fold_left begin fun bk fname ->
-        if start_with fname "archimedes_"
+        if String_utils.start_with fname "archimedes_"
           && Filename.check_suffix fname ext then
             let fname = Filename.chop_suffix fname ext in
             String.sub fname 11 (String.length fname - 11) :: bk
