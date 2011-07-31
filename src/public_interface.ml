@@ -68,11 +68,12 @@ let () =
 
   section "Base elements of a plot";
   include_file "Color";
+  include_file "Path"
+    ~header:"  type t = Archimedes_internals.Path.t\n  \
+               (** Abstract mutable path. *)";
 
   section "Registering backends";
   include_file "Backend";
-  include_file "Path"; (* for now needs the backend but it will be
-                          the other way around. *)
 
   include_file "Coordinate";
   include_file "Viewport";

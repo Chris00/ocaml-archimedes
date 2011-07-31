@@ -77,9 +77,10 @@ let draw_x_axis grid major minor start stop tics offset vp () =
     let align = if pos < 0. then B.CB else B.CT in
     V.show_text_direct vp V.Orthonormal ~x ~y align lbl () in
   let grid_line = function
-    | Tics.Major (_, x) -> let path = Path.make_at x (V.ymin vp) in
-                           Path.line_to path x (V.ymax vp);
-                           V.stroke_direct vp ~path V.Data ()
+    | Tics.Major (_, x) -> let path = Path.make() in
+                          Path.move_to path x (V.ymin vp);
+                          Path.line_to path x (V.ymax vp);
+                          V.stroke_direct vp ~path V.Data ()
     | Tics.Minor _ -> ()
   in
   if grid then begin
@@ -104,9 +105,10 @@ let draw_y_axis grid major minor start stop tics offset vp () =
     let align = if pos < 0. then B.LC else B.RC in
     V.show_text_direct vp V.Orthonormal ~x ~y align lbl () in
   let grid_line = function
-    | Tics.Major (_, y) -> let path = Path.make_at (V.xmin vp) y in
-                           Path.line_to path (V.xmax vp) y;
-                           V.stroke_direct vp ~path V.Data ()
+    | Tics.Major (_, y) -> let path = Path.make() in
+                          Path.move_to path (V.xmin vp) y;
+                          Path.line_to path (V.xmax vp) y;
+                          V.stroke_direct vp ~path V.Data ()
     | Tics.Minor _ -> ()
   in
   if grid then begin

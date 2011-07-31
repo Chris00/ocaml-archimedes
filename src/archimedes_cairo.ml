@@ -19,6 +19,7 @@
 (** Cairo Archimedes plugin *)
 
 open Archimedes
+open Bigarray
 module M = Matrix
 
 module B : Backend.Capabilities =
@@ -133,6 +134,32 @@ struct
     Surface.finish surface
 
 
+  module P = Archimedes_internals.Path
+
+  let path_to_cairo cr = function
+    | P.Move_to(x, y) -> move_to cr x y
+    | P.Line_to(x, y) -> line_to cr x y
+    | P.Rectangle (x, y, w, h) -> rectangle cr x y w h
+    | P.Curve_to(_, _, x1, y1, x2, y2, x3, y3) -> curve_to cr x1 y1 x2 y2 x3 y3
+    | P.Close(x, y) -> close_path cr
+    | P. Array(x, y) ->
+      for i = 1 to Array.length x - 1 do line_to cr x.(i) y.(i) done
+    | P.Fortran(x, y) ->
+      for i = 1 to Array1.dim x do line_to cr x.{i} y.{i} done
+
+  (* The path is in reverse order.  Does this matter?
+     The clipping is taken care of by the cairo backend. *)
+  let stroke_path_preserve cr p =
+    clear_path cr;
+    Queue.iter (path_to_cairo cr) (P.data p);
+    stroke_preserve cr
+
+  let fill_path_preserve cr p =
+    clear_path cr;
+    Queue.iter (path_to_cairo cr) (P.data p);
+    fill_preserve cr
+
+
   let select_font_face t slant weight family =
     (* Could be (unsafely) optimized *)
     let slant = match slant with
@@ -143,10 +170,9 @@ struct
       | Backend.Bold -> Cairo.Bold in
     Cairo.select_font_face t ~slant ~weight family
 
-  let show_text t ~rotate ~x ~y pos text =
+  let show_text cr ~rotate ~x ~y pos text =
     (* Compute the angle between the desired direction and the X axis
        in the device coord. system. *)
-    let cr = t in
     let dx, dy = user_to_device_distance cr (cos rotate) (sin rotate) in
     let angle = atan2 dy dx in
     Cairo.save cr;
@@ -195,5 +221,5 @@ let () =
 
 
 (* Local Variables: *)
-(* compile-command: "make -k archimedes_cairo.cmo archimedes_cairo.cmxs" *)
+(* compile-command: "make -C .. -k" *)
 (* End: *)

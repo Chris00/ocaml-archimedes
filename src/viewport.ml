@@ -504,26 +504,36 @@ end = struct
     let path = get_path vp path coord_name in
     let coord = get_coord_from_name vp coord_name in
     let ctm = Coordinate.use vp.backend coord in
-    let clip = if vp.clip then
-      if coord_name = Data then (xmin vp, xmax vp, ymin vp, ymax vp)
-      else if coord_name = Orthonormal then
-        let maxx, maxy = ortho_from vp Device (1., 1.) in (0., maxx, 0., maxy)
-      else (0., 1., 0., 1.)
-    else (neg_infinity, infinity, neg_infinity, infinity) in
-    Path.stroke_on_backend ~clip path vp.backend;
+    if vp.clip then (
+      match coord_name with
+      | Data ->
+        let x = xmin vp and y = ymin vp in
+        Backend.clip_rectangle vp.backend x y (xmax vp -. x) (ymax vp -. y);
+      | Orthonormal ->
+        let maxx, maxy = ortho_from vp Device (1., 1.) in
+        Backend.clip_rectangle vp.backend 0. 0. maxx maxy
+      | Device | Graph ->
+        Backend.clip_rectangle vp.backend 0. 0. 1. 1.
+    );
+    Backend.stroke_path_preserve vp.backend path;
     Coordinate.restore vp.backend ctm
 
   let fill_direct ?path vp coord_name () =
     let path = get_path vp path coord_name in
     let coord = get_coord_from_name vp coord_name in
     let ctm = Coordinate.use vp.backend coord in
-    let clip = if vp.clip then
-      if coord_name = Data then xmin vp, xmax vp, ymin vp, ymax vp
-      else if coord_name = Orthonormal then
-        let maxx, maxy = ortho_from vp Device (1., 1.) in (0., maxx, 0., maxy)
-      else 0., 1., 0., 1.
-    else neg_infinity, infinity, neg_infinity, infinity in
-    Path.fill_on_backend ~clip path vp.backend;
+    if vp.clip then (
+      match coord_name with
+      | Data ->
+        let x = xmin vp and y = ymin vp in
+        Backend.clip_rectangle vp.backend x y (xmax vp -. x) (ymax vp -. y);
+      | Orthonormal ->
+        let maxx, maxy = ortho_from vp Device (1., 1.) in
+        Backend.clip_rectangle vp.backend 0. 0. maxx maxy
+      | Device | Graph ->
+        Backend.clip_rectangle vp.backend 0. 0. 1. 1.
+    );
+    Backend.fill_path_preserve vp.backend path;
     Coordinate.restore vp.backend ctm
 
   let clip_rectangle_direct vp ~x ~y ~w ~h () =
@@ -549,7 +559,7 @@ end = struct
     Coordinate.restore vp.backend ctm
 
   let path_direct vp ~x ~y path () =
-    orthoinstr_direct vp ~x ~y (Path.stroke_on_backend path)
+    orthoinstr_direct vp ~x ~y (fun b -> Backend.stroke_path_preserve b path)
 
   let mark_direct vp ~x ~y name () =
     orthoinstr_direct vp ~x ~y (Pointstyle.render name)

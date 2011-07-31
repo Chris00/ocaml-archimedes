@@ -105,6 +105,20 @@ sig
   val fill : t -> unit
   val fill_preserve : t -> unit
 
+  val stroke_path_preserve : t -> Path.t -> unit
+  (** [stroke_path bk p] stroke the abstract path [p], where its
+      coordinates are interpreted in the current transformation
+      matrix.  Of course, the current clipping will be obeyed.  After
+      this operation, the current path in [bk] is the transformation
+      of [p].
+
+      The internal representation of the path is available in
+      [Archimedes_internals.Path]. *)
+  val fill_path_preserve : t -> Path.t -> unit
+  (** [fill_path_preserve] is similar to [stroke_path_preserve] except
+      that it fills the path. *)
+
+
   val clip_rectangle : t -> x:float -> y:float -> w:float -> h:float -> unit
   (** Establishes a new clip rectangle by intersecting the current
       clip rectangle.  This {i may clear} the current path.  Calling
@@ -204,7 +218,7 @@ val registered: unit -> string list
   (** Return the list of registered (i.e. loaded) backends. *)
 
 val available : dirs:string list -> string list
-    (** Return the list of available backends in the given directories. *)
+(** Return the list of available backends in the given directories. *)
 
 
 (************************************************************************)

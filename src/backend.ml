@@ -94,6 +94,9 @@ sig
   val fill : t -> unit
   val fill_preserve : t -> unit
 
+  val stroke_path_preserve : t -> Path.t -> unit
+  val fill_path_preserve : t -> Path.t -> unit
+
   val clip_rectangle : t -> x:float -> y:float -> w:float -> h:float -> unit
 
   val save : t -> unit
@@ -152,6 +155,8 @@ type t = {
   stroke_preserve : unit -> unit;
   fill : unit -> unit;
   fill_preserve : unit -> unit;
+  stroke_path_preserve : Path.t -> unit;
+  fill_path_preserve : Path.t -> unit;
   clip_rectangle : x:float -> y:float -> w:float -> h:float -> unit;
 
   save: unit -> unit;
@@ -220,6 +225,8 @@ struct
         stroke_preserve = (fun () -> B.stroke_preserve handle);
         fill = (fun () -> B.fill handle);
         fill_preserve = (fun () -> B.fill_preserve handle);
+        stroke_path_preserve = B.stroke_path_preserve handle;
+        fill_path_preserve = B.fill_path_preserve handle;
         clip_rectangle = B.clip_rectangle handle;
 
         save = (fun () -> B.save handle);
@@ -273,6 +280,8 @@ let stroke t = t.stroke()
 let stroke_preserve t = t.stroke_preserve()
 let fill t = t.fill()
 let fill_preserve t = t.fill_preserve()
+let stroke_path_preserve t p = t.stroke_path_preserve p
+let fill_path_preserve t p = t.fill_path_preserve p
 let clip_rectangle t = t.clip_rectangle
 let save t = t.save()
 let restore t = t.restore()
@@ -286,6 +295,7 @@ let select_font_face t = t.select_font_face
 let set_font_size t = t.set_font_size
 let text_extents t = t.text_extents
 let show_text t = t.show_text
+
 
 type error =
   | Corrupted_dependency of string
