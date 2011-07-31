@@ -218,8 +218,6 @@ struct
 
   let rectangle t ~x ~y ~w ~h =
     let st = get_state t in
-    (* The rectangle may be rotated by the CTM so not be a rectangle
-       anymore in the device coordinates. *)
     let x', y' = Matrix.transform_point st.ctm x y
     and w'x, w'y = Matrix.transform_distance st.ctm w 0.
     and h'x, h'y = Matrix.transform_distance st.ctm 0. h in
@@ -344,19 +342,6 @@ struct
            end
            else Backend.move_to b x y; *)
       Graphics.lineto (round x) (round y)
-    | P.Rectangle(x, y, w, h) ->
-
-      let x, w =
-        if w >= 0. then x, w
-        else x +. w, -. w
-      in
-      let y, h =
-        if h >= 0. then y, h
-        else y +. h, -. h
-      in
-      let x = round x and y = round y
-      and w = round (x +. w) - round x and h = round (y +. h) - round y in
-      Graphics.draw_rect x y w h
     | P.Curve_to(_, _, x1, y1, x2, y2, x3, y3) ->
       let x1, y1 = to_bk x1 y1
       and x2, y2 = to_bk x2 y2
@@ -424,32 +409,6 @@ struct
       coords := [(round x, round y)]
     | P.Line_to(x,y) ->
       coords := (round x, round y) :: !coords
-    | P.Rectangle(x,y,w,h) ->
-        let x, w =
-          if w >= 0. then x, w
-          else x +. w, -. w
-        in
-        let y, h =
-          if h >= 0. then y, h
-          else y +. h, -. h
-        in
-
-        (*let x = round x and y = round y in
-        let w = round w and h = round h in*)
-        let x = round x and y = round y
-        and w = round (x +. w) - round x and h = round (y +. h) - round y in
-        (* If there was no "MOVE_TO" after the rectangle, the base
-           point of the rectangle is used. *)
-        if !coords = [] then
-          (* This rectangle is not continued by another path.  We can
-             optimize using the [fill_rect] Graphics' primitive. *)
-          Graphics.fill_rect x y w h
-        else (
-          let x1 = x + w and y1 = y + h in
-          let c = (x,y) :: (x1,y) :: (x1,y1) :: (x,y1) :: (x,y) :: !coords in
-          fill_subpath c;
-          coords := []
-        )
     | P.Close(x,y) ->
       fill_subpath ((round x, round y) :: !coords);
       coords := []

@@ -139,7 +139,6 @@ struct
   let path_to_cairo cr = function
     | P.Move_to(x, y) -> move_to cr x y
     | P.Line_to(x, y) -> line_to cr x y
-    | P.Rectangle (x, y, w, h) -> rectangle cr x y w h
     | P.Curve_to(_, _, x1, y1, x2, y2, x3, y3) -> curve_to cr x1 y1 x2 y2 x3 y3
     | P.Close(x, y) -> close_path cr
     | P. Array(x, y) ->

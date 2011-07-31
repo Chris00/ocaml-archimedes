@@ -85,7 +85,7 @@ val rel_line_to: t -> x:float -> y:float -> unit
 
 val rectangle: t -> x:float -> y:float -> w:float -> h:float -> unit
 (** [rectangle p x y w h] draws a rectangle specified by ([x], [y], [w],
-    [h]) but does not move the path's current point. *)
+    [h]). *)
 
 val curve_to: t -> x1:float -> y1:float -> x2:float -> y2:float ->
   x3:float -> y3:float -> unit
@@ -124,8 +124,6 @@ val transform : Matrix.t -> t -> t
 type data = private
   | Move_to of float * float
   | Line_to of float * float
-  | Rectangle of float * float * float * float
-    (* RECTANGLE(x, y, width, height) *)
   | Curve_to of float * float * float * float * float * float * float * float
     (* Bézier curve *)
   | Close of float * float

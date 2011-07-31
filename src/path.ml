@@ -109,9 +109,6 @@ let update_curve r x0 y0 x1 y1 x2 y2 x3 y3 =
 type data =
   | Move_to of float * float
   | Line_to of float * float
-  | Rectangle of float * float * float * float
-  (* RECTANGLE(x, y, width, height); this must be seen an an
-     optimization as it will be destroyed by affine transformations. *)
   | Curve_to of float * float * float * float * float * float * float * float
   (* Curve_to(x0, y0, x1, y1, x2, y2, x3, y3): Bézier curve, the
      intial point (x0,y0) is the current point (or (x1,y1) if no
@@ -233,8 +230,13 @@ let line_of_fortran p ?(const_x=false) x ?(const_y=false) y =
 
 
 let rectangle p ~x ~y ~w ~h =
-  Queue.add (Rectangle(x, y, w, h)) p.path;
-  p.extents <- update_rectangle p.extents x y (x +. w) (y +. h);
+  let x1 = x +. w and y1 = y +. h in
+  Queue.add (Move_to(x,  y)) p.path;
+  Queue.add (Line_to(x1, y)) p.path;
+  Queue.add (Line_to(x1, y1)) p.path;
+  Queue.add (Line_to(x,  y1)) p.path;
+  Queue.add (Close(x, y)) p.path;
+  p.extents <- update_rectangle p.extents x y x1 y1;
   p.x <- x;
   p.y <- y;
   p.curr_pt <- true
@@ -303,7 +305,7 @@ exception Beginning_of_subpath of (float * float)
 
 (* FIXME: conditions for Array, Fortran *)
 let find_beginning_of_subpath = function
-  | Move_to(x, y) | Close(x, y) | Rectangle (x, y, _, _) ->
+  | Move_to(x, y) | Close(x, y) ->
     raise(Beginning_of_subpath(x, y))
   | Array(x, y) -> 
     (* | Array(x, y) :: (Move_to _ | Close _ | Rectangle _) :: _ -> *)
@@ -336,18 +338,6 @@ let map_data_to f p' = function
   | Line_to (x, y) ->
     let x, y = f (x, y) in
     Queue.add (Line_to (x, y)) p'
-  | Rectangle (x, y, w, h) ->
-    let x0, y0 = f (x, y) in
-    (* FIXME: Need a special form for log scale ?  Eliminate rectangles
-       from paths..? *)
-    let x1, y1 = f (x +. w, y)
-    and x2, y2 = f (x +. w, y +. h)
-    and x3, y3 = f (x, y +. h) in
-    Queue.add (Close(x0,y0)) p';
-    Queue.add (Line_to(x3,y3)) p';
-    Queue.add (Line_to(x2,y2)) p';
-    Queue.add (Line_to(x1, y1)) p';
-    Queue.add (Move_to(x0,y0)) p'
   | Curve_to (x0, y0, x1, y1, x2, y2, x3, y3) ->
     let x0, y0 = f (x0, y0)
     and x1, y1 = f (x1, y1)
@@ -396,7 +386,6 @@ let transform m p =
 let print_step = function
   | Move_to (x, y) -> printf "Move_to (%f, %f)\n" x y
   | Line_to (x, y) -> printf "Line_to (%f, %f)\n" x y
-  | Rectangle (x, y, w, h) -> printf "Rectangle (%f, %f, %f, %f)\n" x y w h
   | Curve_to (x0, y0, x1, y1, x2, y2, x3, y3) ->
     printf "Curve_to (%f, %f, %f, %f, %f, %f, %f, %f)\n" x0 y0 x1 y1 x2 y2 x3 y3
   | Close (x, y) -> printf "Close (%f, %f)\n" x y
@@ -407,10 +396,14 @@ let print_step = function
     Array.iter (fun y -> printf "%g; " y) y;
     printf "|]\n"
   | Fortran(x, y) ->
-    printf "Fortran(x, y, %S) with\n  x = {|";
+    printf "Fortran(x, y) with\n  x = {|";
     for i = 1 to Array1.dim x do printf "%g; " x.{i} done;
     printf "|}\n  y = {|";
     for i = 1 to Array1.dim x do printf "%g; " y.{i} done;
     printf "|}\n"
 
 let print_path p = Queue.iter print_step p.path
+
+(* Local Variables: *)
+(* compile-command: "make -C .. -k" *)
+(* End: *)
