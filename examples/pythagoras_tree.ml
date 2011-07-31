@@ -36,7 +36,8 @@ let rec tree vp n ms =
   )
 
 let () =
-  let vp = A.init ~w:500. ~h:500. "graphics hold" in
+  let bk = A.backend_of_filename(try Sys.argv.(1) with _ -> "") in
+  let vp = A.init ~w:500. ~h:500. bk in
   A.Axes.box vp;
   A.Viewport.xrange vp (-2.) 2.;
   A.Viewport.yrange vp 0. 4.;

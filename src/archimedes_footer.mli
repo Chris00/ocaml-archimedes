@@ -27,6 +27,9 @@ val init : ?lines:float -> ?text:float -> ?marks:float ->
     Archimedes were installed.
 *)
 
+val backend_of_filename : string -> string
+(** Selects a backend according to the filename suffix. *)
+
 val close : Viewport.t -> unit
 
 
