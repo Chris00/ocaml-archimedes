@@ -128,17 +128,16 @@ type data = private
     (* Bézier curve *)
   | Close of float * float
   (* Optimizations for some specific data structures that are used
-     for caching data points.  These can continue [Curve_to] and
-     [Line_to] subpaths. *)
+     for caching data points.  *)
   | Array of float array * float array
-    (* Array(x, y, pt), the x and y indices increase along the path.
-       [x] and [y] have the same length and are not empty. *)
+  (* Array(x, y, pt), the x and y indices increase along the path.
+     [x] and [y] have the same length and are not empty.  Equivalent
+     to [line_to x.(i) y.(i)] for all [i] but with better storage
+     efficiency. *)
   | Fortran of vec * vec
 
 
 val data : t -> data Queue.t
-
-val extents : t -> Matrix.rectangle
 
 val print_path: t -> unit
 (** [print_path p] Debug function. *)
