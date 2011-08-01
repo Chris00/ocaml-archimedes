@@ -270,6 +270,9 @@ module Function = struct
     if fill then (
       let path = Path.make () in
       Path.unsafe_line_of_array path x y;
+      (* We want to fit only on the extents of [f], so fit now before
+         they're modified. *)
+      V.fit vp (Path.extents path);
       (match base with
       | None ->
         Path.line_to path b 0.;
@@ -277,13 +280,16 @@ module Function = struct
       | Some g ->
         (* Notice that the sampling is in reversed order: *)
         let bx, by = Sampler.x ?tlog ?n ?strategy ?cost g b a in
-         (* FIXME: fill_samplings needs to be rewritten?? *)
+        (* FIXME: fill_samplings needs to be rewritten and moved (along
+           with this code) to Path. *)
         Path.unsafe_line_of_array path bx by
       );
       Path.close path;
       let color = V.get_color vp in
       V.set_color vp fillcolor;
-      V.fill ~path vp V.Data;
+      (* Do not fit on its extents, because we don't want to fit
+         [base]. *)
+      V.fill ~path ~do_fit:false vp V.Data;
       Path.clear path;
       V.set_color vp color;
     );
