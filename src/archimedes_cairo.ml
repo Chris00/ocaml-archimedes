@@ -145,7 +145,7 @@ struct
     | P.Curve_to(_, _, x1, y1, x2, y2, x3, y3) -> curve_to cr x1 y1 x2 y2 x3 y3
     | P.Close(x, y) -> close_path cr
     | P. Array(x, y) ->
-      for i = 1 to Array.length x - 1 do line_to cr x.(i) y.(i) done
+      for i = 0 to Array.length x - 1 do line_to cr x.(i) y.(i) done
     | P.Fortran(x, y) ->
       for i = 1 to Array1.dim x do line_to cr x.{i} y.{i} done
 
