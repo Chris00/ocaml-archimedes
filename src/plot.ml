@@ -21,28 +21,6 @@
 open Utils
 module V = Viewport
 
-(* FIXME: Insets seem to duplicate the fact that paths can compute extents *)
-module Insets = struct
-  type insets = {
-    mutable xmin : float; mutable xmax : float;
-    mutable ymin : float; mutable ymax : float
-  }
-
-  let make () = {
-    xmin = infinity; xmax = neg_infinity;
-    ymin = infinity; ymax = neg_infinity
-  }
-
-  let includepoint insets (x, y) =
-    insets.xmin <- min insets.xmin x;
-    insets.xmax <- max insets.xmax x;
-    insets.ymin <- min insets.ymin y;
-    insets.ymax <- max insets.ymax y
-
-  let fit vp insets =
-    V.auto_fit vp insets.xmin insets.ymin insets.xmax insets.ymax
-end
-
 type pathstyle =
   | Lines
   | Points of string
@@ -215,15 +193,12 @@ let x ?(fill=false) ?(fillcolor=Color.red) ?(pathstyle=Lines)
     ?(base=Iterator.zero_iterator ()) vp iterator =
   let path = Path.make () in
   let closingpath = ref [] in
-  let insets = Insets.make () in
   let f p =
-    Insets.includepoint insets p;
     let bx, by = Iterator.next base in
     draw_data pathstyle path ~base:by p;
     if fill then closingpath := (bx, by) :: !closingpath
   in
   let data_rev = Iterator.iter_cache f iterator in
-  Insets.fit vp insets;
   if fill then begin
     let path = Path.copy path in
     List.iter (close_data pathstyle path) !closingpath;
@@ -235,14 +210,9 @@ let x ?(fill=false) ?(fillcolor=Color.red) ?(pathstyle=Lines)
 (* Factorizes the xy function in most submodules (except Function) *)
 let xy ?(fill=false) ?(fillcolor=Color.red) ?(pathstyle=Lines)
     vp iterator =
-  let insets = Insets.make () in
   let path = Path.make () in
-  let f p =
-    Insets.includepoint insets p;
-    draw_data pathstyle path p
-  in
+  let f p = draw_data pathstyle path p in
   let data_rev = Iterator.iter_cache f iterator in
-  Insets.fit vp insets;
   if fill then fillpath vp path fillcolor;
   V.stroke ~path vp V.Data;
   List.iter (draw_point pathstyle vp) data_rev
@@ -252,14 +222,12 @@ let xy ?(fill=false) ?(fillcolor=Color.red) ?(pathstyle=Lines)
 let stack ?(colors=[|Color.black|]) ?(fillcolors=[| |])
     ?(pathstyle=Boxes 0.5) vp iterators =
   let m = Array.length iterators in
-  let insets = Insets.make () in
   let curx = ref neg_infinity in
   let curbase = ref 0. in
   let paths = Array.init m (fun _ -> Path.make ()) in
   let backpaths = Array.init (succ m) (fun _ -> []) in
   let stacking i iterator =
     let (x, y) = Iterator.next iterator in
-    Insets.includepoint insets (x, y);
     if i = 0 then curx := x else assert (!curx = x);
     draw_data ~base:(!curbase) pathstyle paths.(i) (x, y +. !curbase);
     backpaths.(i) <- (x, !curbase) :: backpaths.(i);
@@ -268,7 +236,6 @@ let stack ?(colors=[|Color.black|]) ?(fillcolors=[| |])
   in
   try while true do curbase := 0.; Array.iteri stacking iterators done
   with Iterator.EOI ->
-    Insets.fit vp insets;
     V.save vp;
     let draw i path =
       if fillcolors <> [| |] then begin
@@ -299,15 +266,6 @@ module Function = struct
     (* FIXME: Implies we need to redo the sampling of we switch to log
        scales? *)
     let x, y = Sampler.x ?tlog ?n ?strategy ?cost f a b in
-    (* Only the Y range is needed (the X one is known) *)
-    let ymin = ref y.(0) and ymax = ref y.(0) in
-    for i = 1 to Array.length y - 1 do
-      if y.(i) < !ymin then ymin := y.(i)
-      else if y.(i) > !ymax then ymax := y.(i)
-    done;
-    V.fit vp { Matrix.x = a; y = !ymin; w = b -. a; h = !ymax -. !ymin};
-    (* FIXME: there must be a better way, this is precisely why we
-       added "optimizations" to the Path structure. *)
     (* Fill *)
     if fill then (
       let path = Path.make () in
