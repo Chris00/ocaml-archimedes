@@ -259,6 +259,10 @@ val auto_fit : t -> float -> float -> float -> float -> unit
 (** [auto_fit vp x0 y0 x1 y1] ensures that the rectangle delimited by
     (x0, y0) and (x1, y1) is included into the axes' ranges *)
 
+val fit : t -> Matrix.rectangle -> unit
+(** [fit vp r] ensures that the rectangle [r] is included into the
+    axes ranges. *)
+
 val save : t -> unit
 val restore : t -> unit
 

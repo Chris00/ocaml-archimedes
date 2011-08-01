@@ -319,6 +319,7 @@ and Viewport : sig
   val do_instructions : t -> unit
 
   val auto_fit : t -> float -> float -> float -> float -> unit
+  val fit : t -> Matrix.rectangle -> unit
 
   val save : t -> unit
   val restore : t -> unit
@@ -673,6 +674,7 @@ end = struct
     vp.clip = false
 
   let set_color vp c =
+    vp.color <- c;  (* one may query the viewport! *)
     add_instruction (set_color_direct vp c) vp
 
   let set_global_line_cap vp lc =
@@ -926,6 +928,10 @@ end = struct
         (yrange.Axes.data_xend <- y1'; yupdated := true);
     (* Update x0, xend ranges, unit_size and gx0, gxend and redraw... *)
     update_axes_ranges vp !xupdated !yupdated
+
+  let fit vp r =
+    auto_fit vp r.Matrix.x r.Matrix.y (r.Matrix.x +. r.Matrix.w)
+      (r.Matrix.y +. r.Matrix.h)
 
   (* Utility function for (x|y)range *)
   let update_axis vp axis axis_size x0 xend =
