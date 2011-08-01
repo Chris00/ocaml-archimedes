@@ -41,9 +41,16 @@ let tests =
   )
 
 let () =
+  let fail_exn = ref 0 in
   List.iter (fun (name, description, test) ->
     List.iter (fun b ->
       Format.printf "@[<2>%s@;- %s@]@." name description;
-      test(b name)
+      try test(b name)
+      with e ->
+        incr fail_exn;
+        Format.printf "  %s@." (Printexc.to_string e)
     ) !backends
-  ) tests
+  ) tests;
+  if !fail_exn > 0 then
+    printf "WARNING: %i test%s failed with an exception.\n"
+      !fail_exn (if !fail_exn > 1 then "s" else "")
