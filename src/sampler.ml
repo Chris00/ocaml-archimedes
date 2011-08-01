@@ -99,11 +99,11 @@ let xy ?tlog ?(n=100)
   if not(is_finite a && is_finite b) then
     invalid_arg "Archimedes.Sampler.xy: bounds of the function must be finite";
   let q = PQ.make() in
-  (* Rough sampling with 21 points, including middle points *)
-  let dt = (b -. a) /. 10. in
+  (* Rough sampling with 31 points, including middle points *)
+  let dt = (b -. a) /. 15. in
   let x0, y0 = f a in
   let x0 = ref x0 and y0 = ref y0 in
-  for i = 0 to 9 do
+  for i = 0 to 14 do
     let t0 = a +. float i *. dt in
     let t1 = t0 +. dt in
     let x1, y1 = f t1 in
@@ -117,7 +117,7 @@ let xy ?tlog ?(n=100)
   done;
   (* Add points (intervals) until the evaluations are exhausted or all
      costs are 0. *)
-  let n = ref(n - 21) in
+  let n = ref(n - 31) in
   let continue = ref true in
   while !continue do
     if !n <= 0 || PQ.max_priority q <= 0. then continue := false
