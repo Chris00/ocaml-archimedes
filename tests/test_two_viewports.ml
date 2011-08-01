@@ -1,7 +1,7 @@
 include Testing
 
-module V = Archimedes.Viewport
-module P = Archimedes.Plot.Function
+module A = Archimedes
+module V = A.Viewport
 
 let draw bk =
   let vp = Archimedes.init ~w ~h ~dirs bk in
@@ -13,10 +13,8 @@ let draw bk =
   V.stroke ~path vps.(0) V.Graph;
   V.stroke ~path vps.(1) V.Graph;
 
-  let sampling1 = P.sampling (fun x -> sin x *. (cos x +. 1.)) 0. 10. in
-  let sampling2 = P.sampling (fun x -> x ** 2.) 0. 10. in
-  P.x vps.(0) sampling1;
-  P.x vps.(1) sampling2;
+  A.fx vps.(0) (fun x -> sin x *. (cos x +. 1.)) 0. 10.;
+  A.fx vps.(1) (fun x -> x ** 2.) 0. 10.;
 
 (*  V.rectangle vps.(1) ~x:0. ~y:0. ~w:1. ~h:1.;*)
   V.stroke vps.(1) V.Device;

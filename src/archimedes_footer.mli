@@ -39,10 +39,8 @@ val backend_of_filename : string -> string list
 
 val close : Viewport.t -> unit
 
-
-val fx : ?tlog:bool ->
-  ?strategy:Sampler.strategy -> ?criterion:Sampler.criterion ->
-  ?min_step:float -> ?nsamples:int ->
-  ?fill:bool -> ?fill_base:(float -> float) -> ?fillcolor:Color.t ->
-  ?pathstyle:Plot.pathstyle -> Viewport.t ->
-  (float -> float) -> float -> float -> unit
+val fx : ?tlog:bool -> ?n:int ->
+  ?strategy:Sampler.strategy -> ?cost:Sampler.cost ->
+  ?pathstyle:Plot.pathstyle -> ?base:(float -> float) ->
+  ?fill:bool -> ?fillcolor:Color.t ->
+  Viewport.t -> (float -> float) -> float -> float -> unit

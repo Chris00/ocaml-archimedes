@@ -59,26 +59,7 @@ val of_fortran2 : (float, Bigarray.float64_elt, Bigarray.fortran_layout)
   Bigarray.Array2.t -> t
 (** [of_fortran2 b] Transforms a bigarray of float couples with a
     Fortran layout into an iterator returning those couples *)
-val of_function : ?tlog:bool -> ?min_step:float -> ?nsamples:int ->
-  ?strategy:Sampler.strategy -> ?criterion:Sampler.criterion ->
-  (float -> float * float) -> float -> float -> t
-(** [of_function f a b] Create an iterator from a function (R to R x
-    R), refining when necessary to get a smooth curve
 
-    @param tlog do we need to step in a logarithmic way ?
-
-    @param min_step don't increment precision more than this threshold
-
-    @param nsamples base number of samples wanted (cut the space
-    between t1 and t2 in nsamples fragments of equivalent size,
-    depending on tlog)
-
-    @param strategy a customized strategy, which can be chosen among
-    those in this module
-
-    @param criterion a customized criterion, which can be chosen among
-    those in this module
-*)
 val of_last : (float * float -> float * float) -> float * float -> t
 (** [of_last f start] Create an iterator which creates its next
     element from the last he has computed using the function [f], starting
@@ -91,10 +72,6 @@ val reset : t -> unit
 val iter : (float * float -> unit) -> t -> unit
 (** [iter f iter] apply the function [f] to all values left in the
     iterator (the iterator won't be resetted !) *)
-val iter_cache : (float * float -> unit) -> t -> (float * float) list
-(** [iter_cache f iter] apply the function [f] to all values left in
-    the iterator. Those values are stored reversed in a list which is
-    returned *)
 
 val constant_iterator : float -> t
 (** [constant_iterator c] Creates an iterator which starts at (0.,
@@ -102,3 +79,11 @@ val constant_iterator : float -> t
 val zero_iterator : unit -> t
 (** [zero_iterator ()] Alias for (constant_iterator 0.) *)
 
+(**/**)
+
+val iter_cache : (float * float -> unit) -> t -> (float * float) list
+(** [iter_cache f iter] apply the function [f] to all values left in
+    the iterator. Those values are stored reversed in a list which is
+    returned.
+
+    FIXME: this is not the signature of an iterator! *)

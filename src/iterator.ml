@@ -31,7 +31,6 @@ type which =
   | Array2 of (float * float) array
   | C2 of (float, B.float64_elt, B.c_layout) B.Array2.t
   | Fortran2 of (float, B.float64_elt, B.fortran_layout) B.Array2.t
-  | Function of Sampler.t
   | From_last of ((float * float -> float * float) * (float * float) ref)
   (* | From_2last of ((float * float) * (float * float) -> float * float *)
 
@@ -52,10 +51,6 @@ let of_array2 a = {data = Array2 a; pos = 0}
 let of_c2 b = {data = C2 b; pos = 0}
 let of_fortran2 b = {data = Fortran2 b; pos = 0}
 
-let of_function ?tlog ?min_step ?nsamples ?strategy ?criterion f a b =
-  {data = Function (Sampler.create ?tlog ?min_step ?nsamples
-                      ?strategy ?criterion f a b);
-   pos = 0}
 let of_last f start = {data = From_last (f, ref start); pos = 0}
 
 let constant_iterator c = of_last (fun (x, y) -> (x +. 1., y)) (0., c)
@@ -85,10 +80,6 @@ let next iter =
     | Fortran2 b -> (* Warning: In Fortran layout, the first index is 1 ! *)
         if iter.pos > B.Array2.dim1 b then raise EOI;
         b.{(succ iter.pos), 0}, b.{(succ iter.pos), 1}
-    | Function f -> begin match Sampler.next f with
-      | None -> raise EOI
-      | Some p -> p
-      end
     | From_last (f, ({contents = p} as last)) ->
         let v = f p in
         last := v;
@@ -103,7 +94,6 @@ let reset iter =
   | List (l, l') -> l' := l
   | List2 (l, l') -> l' := l
   | Array _ | C _ | Fortran _ | Array2 _ | C2 _ | Fortran2 _ -> ()
-  | Function f -> Sampler.reset f
   | From_last _ -> ()
 
 let iter f iter =

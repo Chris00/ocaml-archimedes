@@ -36,26 +36,4 @@ let backend_of_filename fname =
     ["tikz"; fname]
   else ["graphics"; "hold"]
 
-let fx ?tlog ?(strategy=Sampler.strategy_midpoint)
-    ?(criterion=Sampler.criterion_angle ~threshold:3.1) ?min_step ?nsamples
-    ?(fill=false) ?fill_base ?fillcolor ?pathstyle vp f a b =
-  (* FIXME: For now, pathstyles of Plot.Impulses/Boxes or Interval will
-     give maybe unexpected behaviors. We should limit the use of the
-     pathstyle here to Lines Points and Linespoints. Question : should we
-     use a polymorphic variant type for pathstyle ? Or refactor that
-     somehow else. *)
-  let sampling =
-    Plot.Function.sampling ?tlog ~strategy ~criterion ?min_step ?nsamples f a b
-  in
-  if fill then begin
-    let base = match fill_base with
-      | None -> None
-      | Some g -> Some (Plot.Function.sampling
-                          ?tlog ~strategy ~criterion ?min_step ?nsamples g a b)
-    in
-    Plot.Function.fill vp ?fillcolor ?base sampling;
-    match base with
-    | None -> ()
-    | Some g -> Plot.Function.x vp ?pathstyle g
-  end;
-  Plot.Function.x vp ?pathstyle sampling;
+let fx = Plot.Function.x

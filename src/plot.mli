@@ -64,43 +64,17 @@ val stack : ?colors:(Color.t array) -> ?fillcolors:(Color.t array) ->
     default is [Boxes 0.5]) *)
 
 module Function : sig
-  type 'a sampling
-  (** A sampling, the only interresting values for 'a are float and
-      float * float *)
+  val x : ?tlog:bool -> ?n:int ->
+    ?strategy:Sampler.strategy -> ?cost:Sampler.cost ->
+    ?pathstyle:pathstyle -> ?base:(float -> float) ->
+    ?fill:bool -> ?fillcolor:Color.t ->
+    Viewport.t -> (float -> float) -> float -> float -> unit
 
-  val sampling : ?tlog:bool -> ?strategy:Sampler.strategy ->
-    ?criterion:Sampler.criterion -> ?min_step:float -> ?nsamples:int ->
-    (float -> 'a) -> float -> float -> 'a sampling
-  (** [sampling f a b] Creates a sampling for the function [f] between
-      [a] and [b], see Sampler for more explanations over the
-      optional arguments *)
+  val xy : ?tlog:bool -> ?n:int ->
+    ?strategy:Sampler.strategy -> ?cost:Sampler.cost ->
+    ?pathstyle:pathstyle -> ?fill:bool -> ?fillcolor:Color.t ->
+    Viewport.t -> (float -> float * float) -> float -> float -> unit
 
-  val x : ?pathstyle:pathstyle -> ?base:(float -> float) -> Viewport.t -> float sampling -> unit
-  (** [x vp sampling] Plots [sampling] on [vp], the sampling needs to
-      be a function sampling, and not a curve sampling
-
-      @param pathstyle which pathstyle to use (see pathstyle type) *)
-
-  val xy : ?fill:bool -> ?fillcolor:Color.t -> ?pathstyle:pathstyle ->
-    Viewport.t -> (float * float) sampling -> unit
-  (** [xy vp sampling] Plots [sampling] on [vp], the sampling needs to
-      be a curve sampling
-
-      @fill fill the curve delimited by the function ? (default: false)
-
-      @fillcolor color to use for the filling
-
-      @param pathstyle which pathstyle to use (see pathstyle type) *)
-
-  val fill : ?fillcolor:Color.t -> ?base:(float sampling) -> Viewport.t ->
-    float sampling -> unit
-  (** [fill vp sampling] Fills the region between two function samplings
-
-      @param fillcolor the color to use for the filling
-
-      @param base the other sampling used for the filling. The fill
-      function will handle non concordant domains and samplings that
-      "cross over" one another *)
 end
 
 module type Common = sig
