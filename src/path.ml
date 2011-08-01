@@ -493,7 +493,8 @@ let print_data out = function
     fprintf out "|}\n"
 
 let fprint out p =
-  iter p (print_data out);
+  if is_empty p then fprintf out "<Empty path>\n"
+  else iter p (print_data out);
   flush out
 
 (* Local Variables: *)
