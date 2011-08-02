@@ -44,3 +44,6 @@ val fx : ?tlog:bool -> ?n:int ->
   ?style:[`Lines | `Linespoints of string | `Points of string ] ->
   ?base:(float -> float) -> ?fill:bool -> ?fillcolor:Color.t ->
   Viewport.t -> (float -> float) -> float -> float -> unit
+
+
+val set_color : Viewport.t -> Color.t -> unit

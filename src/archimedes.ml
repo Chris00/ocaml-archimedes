@@ -37,3 +37,5 @@ let backend_of_filename fname =
   else ["graphics"; "hold"]
 
 let fx = Plot.Function.x
+
+let set_color = Viewport.set_color
