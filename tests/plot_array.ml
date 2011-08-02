@@ -1,23 +1,26 @@
 include Tests_common
+open Bigarray
+module A = Archimedes
 module V = Archimedes.Viewport
-module P = Archimedes.Plot
 
 let draw backend =
-  let vp = Archimedes.init ~w ~h ~dirs backend in
+  let vp = A.init ~w ~h ~dirs backend in
   let vps = V.columns vp 2 in
   let vp1 = vps.(0) and vp2 = vps.(1) in
 
-  V.set_color vp1 Archimedes.Color.red;
   let x = [| 1.; 2.; 3.; -1.; 0. |] in
-  P.Array.x ~pathstyle:(P.Linespoints "+") vp1 x;
+  A.Axes.box vp1;
+  V.set_color vp1 A.Color.green_yellow;
+  A.Plot.Array.x vp1 x;
+  V.set_color vp1 A.Color.firebrick;
+  V.set_mark_size vp1 20.;
+  A.Plot.Array.x vp1 x ~style:(`Points "*");
 
-  let x = Bigarray.Array1.create Bigarray.float64 Bigarray.fortran_layout 20 in
-  for i = 1 to Bigarray.Array1.dim x do
+  let x = Array1.create float64 fortran_layout 20 in
+  for i = 1 to Array1.dim x do
     x.{i} <- 3. *. sin (float i *. 0.1);
   done;
-  P.Fortran.x vp2 x;
+  A.Axes.box vp2;
+  A.Plot.Fortran.x vp2 x;
 
-  Archimedes.Axes.box vp1;
-  Archimedes.Axes.box vp2;
-
-  Archimedes.close vp
+  A.close vp

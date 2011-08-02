@@ -1,22 +1,31 @@
 (** Plotting various datatypes. *)
-type pathstyle =
-  | Lines
-  (** Data points are joined by a simple line *)
-  | Points of string
-  (** Data points are marked with the mark type given in argument of
-      the Points constructor *)
-  | Linespoints of string
-  (** Data points are joined by a line and marked with the mark type
-      given in argument *)
-  | Impulses
-  (** Data points are "hit" by lines starting from zero *)
-  | Boxes of float
-  (** Data points are the top of a box of custom width (from 0 to 1) *)
-  | Interval of float
-  (** Data points are represented with a line from a base
-      point. That line is delimited by two small orthogonal lines *)
 
-val x : ?fill:bool -> ?fillcolor:Color.t -> ?pathstyle:pathstyle ->
+(** Style of various plots.  Plotting functions only support the
+    subset of these style that make sense for them.
+
+    - [`Lines] Data points are joined by a simple line.
+    - [`Points] Data points are marked with the mark type given in
+    argument of the Points constructor.
+    - [`Linespoints] Data points are joined by a line and marked with
+    the mark type given in argument.
+    - [`Impulses] Data points are "hit" by lines starting from zero.
+    - [`Boxes w] Data points are the top of a box of custom width [w]
+    which must be given in [Data] coordinates (from 0 to 1).
+    - [`Interval h] Data points are represented with a line from a
+    base point.  That line is delimited by two small orthogonal lines.
+    Its height is [h] which must be given in [Data] coordinates.
+*)
+
+type style =
+[ `Lines
+| `Points of string
+| `Linespoints of string
+| `Impulses
+| `Boxes of float
+| `Interval of float ]
+
+
+val x : ?fill:bool -> ?fillcolor:Color.t -> ?style:style ->
   ?base:Iterator.t -> Viewport.t -> Iterator.t -> unit
 (** [x vp iter] Plots the values of [iter] on [vp] according to the
     fact that the x-values of iter are 0, 1, 2, etc. or 1, 2, 3,
@@ -27,13 +36,13 @@ val x : ?fill:bool -> ?fillcolor:Color.t -> ?pathstyle:pathstyle ->
 
     @param fillcolor which color to use for the fill
 
-    @param pathstyle which pathstyle to use (see pathstyle type)
+    @param style which style to use (see the {!style} type).
 
     @param base the base iterator is the other delimiter of the region
     to fill. Default: the zero iterator (giving (0, 0), (1, 0), (2,
     0), etc.) *)
 
-val xy : ?fill:bool -> ?fillcolor:Color.t -> ?pathstyle:pathstyle ->
+val xy : ?fill:bool -> ?fillcolor:Color.t -> ?style:style ->
   Viewport.t -> Iterator.t -> unit
 (** [xy vp iter] Plots the values of [iter] on [vp] with no
     constraints over the values of iter.
@@ -43,10 +52,10 @@ val xy : ?fill:bool -> ?fillcolor:Color.t -> ?pathstyle:pathstyle ->
 
     @param fillcolor which color to use for the fill
 
-    @param pathstyle which pathstyle to use (see pathstyle type) *)
+    @param style which style to use (see the {!style} type). *)
 
 val stack : ?colors:(Color.t array) -> ?fillcolors:(Color.t array) ->
-  ?pathstyle:pathstyle -> Viewport.t -> Iterator.t array -> unit
+  ?style:style -> Viewport.t -> Iterator.t array -> unit
 (** [stack vp iters] Stacks the iterators [iters] on [vp]; which means
     that the first iterator is plotted then used as the base for the
     second iterator, which is plotted and the sum of the two first
@@ -60,8 +69,8 @@ val stack : ?colors:(Color.t array) -> ?fillcolors:(Color.t array) ->
 
     @param fillcolors same as colors, but for filling colors
 
-    @param pathstyle which pathstyle to use (see pathstyle type,
-    default is [Boxes 0.5]) *)
+    @param style which style to use (see the {!style} type, default is
+    [Boxes 0.5]).  *)
 
 module Function : sig
   val x : ?tlog:bool -> ?n:int ->
@@ -88,13 +97,13 @@ module type Common = sig
   (** The curve type, e.g. (float * float) list *)
 
   val x : ?base:data -> ?fill:bool -> ?fillcolor:Color.t ->
-    ?pathstyle:pathstyle -> Viewport.t -> data -> unit
+    ?style:style -> Viewport.t -> data -> unit
   (** Same as the x function of the Plot module, but instead of
       applying to iterators, it applies to a particular data structure
       determined by the submodule which is used (Plot.Array,
       Plot.List, Plot.Fortran or Plot.C) *)
 
-  val xy : ?fill:bool -> ?fillcolor:Color.t -> ?pathstyle:pathstyle ->
+  val xy : ?fill:bool -> ?fillcolor:Color.t -> ?style:style ->
     Viewport.t -> data2 -> unit
   (** Same as the xy function of the Plot module, but instead of
       applying to iterators, it applies to a particular data structure
@@ -102,7 +111,7 @@ module type Common = sig
       Plot.List, Plot.Fortran or Plot.C) *)
 
   val stack : ?colors:(Color.t array) -> ?fillcolors:(Color.t array) ->
-    ?pathstyle:pathstyle -> Viewport.t -> data array -> unit
+    ?style:style -> Viewport.t -> data array -> unit
   (** Same as the stack function of the Plot module, but instead of
       applying to iterators, it applies to a particular data structure
       determined by the submodule which is used (Plot.Array,

@@ -22,7 +22,7 @@ let draw bk =
   A.Axes.add_x_axis vp
     ~tics:(A.Tics.Equidistants (A.Tics.Custom tic_month, 0., 1., 0));
   A.Axes.add_y_axis vp;
-  A.Plot.Array.x vp data ~pathstyle:(A.Plot.Boxes 1.)
+  A.Plot.Array.x vp data ~style:(`Boxes 1.)
     ~fill:true ~fillcolor:A.Color.light_blue;
 
   let cumul_data = Array.copy data in

@@ -21,37 +21,37 @@
 open Utils
 module V = Viewport
 
-type pathstyle =
-  | Lines
-  | Points of string
-  | Linespoints of string
-  | Impulses
-  | Boxes of float (* Width in Data coordinates (usually what we want) *)
-  | Interval of float (* Width in Data coordinates (to be consistent) *)
+type style =
+[ `Lines
+| `Points of string
+| `Linespoints of string
+| `Impulses
+| `Boxes of float
+| `Interval of float ]
 
-let rec draw_data ?(base=0.) pathstyle path (x, y) =
-  if is_finite y then match pathstyle with
-  | Lines | Linespoints _ -> Path.line_to path ~x ~y
-  | Impulses -> draw_data ~base (Boxes 0.) path (x, y)
-  | Points _ -> ()
-  | Boxes w ->
+let rec draw_data ?(base=0.) style path (x, y) =
+  if is_finite y then match style with
+  | `Lines | `Linespoints _ -> Path.line_to path ~x ~y
+  | `Impulses -> draw_data ~base (`Boxes 0.) path (x, y)
+  | `Points _ -> ()
+  | `Boxes w ->
       Path.rectangle path ~x:(x -. w *. 0.5) ~y:base ~w ~h:(y -. base)
-  | Interval size ->
+  | `Interval size ->
       Path.move_to path ~x ~y:base;
       Arrows.path_line_to ~size ~head:Arrows.Stop ~tail:Arrows.Stop path x y
   else Path.close path
 
-let close_data ?(base=0.) pathstyle path (x, y) =
-  if is_finite y then match pathstyle with
-  | Lines | Linespoints _ -> Path.line_to path ~x ~y
-  | Impulses | Points _ | Boxes _ | Interval _ -> ()
+let close_data ?(base=0.) style path (x, y) =
+  if is_finite y then match style with
+  | `Lines | `Linespoints _ -> Path.line_to path ~x ~y
+  | `Impulses | `Points _ | `Boxes _ | `Interval _ -> ()
   else Path.close path
 
-let draw_point pathstyle vp (x, y) =
+let draw_point style vp (x, y) =
   if is_finite y then
-    match pathstyle with
-    | Lines | Impulses | Boxes _ | Interval _ -> ()
-    | Points m | Linespoints m -> V.mark vp ~x ~y m
+    match style with
+    | `Lines | `Impulses | `Boxes _ | `Interval _ -> ()
+    | `Points m | `Linespoints m -> V.mark vp ~x ~y m
 
 let fillpath vp path color =
   V.save vp;
@@ -189,37 +189,37 @@ let fill_samplings vp fillcolor f_samples g_samples =
   V.restore vp
 
 (* Factorizes the x function in most submodules (except Function) *)
-let x ?(fill=false) ?(fillcolor=Color.red) ?(pathstyle=Lines)
+let x ?(fill=false) ?(fillcolor=Color.red) ?(style=`Lines)
     ?(base=Iterator.zero_iterator ()) vp iterator =
   let path = Path.make () in
   let closingpath = ref [] in
   let f p =
     let bx, by = Iterator.next base in
-    draw_data pathstyle path ~base:by p;
+    draw_data style path ~base:by p;
     if fill then closingpath := (bx, by) :: !closingpath
   in
   let data_rev = Iterator.iter_cache f iterator in
   if fill then begin
     let path = Path.copy path in
-    List.iter (close_data pathstyle path) !closingpath;
+    List.iter (close_data style path) !closingpath;
     fillpath vp path fillcolor
   end;
   V.stroke ~path vp V.Data;
-  List.iter (draw_point pathstyle vp) data_rev
+  List.iter (draw_point style vp) data_rev
 
 (* Factorizes the xy function in most submodules (except Function) *)
-let xy ?(fill=false) ?(fillcolor=Color.red) ?(pathstyle=Lines)
+let xy ?(fill=false) ?(fillcolor=Color.red) ?(style=`Lines)
     vp iterator =
   let path = Path.make () in
-  let data_rev = Iterator.iter_cache (draw_data pathstyle path) iterator in
+  let data_rev = Iterator.iter_cache (draw_data style path) iterator in
   if fill then fillpath vp path fillcolor;
   V.stroke ~path vp V.Data;
-  List.iter (draw_point pathstyle vp) data_rev
+  List.iter (draw_point style vp) data_rev
 
 (* Factorizes the stack function in most submodules (except Function) *)
 (* TODO choose a better default list of colors / fillcolors *)
 let stack ?(colors=[|Color.black|]) ?(fillcolors=[| |])
-    ?(pathstyle=Boxes 0.5) vp iterators =
+    ?(style=`Boxes 0.5) vp iterators =
   let m = Array.length iterators in
   let curx = ref neg_infinity in
   let curbase = ref 0. in
@@ -228,7 +228,7 @@ let stack ?(colors=[|Color.black|]) ?(fillcolors=[| |])
   let stacking i iterator =
     let (x, y) = Iterator.next iterator in
     if i = 0 then curx := x else assert (!curx = x);
-    draw_data ~base:(!curbase) pathstyle paths.(i) (x, y +. !curbase);
+    draw_data ~base:(!curbase) style paths.(i) (x, y +. !curbase);
     backpaths.(i) <- (x, !curbase) :: backpaths.(i);
     curbase := !curbase +. y;
     if i = pred m then backpaths.(m) <- (x, !curbase) :: backpaths.(m)
@@ -239,12 +239,12 @@ let stack ?(colors=[|Color.black|]) ?(fillcolors=[| |])
     let draw i path =
       if fillcolors <> [| |] then begin
         let path = Path.copy path in
-        List.iter (close_data pathstyle path) backpaths.(i);
+        List.iter (close_data style path) backpaths.(i);
         fillpath vp path fillcolors.(i mod (Array.length fillcolors))
       end;
       V.set_color vp (colors.(i mod (Array.length colors)));
       V.stroke ~path vp V.Data;
-      List.iter (draw_point pathstyle vp) backpaths.(succ i)
+      List.iter (draw_point style vp) backpaths.(succ i)
     in
     Array.iteri draw paths;
     V.restore vp
@@ -318,25 +318,25 @@ end
 
 (* The following functions simplify the implementation of x, xy and stack
    in standard submodules *)
-let basex transform ?base ?fill ?fillcolor ?pathstyle vp data =
-  x ?fill ?fillcolor ?pathstyle ?base vp (transform data)
-let basexy transform ?fill ?fillcolor ?pathstyle vp data =
-  xy ?fill ?fillcolor ?pathstyle vp (transform data)
-let basestack transform ?colors ?fillcolors ?pathstyle vp datas =
-  stack ?colors ?fillcolors ?pathstyle vp (Array.map transform datas)
+let basex transform ?base ?fill ?fillcolor ?style vp data =
+  x ?fill ?fillcolor ?style ?base vp (transform data)
+let basexy transform ?fill ?fillcolor ?style vp data =
+  xy ?fill ?fillcolor ?style vp (transform data)
+let basestack transform ?colors ?fillcolors ?style vp datas =
+  stack ?colors ?fillcolors ?style vp (Array.map transform datas)
 
 module type Common = sig
   type data
   type data2
 
   val x : ?base:data -> ?fill:bool -> ?fillcolor:Color.t ->
-    ?pathstyle:pathstyle -> Viewport.t -> data -> unit
+    ?style:style -> Viewport.t -> data -> unit
 
-  val xy : ?fill:bool -> ?fillcolor:Color.t -> ?pathstyle:pathstyle ->
+  val xy : ?fill:bool -> ?fillcolor:Color.t -> ?style:style ->
     Viewport.t -> data2 -> unit
 
   val stack : ?colors:(Color.t array) -> ?fillcolors:(Color.t array) ->
-    ?pathstyle:pathstyle -> Viewport.t -> data array -> unit
+    ?style:style -> Viewport.t -> data array -> unit
 end
 
 module Array = struct
