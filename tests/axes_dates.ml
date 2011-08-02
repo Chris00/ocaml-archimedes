@@ -23,5 +23,14 @@ let draw bk =
     ~tics:(A.Tics.Equidistants (A.Tics.Custom tic_month, 0., 1., 0));
   A.Axes.add_y_axis vp;
   A.Plot.Array.x vp data ~pathstyle:(A.Plot.Boxes 1.)
-    ~fill:true ~fillcolor:A.Color.blue;
+    ~fill:true ~fillcolor:A.Color.light_blue;
+
+  let cumul_data = Array.copy data in
+  for i = 1 to Array.length data - 1 do
+    cumul_data.(i) <- cumul_data.(i) +. cumul_data.(i - 1)
+  done;
+  A.Viewport.set_line_width vp 2.;
+  A.Viewport.set_color vp A.Color.red;
+  A.Plot.Array.x vp cumul_data;
+
   A.close vp
