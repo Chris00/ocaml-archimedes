@@ -41,6 +41,6 @@ val close : Viewport.t -> unit
 
 val fx : ?tlog:bool -> ?n:int ->
   ?strategy:Sampler.strategy -> ?cost:Sampler.cost ->
-  ?pathstyle:Plot.pathstyle -> ?base:(float -> float) ->
-  ?fill:bool -> ?fillcolor:Color.t ->
+  ?style:[`Lines | `Linespoints of string | `Points of string ] ->
+  ?base:(float -> float) -> ?fill:bool -> ?fillcolor:Color.t ->
   Viewport.t -> (float -> float) -> float -> float -> unit

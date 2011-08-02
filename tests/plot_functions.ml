@@ -8,7 +8,7 @@ let draw backend =
   A.Viewport.set_mark_size vp.(0).(0) 3.;
   A.Axes.box vp.(0).(0);
   A.Viewport.set_color vp.(0).(0) A.Color.blue;
-  A.fx vp.(0).(0) (fun x -> x *. x) (-3.) 3. ~pathstyle:(A.Plot.Linespoints "+");
+  A.fx vp.(0).(0) (fun x -> x *. x) (-3.) 3. ~style:(`Linespoints "+");
 
   A.Axes.box vp.(1).(0);
   A.Viewport.set_color vp.(1).(0) A.Color.red;

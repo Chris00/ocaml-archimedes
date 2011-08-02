@@ -12,9 +12,8 @@ let draw bk =
 
   A.Axes.box vps.(1).(1);
   V.set_color vps.(1).(1) A.Color.aquamarine;
-  A.fx vps.(1).(1) sin (-5.) 5. ~pathstyle:(A.Plot.Interval 0.2);
-
-  A.Axes.box vp;
+  V.set_mark_size vps.(1).(1) 10.;
+  A.fx vps.(1).(1) sin (-5.) 5. ~style:(`Points "|");
 
   V.yrange vps.(0).(1) (-2.) 2.;
   A.Axes.box vps.(0).(1);

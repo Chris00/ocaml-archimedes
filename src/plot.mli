@@ -66,13 +66,14 @@ val stack : ?colors:(Color.t array) -> ?fillcolors:(Color.t array) ->
 module Function : sig
   val x : ?tlog:bool -> ?n:int ->
     ?strategy:Sampler.strategy -> ?cost:Sampler.cost ->
-    ?pathstyle:pathstyle -> ?base:(float -> float) ->
-    ?fill:bool -> ?fillcolor:Color.t ->
+    ?style:[`Lines | `Linespoints of string | `Points of string ] ->
+    ?base:(float -> float) -> ?fill:bool -> ?fillcolor:Color.t ->
     Viewport.t -> (float -> float) -> float -> float -> unit
 
   val xy : ?tlog:bool -> ?n:int ->
     ?strategy:Sampler.strategy -> ?cost:Sampler.cost ->
-    ?pathstyle:pathstyle -> ?fill:bool -> ?fillcolor:Color.t ->
+    ?style:[`Lines | `Linespoints of string | `Points of string ] ->
+    ?fill:bool -> ?fillcolor:Color.t ->
     Viewport.t -> (float -> float * float) -> float -> float -> unit
 
 end

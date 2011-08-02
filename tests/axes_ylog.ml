@@ -6,6 +6,6 @@ let draw bk =
   A.Viewport.set_ylog vp true;
 
   A.Axes.box ~tics:(A.Tics.Equidistants (A.Tics.Number 5, 0.1, 10., 5)) vp;
-  A.fx vp (fun x -> x *. x) 0.1 10. ~pathstyle:(A.Plot.Linespoints "o") ;
+  A.fx vp (fun x -> x *. x) 0.1 10. ~style:(`Linespoints "o") ;
 
   A.close vp

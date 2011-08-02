@@ -250,84 +250,68 @@ let stack ?(colors=[|Color.black|]) ?(fillcolors=[| |])
     V.restore vp
 
 module Function = struct
-  let draw_marks vp pathstyle x y =
-    match pathstyle with
-    | Lines | Impulses | Boxes _ | Interval _ -> ()
-    | Points m | Linespoints m ->
+  let draw_marks vp style x y =
+    match style with
+    | `Lines -> ()
+    | `Points m | `Linespoints m ->
       for i = 0 to Array.length x - 1 do
         V.mark vp x.(i) y.(i) m
       done
 
   let default_fillcolor = Color.rgb 0.95 0.95 0.95
 
-  let x ?tlog ?n ?strategy ?cost ?(pathstyle=Lines) ?base
+  let x ?tlog ?n ?strategy ?cost ?(style=`Lines) ?base
       ?(fill=false) ?(fillcolor=default_fillcolor) vp f a b =
     (* FIXME: Implies we need to redo the sampling of we switch to log
        scales? *)
     let x, y = Sampler.x ?tlog ?n ?strategy ?cost f a b in
+    let path = Path.make () in
+    Path.unsafe_line_of_array path x y;
+    V.fit vp (Path.extents path);
     (* Fill *)
     if fill then (
-      let path = Path.make () in
-      Path.unsafe_line_of_array path x y;
-      (* We want to fit only on the extents of [f], so fit now before
-         they're modified. *)
-      V.fit vp (Path.extents path);
+      let path_fill = Path.copy path in
       (match base with
       | None ->
-        Path.line_to path b 0.;
-        Path.line_to path a 0.
+        Path.line_to path_fill b 0.;
+        Path.line_to path_fill a 0.
       | Some g ->
         (* Notice that the sampling is in reversed order: *)
         let bx, by = Sampler.x ?tlog ?n ?strategy ?cost g b a in
         (* FIXME: fill_samplings needs to be rewritten and moved (along
            with this code) to Path. *)
-        Path.unsafe_line_of_array path bx by
+        Path.unsafe_line_of_array path_fill bx by
       );
-      Path.close path;
+      Path.close path_fill;
       let color = V.get_color vp in
       V.set_color vp fillcolor;
       (* Do not fit on its extents, because we don't want to fit
          [base]. *)
-      V.fill ~path ~fit:false vp V.Data;
-      Path.clear path;
+      V.fill ~path:path_fill ~fit:false vp V.Data;
       V.set_color vp color;
     );
-    let path = Path.make () in
-    let base = match base with None -> (fun _ -> 0.) | Some b -> b in
-    (* Lines *)
-    (match pathstyle with
-    | Lines | Linespoints _ -> Path.unsafe_line_of_array path x y
-    | Impulses ->
-      for i = 0 to Array.length x - 1 do
-        Path.move_to path x.(i) (base x.(i));
-        Path.line_to path x.(i) y.(i);
-      done
-    | Points _ -> ()
-    | Boxes w ->
-      for i = 0 to Array.length x - 1 do
-        let b = base x.(i) in
-        Path.rectangle path ~x:(x.(i) -. w *. 0.5) ~y:b ~w ~h:(y.(i) -. b)
-      done
-    | Interval size ->
-      for i = 0 to Array.length x - 1 do
-        Path.move_to path x.(i) y.(i);
-        Arrows.path_line_to ~size ~head:Arrows.Stop ~tail:Arrows.Stop
-          path x.(i) y.(i)
-      done);
-    V.stroke ~path vp V.Data;
-    draw_marks vp pathstyle x y
+    (match style with
+    | `Lines | `Linespoints _ -> V.stroke ~path vp V.Data
+    | `Points _ -> ()); (* Do not usually make sense but convenient
+                        so see which data points where chosen. *)
+    draw_marks vp style x y
 
   (* FIXME: finish implementing *)
-  let xy ?tlog ?n ?strategy ?cost
-      ?(pathstyle=Lines) ?(fill=false)
+  let xy ?tlog ?n ?strategy ?cost ?(style=`Lines) ?(fill=false)
       ?(fillcolor=default_fillcolor) vp f a b =
     let path = Path.make () in
     let x, y = Sampler.xy ?tlog ?n ?strategy ?cost f a b in
     Path.unsafe_line_of_array path x y;
     V.fit vp (Path.extents path);
-    if fill then V.fill ~path vp V.Data;
-    V.stroke ~path vp V.Data;
-    draw_marks vp pathstyle x y
+    if fill then (
+      let path_closed = Path.copy path in (* will not copy x, y *)
+      Path.close path_closed;
+      V.fill ~path:path_closed vp V.Data;
+    );
+    (match style with
+    | `Lines | `Linespoints _ -> V.stroke ~path vp V.Data
+    | `Points _ -> ());
+    draw_marks vp style x y
 
 end
 

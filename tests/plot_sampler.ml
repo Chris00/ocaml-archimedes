@@ -10,7 +10,7 @@ let draw bk =
   let vp = A.init ~w ~h ~dirs bk in
   A.Viewport.set_mark_size vp 1.;
   A.Viewport.set_color vp A.Color.dark_olive_green;
-  A.fx vp f (-0.4) 0.4 ~n:200 ~pathstyle:(A.Plot.Points "o")
+  A.fx vp f (-0.4) 0.4 ~n:200 ~style:(`Points "o")
     ~fill:true ~fillcolor:A.Color.light_goldenrod;
   A.Viewport.set_color vp A.Color.black;
   A.Axes.box vp;
