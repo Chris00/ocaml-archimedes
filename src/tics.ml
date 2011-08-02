@@ -24,10 +24,10 @@ type labels =
   | Number of int
   | Expnumber of float
   | Expnumber_named of float * string
-  | Custom of (float -> string option)
+  | Custom of (float -> string)
 
 type tic =
-  | Major of string option * float
+  | Major of string * float
   | Minor of float
 
 type t =
@@ -69,11 +69,11 @@ let nicenum x round =
 
 
 let label_of_float label x = match label with
-  | No_label -> None
-  | Text _ -> raise (Failure "Not yet implemented")
-  | Number n -> Some (Printf.sprintf "%.*g" n x)
-  | Expnumber _ -> raise (Failure "Not yet implemented")
-  | Expnumber_named _ -> raise (Failure "Not yet implemented")
+  | No_label -> ""
+  | Text _ -> failwith "FIXME: Not yet implemented"
+  | Number n -> Printf.sprintf "%.*g" n x
+  | Expnumber _ -> failwith "FIXME: Not yet implemented"
+  | Expnumber_named _ -> failwith "FIXME: Not yet implemented"
   | Custom f -> f x
 
 (* FIXME: log in unused for now, we have to take it into account. *)

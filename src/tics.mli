@@ -27,10 +27,10 @@ type labels =
 | Number of int
 | Expnumber of float
 | Expnumber_named of float * string
-| Custom of (float -> string option) (* TODO no option needed *)
+| Custom of (float -> string)
 
 type tic =
-| Major of string option * float
+| Major of string * float
 | Minor of float
 
 type t =

@@ -38,9 +38,8 @@ let tic vp x y (tic_type, tic_size) =
   V.mark_direct vp x y tic_type ()
 
 let draw_tic tic majors minors text = function
-  | Tics.Major (None, v) -> tic v majors
-  | Tics.Major (Some label, v) -> tic v majors;
-      text v label
+  | Tics.Major("", v) -> tic v majors
+  | Tics.Major(label, v) -> tic v majors;  text v label
   | Tics.Minor v -> tic v minors
 
 let arrow_offset xrange arrow =

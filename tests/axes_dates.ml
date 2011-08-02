@@ -17,10 +17,10 @@ let draw bk =
     and m = x' mod 12 in
     let month = months.(m) in
     let label = if m = 0 then month ^ " " ^ string_of_int y else month in
-    Some(label)
+    label
   in
   A.Axes.add_x_axis vp
-    ~tics:(A.Tics.Equidistants ((A.Tics.Custom tic_month), 0., 1., 0));
+    ~tics:(A.Tics.Equidistants (A.Tics.Custom tic_month, 0., 1., 0));
   A.Axes.add_y_axis vp;
   A.Plot.Array.x vp data ~pathstyle:(A.Plot.Boxes 1.)
     ~fill:true ~fillcolor:A.Color.blue;
