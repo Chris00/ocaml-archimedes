@@ -65,7 +65,7 @@ let draw_x_axis grid major minor start stop tics offset vp () =
   and yrange = V.ymax vp -. V.ymin vp in
   let x1 = V.xmin vp -. arrow_offset xrange start
   and x2 = V.xmax vp +. arrow_offset xrange stop in
-  let tics_values = Tics.tics (V.xlog vp) x1 x2 tics in
+  let tics_values = Tics.tics ~log:(V.xlog vp) x1 x2 tics in
   let offset, dir = axis_offset (V.ymin vp) yrange offset in
   Arrows.line_direct ~head:stop ~tail:start vp x1 offset x2 offset ();
   let tic x = tic vp x offset in
@@ -93,7 +93,7 @@ let draw_y_axis grid major minor start stop tics offset vp () =
   and yrange = V.ymax vp -. V.ymin vp in
   let y1 = V.ymin vp -. arrow_offset yrange start
   and y2 = V.ymax vp +. arrow_offset yrange stop in
-  let tics_values = Tics.tics (V.ylog vp) (V.ymin vp) (V.ymax vp) tics in
+  let tics_values = Tics.tics ~log:(V.ylog vp) (V.ymin vp) (V.ymax vp) tics in
   let offset, dir = axis_offset (V.xmin vp) xrange offset in
   Arrows.line_direct ~head:stop ~tail:start vp offset y1 offset y2 ();
   let tic y = tic vp offset y in

@@ -114,9 +114,9 @@ let equi_labels log offset d_major num_minor xmin xmax labels =
   in
   if d_major > 0. then aux_tics d_minor [] (- minors_before) first_tic else []
 
-let tics log xmin xmax = function
-  | Fixed _ -> raise (Failure "Not yet implemented")
-  | Fixed_norm _ -> raise (Failure "Not yet implemented")
+let tics ?(log=false) xmin xmax = function
+  | Fixed _ -> failwith "FIXME: Not yet implemented"
+  | Fixed_norm _ -> failwith "FIXME: Not yet implemented"
   | Equidistants (labels, offset, d_major, num_minor) ->
     equi_labels log offset d_major num_minor xmin xmax labels
   | Auto labels -> loose_labels log xmin xmax labels

@@ -29,16 +29,18 @@ type labels =
 | Expnumber_named of float * string
 | Custom of (float -> string)
 
-type tic =
-| Major of string * float
-| Minor of float
-
 type t =
 | Fixed of labels * float list
 | Fixed_norm of labels * float list
 | Equidistants of labels * float * float * int
 | Auto of labels
 
-val tics: bool -> float -> float -> t -> tic list
-(* TODO log : optional *)
+type tic =
+| Major of string * float
+| Minor of float
 
+val tics: ?log:bool -> float -> float -> t -> tic list
+(** [tics xmin xmax spec] return a description of the tics for the
+    interval [xmin .. xmax] according to the specification [spec].
+
+    @param log whether log scales are desired.  Default: [false]. *)
