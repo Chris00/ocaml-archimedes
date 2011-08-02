@@ -216,6 +216,9 @@ val axes_ratio : t -> float -> unit
 (** [axes_ratio vp ratio] forces axes to keep [ratio] ([w / h]). *)
 val xrange : t -> float -> float -> unit
 val yrange : t -> float -> float -> unit
+val xlabel : t -> string -> unit
+val ylabel : t -> string -> unit
+val title : t -> string -> unit
 
 val xmin : t -> float
 val xmax : t -> float

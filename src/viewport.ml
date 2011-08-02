@@ -303,6 +303,9 @@ and Viewport : sig
   val axes_ratio : t -> float -> unit
   val xrange : t -> float -> float -> unit
   val yrange : t -> float -> float -> unit
+  val xlabel : t -> string -> unit
+  val ylabel : t -> string -> unit
+  val title  : t -> string -> unit
 
   val set_xlog : t -> bool -> unit
   val set_ylog : t -> bool -> unit
@@ -957,6 +960,19 @@ end = struct
   let set_xlog vp v = vp.axes_system.Axes.x.Axes.log <- v
   let set_ylog vp v = vp.axes_system.Axes.y.Axes.log <- v
 
+  (* FIXME: poor implementations.  The label should be stored and used
+     to determine the space for the graphic. *)
+  let xlabel_direct vp s =
+    show_text_direct vp Device ~x:0.5 ~y:0.04 Backend.CB s
+
+  let ylabel_direct vp s =
+    show_text_direct vp Device ~x:0.01 ~y:0.5 Backend.RC s
+      ~rotate:1.57079632679489656 (* pi / 2 *)
+
+  let title_direct vp s =
+    show_text_direct vp Device ~x:0.5 ~y:0.96 Backend.CT s
+
+
 (* Synchronization
  ***********************************************************************)
 
@@ -1261,6 +1277,15 @@ end = struct
       auto_fit vp x0 y0 xend yend
     end;
     add_instruction (show_text_direct vp coord_name ~rotate ~x ~y pos text) vp
+
+  let xlabel vp s =
+    add_instruction (xlabel_direct vp s) vp
+
+  let ylabel vp s =
+    add_instruction (ylabel_direct vp s) vp
+
+  let title vp s =
+    add_instruction (title_direct vp s) vp
 
   let mark vp ~x ~y name =
     auto_fit vp x y x y;
