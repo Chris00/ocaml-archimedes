@@ -259,10 +259,10 @@ and Viewport : sig
   val close_path : t -> unit
   val clear_path : t -> unit
     (*val path_extents : t -> rectangle*)
-  val stroke_preserve : ?path:Path.t -> t -> coord_name -> unit
-  val stroke : ?path:Path.t -> t -> coord_name -> unit
-  val fill_preserve : ?path:Path.t -> t -> coord_name -> unit
-  val fill : ?path:Path.t -> t -> coord_name -> unit
+  val stroke_preserve : ?path:Path.t -> ?fit:bool -> t -> coord_name -> unit
+  val stroke : ?path:Path.t -> ?fit:bool -> t -> coord_name -> unit
+  val fill_preserve : ?path:Path.t -> ?fit:bool -> t -> coord_name -> unit
+  val fill : ?path:Path.t -> ?fit:bool -> t -> coord_name -> unit
   val clip_rectangle : t -> x:float -> y:float -> w:float -> h:float -> unit
     (*  val save_vp : t -> unit
         val restore_vp : t -> unit*)
@@ -1204,34 +1204,24 @@ end = struct
 
   let path_extents vp = Path.extents vp.path
 
-  let fit_path vp path =
-    let e = Path.extents path in
-    let x0 = e.Matrix.x
-    and y0 = e.Matrix.y in
-    let x1 = x0 +. e.Matrix.w
-    and y1 = y0 +. e.Matrix.h in
-    auto_fit vp x0 y0 x1 y1
-
-  let stroke_preserve ?path vp coord_name =
+  let stroke_preserve ?path ?fit:(do_fit=true) vp coord_name =
     let path = get_path ~notransform:true vp path coord_name in
-    if coord_name = Data then
-      fit_path vp path;
+    if do_fit && coord_name = Data then fit vp (Path.extents path);
     let path = Path.copy path in
     add_instruction (stroke_direct ~path vp coord_name) vp
 
-  let stroke ?path vp coord_name =
-    stroke_preserve ?path vp coord_name;
+  let stroke ?path ?fit vp coord_name =
+    stroke_preserve ?path ?fit vp coord_name;
     if path = None then add_instruction (fun () -> Path.clear vp.path) vp
 
-  let fill_preserve ?path vp coord_name =
+  let fill_preserve ?path ?fit:(do_fit=true) vp coord_name =
     let path = get_path ~notransform:true vp path coord_name in
-    if coord_name = Data then
-      fit_path vp path;
+    if do_fit && coord_name = Data then fit vp (Path.extents path);
     let path = Path.copy path in
     add_instruction (fill_direct ~path vp coord_name) vp
 
-  let fill ?path vp coord_name =
-    fill_preserve ?path vp coord_name;
+  let fill ?path ?fit vp coord_name =
+    fill_preserve ?path ?fit vp coord_name;
     if path = None then add_instruction (fun () -> Path.clear vp.path) vp
 
   let clip_rectangle vp ~x ~y ~w ~h =

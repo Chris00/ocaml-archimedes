@@ -184,24 +184,22 @@ val move_to : t -> x:float -> y:float -> unit
 val line_to : t -> x:float -> y:float -> unit
 val rel_move_to : t -> x:float -> y:float -> unit
 val rel_line_to : t -> x:float -> y:float -> unit
-val curve_to :
-  t ->
-  x1:float ->
-  y1:float -> x2:float -> y2:float -> x3:float -> y3:float -> unit
+val curve_to : t ->
+  x1:float -> y1:float -> x2:float -> y2:float -> x3:float -> y3:float -> unit
 val rectangle : t -> x:float -> y:float -> w:float -> h:float -> unit
 val arc : t -> r:float -> a1:float -> a2:float -> unit
 val close_path : t -> unit
 val clear_path : t -> unit
 (*val path_extents : t -> rectangle*)
-val stroke_preserve : ?path:Path.t -> t -> coord_name -> unit
+val stroke_preserve : ?path:Path.t -> ?fit:bool -> t -> coord_name -> unit
 (** strokes the path (default: viewport's path) on the specified
     coordinate system, doesn't clear the viewport's path if no path
     given *)
-val stroke : ?path:Path.t -> t -> coord_name -> unit
+val stroke : ?path:Path.t -> ?fit:bool -> t -> coord_name -> unit
 (** strokes the path (default: viewport's path) on the specified
     coordinate system, does clear the viewport's path if no path given *)
-val fill_preserve : ?path:Path.t -> t -> coord_name -> unit
-val fill : ?path:Path.t -> t -> coord_name -> unit
+val fill_preserve : ?path:Path.t -> ?fit:bool -> t -> coord_name -> unit
+val fill : ?path:Path.t -> ?fit:bool -> t -> coord_name -> unit
 val clip_rectangle : t -> x:float -> y:float -> w:float -> h:float -> unit
 (*    val save_vp : t -> unit
       val restore_vp : t -> unit*)
