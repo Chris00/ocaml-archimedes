@@ -66,13 +66,13 @@ let draw_x_axis grid major minor start stop tics offset vp () =
   let x1 = V.xmin vp -. arrow_offset xrange start
   and x2 = V.xmax vp +. arrow_offset xrange stop in
   let tics_values = Tics.tics (V.xlog vp) x1 x2 tics in
-  let offset, pos = axis_offset (V.ymin vp) yrange offset in
+  let offset, dir = axis_offset (V.ymin vp) yrange offset in
   Arrows.line_direct ~head:stop ~tail:start vp x1 offset x2 offset ();
   let tic x = tic vp x offset in
   let text x lbl =
     let x, y = V.ortho_from vp V.Data (x, offset) in
-    let y = y +. 0.0375 *. pos in
-    let align = if pos < 0. then Backend.CB else Backend.CT in
+    let y = y +. 0.02 *. dir in
+    let align = if dir < 0. then Backend.CB else Backend.CT in
     V.show_text_direct vp V.Orthonormal ~x ~y align lbl () in
   let grid_line = function
     | Tics.Major (_, x) -> let path = Path.make() in
@@ -94,13 +94,13 @@ let draw_y_axis grid major minor start stop tics offset vp () =
   let y1 = V.ymin vp -. arrow_offset yrange start
   and y2 = V.ymax vp +. arrow_offset yrange stop in
   let tics_values = Tics.tics (V.ylog vp) (V.ymin vp) (V.ymax vp) tics in
-  let offset, pos = axis_offset (V.xmin vp) xrange offset in
+  let offset, dir = axis_offset (V.xmin vp) xrange offset in
   Arrows.line_direct ~head:stop ~tail:start vp offset y1 offset y2 ();
   let tic y = tic vp offset y in
   let text y lbl =
     let x, y = V.ortho_from vp V.Data (offset, y) in
-    let x = x +. 0.0375 *. pos in
-    let align = if pos < 0. then Backend.LC else Backend.RC in
+    let x = x +. 0.02 *. dir in
+    let align = if dir < 0. then Backend.LC else Backend.RC in
     V.show_text_direct vp V.Orthonormal ~x ~y align lbl () in
   let grid_line = function
     | Tics.Major (_, y) -> let path = Path.make() in
