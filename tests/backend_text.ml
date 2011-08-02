@@ -1,4 +1,4 @@
-include Testing
+include Tests_common
 module Backend = Archimedes.Backend
 
 let half_pi = pi /. 2.

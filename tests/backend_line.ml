@@ -1,4 +1,4 @@
-include Testing
+include Tests_common
 module Backend = Archimedes.Backend
 
 let description = "Some drawings on backend (arcs, equal sign, huge line)"

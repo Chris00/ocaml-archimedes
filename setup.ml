@@ -5300,16 +5300,9 @@ let setup () = BaseSetup.setup setup_t;;
 (* OASIS_STOP *)
 
 let skip = [
-  (* TODO drop those tests or fix them *)
-  "test_layer.ml";
-  "cairo_backend.ml";
-  "functions.ml";
-  "test_handle.ml";
-  "test_custom_labels.ml";
-  "test_log.ml";
   (* Common configuration *)
   "tests.ml";
-  "testing.ml";
+  "tests_common.ml";
 ]
 
 let is_test fname =

@@ -1,4 +1,4 @@
-include Testing
+include Tests_common
 module B = Archimedes.Backend
 module Matrix = Archimedes.Matrix
 

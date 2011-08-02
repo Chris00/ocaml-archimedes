@@ -1,4 +1,4 @@
-include Testing
+include Tests_common
 
 module V = Archimedes.Viewport
 module PC = Archimedes.Piechart

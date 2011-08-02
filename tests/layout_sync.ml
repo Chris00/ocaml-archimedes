@@ -1,4 +1,4 @@
-include Testing
+include Tests_common
 
 module A = Archimedes
 module P = Archimedes.Path

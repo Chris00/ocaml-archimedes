@@ -1,4 +1,4 @@
-include Testing
+include Tests_common
 open Printf
 
 module A = Archimedes
