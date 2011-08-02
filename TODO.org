@@ -1,3 +1,7 @@
+#+STARTUP: showall
+
+* Before 1.0
+
 resizing
 
 plot functions
@@ -28,10 +32,14 @@ Arrows should be implemented in backends (since TikZ has its own implementation)
 
 Add support of multi-line custom tics labels.
 
-Fix tests in testsmaker.ml
-
 Add title function in viewports
 
 Add support for "auto-ratio" syncing (don't require to specify a fixed ratio to
 share).
+
+
+* Far fetched
+
+- advi => read TeX font metrics => correct text extents
+
 
