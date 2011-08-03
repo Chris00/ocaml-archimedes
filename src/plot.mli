@@ -97,7 +97,9 @@ module type Common = sig
   (** The curve type, e.g. (float * float) list *)
 
   val y : ?base:data -> ?fill:bool -> ?fillcolor:Color.t ->
-    ?style:style -> Viewport.t -> data -> unit
+    ?style:[`Lines|`Points of string|`Linespoints of string
+           |`Impulses|`Boxes of float] ->
+    Viewport.t -> data -> unit
   (** Same as the x function of the Plot module, but instead of
       applying to iterators, it applies to a particular data structure
       determined by the submodule which is used (Plot.Array,

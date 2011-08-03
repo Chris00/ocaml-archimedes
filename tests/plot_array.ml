@@ -11,7 +11,7 @@ let draw backend =
   let x = [| 1.; 2.; 3.; -1.; 0. |] in
   A.Axes.box vp1;
   V.set_color vp1 A.Color.green_yellow;
-  A.Plot.Array.y vp1 x;
+  A.Plot.Array.y vp1 x ~style:`Lines;
   V.set_color vp1 A.Color.firebrick;
   V.set_mark_size vp1 20.;
   A.Plot.Array.y vp1 x ~style:(`Points "*");

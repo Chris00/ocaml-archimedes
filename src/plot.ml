@@ -55,6 +55,14 @@ let draw_point style vp (x, y) =
     | `Lines | `Impulses | `Boxes _ | `Interval _ -> ()
     | `Points m | `Linespoints m -> V.mark vp ~x ~y m
 
+let draw_marks vp style x y =
+  match style with
+  | `Lines | `Impulses | `Boxes _ -> ()
+  | `Points m | `Linespoints m ->
+    for i = 0 to Array.length x - 1 do
+      V.mark vp x.(i) y.(i) m
+    done
+
 let fillpath vp path color =
   V.save vp;
   V.set_color vp color;
@@ -252,13 +260,6 @@ let stack ?(colors=[|Color.black|]) ?(fillcolors=[| |])
     V.restore vp
 
 module Function = struct
-  let draw_marks vp style x y =
-    match style with
-    | `Lines -> ()
-    | `Points m | `Linespoints m ->
-      for i = 0 to Array.length x - 1 do
-        V.mark vp x.(i) y.(i) m
-      done
 
   let x ?tlog ?n ?strategy ?cost ?(style=`Lines) ?base
       ?(fill=false) ?(fillcolor=default_fillcolor) vp f a b =
@@ -266,7 +267,7 @@ module Function = struct
        scales? *)
     let x, y = Sampler.x ?tlog ?n ?strategy ?cost f a b in
     let path = Path.make () in
-    Path.unsafe_line_of_array path x y;
+    Path.unsafe_line_of_array path x y ~rev:false;
     V.fit vp (Path.extents path);
     (* Fill *)
     if fill then (
@@ -280,7 +281,7 @@ module Function = struct
         let bx, by = Sampler.x ?tlog ?n ?strategy ?cost g b a in
         (* FIXME: fill_samplings needs to be rewritten and moved (along
            with this code) to Path. *)
-        Path.unsafe_line_of_array path_fill bx by
+        Path.unsafe_line_of_array path_fill bx by ~rev:false
       );
       Path.close path_fill;
       let color = V.get_color vp in
@@ -301,7 +302,7 @@ module Function = struct
       ?(fillcolor=default_fillcolor) vp f a b =
     let path = Path.make () in
     let x, y = Sampler.xy ?tlog ?n ?strategy ?cost f a b in
-    Path.unsafe_line_of_array path x y;
+    Path.unsafe_line_of_array path x y ~rev:false;
     V.fit vp (Path.extents path);
     if fill then (
       let path_closed = Path.copy path in (* will not copy x, y *)
@@ -330,7 +331,9 @@ module type Common = sig
   type data2
 
   val y : ?base:data -> ?fill:bool -> ?fillcolor:Color.t ->
-    ?style:style -> Viewport.t -> data -> unit
+    ?style:[`Lines|`Points of string|`Linespoints of string
+           |`Impulses|`Boxes of float] ->
+    Viewport.t -> data -> unit
 
   val xy : ?fill:bool -> ?fillcolor:Color.t -> ?style:style ->
     Viewport.t -> data2 -> unit
@@ -343,9 +346,72 @@ module Array = struct
   type data = float array
   type data2 = (float * float) array
 
-  let y ?base = match base with
-    | None -> basey Iterator.of_array ?base:None
-    | Some a -> basey Iterator.of_array ~base:(Iterator.of_array a)
+  let y ?base ?(fill=false) ?(fillcolor=default_fillcolor)
+      ?(style=`Points "O") vp ydata =
+    let n = Array.length ydata in
+    let x = Array.init n float in
+    let y = Array.copy ydata in
+    (* FIXME: avoid double fit. *)
+    (* FIXME: test length of base once. *)
+    (* Fill *)
+    if fill then (
+      let path = Path.make() in
+      (match style with
+      | `Boxes w ->
+        (match base with
+        | None ->
+          for i = 0 to n - 1 do
+            Path.rectangle path ~x:(x.(i) -. w *. 0.5) ~y:0. ~w ~h:y.(i)
+          done
+        | Some b ->
+          if Array.length b <> n then
+            invalid_arg "Archimedes.Plot.Array.y: wrong length for \"base\"";
+          for i = 0 to n - 1 do
+            Path.rectangle path
+              ~x:(x.(i) -. w *. 0.5) ~y:b.(i) ~w ~h:(y.(i) -. b.(i))
+          done)
+      | _ ->
+        Path.unsafe_line_of_array path x y ~rev:false;
+        V.fit vp (Path.extents path);
+        (match base with
+        | None ->
+          Path.line_to path (float(n - 1)) 0.;
+          Path.line_to path 0. 0.
+        | Some b ->
+          if Array.length b <> n then
+            invalid_arg "Archimedes.Plot.Array.y: wrong length for \"base\"";
+          Path.unsafe_line_of_array path ~rev:true x (Array.copy b));
+        Path.close path;
+      );
+      let color = V.get_color vp in
+      V.set_color vp fillcolor;
+      V.fill ~path vp V.Data ~fit:false;
+      V.set_color vp color;
+    );
+    (* Draw data *)
+    let path = Path.make() in
+    (match style with
+    | `Lines | `Linespoints _ -> Path.unsafe_line_of_array path x y ~rev:false
+    | `Impulses ->
+      for i = 0 to n - 1 do
+        Path.move_to path x.(i) 0.;
+        Path.line_to path x.(i) y.(i);
+      done;
+    | `Boxes w ->
+      (match base with
+      | None ->
+        for i = 0 to n - 1 do
+          Path.rectangle path ~x:(x.(i) -. w *. 0.5) ~y:0. ~w ~h:y.(i)
+        done
+      | Some b ->
+        for i = 0 to n - 1 do
+          Path.rectangle path
+            ~x:(x.(i) -. w *. 0.5) ~y:b.(i) ~w ~h:(y.(i) -. b.(i))
+        done)
+    | `Points _ -> ());
+    V.fit vp (Path.extents path);
+    V.stroke ~path vp V.Data;
+    draw_marks vp style x y
 
   let xy = basexy Iterator.of_array2
   let stack = basestack Iterator.of_array

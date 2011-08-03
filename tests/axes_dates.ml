@@ -30,6 +30,6 @@ let draw bk =
   done;
   A.Viewport.set_line_width vp 2.;
   A.Viewport.set_color vp A.Color.red;
-  A.Plot.Array.y vp cumul_data;
+  A.Plot.Array.y vp cumul_data ~style:`Lines;
 
   A.close vp
