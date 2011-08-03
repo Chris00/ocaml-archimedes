@@ -140,26 +140,29 @@ struct
   module P = Archimedes_internals.Path
 
   let path_to_cairo cr = function
-    | P.Move_to(x, y) -> move_to cr x y
-    | P.Line_to(x, y) -> line_to cr x y
-    | P.Curve_to(_, _, x1, y1, x2, y2, x3, y3) -> curve_to cr x1 y1 x2 y2 x3 y3
-    | P.Close(x, y) -> close_path cr
+    | P.Move_to(x, y) -> Cairo.move_to cr x y
+    | P.Line_to(x, y) -> Cairo.line_to cr x y
+    | P.Curve_to(_, _, x1, y1, x2, y2, x3, y3) ->
+      Cairo.curve_to cr x1 y1 x2 y2 x3 y3
+    | P.Close(_, _) -> Cairo.Path.close cr
     | P. Array(x, y) ->
-      for i = 0 to Array.length x - 1 do line_to cr x.(i) y.(i) done
+      for i = 0 to Array.length x - 1 do Cairo.line_to cr x.(i) y.(i) done
     | P.Fortran(x, y) ->
-      for i = 1 to Array1.dim x do line_to cr x.{i} y.{i} done
+      for i = 1 to Array1.dim x do Cairo.line_to cr x.{i} y.{i} done
 
-  (* The path is in reverse order.  Does this matter?
-     The clipping is taken care of by the cairo backend. *)
+  (* The clipping is taken care of by the cairo backend. *)
   let stroke_path_preserve cr p =
-    clear_path cr;
+    let m = Cairo.get_matrix cr in
+    Cairo.set_matrix cr id; (* to avoid the lines being deformed by [m] *)
+    Cairo.Path.clear cr;
     P.iter p (path_to_cairo cr);
-    stroke_preserve cr
+    Cairo.stroke cr; (* no need to preserve the copy of the path *)
+    Cairo.set_matrix cr m
 
   let fill_path_preserve cr p =
-    clear_path cr;
+    Cairo.Path.clear cr;
     P.iter p (path_to_cairo cr);
-    fill_preserve cr
+    Cairo.fill cr
 
 
   let select_font_face t slant weight family =
