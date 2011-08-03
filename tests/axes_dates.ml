@@ -19,9 +19,8 @@ let draw bk =
     let label = if m = 0 then month ^ " " ^ string_of_int y else month in
     label
   in
-  A.Axes.add_x_axis vp
-    ~tics:(A.Tics.Equidistants (A.Tics.Custom tic_month, 0., 1., 0));
-  A.Axes.add_y_axis vp;
+  A.Axes.x vp ~tics:(A.Tics.Equidistants (A.Tics.Custom tic_month, 0., 1., 0));
+  A.Axes.y vp;
   A.Plot.Array.x vp data ~style:(`Boxes 1.)
     ~fill:true ~fillcolor:A.Color.light_blue;
 

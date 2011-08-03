@@ -34,7 +34,7 @@ type offset =
     should have a value between 0 and 1. Using this kind of
     offset, one can ensure to always get the same rendering *)
 
-val add_x_axis : ?grid:bool ->
+val x : ?grid:bool ->
   ?major:(string * float) -> ?minor:(string * float) ->
   ?start:Arrows.style -> ?stop:Arrows.style ->
   ?tics:Tics.t -> ?offset:offset -> Viewport.t -> unit
@@ -50,7 +50,7 @@ val add_x_axis : ?grid:bool ->
 
     @param offset where to place the axis (y-coordinate) *)
 
-val add_y_axis : ?grid:bool ->
+val y : ?grid:bool ->
   ?major:(string * float) -> ?minor:(string * float) ->
   ?start:Arrows.style -> ?stop:Arrows.style ->
   ?tics:Tics.t -> ?offset:offset -> Viewport.t -> unit

@@ -116,7 +116,7 @@ let draw_y_axis grid major minor start stop tics offset vp () =
   end;
   List.iter (draw_tic tic major minor text) tics_values
 
-let add_x_axis ?(grid=false)
+let x ?(grid=false)
     ?(major=("tic_up", 3.)) ?(minor=("tic_up", 1.))
     ?(start=Arrows.Unstyled) ?(stop=Arrows.Simple)
     ?(tics=Tics.Auto (Tics.Number 5)) ?(offset=Absolute 0.) vp =
@@ -126,7 +126,7 @@ let add_x_axis ?(grid=false)
   V.add_instruction (fun () -> Backend.show(V.get_backend vp)) vp;
   V.restore vp
 
-let add_y_axis ?(grid=false)
+let y ?(grid=false)
     ?(major=("tic_right", 3.)) ?(minor=("tic_right", 1.))
     ?(start=Arrows.Unstyled) ?(stop=Arrows.Simple)
     ?(tics=Tics.Auto (Tics.Number 5)) ?(offset=Absolute 0.) vp =
@@ -141,17 +141,13 @@ let box ?(grid=true) ?tics ?tics_alt vp =
   | None -> tics
   | Some x -> Some x
   in
-  add_x_axis ~grid ~start:Arrows.Unstyled ~stop:Arrows.Unstyled
-    ?tics ~offset:(Absolute 0.) vp;
-  add_x_axis ~start:Arrows.Unstyled ~stop:Arrows.Unstyled ?tics:tics_alt
-    ~offset:(Absolute 1.) ~major:("tic_down", 3.) ~minor:("tic_down", 1.) vp;
-  add_y_axis ~grid ~start:Arrows.Unstyled ~stop:Arrows.Unstyled
-    ?tics ~offset:(Absolute 0.) vp;
-  add_y_axis ~start:Arrows.Unstyled ~stop:Arrows.Unstyled ?tics:tics_alt
-    ~offset:(Absolute 1.) ~major:("tic_left", 3.) ~minor:("tic_left", 1.) vp
+  x vp ~grid ?tics ~offset:(Absolute 0.);
+  x vp ?tics:tics_alt
+    ~offset:(Absolute 1.) ~major:("tic_down", 3.) ~minor:("tic_down", 1.);
+  y vp ~grid ?tics ~offset:(Absolute 0.);
+  y vp ?tics:tics_alt
+    ~offset:(Absolute 1.) ~major:("tic_left", 3.) ~minor:("tic_left", 1.)
 
 let cross ?tics vp =
-  add_x_axis ?tics ~offset:(Relative 0.) ~major:("|", 2.)
-    ~minor:("|", 1.) vp;
-  add_y_axis ?tics ~offset:(Relative 0.) ~major:("-", 2.)
-    ~minor:("-", 1.) vp
+  x ?tics ~offset:(Relative 0.) ~major:("|", 2.) ~minor:("|", 1.) vp;
+  y ?tics ~offset:(Relative 0.) ~major:("-", 2.) ~minor:("-", 1.) vp

@@ -40,6 +40,6 @@ let draw bk =
   V.stroke vp V.Graph;
 
   V.set_color vp Archimedes.Color.black;
-  Archimedes.Axes.add_x_axis vp;
+  Archimedes.Axes.x vp;
 
   Archimedes.close vp
