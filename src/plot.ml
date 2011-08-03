@@ -188,8 +188,8 @@ let fill_samplings vp fillcolor f_samples g_samples =
     ~dx'':neg_infinity ~dy'':nan ~dx':neg_infinity ~dy':nan false;
   V.restore vp
 
-(* Factorizes the x function in most submodules (except Function) *)
-let x ?(fill=false) ?(fillcolor=Color.red) ?(style=`Lines)
+(* Factorizes the y function in most submodules (except Function) *)
+let y ?(fill=false) ?(fillcolor=Color.red) ?(style=`Lines)
     ?(base=Iterator.zero_iterator ()) vp iterator =
   let path = Path.make () in
   let closingpath = ref [] in
@@ -318,8 +318,8 @@ end
 
 (* The following functions simplify the implementation of x, xy and stack
    in standard submodules *)
-let basex transform ?base ?fill ?fillcolor ?style vp data =
-  x ?fill ?fillcolor ?style ?base vp (transform data)
+let basey transform ?base ?fill ?fillcolor ?style vp data =
+  y ?fill ?fillcolor ?style ?base vp (transform data)
 let basexy transform ?fill ?fillcolor ?style vp data =
   xy ?fill ?fillcolor ?style vp (transform data)
 let basestack transform ?colors ?fillcolors ?style vp datas =
@@ -329,7 +329,7 @@ module type Common = sig
   type data
   type data2
 
-  val x : ?base:data -> ?fill:bool -> ?fillcolor:Color.t ->
+  val y : ?base:data -> ?fill:bool -> ?fillcolor:Color.t ->
     ?style:style -> Viewport.t -> data -> unit
 
   val xy : ?fill:bool -> ?fillcolor:Color.t -> ?style:style ->
@@ -343,9 +343,9 @@ module Array = struct
   type data = float array
   type data2 = (float * float) array
 
-  let x ?base = match base with
-    | None -> basex Iterator.of_array ?base:None
-    | Some a -> basex Iterator.of_array ~base:(Iterator.of_array a)
+  let y ?base = match base with
+    | None -> basey Iterator.of_array ?base:None
+    | Some a -> basey Iterator.of_array ~base:(Iterator.of_array a)
 
   let xy = basexy Iterator.of_array2
   let stack = basestack Iterator.of_array
@@ -356,9 +356,9 @@ module List_ = struct
   type data = float list
   type data2 = (float * float) list
 
-  let x ?base = match base with
-    | None -> basex Iterator.of_list ?base:None
-    | Some l -> basex Iterator.of_list ~base:(Iterator.of_list l)
+  let y ?base = match base with
+    | None -> basey Iterator.of_list ?base:None
+    | Some l -> basey Iterator.of_list ~base:(Iterator.of_list l)
   let xy = basexy Iterator.of_list2
   let stack = basestack Iterator.of_list
 end
@@ -369,9 +369,9 @@ module Fortran = struct
   type data = (float, float64_elt, fortran_layout) Array1.t
   type data2 = (float, float64_elt, fortran_layout) Array2.t
 
-  let x ?base = match base with
-    | None -> basex Iterator.of_fortran ?base:None
-    | Some b -> basex Iterator.of_fortran ~base:(Iterator.of_fortran b)
+  let y ?base = match base with
+    | None -> basey Iterator.of_fortran ?base:None
+    | Some b -> basey Iterator.of_fortran ~base:(Iterator.of_fortran b)
   let xy = basexy Iterator.of_fortran2
   let stack = basestack Iterator.of_fortran
 end
@@ -384,9 +384,9 @@ module C = struct
 
   let base = Array1.create float64 c_layout 0
 
-  let x ?base = match base with
-    | None -> basex Iterator.of_c ?base:None
-    | Some b ->  basex Iterator.of_c ~base:(Iterator.of_c b)
+  let y ?base = match base with
+    | None -> basey Iterator.of_c ?base:None
+    | Some b ->  basey Iterator.of_c ~base:(Iterator.of_c b)
   let xy = basexy Iterator.of_c2
   let stack = basestack Iterator.of_c
 end

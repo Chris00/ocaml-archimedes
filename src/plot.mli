@@ -25,7 +25,7 @@ type style =
 | `Interval of float ]
 
 
-val x : ?fill:bool -> ?fillcolor:Color.t -> ?style:style ->
+val y : ?fill:bool -> ?fillcolor:Color.t -> ?style:style ->
   ?base:Iterator.t -> Viewport.t -> Iterator.t -> unit
 (** [x vp iter] Plots the values of [iter] on [vp] according to the
     fact that the x-values of iter are 0, 1, 2, etc. or 1, 2, 3,
@@ -96,7 +96,7 @@ module type Common = sig
   type data2
   (** The curve type, e.g. (float * float) list *)
 
-  val x : ?base:data -> ?fill:bool -> ?fillcolor:Color.t ->
+  val y : ?base:data -> ?fill:bool -> ?fillcolor:Color.t ->
     ?style:style -> Viewport.t -> data -> unit
   (** Same as the x function of the Plot module, but instead of
       applying to iterators, it applies to a particular data structure
