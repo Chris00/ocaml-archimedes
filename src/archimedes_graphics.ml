@@ -382,7 +382,7 @@ struct
       let x1, y1 = to_bk x1 y1
       and x2, y2 = to_bk x2 y2
       and x3, y3 = to_bk x3 y3 in
-      (* FIXME: clip BÃ©zier curve *)
+      (* FIXME: clip Bézier curve *)
       Graphics.curveto
         (round x1, round y1) (round x2, round y2) (round x3, round y3)
 
@@ -445,6 +445,7 @@ struct
   let rec gather_subpath b to_bk coords = function
     | P.Move_to(x,y) ->
       fill_subpath !coords;  (* previous subpath *)
+      coords := [];  (* Clean the coords of the subpath already filled. *)
       let x, y = to_bk x y in
       b.x <- x;
       b.y <- y;  (* Do no put the pt in coords in case 2 Move_to follow *)
@@ -469,6 +470,10 @@ struct
         fill_line_to b x y coords
       done
     | P.Curve_to(x0,y0, x1,y1, x2,y2, x3,y3) ->
+      let x0, y0 = to_bk x0 y0
+      and x1, y1 = to_bk x1 y1
+      and x2, y2 = to_bk x2 y2
+      and x3, y3 = to_bk x3 y3 in
       add_curve_sampling b x0 y0 x1 y1 x2 y2 x3 y3 coords
 
 
