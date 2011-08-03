@@ -963,14 +963,14 @@ end = struct
   (* FIXME: poor implementations.  The label should be stored and used
      to determine the space for the graphic. *)
   let xlabel_direct vp s =
-    show_text_direct vp Device ~x:0.5 ~y:0.04 Backend.CB s
+    show_text_direct vp Device ~x:0.5 ~y:0.01 Backend.CT s
 
   let ylabel_direct vp s =
     show_text_direct vp Device ~x:0.01 ~y:0.5 Backend.RC s
       ~rotate:1.57079632679489656 (* pi / 2 *)
 
   let title_direct vp s =
-    show_text_direct vp Device ~x:0.5 ~y:0.96 Backend.CT s
+    show_text_direct vp Device ~x:0.5 ~y:0.99 Backend.CB s
 
 
 (* Synchronization
