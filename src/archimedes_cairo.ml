@@ -88,20 +88,6 @@ struct
   (* identity CTM -- never modified *)
   let id = { Cairo.xx = 1.; xy = 0.;  yx = 0.; yy = 1.;  x0 = 0.; y0 = 0. }
 
-  let stroke t =
-    (* FIXME: Do we really want this? are we not supposed to always
-       draw in a nice coordinate system? *)
-    let m = Cairo.get_matrix t in
-    Cairo.set_matrix t id; (* to avoid the lines being deformed by [m] *)
-    stroke t;
-    Cairo.set_matrix t m
-
-  let stroke_preserve t =
-    Cairo.save t;
-    Cairo.set_matrix t id;
-    stroke_preserve t;
-    Cairo.restore t
-
   let show t =
     Cairo.Surface.flush (get_target t)
 
@@ -137,6 +123,20 @@ struct
     Surface.finish surface
 
 
+  let stroke cr =
+    (* FIXME: Do we really want this? are we not supposed to always
+       draw in a nice coordinate system? *)
+    let m = Cairo.get_matrix cr in
+    Cairo.set_matrix cr id; (* to avoid the lines being deformed by [m] *)
+    Cairo.stroke cr;
+    Cairo.set_matrix cr m
+
+  let stroke_preserve cr =
+    let m = Cairo.get_matrix cr in
+    Cairo.set_matrix cr id; (* to avoid the lines being deformed by [m] *)
+    Cairo.stroke_preserve cr;
+    Cairo.set_matrix cr m
+
   module P = Archimedes_internals.Path
 
   let path_to_cairo cr = function
@@ -152,10 +152,11 @@ struct
 
   (* The clipping is taken care of by the cairo backend. *)
   let stroke_path_preserve cr p =
-    let m = Cairo.get_matrix cr in
-    Cairo.set_matrix cr id; (* to avoid the lines being deformed by [m] *)
     Cairo.Path.clear cr;
     P.iter p (path_to_cairo cr);
+    (* Line width is in defaukt coordinates: *)
+    let m = Cairo.get_matrix cr in
+    Cairo.set_matrix cr id;
     Cairo.stroke cr; (* no need to preserve the copy of the path *)
     Cairo.set_matrix cr m
 

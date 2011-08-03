@@ -41,9 +41,9 @@ sig
   val set_color : t -> Color.t -> unit
   (** [set_color bk c] sets the color of the backend [bk] to [c]. *)
   val set_line_width : t -> float -> unit
-  (** [set_line_width bk w] sets the line width of the backend [bk]
-      to [w].  The line width is expressed in the current backend
-      coordinates (at the time of stroking). *)
+  (** [set_line_width bk w] sets the line width of the backend [bk] to
+      [w].  The line width is expressed in the natural backend
+      coordinates (i.e. when the CTM is the identity). *)
   val set_line_cap : t -> line_cap -> unit
   (** [set_line_cap bk c] sets the line cap for the backend [bk] to [c]. *)
   val set_dash : t -> float -> float array -> unit
@@ -101,19 +101,26 @@ sig
   val path_extents : t -> Matrix.rectangle
 
   val stroke : t -> unit
+  (** [stroke bk] draw the curve described by the current path
+      according to the current line width and color.  *)
   val stroke_preserve : t -> unit
+  (** Same as {!stroke} but make sure the current path is unmodified. *)
   val fill : t -> unit
+  (** [fill bk] draw the curve described by the current path according
+      to the current line width and color.  The current path may be
+      modified.  This is affected by the CTM.  *)
   val fill_preserve : t -> unit
+  (** Same as {!fill} but make sure the current path is unmodified. *)
 
   val stroke_path_preserve : t -> Path.t -> unit
   (** [stroke_path bk p] stroke the abstract path [p], where its
       coordinates are interpreted in the current transformation
-      matrix.  Of course, the current clipping will be obeyed.  After
-      this operation, the current path in [bk] is the transformation
-      of [p].
+      matrix.  Of course, the current clipping, line width and color
+      are be obeyed.  This function may modify the current path in
+      [bk].
 
-      The internal representation of the path is available in
-      [Archimedes_internals.Path]. *)
+      For backend developers: the internal representation of the path
+      is available in [Archimedes_internals.Path]. *)
   val fill_path_preserve : t -> Path.t -> unit
   (** [fill_path_preserve] is similar to [stroke_path_preserve] except
       that it fills the path. *)
@@ -263,4 +270,3 @@ module Register(B: Capabilities) : sig end
     application must be executed as part of the initialisation code.
     We recommend the use of [let module U = Register(B) in ()] to
     perform the registration.  *)
-
