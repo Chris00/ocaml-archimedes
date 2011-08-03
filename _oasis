@@ -112,7 +112,7 @@ Executable "pythagoras_tree"
 Executable "coordinate_pairs"
   Path:	        examples/
   BuildTools:   ocamlbuild
-  MainIs:       pythagoras_tree.ml
+  MainIs:       coordinate_pairs.ml
   BuildDepends: archimedes
   Install:      false
 
