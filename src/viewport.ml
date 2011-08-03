@@ -391,7 +391,7 @@ end = struct
   (* Multiplier to get "user-friendly" values (e.g. 12pt instead of 0.024) *)
   let usr_lw, usr_ts, usr_ms = 500., 500., 100.
 
-  let def_lw, def_ts, def_ms = 1., 12., 5.
+  let def_lw, def_ts, def_ms = 1., 12., 7.
   let def_color = Color.black
   let def_line_cap = Backend.BUTT
   let def_dash = (0., [| |])
@@ -521,21 +521,19 @@ end = struct
     let path = get_path vp path coord_name in
     let coord = get_coord_from_name vp coord_name in
     Backend.save vp.backend;
-    let ctm = Coordinate.use vp.backend coord in
+    ignore(Coordinate.use vp.backend coord);
     apply_clip vp coord_name;
     Backend.stroke_path_preserve vp.backend path;
-    (* Coordinate.restore vp.backend ctm *) (* no need, CTM restored too *)
-    Backend.restore vp.backend
+    Backend.restore vp.backend (* remove CTM and clip *)
 
   let fill_direct ?path vp coord_name () =
     let path = get_path vp path coord_name in
     let coord = get_coord_from_name vp coord_name in
     Backend.save vp.backend;
-    let ctm = Coordinate.use vp.backend coord in
+    ignore(Coordinate.use vp.backend coord);
     apply_clip vp coord_name;
     Backend.fill_path_preserve vp.backend path;
-    (* Coordinate.restore vp.backend ctm *) (* no need, CTM restored too *)
-    Backend.restore vp.backend
+    Backend.restore vp.backend (* remove CTM and clip *)
 
   let clip_rectangle_direct vp ~x ~y ~w ~h () =
     Backend.clip_rectangle vp.backend x y w h
