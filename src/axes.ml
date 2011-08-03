@@ -136,16 +136,15 @@ let y ?(grid=false)
   V.add_instruction (fun () -> Backend.show(V.get_backend vp)) vp;
   V.restore vp
 
-let box ?(grid=true) ?tics ?tics_alt vp =
-  let tics_alt = match tics_alt with
-  | None -> tics
-  | Some x -> Some x
-  in
-  x vp ~grid ?tics ~offset:(Absolute 0.);
-  x vp ?tics:tics_alt
+
+let box ?(grid=true) ?tics ?(tics_alt=Tics.Auto Tics.No_label) vp =
+  x vp ~grid ?tics ~offset:(Absolute 0.)
+    ~start:Arrows.Unstyled ~stop:Arrows.Unstyled;
+  x vp ~tics:tics_alt ~start:Arrows.Unstyled ~stop:Arrows.Unstyled
     ~offset:(Absolute 1.) ~major:("tic_down", 3.) ~minor:("tic_down", 1.);
-  y vp ~grid ?tics ~offset:(Absolute 0.);
-  y vp ?tics:tics_alt
+  y vp ~grid ?tics ~offset:(Absolute 0.)
+    ~start:Arrows.Unstyled ~stop:Arrows.Unstyled;
+  y vp ~tics:tics_alt ~start:Arrows.Unstyled ~stop:Arrows.Unstyled
     ~offset:(Absolute 1.) ~major:("tic_left", 3.) ~minor:("tic_left", 1.)
 
 let cross ?tics vp =
