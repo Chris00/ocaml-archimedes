@@ -26,7 +26,7 @@ module P = Archimedes_internals.Path
 let min a b = if (a:float) < b then a else b
 let max a b = if (a:float) > b then a else b
 
-let round x = truncate(if x >= 0. then x +. 0.5 else x -. 0.5)
+let round x = truncate(if x < 0. then x -. 0.5 else x +. 0.5)
 
 let fourth_pi = atan 1.
 let pi = 4. *. fourth_pi
@@ -111,7 +111,7 @@ struct
     List.iter (fun o ->
                  if o = "hold" then hold := true;
               ) options;
-    Graphics.open_graph(sprintf " %.0fx%.0f-10+10"
+    Graphics.open_graph(sprintf " %.0fx%.0f"
                           (width +. !ofsw) (height +. !ofsh));
     Graphics.set_window_title "Archimedes";
     Graphics.auto_synchronize false;
@@ -537,6 +537,92 @@ struct
     Printf.printf "DEBUG: After: %f %f %f %f\n%!" retx rety retw reth;
     retx, rety, retw, reth
 
+  (* Rotation of a color matrix image from center point using nearest
+     neightbor sampling. Also gives the position of some point from source
+     image in the new image. *)
+  (* FIXME: Use Graphics Gems shearing rotation. GG 1, p. 179 *)
+  let rotate_image simg px py angle =
+    (* FIXME: If angle is a multiple of PI/2, use trivial transposition
+       and symmetry. *)
+    assert (Array.length simg > 0 && Array.length simg.(0) > 0);
+    (* Source Width/Height. We measure distances between center of pixels,
+       so a line of 3 pixels is of width 2. *)
+    let sw = float (pred (Array.length simg.(0)))
+    and sh = float (pred (Array.length simg)) in
+    (* Output Width/Height. *)
+    (* FIXME: having to set 0. 0. is totally useless; refactor that ! *)
+    let _, _, ow, oh = rotate_extents angle 0. 0. sw sh in
+    let ow', oh' = round ow, round oh in
+    let swc, shc = sw *. 0.5, sh *. 0.5
+    and owc, ohc = ow *. 0.5, oh *. 0.5
+    and sina = -. sin angle and cosa = cos angle in
+    (* Get color in source [simg] for (x, y) pixel in output image. *)
+    let rot x y =
+      (* dump_image gives a color matrix with coordinates as :
+         [| [| (0, 1); (1, 1) |];
+         [| (0, 0); (1, 0) |] |] *)
+      let x', y' = x -. owc, float oh' -. y -. ohc in
+      (* Output coords to source coords => inverse rotation. *)
+      let xrot = cosa *. x' -. sina *. y'
+      and yrot = sina *. x' +. cosa *. y' in
+      (xrot +. swc, sh -. yrot -. shc)
+    in
+    let get_color x y =
+      try
+        let sx, sy = rot (float x) (float y) in
+        simg.(round sy).(round sx)
+      with Invalid_argument "index out of bounds" -> Graphics.transp
+    in
+    (Array.init (succ oh')
+       (fun y -> Array.init (succ ow')
+         (fun x -> get_color x y)),
+    rot px py)
+
+  (* Returns the color matrix with [str] printed in [color]. *)
+  let string_img str color =
+    let w, h = Graphics.text_size str in
+    let buf = Array.make_matrix h w Graphics.transp in
+    let max_w, max_h = Graphics.size_x (), Graphics.size_y () in
+    let piece_w, piece_h = Pervasives.min w max_w, Pervasives.min h max_h in
+    let w_pieces, h_pieces = piece_w / max_w, piece_h / max_h in
+    let w_lst_piece, h_lst_piece = piece_w mod max_w, piece_h mod max_h in
+    (* Save graphic work area. *)
+    let backup = Graphics.get_image 0 0 piece_w piece_h in
+    (* Setup graphic work area. *)
+    let transp = abs (pred color) in
+    Graphics.set_color transp;
+    Graphics.fill_rect 0 0 w h;
+    Graphics.set_color color;
+    (* Copy pieces of the string image to [buf]. *)
+    let x_offset, y_offset = ref 0, ref 0 in
+    let cpy_piece x_offset y_offset piece_w piece_h i j =
+      Graphics.moveto (-x_offset) y_offset;
+      Graphics.draw_string str;
+      let piece =
+        Graphics.dump_image (Graphics.get_image 0 0 piece_w piece_h)
+      in
+      let update_buf_pixel i j oi oj color =
+        buf.(i + oi).(j + oj) <-
+          if color = transp then Graphics.transp else color
+      in
+      Array.iteri (fun oi ->
+        Array.iteri (fun oj color -> update_buf_pixel i j oi oj color)) piece
+    in
+    for i = 0 to pred h_pieces do
+      for j = 0 to pred w_pieces do
+        cpy_piece !x_offset !y_offset piece_w piece_h i j;
+        x_offset := !x_offset + piece_w
+      done;
+      (* Copy last horizontal partial piece. *)
+      cpy_piece !x_offset !y_offset w_lst_piece piece_h i w_pieces;
+      y_offset := !y_offset + piece_h
+    done;
+    (* Copy last partial piece. *)
+    cpy_piece !x_offset !y_offset w_lst_piece h_lst_piece h_pieces w_pieces;
+    (* Restore graphics work area. *)
+    Graphics.draw_image backup 0 0;
+    buf
+
   let show_text t ~rotate ~x ~y pos txt =
     let st = get_state t in
     (* Compute the angle between the desired direction and the X axis
@@ -546,54 +632,26 @@ struct
     let x', y' = Matrix.transform_point st.ctm x y in
     let w', h' = Graphics.text_size txt in
     (* text_size returns size already in device coords.*)
-    let x'' = match pos with
-      | Backend.CC | Backend.CT | Backend.CB -> x' -. float w' *. 0.5
-      | Backend.RC | Backend.RT | Backend.RB -> x'
-      | Backend.LC | Backend.LT | Backend.LB -> x' -. float w'
-    and y'' =  match pos with
-      | Backend.CC | Backend.RC | Backend.LC -> y' -. float h' *. 0.5
-      | Backend.CT | Backend.RT | Backend.LT -> y'
-      | Backend.CB | Backend.RB | Backend.LB -> y' -. float h'
-    in let x'' = round x'' and y'' = round y'' in
-    Graphics.moveto x'' y'';
-    if abs_float angle <= 1e-6 then
-      Graphics.draw_string txt
-    else begin
-      save t;
-      (* Sauvegarde de la portion de travail *)
-      let backup = Graphics.get_image x'' y'' w' h' in
-      let invisx, invisy, invisw, invish =
-        rotate_extents angle (float x'') (float y'') (float w') (float h')
-      in
-      (* Graphics.display_mode false; *)
-      Graphics.set_color Graphics.white;
-      Printf.printf "DEBUG(show_text): %f %f %f %f\n%!"
-        invisx invisy invisw invish;
-      Graphics.fill_rect (round invisx) (round invisy)
-        (round invisw) (round invish);
-      Graphics.moveto x'' y'';
-      restore t;
-      Graphics.draw_string txt;
-      let m = Graphics.dump_image(Graphics.get_image x'' y'' w' h') in
-      let m2 = Array.make_matrix (round invish) (round invish) (-1) in
-      let place y x v =
-        if v <> Graphics.white then
-          let sina = sin angle and cosa = cos angle in
-          let xcentered, ycentered = float (x - w' / 2), float (y - h' / 2) in
-          let xrotated, yrotated =
-            cosa *. xcentered -. sina *. ycentered +. invisw /. 2.,
-            sina *. xcentered +. cosa *. ycentered +. invish /. 2.
-          in
-          try
-            m2.(round yrotated).(round xrotated) <- v
-          with _ -> ()
-      in
-      Array.iteri (fun y -> Array.iteri (place y)) m;
-      let img2 = Graphics.make_image m2 in
-      Graphics.draw_image backup x'' y'';
-      (* Graphics.display_mode true; *)
-      Graphics.draw_image img2 (round invisx) (round invisy)
-    end
+    let px = match pos with
+      | Backend.LC | Backend.LT | Backend.LB -> float w'
+      | Backend.CC | Backend.CT | Backend.CB -> float w' *. 0.5
+      | Backend.RC | Backend.RT | Backend.RB -> 0.
+    and py = match pos with
+      | Backend.CB | Backend.RB | Backend.LB -> float h'
+      | Backend.CC | Backend.RC | Backend.LC -> float h' *. 0.5
+      | Backend.CT | Backend.RT | Backend.LT -> 0.
+    in
+    if w' > 0 && h' > 0 then (
+      if abs_float angle <= 1e-6 then
+        (Graphics.moveto (round (x' -. px)) (round (y' -. py));
+         Graphics.draw_string txt)
+      else
+        let rimg, (rx, ry) =
+          rotate_image (string_img txt st.color) px py rotate
+        in
+        Graphics.draw_image (Graphics.make_image rimg)
+          (round (x' -. rx)) (round (y' -. ry))
+    )
 
   let flipy _t = false
 end

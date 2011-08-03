@@ -109,6 +109,13 @@ Executable "pythagoras_tree"
   BuildDepends: archimedes
   Install:      false
 
+Executable "coordinate_pairs"
+  Path:	        examples/
+  BuildTools:   ocamlbuild
+  MainIs:       pythagoras_tree.ml
+  BuildDepends: archimedes
+  Install:      false
+
 
 SourceRepository trunk
   Type:       svn
