@@ -29,6 +29,8 @@ type style =
 | `Boxes of float
 | `Interval of float ]
 
+let default_fillcolor = Color.rgb 0.95 0.95 0.95
+
 let rec draw_data ?(base=0.) style path (x, y) =
   if is_finite y then match style with
   | `Lines | `Linespoints _ -> Path.line_to path ~x ~y
@@ -189,7 +191,7 @@ let fill_samplings vp fillcolor f_samples g_samples =
   V.restore vp
 
 (* Factorizes the y function in most submodules (except Function) *)
-let y ?(fill=false) ?(fillcolor=Color.red) ?(style=`Lines)
+let y ?(fill=false) ?(fillcolor=default_fillcolor) ?(style=`Lines)
     ?(base=Iterator.zero_iterator ()) vp iterator =
   let path = Path.make () in
   let closingpath = ref [] in
@@ -208,7 +210,7 @@ let y ?(fill=false) ?(fillcolor=Color.red) ?(style=`Lines)
   List.iter (draw_point style vp) data_rev
 
 (* Factorizes the xy function in most submodules (except Function) *)
-let xy ?(fill=false) ?(fillcolor=Color.red) ?(style=`Lines)
+let xy ?(fill=false) ?(fillcolor=default_fillcolor) ?(style=`Lines)
     vp iterator =
   let path = Path.make () in
   let data_rev = Iterator.iter_cache (draw_data style path) iterator in
@@ -257,8 +259,6 @@ module Function = struct
       for i = 0 to Array.length x - 1 do
         V.mark vp x.(i) y.(i) m
       done
-
-  let default_fillcolor = Color.rgb 0.95 0.95 0.95
 
   let x ?tlog ?n ?strategy ?cost ?(style=`Lines) ?base
       ?(fill=false) ?(fillcolor=default_fillcolor) vp f a b =
