@@ -12,7 +12,7 @@
 
     {[
     module A = Archimedes
-    let vp = A.init "graphic hold" in
+    let vp = A.init ["graphic"; "hold"] in
     A.Axes.box vp;
     A.fx vp sin 0. 10.;
     A.close vp
