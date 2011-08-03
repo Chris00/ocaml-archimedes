@@ -1,64 +1,41 @@
 include Tests_common
-module B = Archimedes.Backend
-module Matrix = Archimedes.Matrix
+
+module A = Archimedes
+module Backend = A.Backend
+module M = A.Matrix
+
+let description = "Text on viewport, with rotation and placement."
+
+let half_pi = pi /. 2.
+let two_pi = 2. *. pi
 
 let draw bk =
-  let backend = B.make ~dirs bk 500. 300. in
-  B.scale backend 1. 2.;
-  let matrix = B.get_matrix backend in
-  let inv_matrix = Matrix.copy matrix in
-  Matrix.invert inv_matrix;
-  B.set_font_size backend 16.;
-  let text = "Test with a y."  in
-  let extents = B.text_extents backend text in
-  (* let wx,wy = Matrix.inv_transform_distance matrix rect.w 0.
-     and hx,hy = Matrix.inv_transform_distance matrix 0. rect.h in
-     let x',y' = Matrix.inv_transform_distance matrix rect.x rect.y in*)
-  let rect =
-    Matrix.transform_rectangle ~dist_basepoint:true inv_matrix extents
+  let vp = A.init ~w ~h ~dirs bk in
+  A.Viewport.set_font_size vp 35.;
+  (try A.Viewport.select_font_face vp Backend.Upright Backend.Normal "arial"
+   with _ -> ()); (* keep the default font if it fails *)
+  A.Viewport.show_text vp A.Viewport.Device ~x:0.25 ~y:0.5 ~rotate:half_pi Backend.CC "Joy";
+  A.Viewport.show_text vp A.Viewport.Device ~x:0.1 ~y:0.8 ~rotate:0.7 Backend.CC "Joy";
+
+  let pos = [(0.4, 0.8, Backend.LT);
+             (0.6, 0.8, Backend.CT);
+             (0.8, 0.8, Backend.RT);
+
+             (0.4, 0.5, Backend.LC);
+             (0.6, 0.5, Backend.CC);
+             (0.8, 0.5, Backend.RC);
+
+             (0.4, 0.2, Backend.LB);
+             (0.6, 0.2, Backend.CB);
+             (0.8, 0.2, Backend.RB) ]
   in
-  let w = 200. and h = 40. in
-  let w' = 2.*.w and h' = 2.*.h in
-  let plot_text (x,y,pos,r,g,b) =
-    let dx =  match pos with
-      | B.CC | B.CT | B.CB -> x -. rect.Matrix.w *. 0.5
-      | B.RC | B.RT | B.RB -> x
-      | B.LC | B.LT | B.LB -> x -. rect.Matrix.w
-    and dy = match pos with
-      | B.CC | B.RC | B.LC -> y -. rect.Matrix.h *. 0.5
-      | B.CT | B.RT | B.LT -> y
-      | B.CB | B.RB | B.LB -> y -. rect.Matrix.h
-    in
-    B.move_to backend dx dy;
-    B.arc backend 1. 0. 7.;
-    B.set_color backend (Archimedes.Color.rgb r g b);
-    B.stroke backend;
-    B.rectangle backend dx dy rect.Matrix.w rect.Matrix.h;
-    (*B.line_to backend x y;*)
-    B.stroke backend;
-    B.move_to backend x y;
-    B.arc backend 2. 0. 7.;
-    B.stroke backend;
-    B.set_color backend (Archimedes.Color.rgba r g b 0.7);
-    B.show_text backend 0. x y pos text;
-    B.set_color backend (Archimedes.Color.rgba r g b 0.4);
-    B.move_to backend (dx -. rect.Matrix.x) (dy -. rect.Matrix.y);
-    B.rel_line_to backend rect.Matrix.w 0.;
-    B.stroke backend
-  in
-  let x,y = 10.,20. in
-  List.iter plot_text
-    [ x,     y,     B.RT, 1.,  0.,  0.;
-      x,     y+.h,  B.RC, 0.8, 0.5, 0.;
-      x,     y+.h', B.RB, 0.8, 0.,  0.5;
+  List.iter (fun (x,y,p) ->
+               A.Viewport.set_color vp (A.Color.rgb 1. 0. 0.);
+               A.Viewport.move_to vp x y;
+               A.Viewport.arc vp ~r:0.005 ~a1:0. ~a2:two_pi;
+               A.Viewport.fill vp A.Viewport.Device;
+               A.Viewport.set_color vp (A.Color.rgb 0. 0. 0.5);
+               A.Viewport.show_text vp A.Viewport.Device ~x ~y ~rotate:0. p "Joy";
+            ) pos;
 
-      x+.w,  y,     B.CT, 0.5, 0.8, 0.;
-      x+.w,  y+.h,  B.CC, 0.,  1.,  0.;
-      x+.w,  y+.h', B.CB, 0.,  0.8, 0.5;
-
-      x+.w', y,     B.LT, 0.5, 0.,  0.8;
-      x+.w', y+.h,  B.LC, 0.,  0.5, 0.8;
-      x+.w', y+.h', B.LB, 0.,  0.,  1.
-    ];
-  B.close backend
-
+  A.close vp

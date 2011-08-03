@@ -1,6 +1,8 @@
 include Tests_common
 module Backend = Archimedes.Backend
 
+let description = "Text on backend, with rotation and placement."
+
 let half_pi = pi /. 2.
 let two_pi = 2. *. pi
 
