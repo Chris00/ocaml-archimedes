@@ -362,11 +362,17 @@ struct
     | P.Close(x, y) ->
       let x, y = to_bk x y in
       stroke_line_to b x y
-    | P.Array(x, y) ->
-      for i = 0 to Array.length x - 1 do
-        let x, y = to_bk x.(i) y.(i) in
-        stroke_line_to b x y
-      done
+    | P.Array(x, y, rev) ->
+      if rev then
+        for i = Array.length x - 1 downto 0 do
+          let x, y = to_bk x.(i) y.(i) in
+          stroke_line_to b x y
+        done
+      else
+        for i = 0 to Array.length x - 1 do
+          let x, y = to_bk x.(i) y.(i) in
+          stroke_line_to b x y
+        done
     | P.Fortran(x, y) ->
       for i = 1 to Array1.dim x do
         let x, y = to_bk x.{i} y.{i} in
@@ -446,11 +452,17 @@ struct
     | P.Close(x,y) ->
       let x, y = to_bk x y in
       fill_line_to b x y coords
-    | P.Array(x, y) ->
-      for i = 0 to Array.length x - 1 do
-        let x, y = to_bk x.(i) y.(i) in
-        fill_line_to b x y coords
-      done
+    | P.Array(x, y, rev) ->
+      if rev then
+        for i = Array.length x - 1 downto 0 do
+          let x, y = to_bk x.(i) y.(i) in
+          fill_line_to b x y coords
+        done
+      else
+        for i = 0 to Array.length x - 1 do
+          let x, y = to_bk x.(i) y.(i) in
+          fill_line_to b x y coords
+        done
     | P.Fortran(x, y) ->
       for i = 1 to Array1.dim x do
         let x, y = to_bk x.{i} y.{i} in

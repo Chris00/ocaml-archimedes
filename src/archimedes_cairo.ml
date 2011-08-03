@@ -145,8 +145,15 @@ struct
     | P.Curve_to(_, _, x1, y1, x2, y2, x3, y3) ->
       Cairo.curve_to cr x1 y1 x2 y2 x3 y3
     | P.Close(_, _) -> Cairo.Path.close cr
-    | P. Array(x, y) ->
-      for i = 0 to Array.length x - 1 do Cairo.line_to cr x.(i) y.(i) done
+    | P. Array(x, y, rev) ->
+      if rev then
+        for i = Array.length x - 1 downto 0 do
+          Cairo.line_to cr x.(i) y.(i)
+        done
+      else
+        for i = 0 to Array.length x - 1 do
+          Cairo.line_to cr x.(i) y.(i)
+        done
     | P.Fortran(x, y) ->
       for i = 1 to Array1.dim x do Cairo.line_to cr x.{i} y.{i} done
 

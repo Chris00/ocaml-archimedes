@@ -51,15 +51,17 @@ val line_to: t -> x:float -> y:float -> unit
 (** [line_to p x y] draws a line from the path's current point to ([x],
     [y]) and sets the current point to ([x], [y]) *)
 
-val line_of_array: t ->
+val line_of_array: t -> ?rev:bool ->
   ?const_x:bool -> float array -> ?const_y:bool -> float array -> unit
 (** [line_of_array p x y] continue the current line (or start a new
     one) with the line formed by joining the points [x.(i), y.(i)],
-    [i=0, 1,...].
+    [i=0, 1,...]  (or [i=..., 1, 0] if [ref] is [true]).
 
     @param const_x by setting it to [true], you indicate that you will
     not modify [x] (so it will not be copied).  Default: false.
     @param const_y Same as [const_x] but for [y].
+    @param rev whether to consider the arrays in reversed order.
+           Dafault: [false].
     @raise Failure if [x] and [y] do not have the same length. *)
 
 type vec =
@@ -129,11 +131,11 @@ type data = private
   | Close of float * float
   (* Optimizations for some specific data structures that are used
      for caching data points.  *)
-  | Array of float array * float array
-  (* Array(x, y, pt), the x and y indices increase along the path.
-     [x] and [y] have the same length and are not empty.  Equivalent
-     to [line_to x.(i) y.(i)] for all [i] but with better storage
-     efficiency. *)
+  | Array of float array * float array * bool
+  (* Array(x, y, rev), the x and y indices increase (if [rev] is
+     [false], otherwise decrease) along the path.  [x] and [y] have
+     the same length and are not empty.  Equivalent to [line_to x.(i)
+     y.(i)] for all [i] but with better storage efficiency. *)
   | Fortran of vec * vec
 
 
@@ -142,7 +144,7 @@ val iter : t ->  (data -> unit) -> unit
 val fprint: out_channel -> t -> unit
 (** [print_path p] Debug function. *)
 
-val unsafe_line_of_array : t -> float array -> float array -> unit
+val unsafe_line_of_array : t -> rev:bool -> float array -> float array -> unit
 (** Same as {!line_of_array} except that the arrays are ASSUMED to be
     of the same length, non-empty, and are NOT copied. *)
 
