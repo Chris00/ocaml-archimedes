@@ -1,5 +1,7 @@
-include Tests_common
+open Tests_common
 module A = Archimedes
+
+let description = "Various functions y = f(x) and (x,y) = f(t)"
 
 let draw backend =
   let p = A.init ~w ~h ~dirs backend in
