@@ -82,7 +82,6 @@ let () =
   include_file "Tics";
   include_file "Axes";
   include_file "Sampler";
-  include_file "Iterator";
   include_file "Plot";
   include_file "Piechart";
   include_file "archimedes_footer" ~as_module:false;

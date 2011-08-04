@@ -15,6 +15,13 @@
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the file
    LICENSE for more details. *)
 
+open Bigarray
+
 let is_nan (x: float) = x <> x
 let is_inf y = 1. /. y = 0.
 let is_finite x = neg_infinity < x && x < infinity
+
+let ba_copy x =
+  let x' = Array1.create (Array1.kind x) (Array1.layout x) (Array1.dim x) in
+  Array1.blit x x';
+  x'

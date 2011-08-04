@@ -70,107 +70,55 @@ module Array : sig
     float array array -> unit
 end
 
-module type Common = sig
-  (** The Common module type is used by all the "standard" plot modules
-      (Lists, Arrays, Bigarrays) *)
-
-  type data
-  (** The function type, e.g. float list *)
-  type data2
-  (** The curve type, e.g. (float * float) list *)
-
-  val y : ?base:data -> ?fill:bool -> ?fillcolor:Color.t ->
-    ?style:[`Lines|`Points of string|`Linespoints of string
-           |`Impulses|`Boxes of float] ->
-    Viewport.t -> data -> unit
-  (** Same as the x function of the Plot module, but instead of
-      applying to iterators, it applies to a particular data structure
-      determined by the submodule which is used (Plot.Array,
-      Plot.List, Plot.Fortran or Plot.C) *)
-
-  val xy : ?fill:bool -> ?fillcolor:Color.t -> ?style:style ->
-    Viewport.t -> data2 -> unit
-  (** Same as the xy function of the Plot module, but instead of
-      applying to iterators, it applies to a particular data structure
-      determined by the submodule which is used (Plot.Array,
-      Plot.List, Plot.Fortran or Plot.C) *)
-
-  val stack : ?colors:(Color.t array) -> ?fillcolors:(Color.t array) ->
-    ?style:style -> Viewport.t -> data array -> unit
-  (** Same as the stack function of the Plot module, but instead of
-      applying to iterators, it applies to a particular data structure
-      determined by the submodule which is used (Plot.Array,
-      Plot.List, Plot.Fortran or Plot.C) *)
-end
-
 module List : sig
-  include Common
-    with type data = float list
-    and type data2 = (float * float) list
+  val y : Viewport.t -> ?base:float list -> ?fill:bool -> ?fillcolor:Color.t ->
+    ?style:style -> float list -> unit
+  (** See {!Array.y}.  *)
+
+  val xy: Viewport.t -> ?fill:bool -> ?fillcolor:Color.t ->
+    ?style:[`Lines | `Points of string | `Linespoints of string ] ->
+    (float * float) list -> unit
+  (** See {!Array.xy}.  *)
 end
+
 
 module Fortran : sig
   open Bigarray
+  type vec = (float, float64_elt, fortran_layout) Array1.t
 
-  include Common
-    with type data = (float, float64_elt, fortran_layout) Array1.t
-    and type data2 = (float, float64_elt, fortran_layout) Array2.t
+  val y : Viewport.t -> ?base:float array -> ?fill:bool -> ?fillcolor:Color.t ->
+    ?style:style ->
+    ?const:bool -> vec -> unit
+  (** See {!Array.y}.  *)
+
+  val xy: Viewport.t -> ?fill:bool -> ?fillcolor:Color.t ->
+    ?style:[`Lines | `Points of string | `Linespoints of string ] ->
+    ?const_x:bool -> vec -> ?const_y:bool -> vec -> unit
+  (** See {!Array.xy}.  *)
 end
 
-module C : sig
+(* module C : sig
   open Bigarray
+  type vec = (float, float64_elt, c_layout) Array1.t
 
   include Common
     with type data = (float, float64_elt, c_layout) Array1.t
     and type data2 = (float, float64_elt, c_layout) Array2.t
-end
+end *)
+
 
 (*----------------------------------------------------------------------*)
 (** {3 Plotting functions for generic data} *)
 
-(* val y : ?fill:bool -> ?fillcolor:Color.t -> ?style:style -> *)
-(*   ?base:Iterator.t -> Viewport.t -> Iterator.t -> unit *)
-(** [x vp iter] Plots the values of [iter] on [vp] according to the
-    fact that the x-values of iter are 0, 1, 2, etc. or 1, 2, 3,
-    etc. or 42, 43, 44, etc. or ...
+val y : Viewport.t -> ?base:((float -> unit) -> unit) ->
+  ?fill:bool -> ?fillcolor:Color.t -> ?style:style ->
+  ((float -> unit) -> unit) -> unit
+(** [y vp iter] draws on [vp] the values provided by the iterator [iter].
+    See {!Array.y} for more information. *)
 
-    @param fill fill the region between the iterator and its base ?
-    (default: false)
-
-    @param fillcolor which color to use for the fill
-
-    @param style which style to use (see the {!style} type).
-
-    @param base the base iterator is the other delimiter of the region
-    to fill. Default: the zero iterator (giving (0, 0), (1, 0), (2,
-    0), etc.) *)
-
-val xy : ?fill:bool -> ?fillcolor:Color.t -> ?style:style ->
-  Viewport.t -> Iterator.t -> unit
-(** [xy vp iter] Plots the values of [iter] on [vp] with no
-    constraints over the values of iter.
-
-    @param fill fill the region delimited by the curve ? (default:
-    false)
-
-    @param fillcolor which color to use for the fill
-
-    @param style which style to use (see the {!style} type). *)
-
-val stack : ?colors:(Color.t array) -> ?fillcolors:(Color.t array) ->
-  ?style:style -> Viewport.t -> Iterator.t array -> unit
-(** [stack vp iters] Stacks the iterators [iters] on [vp]; which means
-    that the first iterator is plotted then used as the base for the
-    second iterator, which is plotted and the sum of the two first
-    iterators are used as the base for the third iterator,
-    etc. Usually, the pathstyle used for a stack is Boxes, but one can
-    use another pathstyle if he wants
-
-    @param colors the colors to use for the iterators. If there are
-    more iterators than colors available, a round-robin strategy is
-    used to attribute colors
-
-    @param fillcolors same as colors, but for filling colors
-
-    @param style which style to use (see the {!style} type, default is
-    [Boxes 0.5]).  *)
+val xy : Viewport.t -> ?fill:bool -> ?fillcolor:Color.t ->
+    ?style:[`Lines | `Points of string | `Linespoints of string ] ->
+  ((float -> float -> unit) -> unit) -> unit
+(** [xy vp iter] plots on [vp] the values provided by the iterator
+    [iter].
+    See {!Array.xy} for more information. *)

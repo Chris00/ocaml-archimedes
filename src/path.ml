@@ -19,6 +19,7 @@
    LICENSE for more details. *)
 
 open Printf
+open Utils
 open Bigarray
 type vec = (float, float64_elt, fortran_layout) Array1.t
 
@@ -305,11 +306,6 @@ let unsafe_line_of_fortran p (x: vec) (y: vec) =
   p.x <- x.{lastx};
   p.y <- y.{lastx};
   p.curr_pt <- true
-
-let ba_copy x =
-  let x' = Array1.create (Array1.kind x) (Array1.layout x) (Array1.dim x) in
-  Array1.blit x x';
-  x'
 
 let line_of_fortran p ?(const_x=false) x ?(const_y=false) y =
   let dimx = Array1.dim x in
