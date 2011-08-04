@@ -106,6 +106,7 @@ val old_lace : t
 val ivory : t
 val linen : t
 val wheat : t
+val white_smoke : t
 
 (** {4 Shades of Yellow} *)
 
@@ -113,6 +114,13 @@ val lemon_chiffon : t
 val light_goldenrod : t
 val cornsilk : t
 val gold : t
+
+(** {4 Shades of black} *)
+
+val light_gray : t
+val gainsboro : t
+val silver : t
+val trolley_grey : t
 
 
 (** {3 Merging colors} *)
