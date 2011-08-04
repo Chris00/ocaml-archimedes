@@ -20,5 +20,5 @@ Acknowledgments
 This project was started in June 2009 thanks to financial support of
 Jane Street Capital <http://www.janestcapital.com/>.  It was also
 sponsored during the summer 2011 by the Faculty of Science of the
-University of Mon.  We are very grateful to both organisations for
+University of Mon.  We are very grateful to both organizations for
 their support.
