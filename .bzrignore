@@ -26,7 +26,6 @@ auto/
 # OASIS generated
 AUTHORS.txt
 INSTALL.txt
-README.txt
 _build/
 myocamlbuild.ml
 setup.data
