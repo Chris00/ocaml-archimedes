@@ -25,8 +25,8 @@ type style =
 | `Interval of float ]
 
 
-val y : ?fill:bool -> ?fillcolor:Color.t -> ?style:style ->
-  ?base:Iterator.t -> Viewport.t -> Iterator.t -> unit
+(* val y : ?fill:bool -> ?fillcolor:Color.t -> ?style:style -> *)
+(*   ?base:Iterator.t -> Viewport.t -> Iterator.t -> unit *)
 (** [x vp iter] Plots the values of [iter] on [vp] according to the
     fact that the x-values of iter are 0, 1, 2, etc. or 1, 2, 3,
     etc. or 42, 43, 44, etc. or ...

@@ -97,10 +97,9 @@ type data =
   (* Optimizations for some specific data structures that are used
      for caching data points.  These can continue [Curve_to] and
      [Line_to] subpaths. *)
-  | Array of float array * float array * bool
-  (* Array(x, y, rev), the x and y indices increase (if [rev] is
-     false, otherwise decrease) along the path.  [x] and [y] have the
-     same length and are not empty. *)
+  | Array of float array * float array * int * int
+  (* Array(x, y, i0, i1): [line_to x.(i) y.(i)], [i = i0,...,i1].  [x]
+     and [y] have the same length and are not empty. *)
   | Fortran of vec * vec
 
 type t = {
@@ -209,13 +208,14 @@ let update_extents_data p = function
   | Close(x, y) ->
     p.e_curr_x <- x;
     p.e_curr_y <- y
-  | Array(x, y, rev) ->
+  | Array(x, y, i0, i1) ->
     update_point p p.e_curr_x p.e_curr_y;
-    (* Order of points irrelevant to compute extent *)
-    for i = 0 to Array.length x - 1 do update_point p x.(i) y.(i) done;
-    let last = if rev then 0 else Array.length x - 1 in
-    p.e_curr_x <- x.(last);
-    p.e_curr_y <- y.(last)
+    if i0 <= i1 then
+      for i = i0 to i1 do update_point p x.(i) y.(i) done
+    else
+      for i = i0 downto i1 do update_point p x.(i) y.(i) done;
+    p.e_curr_x <- x.(i1);
+    p.e_curr_y <- y.(i1)
   | Fortran(x, y) ->
     update_point p p.e_curr_x p.e_curr_y;
     let last = Array1.dim x in
@@ -262,31 +262,36 @@ let rel_line_to p ~x ~y =
   line_to p (p.x +. x) (p.y +. y)
 
 
-let unsafe_line_of_array p ~rev x y =
-  let first, last =
-    if rev then Array.length x - 1, 0
-    else 0, Array.length x - 1 in
+let unsafe_line_of_array p x y i0 i1 =
   if not p.curr_pt then (
-    (* No current point, so [line_to x.(first) y.(first)] behaves like
-       [move_to] *)
-    p.sub_x <- x.(first);
-    p.sub_y <- y.(first);
+    (* No current point, so [line_to x.(i0) y.(i1)] behaves like [move_to] *)
+    p.sub_x <- x.(i0);
+    p.sub_y <- y.(i0);
     p.sub <- true;
   );
-  Queue.add (Array(x, y, rev)) p.path;
-  p.x <- x.(last);
-  p.y <- y.(last);
+  Queue.add (Array(x, y, i0, i1)) p.path;
+  p.x <- x.(i1);
+  p.y <- y.(i1);
   p.curr_pt <- true
 
-let line_of_array p ?(rev=false) ?(const_x=false) x ?(const_y=false) y =
+let line_of_array p ?(i0=0) ?i1 ?(const_x=false) x ?(const_y=false) y =
   let lenx = Array.length x in
-  if lenx <> Array.length y then
-    failwith "Archimedes.Path.line_of_array: x and y have different lengths";
-  if lenx <> 0 then (
-    let x = if const_x then x else Array.copy x in
-    let y = if const_y then y else Array.copy y in
-    unsafe_line_of_array p ~rev x y
-  )
+  if i0 < 0 || i0 >= lenx then
+    invalid_arg "Archimedes.Path.line_of_array: i0 out of bounds of x";
+  let i1 = match i1 with
+    | None -> lenx - 1
+    | Some i1 ->
+      if i1 < 0 || i1 >= lenx then
+        invalid_arg "Archimedes.Path.line_of_array: i1 out of bounds of x";
+      i1 in
+  let leny = Array.length y in
+  if i0 >= leny then
+    invalid_arg "Archimedes.Path.line_of_array: i0 too large for y";
+  if i1 >= leny then
+    invalid_arg "Archimedes.Path.line_of_array: i1 too large for y";
+  let x = if const_x then x else Array.copy x in
+  let y = if const_y then y else Array.copy y in
+  unsafe_line_of_array p x y i0 i1
 
 let unsafe_line_of_fortran p (x: vec) (y: vec) =
   if not p.curr_pt then (
@@ -438,15 +443,18 @@ let map_data_to f p' = function
   | Close (x, y) ->
     let x, y = f(x, y) in
     Queue.add (Close (x, y)) p'
-  | Array(x, y, rev) ->
-    let len = Array.length x in
+  | Array(x, y, i0, i1) ->
+    let len = abs(i1 - i0) + 1 in
     let x' = Array.make len 0. and y' = Array.make len 0. in
+    let j = ref i0 in
+    let update = if i0 <= i1 then incr else decr in
     for i = 0 to len - 1 do
-      let fx, fy = f (x.(i), y.(i)) in
+      let fx, fy = f (x.(!j), y.(!j)) in
       x'.(i) <- fx;
       y'.(i) <- fy;
+      update j;
     done;
-    Queue.add (Array(x', y', rev)) p'
+    Queue.add (Array(x', y', 0, len - 1)) p'
   | Fortran(x, y) ->
     let len = Array1.dim x in
     let x' = Array1.create float64 fortran_layout len
@@ -484,8 +492,8 @@ let print_data out = function
     fprintf out "Curve_to (%g, %g, %g, %g, %g, %g, %g, %g)\n"
       x0 y0 x1 y1 x2 y2 x3 y3
   | Close (x, y) -> fprintf out "Close (%g, %g)\n" x y
-  | Array(x, y, rev) ->
-    fprintf out "Array(x, y, %b) with\n  x = [|" rev;
+  | Array(x, y, i0, i1) ->
+    fprintf out "Array(x, y, %i, %i) with\n  x = [|" i0 i1;
     Array.iter (fun x -> fprintf out "%g; " x) x;
     fprintf out "|]\n  y = [|";
     Array.iter (fun y -> fprintf out "%g; " y) y;

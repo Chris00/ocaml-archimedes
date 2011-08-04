@@ -31,16 +31,25 @@ type style =
 
 let default_fillcolor = Color.rgb 0.95 0.95 0.95
 
+(* Iterators -> arrays
+ ***********************************************************************)
+(* For maximum flexibility, the user will be able to pass an iterator
+   for his particular datastructure.  The iterator will be executed
+   once (per plot) and the values will be cached in arrays. *)
+
+
+
+
 let rec draw_data ?(base=0.) style path (x, y) =
   if is_finite y then match style with
   | `Lines | `Linespoints _ -> Path.line_to path ~x ~y
   | `Impulses -> draw_data ~base (`Boxes 0.) path (x, y)
   | `Points _ -> ()
   | `Boxes w ->
-      Path.rectangle path ~x:(x -. w *. 0.5) ~y:base ~w ~h:(y -. base)
+    Path.rectangle path ~x:(x -. w *. 0.5) ~y:base ~w ~h:(y -. base)
   | `Interval size ->
-      Path.move_to path ~x ~y:base;
-      Arrows.path_line_to ~size ~head:Arrows.Stop ~tail:Arrows.Stop path x y
+    Path.move_to path ~x ~y:base;
+    Arrows.path_line_to ~size ~head:Arrows.Stop ~tail:Arrows.Stop path x y
   else Path.close path
 
 let close_data ?(base=0.) style path (x, y) =
@@ -199,10 +208,19 @@ let fill_samplings vp fillcolor f_samples g_samples =
   V.restore vp
 
 (* Factorizes the y function in most submodules (except Function) *)
-let y ?(fill=false) ?(fillcolor=default_fillcolor) ?(style=`Lines)
-    ?(base=Iterator.zero_iterator ()) vp iterator =
+let y vp ?(fill=false) ?(fillcolor=default_fillcolor) ?(style=`Points "O")
+    ?base iter =
+  (* FIXME: here we simply save the data in the path withou using a
+     more compact data structure.  Maybe it would be nice to use some
+     kind of synarray? *)
   let path = Path.make () in
-  let closingpath = ref [] in
+  (match style with
+  | `Points _ -> ()
+  | `Lines | `Linespoints _ ->
+    let x = ref 0. in
+    iter (fun y -> Path.line_to path !x y;  x := !x +. 1.)
+  );
+(*  let closingpath = ref [] in
   let f p =
     let bx, by = Iterator.next base in
     draw_data style path ~base:by p;
@@ -213,9 +231,10 @@ let y ?(fill=false) ?(fillcolor=default_fillcolor) ?(style=`Lines)
     let path = Path.copy path in
     List.iter (close_data style path) !closingpath;
     fillpath vp path fillcolor
-  end;
+  end; *)
   V.stroke ~path vp V.Data;
-  List.iter (draw_point style vp) data_rev
+  (* List.iter (draw_point style vp) data_rev *)
+;;
 
 (* Factorizes the xy function in most submodules (except Function) *)
 let xy ?(fill=false) ?(fillcolor=default_fillcolor) ?(style=`Lines)
@@ -267,7 +286,7 @@ module Function = struct
        scales? *)
     let x, y = Sampler.x ?tlog ?n ?strategy ?cost f a b in
     let path = Path.make () in
-    Path.unsafe_line_of_array path x y ~rev:false;
+    Path.unsafe_line_of_array path x y 0 (Array.length x - 1);
     V.fit vp (Path.extents path);
     (* Fill *)
     if fill then (
@@ -281,7 +300,7 @@ module Function = struct
         let bx, by = Sampler.x ?tlog ?n ?strategy ?cost g b a in
         (* FIXME: fill_samplings needs to be rewritten and moved (along
            with this code) to Path. *)
-        Path.unsafe_line_of_array path_fill bx by ~rev:false
+        Path.unsafe_line_of_array path_fill bx by 0 (Array.length bx - 1)
       );
       Path.close path_fill;
       let color = V.get_color vp in
@@ -302,7 +321,7 @@ module Function = struct
       ?(fillcolor=default_fillcolor) vp f a b =
     let path = Path.make () in
     let x, y = Sampler.xy ?tlog ?n ?strategy ?cost f a b in
-    Path.unsafe_line_of_array path x y ~rev:false;
+    Path.unsafe_line_of_array path x y 0 (Array.length x - 1);
     V.fit vp (Path.extents path);
     if fill then (
       let path_closed = Path.copy path in (* will not copy x, y *)
@@ -320,7 +339,8 @@ end
 (* The following functions simplify the implementation of x, xy and stack
    in standard submodules *)
 let basey transform ?base ?fill ?fillcolor ?style vp data =
-  y ?fill ?fillcolor ?style ?base vp (transform data)
+  (* y ?fill ?fillcolor ?style ?base vp (transform data) *)
+  failwith "being reimplemented"
 let basexy transform ?fill ?fillcolor ?style vp data =
   xy ?fill ?fillcolor ?style vp (transform data)
 let basestack transform ?colors ?fillcolors ?style vp datas =
@@ -371,7 +391,7 @@ module Array = struct
               ~x:(x.(i) -. w *. 0.5) ~y:b.(i) ~w ~h:(y.(i) -. b.(i))
           done)
       | _ ->
-        Path.unsafe_line_of_array path x y ~rev:false;
+        Path.unsafe_line_of_array path x y 0 (n - 1);
         V.fit vp (Path.extents path);
         (match base with
         | None ->
@@ -380,7 +400,7 @@ module Array = struct
         | Some b ->
           if Array.length b <> n then
             invalid_arg "Archimedes.Plot.Array.y: wrong length for \"base\"";
-          Path.unsafe_line_of_array path ~rev:true x (Array.copy b));
+          Path.unsafe_line_of_array path x (Array.copy b) (n - 1) 0);
         Path.close path;
       );
       let color = V.get_color vp in
@@ -391,7 +411,7 @@ module Array = struct
     (* Draw data *)
     let path = Path.make() in
     (match style with
-    | `Lines | `Linespoints _ -> Path.unsafe_line_of_array path x y ~rev:false
+    | `Lines | `Linespoints _ -> Path.unsafe_line_of_array path x y 0 (n - 1)
     | `Impulses ->
       for i = 0 to n - 1 do
         Path.move_to path x.(i) 0.;
@@ -459,3 +479,8 @@ end
 
 (* Avoid module name clash. *)
 module List = List_
+
+
+(* Local Variables: *)
+(* compile-command: "make -k -C .." *)
+(* End: *)
