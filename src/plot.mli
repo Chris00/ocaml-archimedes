@@ -1,5 +1,3 @@
-(** Plotting various datatypes. *)
-
 (** Style of various plots.  Plotting functions only support the
     subset of these style that make sense for them.
 
@@ -12,7 +10,6 @@
     - [`Boxes w] Data points are the top of a box of custom width [w]
     which must be given in [Data] coordinates (from 0 to 1).
 *)
-
 type style =
 [ `Lines
 | `Points of string

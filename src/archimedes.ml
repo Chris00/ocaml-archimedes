@@ -39,3 +39,6 @@ let backend_of_filename fname =
 let fx = Plot.Function.x
 
 let set_color = Viewport.set_color
+
+(* Do it last because that will override the Array and List modules. *)
+include Plot

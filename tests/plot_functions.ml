@@ -17,7 +17,7 @@ let draw backend =
   A.fx vp.(1).(0) (fun x -> x *. (x *. x -. 3.)) (-3.) 3. ~fill:true;
 
   A.Viewport.set_color vp.(0).(1) (A.Color.rgb 0. 0.5 0.);
-  A.Plot.Function.xy vp.(0).(1) (fun t -> (sin t, sin(2. *. t))) 0. 6.5 ~fill:true;
+  A.Function.xy vp.(0).(1) (fun t -> (sin t, sin(2. *. t))) 0. 6.5 ~fill:true;
 
   A.Axes.box vp.(1).(1);
   A.fx vp.(1).(1) (fun x -> sin x +. 1.) (-3.) 3.;

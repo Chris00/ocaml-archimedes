@@ -8,5 +8,5 @@ let () =
   let vp = A.init [] in
   A.Axes.box vp;
   A.set_color vp A.Color.red;
-  A.Plot.Array.y vp y;
+  A.Array.y vp y;
   A.close vp

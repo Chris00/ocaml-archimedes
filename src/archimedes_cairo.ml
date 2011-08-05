@@ -18,11 +18,11 @@
 
 (** Cairo Archimedes plugin *)
 
-open Archimedes
+module A = Archimedes
 open Bigarray
-module M = Matrix
+module M = A.Matrix
 
-module B : Backend.Capabilities =
+module B : A.Backend.Capabilities =
 struct
   include Cairo
 
@@ -33,22 +33,22 @@ struct
   (* Same type (same internal representation), just in different modules *)
   let set_line_cap t c =
     set_line_cap t (match c with
-                    | Backend.BUTT -> Cairo.BUTT
-                    | Backend.ROUND -> Cairo.ROUND
-                    | Backend.SQUARE -> Cairo.SQUARE)
+                    | A.Backend.BUTT -> Cairo.BUTT
+                    | A.Backend.ROUND -> Cairo.ROUND
+                    | A.Backend.SQUARE -> Cairo.SQUARE)
   let get_line_cap t = (match get_line_cap t with
-                        | Cairo.BUTT -> Backend.BUTT
-                        | Cairo.ROUND -> Backend.ROUND
-                        | Cairo.SQUARE -> Backend.SQUARE)
+                        | Cairo.BUTT -> A.Backend.BUTT
+                        | Cairo.ROUND -> A.Backend.ROUND
+                        | Cairo.SQUARE -> A.Backend.SQUARE)
   let set_line_join t j =
     set_line_join t (match j with
-                     | Backend.JOIN_MITER -> Cairo.JOIN_MITER
-                     | Backend.JOIN_ROUND -> Cairo.JOIN_ROUND
-                     | Backend.JOIN_BEVEL -> Cairo.JOIN_BEVEL)
+                     | A.Backend.JOIN_MITER -> Cairo.JOIN_MITER
+                     | A.Backend.JOIN_ROUND -> Cairo.JOIN_ROUND
+                     | A.Backend.JOIN_BEVEL -> Cairo.JOIN_BEVEL)
   let get_line_join t = (match get_line_join t with
-                         | Cairo.JOIN_MITER -> Backend.JOIN_MITER
-                         | Cairo.JOIN_ROUND -> Backend.JOIN_ROUND
-                         | Cairo.JOIN_BEVEL -> Backend.JOIN_BEVEL)
+                         | Cairo.JOIN_MITER -> A.Backend.JOIN_MITER
+                         | Cairo.JOIN_ROUND -> A.Backend.JOIN_ROUND
+                         | Cairo.JOIN_BEVEL -> A.Backend.JOIN_BEVEL)
 
   let path_extents t =
     (* (Obj.magic(Cairo.Path.extents t): M.rectangle) *)
@@ -76,7 +76,7 @@ struct
   let flipy _ = true
 
   let set_color t c =
-    let r,g,b,a = Color.get_rgba c in
+    let r,g,b,a = A.Color.get_rgba c in
     Cairo.set_source_rgba t r g b a
 
   let arc t ~r ~a1 ~a2 =
@@ -172,11 +172,11 @@ struct
   let select_font_face t slant weight family =
     (* Could be (unsafely) optimized *)
     let slant = match slant with
-      | Backend.Upright -> Cairo.Upright
-      | Backend.Italic -> Cairo.Italic
+      | A.Backend.Upright -> Cairo.Upright
+      | A.Backend.Italic -> Cairo.Italic
     and weight = match weight with
-      | Backend.Normal -> Cairo.Normal
-      | Backend.Bold -> Cairo.Bold in
+      | A.Backend.Normal -> Cairo.Normal
+      | A.Backend.Bold -> Cairo.Bold in
     Cairo.select_font_face t ~slant ~weight family
 
   let show_text cr ~rotate ~x ~y pos text =
@@ -190,18 +190,18 @@ struct
     Cairo.rotate cr angle;
     let te = Cairo.text_extents cr text in
     let x0 = match pos with
-      | Backend.CC | Backend.CT | Backend.CB ->
+      | A.Backend.CC | A.Backend.CT | A.Backend.CB ->
           te.x_bearing +. 0.5 *. te.width
-      | Backend.RC | Backend.RT | Backend.RB ->
+      | A.Backend.RC | A.Backend.RT | A.Backend.RB ->
           te.x_bearing
-      | Backend.LC | Backend.LT | Backend.LB ->
+      | A.Backend.LC | A.Backend.LT | A.Backend.LB ->
           te.x_bearing +. te.width
     and y0 = match pos with
-      | Backend.CC | Backend.RC | Backend.LC ->
+      | A.Backend.CC | A.Backend.RC | A.Backend.LC ->
           te.y_bearing +. 0.5 *. te.height
-      | Backend.CT | Backend.RT | Backend.LT ->
+      | A.Backend.CT | A.Backend.RT | A.Backend.LT ->
           te.y_bearing +. te.height
-      | Backend.CB | Backend.RB | Backend.LB ->
+      | A.Backend.CB | A.Backend.RB | A.Backend.LB ->
           te.y_bearing
     in
     Cairo.rel_move_to cr (-. x0) (-. y0);
@@ -225,7 +225,7 @@ struct
 end
 
 let () =
-  let module U = Backend.Register(B)  in ()
+  let module U = A.Backend.Register(B)  in ()
 
 
 

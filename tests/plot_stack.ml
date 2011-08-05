@@ -1,7 +1,6 @@
 include Tests_common
 
-module V = Archimedes.Viewport
-module P = Archimedes.Plot.Array
+module A = Archimedes
 
 let data = [|
   [| 42.; 21.; 14.; 7.; 6.; 3.; 2.; 1.; 2. |];
@@ -11,8 +10,8 @@ let data = [|
 |]
 
 let draw bk =
-  let vp = Archimedes.init ~w ~h ~dirs bk in
-  V.set_line_width vp 1.;
-  P.stack vp data;
-  Archimedes.Axes.cross vp;
-  Archimedes.close vp
+  let vp = A.init ~w ~h ~dirs bk in
+  A.Viewport.set_line_width vp 1.;
+  A.Array.stack vp data;
+  A.Axes.cross vp;
+  A.close vp

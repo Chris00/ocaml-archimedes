@@ -20,7 +20,7 @@
 
 open Printf
 open Bigarray
-open Archimedes
+module A = Archimedes
 module P = Archimedes_internals.Path
 
 let min a b = if (a:float) < b then a else b
@@ -49,13 +49,13 @@ struct
        graphics line width, according to the CTM. *)
     mutable dash_offset: float;
     mutable dash: float array;
-    mutable ctm : Matrix.t; (* current transformation matrix from the
+    mutable ctm : A.Matrix.t; (* current transformation matrix from the
                                user coordinates to the device ones. *)
-    mutable font_slant: Backend.slant;
-    mutable font_weight: Backend.weight;
+    mutable font_slant: A.Backend.slant;
+    mutable font_weight: A.Backend.weight;
     mutable font_family: string;
     mutable font_size : float;
-    mutable clip : Matrix.rectangle;
+    mutable clip : A.Matrix.rectangle;
     mutable clip_set : bool;
   }
 
@@ -67,7 +67,7 @@ struct
     (* save/restore do not affect the current path. *)
     (* The current path, in device coordinates.  The path structure
        includes its extent and the current point. *)
-    mutable current_path: Path.t
+    mutable current_path: A.Path.t
   }
 
   let check_valid_handle t =
@@ -83,7 +83,7 @@ struct
        it. We need to store a *copy* of the ctm, because
        scaling/translation/rotation mustn't modify this stored
        matrix.*)
-    let state_copy = { st with ctm = Matrix.copy st.ctm} in
+    let state_copy = { st with ctm = A.Matrix.copy st.ctm} in
     Stack.push state_copy t.history
 
   let restore t =
@@ -122,19 +122,19 @@ struct
       dash_offset = 0.;
       dash = [| |]; (* no dash *)
       (* Identity transformation matrix *)
-      ctm = Matrix.make_identity();
-      font_slant = Backend.Upright;
-      font_weight = Backend.Normal;
+      ctm = A.Matrix.make_identity();
+      font_slant = A.Backend.Upright;
+      font_weight = A.Backend.Normal;
       font_family = "*";
       font_size = 10.;
-      clip = { Matrix.x = nan; y = nan; w = nan; h = nan };
+      clip = { A.Matrix.x = nan; y = nan; w = nan; h = nan };
       clip_set = false;
     } in
     { closed = false;
       hold = !hold;
       history = Stack.create();
       state = state;
-      current_path = Path.make();
+      current_path = A.Path.make();
     }
 
   let show _t = Graphics.synchronize()
@@ -154,13 +154,13 @@ struct
 
   let clear_path t =
     check_valid_handle t;
-    Path.clear t.current_path
+    A.Path.clear t.current_path
 
   let set_color t c =
     let st = get_state t in
-    let r = round(Color.r c *. 255.)
-    and g = round(Color.g c *. 255.)
-    and b = round(Color.b c *. 255.) in
+    let r = round(A.Color.r c *. 255.)
+    and g = round(A.Color.g c *. 255.)
+    and b = round(A.Color.b c *. 255.) in
     let color = Graphics.rgb r g b in
     st.color <- color;
     Graphics.set_color color
@@ -189,49 +189,49 @@ struct
 
   (* Not supported, do nothing *)
   let set_line_cap t _ = check_valid_handle t
-  let get_line_cap t = check_valid_handle t; Backend.ROUND
+  let get_line_cap t = check_valid_handle t; A.Backend.ROUND
   let set_line_join t _ = check_valid_handle t
-  let get_line_join t = check_valid_handle t; Backend.JOIN_MITER
+  let get_line_join t = check_valid_handle t; A.Backend.JOIN_MITER
   let set_miter_limit t _ = check_valid_handle t
 
   let move_to t ~x ~y =
     let st = get_state t in
-    let x', y' = Matrix.transform_point st.ctm x y in
-    Path.move_to t.current_path x' y'
+    let x', y' = A.Matrix.transform_point st.ctm x y in
+    A.Path.move_to t.current_path x' y'
 
   let line_to t ~x ~y =
     let st = get_state t in
-    let x', y' = Matrix.transform_point st.ctm x y in
-    Path.line_to t.current_path x' y'
+    let x', y' = A.Matrix.transform_point st.ctm x y in
+    A.Path.line_to t.current_path x' y'
 
   let rel_move_to t ~x ~y =
     let st = get_state t in
-    let x, y = Matrix.transform_distance st.ctm x y in
-    Path.rel_move_to t.current_path x y
+    let x, y = A.Matrix.transform_distance st.ctm x y in
+    A.Path.rel_move_to t.current_path x y
 
   let rel_line_to t ~x ~y =
     let st = get_state t in
-    let x',y' = Matrix.transform_distance st.ctm x y in
-    Path.rel_line_to t.current_path x' y'
+    let x',y' = A.Matrix.transform_distance st.ctm x y in
+    A.Path.rel_line_to t.current_path x' y'
 
   let rectangle t ~x ~y ~w ~h =
     let st = get_state t in
-    let x', y' = Matrix.transform_point st.ctm x y
-    and w'x, w'y = Matrix.transform_distance st.ctm w 0.
-    and h'x, h'y = Matrix.transform_distance st.ctm 0. h in
-    Path.move_to t.current_path x' y';
-    Path.rel_line_to t.current_path w'x w'y;
-    Path.rel_line_to t.current_path h'x h'y;
-    Path.rel_line_to t.current_path (-. w'x) (-. w'y);
-    Path.close t.current_path
+    let x', y' = A.Matrix.transform_point st.ctm x y
+    and w'x, w'y = A.Matrix.transform_distance st.ctm w 0.
+    and h'x, h'y = A.Matrix.transform_distance st.ctm 0. h in
+    A.Path.move_to t.current_path x' y';
+    A.Path.rel_line_to t.current_path w'x w'y;
+    A.Path.rel_line_to t.current_path h'x h'y;
+    A.Path.rel_line_to t.current_path (-. w'x) (-. w'y);
+    A.Path.close t.current_path
 
   let internal_curve_to t st ~x1 ~y1 ~x2 ~y2 ~x3 ~y3 =
     (* Suffices to transform the control point by the affine
        transformation to have the affine image of the curve *)
-    let x1', y1' = Matrix.transform_point st.ctm x1 y1 in
-    let x2', y2' = Matrix.transform_point st.ctm x2 y2 in
-    let x3', y3' = Matrix.transform_point st.ctm x3 y3 in
-    Path.curve_to t.current_path x1' y1' x2' y2' x3' y3'
+    let x1', y1' = A.Matrix.transform_point st.ctm x1 y1 in
+    let x2', y2' = A.Matrix.transform_point st.ctm x2 y2 in
+    let x3', y3' = A.Matrix.transform_point st.ctm x3 y3 in
+    A.Path.curve_to t.current_path x1' y1' x2' y2' x3' y3'
 
   let curve_to t ~x1 ~y1 ~x2 ~y2 ~x3 ~y3 =
     internal_curve_to t (get_state t) ~x1 ~y1 ~x2 ~y2 ~x3 ~y3
@@ -244,36 +244,36 @@ struct
     (* One must transform the arc to bezier curves before acting with
        the CTM as it may deform the arc. *)
     let x, y =
-      try Path.current_point t.current_path
+      try A.Path.current_point t.current_path
       with _ -> failwith "archimedes_graphics.arc: no current point" in
-    let x0, y0 = Matrix.inv_transform_point st.ctm x y in
+    let x0, y0 = A.Matrix.inv_transform_point st.ctm x y in
     P.bezier_of_arc st (arc_add_piece t) ~x0 ~y0 ~r ~a1 ~a2
 
   let close_path t =
     check_valid_handle t;
-    Path.close t.current_path
+    A.Path.close t.current_path
 
-  let path_extents t = Path.extents t.current_path
+  let path_extents t = A.Path.extents t.current_path
 
   let clip_rectangle t ~x ~y ~w ~h =
     let st = get_state t in
-    let x, y = Matrix.transform_point st.ctm x y in
-    let w, h = Matrix.transform_distance st.ctm w h in
-    st.clip <- { Matrix.x = x; y = y; w = w; h = h };
+    let x, y = A.Matrix.transform_point st.ctm x y in
+    let w, h = A.Matrix.transform_distance st.ctm w h in
+    st.clip <- { A.Matrix.x = x; y = y; w = w; h = h };
     st.clip_set <- true
 
-  let translate t ~x ~y = Matrix.translate (get_state t).ctm x y
+  let translate t ~x ~y = A.Matrix.translate (get_state t).ctm x y
 
-  let scale t ~x ~y = Matrix.scale (get_state t).ctm x y
+  let scale t ~x ~y = A.Matrix.scale (get_state t).ctm x y
 
-  let rotate t ~angle = Matrix.rotate (get_state t).ctm ~angle
+  let rotate t ~angle = A.Matrix.rotate (get_state t).ctm ~angle
 
   let set_matrix t m =
     (*Replaces the ctm with a *copy* of m so that modifying m does not
       change the (newly set) coordinate system.*)
-    (get_state t).ctm <- Matrix.copy m
+    (get_state t).ctm <- A.Matrix.copy m
 
-  let get_matrix t = Matrix.copy (get_state t).ctm
+  let get_matrix t = A.Matrix.copy (get_state t).ctm
 
 
   (* Real plotting procedures (perform clipping)
@@ -286,8 +286,8 @@ struct
 
   let box st =
     let m = st.clip in
-    { x0 = m.Matrix.x;  y0 = m.Matrix.y;
-      x1 = m.Matrix.x +. m.Matrix.w;  y1 = m.Matrix.y +. m.Matrix.h;
+    { x0 = m.A.Matrix.x;  y0 = m.A.Matrix.y;
+      x1 = m.A.Matrix.x +. m.A.Matrix.w;  y1 = m.A.Matrix.y +. m.A.Matrix.h;
       must_clip = st.clip_set;
       x = nan; y = nan; }
 
@@ -394,12 +394,12 @@ struct
 
   let stroke t =
     stroke_preserve t;
-    Path.clear t.current_path
+    A.Path.clear t.current_path
 
   let stroke_path_preserve t path =
     let st = get_state t in
     graphics_set_line_width st;
-    let to_bk x y = Matrix.transform_point st.ctm x y in
+    let to_bk x y = A.Matrix.transform_point st.ctm x y in
     P.iter path (stroke_on_backend (box st) to_bk)
 
 
@@ -483,11 +483,11 @@ struct
 
   let fill t =
     fill_preserve t;
-    Path.clear t.current_path
+    A.Path.clear t.current_path
 
   let fill_path_preserve t path =
     let st = get_state t in
-    let to_bk x y = Matrix.transform_point st.ctm x y in
+    let to_bk x y = A.Matrix.transform_point st.ctm x y in
     (* Line width does not matter for "fill". *)
     let coords = ref [] in
     P.iter path (gather_subpath (box st) to_bk coords);
@@ -499,11 +499,11 @@ struct
   (* FIXME: What about win32 and mac ? *)
   let string_of_font st =
     let slant = match st.font_slant with
-      | Backend.Upright -> 'r'
-      | Backend.Italic -> 'i' in
+      | A.Backend.Upright -> 'r'
+      | A.Backend.Italic -> 'i' in
     let weight = match st.font_weight with
-      | Backend.Normal -> "medium"
-      | Backend.Bold -> "bold" in
+      | A.Backend.Normal -> "medium"
+      | A.Backend.Bold -> "bold" in
     sprintf "-*-%s-%s-%c-normal--%i-*-*-*-*-*-iso10646-*"
       st.font_family weight slant (round st.font_size)
 
@@ -523,7 +523,7 @@ struct
   let text_extents t txt =
     check_valid_handle t;
     let w, h = Graphics.text_size txt in
-    { Matrix.x = 0.; y = 0.; w = float w ; h = float h }
+    { A.Matrix.x = 0.; y = 0.; w = float w ; h = float h }
 
   let rotate_extents angle x0 y0 w0 h0 =
     Printf.printf "DEBUG: Before: %f %f %f %f\n%!" x0 y0 w0 h0;
@@ -640,19 +640,19 @@ struct
     let st = get_state t in
     (* Compute the angle between the desired direction and the X axis
        in the device coord. system. *)
-    let dx, dy = Matrix.transform_distance st.ctm (cos rotate) (sin rotate) in
+    let dx, dy = A.Matrix.transform_distance st.ctm (cos rotate) (sin rotate) in
     let angle = atan2 dy dx in
-    let x', y' = Matrix.transform_point st.ctm x y in
+    let x', y' = A.Matrix.transform_point st.ctm x y in
     let w', h' = Graphics.text_size txt in
     (* text_size returns size already in device coords.*)
     let px = match pos with
-      | Backend.LC | Backend.LT | Backend.LB -> float w'
-      | Backend.CC | Backend.CT | Backend.CB -> float w' *. 0.5
-      | Backend.RC | Backend.RT | Backend.RB -> 0.
+      | A.Backend.LC | A.Backend.LT | A.Backend.LB -> float w'
+      | A.Backend.CC | A.Backend.CT | A.Backend.CB -> float w' *. 0.5
+      | A.Backend.RC | A.Backend.RT | A.Backend.RB -> 0.
     and py = match pos with
-      | Backend.CB | Backend.RB | Backend.LB -> float h'
-      | Backend.CC | Backend.RC | Backend.LC -> float h' *. 0.5
-      | Backend.CT | Backend.RT | Backend.LT -> 0.
+      | A.Backend.CB | A.Backend.RB | A.Backend.LB -> float h'
+      | A.Backend.CC | A.Backend.RC | A.Backend.LC -> float h' *. 0.5
+      | A.Backend.CT | A.Backend.RT | A.Backend.LT -> 0.
     in
     if w' > 0 && h' > 0 then (
       if abs_float angle <= 1e-6 then
@@ -670,7 +670,7 @@ struct
 end
 
 let () =
-  let module U = Backend.Register(B) in
+  let module U = A.Backend.Register(B) in
   if Sys.os_type = "Win32" then (
     (* Set offsets so the actual surface is of the requested size. *)
     Graphics.open_graph " 100x100";
