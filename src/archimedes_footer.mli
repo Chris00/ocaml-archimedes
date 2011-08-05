@@ -1,3 +1,4 @@
+(** {3 Initializing Archimedes} *)
 
 val init : ?lines:float -> ?text:float -> ?marks:float ->
   ?w:float -> ?h:float -> ?dirs:string list -> string list -> Viewport.t

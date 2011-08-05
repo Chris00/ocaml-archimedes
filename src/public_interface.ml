@@ -87,6 +87,7 @@ let () =
   include_file "Arrows";
   include_file "Tics";
   include_file "Axes";
-  include_file "Plot" ~as_module:false;
-  include_file "Piechart";
   include_file "archimedes_footer" ~as_module:false;
+  include_file "Plot" ~as_module:false;
+  printf "(** {3 Pie-charts} *)\n\n";
+  include_file "Piechart";

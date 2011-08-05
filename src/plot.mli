@@ -1,3 +1,5 @@
+(** {3 Plotting various datatypes} *)
+
 (** Style of various plots.  Plotting functions only support the
     subset of these style that make sense for them.
 
@@ -33,6 +35,7 @@ module Function : sig
 
 end
 
+(** Plotting float Arrays. *)
 module Array : sig
   val y : Viewport.t -> ?base:float array -> ?fill:bool -> ?fillcolor:Color.t ->
     ?style:style ->
@@ -42,10 +45,10 @@ module Array : sig
       @param style the style used for the plot.  The default style is
       [`Points "O"] which means data points are marked by a small disk.
 
-      @fill whether to fill the surface between the base and the
+      @param fill whether to fill the surface between the base and the
       values [yval].
-      @fillcolor the filling color (default: {!Color.white_smoke}).
-      @const whether the input vector [yvec] will not be modified
+      @param fillcolor the filling color (default: {!Color.white_smoke}).
+      @param const whether the input vector [yvec] will not be modified
       anymore (so there is no need to cache its current values).
 
       @param base for the styles [`Lines], [`Points], and
@@ -67,6 +70,7 @@ module Array : sig
     float array array -> unit
 end
 
+(** Plotting Lists of floats. *)
 module List : sig
   val y : Viewport.t -> ?base:float list -> ?fill:bool -> ?fillcolor:Color.t ->
     ?style:style -> float list -> unit
@@ -78,7 +82,7 @@ module List : sig
   (** See {!Array.xy}.  *)
 end
 
-
+(** Plotting Fortran bigarrays. *)
 module Fortran : sig
   open Bigarray
   type vec = (float, float64_elt, fortran_layout) Array1.t
@@ -105,7 +109,7 @@ end *)
 
 
 (*----------------------------------------------------------------------*)
-(** {3 Plotting functions for generic data} *)
+(** {3 Plotting generic data} *)
 
 val y : Viewport.t -> ?base:((float -> unit) -> unit) ->
   ?fill:bool -> ?fillcolor:Color.t -> ?style:style ->
