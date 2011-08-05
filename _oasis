@@ -116,6 +116,13 @@ Executable "coordinate_pairs"
   BuildDepends: archimedes
   Install:      false
 
+Executable "pkg_chart"
+  Path:	        examples/
+  BuildTools:   ocamlbuild
+  MainIs:       pkg_chart.ml
+  BuildDepends: archimedes
+  Install:      false
+
 
 SourceRepository trunk
   Type:       svn
