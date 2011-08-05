@@ -9,7 +9,7 @@ let string_of_month m =
   else ""
 
 let upload_chart stats =
-  let vp = A.init ["Cairo"; "PNG"; "upload_stats.png"] ~w:410. ~h:187. in
+  let vp = A.init ["Cairo"; "PNG"; "pkg_chart.png"] ~w:410. ~h:187. in
   let months = Array.of_list(List.map (fun (m,_,_) -> string_of_month m) stats) in
   let month x = try months.(truncate x) with _ -> "" in
   A.Axes.x vp ~tics:(A.Tics.Equidistants(A.Tics.Custom month, 0., 1., 0))
