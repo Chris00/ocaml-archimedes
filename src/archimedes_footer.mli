@@ -37,3 +37,7 @@ val backend_of_filename : string -> string list
 val close : Viewport.t -> unit
 
 val set_color : Viewport.t -> Color.t -> unit
+(** Alias for {!Viewport.set_color}. *)
+
+val set_line_width : Viewport.t -> float -> unit
+(** Alias for {!Viewport.set_line_width}. *)
