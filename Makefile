@@ -1,3 +1,5 @@
+WEB = shell.forge.ocamlcore.org:/home/groups/archimedes/htdocs/
+
 PKGNAME = $(shell oasis query name)
 PKGVERSION = $(shell oasis query version)
 PKG_TARBALL = $(PKGNAME)-$(PKGVERSION).tar.gz

@@ -89,5 +89,5 @@ let () =
   include_file "Axes";
   include_file "archimedes_footer" ~as_module:false;
   include_file "Plot" ~as_module:false;
-  printf "(** {3 Pie-charts} *)\n\n";
+  section "Pie-charts";
   include_file "Piechart";
