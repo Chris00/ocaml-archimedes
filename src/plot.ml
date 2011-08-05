@@ -150,11 +150,11 @@ struct
     (* Draw (for boxes, marks do not make any sense). *)
     V.stroke ~path vp V.Data
 
-  let draw_marks vp style x y =
+  let draw_marks vp style x y n =
     match style with
     | `Lines | `Impulses | `Boxes _ -> ()
     | `Points m | `Linespoints m ->
-      for i = 0 to Array.length x - 1 do
+      for i = 0 to n - 1 do
         V.mark vp x.(i) y.(i) m
       done
 
@@ -166,11 +166,11 @@ struct
       V.stroke ~path vp V.Data ~fit:false
     | `Points mark ->
       ignore(lines_y vp ~fill ?base ~fillcolor x y n);
-      draw_marks vp style x y
+      draw_marks vp style x y n
     | `Linespoints mark ->
       let path = lines_y vp ~fill ?base ~fillcolor x y n in
       V.stroke vp ~path V.Data ~fit:false;
-      draw_marks vp style x y
+      draw_marks vp style x y n
     | `Boxes w ->
       boxes vp ~fill ?base ~fillcolor x y n w
     | `Impulses ->
@@ -233,11 +233,11 @@ struct
       V.stroke ~path vp V.Data ~fit:false
     | `Points mark ->
       ignore(lines_xy vp ~fill ~fillcolor x y n);
-      draw_marks vp style x y
+      draw_marks vp style x y n
     | `Linespoints mark ->
       let path = lines_xy vp ~fill ~fillcolor x y n in
       V.stroke vp ~path V.Data ~fit:false;
-      draw_marks vp style x y
+      draw_marks vp style x y n
 
   let xy vp ?fill ?fillcolor ?style
       ?(const_x=false) xdata ?(const_y=false) ydata =
@@ -377,7 +377,7 @@ let fx vp ?tlog ?n ?strategy ?cost ?(style=`Lines) ?base
   | `Lines | `Linespoints _ -> V.stroke ~path vp V.Data
   | `Points _ -> ()); (* Do not usually make sense but convenient
                         so see which data points where chosen. *)
-  PlotArray.draw_marks vp style x y
+  PlotArray.draw_marks vp style x y (Array.length x)
 
 
 let xyf vp ?tlog ?n ?strategy ?cost ?(style=`Lines) ?(fill=false)
