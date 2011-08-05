@@ -118,6 +118,7 @@ module Vec : sig
   (** See {!Array.stack}.  *)
 end
 
+(** Plotting C bigarrays. *)
 module CVec : sig
   open Bigarray
   type t = (float, float64_elt, c_layout) Array1.t
