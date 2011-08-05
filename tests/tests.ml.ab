@@ -47,8 +47,9 @@ let () =
       Format.printf "@[<2>%s@;- %s@]@." name description;
       try test(b name)
       with e ->
+        let bt = Printexc.get_backtrace () in
         incr fail_exn;
-        Format.printf "  %s@." (Printexc.to_string e)
+        Format.printf "  %s@.%s" (Printexc.to_string e) bt;
     ) !backends
   ) tests;
   if !fail_exn > 0 then
