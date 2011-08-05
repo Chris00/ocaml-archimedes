@@ -38,7 +38,10 @@ val x : ?grid:bool ->
   ?major:(string * float) -> ?minor:(string * float) ->
   ?start:Arrows.style -> ?stop:Arrows.style ->
   ?tics:Tics.t -> ?offset:offset -> Viewport.t -> unit
-(** [add_x_axis vp] adds an x-axis to the viewport [vp].
+(** [x vp] adds an x-axis to the viewport [vp].
+
+    @param major is a couple [(mark, size)] drawn at each major tic
+    position.
 
     @param start the arrow ending style on the left (x0) (see the
     Arrows module)
@@ -54,7 +57,7 @@ val y : ?grid:bool ->
   ?major:(string * float) -> ?minor:(string * float) ->
   ?start:Arrows.style -> ?stop:Arrows.style ->
   ?tics:Tics.t -> ?offset:offset -> Viewport.t -> unit
-(** [add_y_axis vp] adds an y-axis to the viewport [vp].
+(** [y vp] adds an y-axis to the viewport [vp].
 
     @param start the arrow ending style on the bottom (y0) (see the
     Arrows module)
@@ -67,7 +70,7 @@ val y : ?grid:bool ->
     @param offset where to place the axis (x-coordinate) *)
 
 val box : ?grid:bool -> ?tics:Tics.t -> ?tics_alt:Tics.t -> Viewport.t -> unit
-(** [box vp] A default axes system consisting of four axes, one at
+(** [box vp] A default system of axes consisting of four axes, one on
     each border of the viewport [vp], resulting in a box surrounding
     the viewport.
 
