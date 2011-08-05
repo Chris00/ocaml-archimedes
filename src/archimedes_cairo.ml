@@ -150,8 +150,16 @@ struct
         for i = i0 to i1 do Cairo.line_to cr x.(i) y.(i) done
       else
         for i = i0 downto i1 do Cairo.line_to cr x.(i) y.(i) done
-    | P.Fortran(x, y) ->
-      for i = 1 to Array1.dim x do Cairo.line_to cr x.{i} y.{i} done
+    | P.Fortran(x, y, i0, i1) ->
+      if i0 <= i1 then
+        for i = i0 to i1 do Cairo.line_to cr x.{i} y.{i} done
+      else
+        for i = i0 downto i1 do Cairo.line_to cr x.{i} y.{i} done
+    | P.C(x, y, i0, i1) ->
+      if i0 <= i1 then
+        for i = i0 to i1 do Cairo.line_to cr x.{i} y.{i} done
+      else
+        for i = i0 downto i1 do Cairo.line_to cr x.{i} y.{i} done
 
   (* The clipping is taken care of by the cairo backend. *)
   let stroke_path_preserve cr p =

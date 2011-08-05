@@ -68,9 +68,15 @@ val line_of_array: t -> ?i0:int -> ?i1:int ->
 type vec =
   (float, Bigarray.float64_elt, Bigarray.fortran_layout) Bigarray.Array1.t
 
-val line_of_fortran: t ->
+val line_of_vec: t -> ?i0:int -> ?i1:int ->
   ?const_x:bool -> vec -> ?const_y:bool -> vec -> unit
 (** Same as {!line_of_array} but for FORTRAN bigarrays. *)
+
+type cvec = (float, Bigarray.float64_elt, Bigarray.c_layout) Bigarray.Array1.t
+
+val line_of_cvec: t -> ?i0:int -> ?i1:int ->
+  ?const_x:bool -> cvec -> ?const_y:bool -> cvec -> unit
+(** Same as {!line_of_array} but for C bigarrays. *)
 
 
 val rel_move_to: t -> x:float -> y:float -> unit
@@ -138,7 +144,8 @@ type data = private
       indicate that indices must be followed in decreasing order.  It
       is guaranteed that [x] and [y] have the same length and that
       [i0] and [i1] are valid indices. *)
-  | Fortran of vec * vec
+  | Fortran of vec * vec * int * int
+  | C of cvec * cvec * int * int
 
 
 val iter : t ->  (data -> unit) -> unit
@@ -152,9 +159,15 @@ val unsafe_line_of_array : t -> float array -> float array -> int -> int -> unit
     of the same length, the indices valid, and the arrays are NOT
     copied. *)
 
-val unsafe_line_of_fortran: t -> vec -> vec -> unit
-(** Same as {!line_of_fortran} except that the arrays are ASSUMED to
-    be of the same length, non-empty, and are NOT copied. *)
+val unsafe_line_of_vec: t -> vec -> vec -> int -> int -> unit
+(** Same as {!line_of_vec} except that the arrays are ASSUMED to be
+    of the same length, the indices valid, and the arrays are NOT
+    copied. *)
+
+val unsafe_line_of_cvec: t -> cvec -> cvec -> int -> int -> unit
+(** Same as {!line_of_cvec} except that the arrays are ASSUMED to be
+    of the same length, the indices valid, and the arrays are NOT
+    copied. *)
 
 val bezier_of_arc : 'a ->
   ('a -> x0:float -> y0:float -> x1:float -> y1:float -> x2:float -> y2:float ->

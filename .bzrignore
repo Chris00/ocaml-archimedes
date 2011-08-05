@@ -27,7 +27,6 @@ auto/
 AUTHORS.txt
 INSTALL.txt
 _build/
-myocamlbuild.ml
 setup.data
 *.mllib
 src/API.odocl

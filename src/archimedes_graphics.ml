@@ -371,11 +371,24 @@ struct
         for i = i0 downto i1 do
           let x, y = to_bk x.(i) y.(i) in stroke_line_to b x y
         done
-    | P.Fortran(x, y) ->
-      for i = 1 to Array1.dim x do
-        let x, y = to_bk x.{i} y.{i} in
-        stroke_line_to b x y
-      done
+    | P.Fortran(x, y, i0, i1) ->
+      if i0 <= i1 then
+        for i = i0 to i1 do
+          let x, y = to_bk x.{i} y.{i} in stroke_line_to b x y
+        done
+      else
+        for i = i0 downto i1 do
+          let x, y = to_bk x.{i} y.{i} in stroke_line_to b x y
+        done
+    | P.C(x, y, i0, i1) ->
+      if i0 <= i1 then
+        for i = i0 to i1 do
+          let x, y = to_bk x.{i} y.{i} in stroke_line_to b x y
+        done
+      else
+        for i = i0 downto i1 do
+          let x, y = to_bk x.{i} y.{i} in stroke_line_to b x y
+        done
     | P.Curve_to(_, _, x1, y1, x2, y2, x3, y3) ->
       let x1, y1 = to_bk x1 y1
       and x2, y2 = to_bk x2 y2
@@ -460,11 +473,24 @@ struct
         for i = i0 downto i1 do
           let x, y = to_bk x.(i) y.(i) in fill_line_to b x y coords
         done
-    | P.Fortran(x, y) ->
-      for i = 1 to Array1.dim x do
-        let x, y = to_bk x.{i} y.{i} in
-        fill_line_to b x y coords
-      done
+    | P.Fortran(x, y, i0, i1) ->
+      if i0 <= i1 then
+        for i = i0 to i1 do
+          let x, y = to_bk x.{i} y.{i} in fill_line_to b x y coords
+        done
+      else
+        for i = i0 downto i1 do
+          let x, y = to_bk x.{i} y.{i} in fill_line_to b x y coords
+        done
+    | P.C(x, y, i0, i1) ->
+      if i0 <= i1 then
+        for i = i0 to i1 do
+          let x, y = to_bk x.{i} y.{i} in fill_line_to b x y coords
+        done
+      else
+        for i = i0 downto i1 do
+          let x, y = to_bk x.{i} y.{i} in fill_line_to b x y coords
+        done
     | P.Curve_to(x0,y0, x1,y1, x2,y2, x3,y3) ->
       let x0, y0 = to_bk x0 y0
       and x1, y1 = to_bk x1 y1

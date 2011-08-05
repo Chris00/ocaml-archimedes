@@ -22,6 +22,7 @@ open Printf
 open Utils
 open Bigarray
 type vec = (float, float64_elt, fortran_layout) Array1.t
+type cvec = (float, float64_elt, c_layout) Array1.t
 
 let fourth_pi = atan 1.
 
@@ -101,7 +102,8 @@ type data =
   | Array of float array * float array * int * int
   (* Array(x, y, i0, i1): [line_to x.(i) y.(i)], [i = i0,...,i1].  [x]
      and [y] have the same length and are not empty. *)
-  | Fortran of vec * vec
+  | Fortran of vec * vec* int * int
+  | C of cvec * cvec* int * int
 
 type t = {
   mutable x: float; (* the X-coord of the current point (if [curr_pt]) *)
@@ -217,12 +219,22 @@ let update_extents_data p = function
       for i = i0 downto i1 do update_point p x.(i) y.(i) done;
     p.e_curr_x <- x.(i1);
     p.e_curr_y <- y.(i1)
-  | Fortran(x, y) ->
+  | Fortran(x, y, i0, i1) ->
     update_point p p.e_curr_x p.e_curr_y;
-    let last = Array1.dim x in
-    for i = 1 to last do update_point p x.{i} y.{i} done;
-    p.e_curr_x <- x.{last};
-    p.e_curr_y <- y.{last}
+    if i0 <= i1 then
+      for i = i0 to i1 do update_point p x.{i} y.{i} done
+    else
+      for i = i0 downto i1 do update_point p x.{i} y.{i} done;
+    p.e_curr_x <- x.{i1};
+    p.e_curr_y <- y.{i1}
+  | C(x, y, i0, i1) ->
+    update_point p p.e_curr_x p.e_curr_y;
+    if i0 <= i1 then
+      for i = i0 to i1 do update_point p x.{i} y.{i} done
+    else
+      for i = i0 downto i1 do update_point p x.{i} y.{i} done;
+    p.e_curr_x <- x.{i1};
+    p.e_curr_y <- y.{i1}
 
 let update_extents p =
   Queue.iter (update_extents_data p) p.path;
@@ -275,47 +287,63 @@ let unsafe_line_of_array p x y i0 i1 =
   p.y <- y.(i1);
   p.curr_pt <- true
 
-let line_of_array p ?(i0=0) ?i1 ?(const_x=false) x ?(const_y=false) y =
-  let lenx = Array.length x in
-  if i0 < 0 || i0 >= lenx then
-    invalid_arg "Archimedes.Path.line_of_array: i0 out of bounds of x";
+let get_i1 name first lastx lasty i0 i1 =
+  if i0 < first || i0 > lastx then
+    invalid_arg(name ^ ": i0 out of bounds of x");
   let i1 = match i1 with
-    | None -> lenx - 1
+    | None -> lastx
     | Some i1 ->
-      if i1 < 0 || i1 >= lenx then
-        invalid_arg "Archimedes.Path.line_of_array: i1 out of bounds of x";
+      if i1 < first || i1 > lastx then
+        invalid_arg(name ^ ": i1 out of bounds of x");
       i1 in
-  let leny = Array.length y in
-  if i0 >= leny then
-    invalid_arg "Archimedes.Path.line_of_array: i0 too large for y";
-  if i1 >= leny then
-    invalid_arg "Archimedes.Path.line_of_array: i1 too large for y";
+  if i0 > lasty then invalid_arg(name ^ ": i0 too large for y");
+  if i1 > lasty then invalid_arg(name ^ ": i1 too large for y");
+  i1
+
+let line_of_array p ?(i0=0) ?i1 ?(const_x=false) x ?(const_y=false) y =
+  let i1 = get_i1 "Archimedes.Path.line_of_array" 0
+    (Array.length x - 1) (Array.length y - 1) i0 i1 in
   let x = if const_x then x else Array.copy x in
   let y = if const_y then y else Array.copy y in
   unsafe_line_of_array p x y i0 i1
 
-let unsafe_line_of_fortran p (x: vec) (y: vec) =
+let unsafe_line_of_vec p (x: vec) (y: vec) i0 i1 =
   if not p.curr_pt then (
     (* No current point, so line_to(x.{1}, y.{1}) behaves like move_to *)
-    p.sub_x <- x.{1};
-    p.sub_y <- y.{1};
+    p.sub_x <- x.{i0};
+    p.sub_y <- y.{i0};
     p.sub <- true;
   );
-  Queue.add (Fortran(x, y)) p.path;
-  let lastx = Array1.dim x in
-  p.x <- x.{lastx};
-  p.y <- y.{lastx};
+  Queue.add (Fortran(x, y, i0, i1)) p.path;
+  p.x <- x.{i1};
+  p.y <- y.{i1};
   p.curr_pt <- true
 
-let line_of_fortran p ?(const_x=false) x ?(const_y=false) y =
-  let dimx = Array1.dim x in
-  if dimx <> Array1.dim y then
-    failwith "Archimedes.Path.line_of_array: x and y have different lengths";
-  if dimx <> 0 then (
-    let x = if const_x then x else ba_copy x in
-    let y = if const_y then y else ba_copy y in
-    unsafe_line_of_fortran p x y
-  )
+let line_of_vec p ?(i0=1) ?i1 ?(const_x=false) x ?(const_y=false) y =
+  let i1 = get_i1 "Archimedes.Path.line_of_array" 1
+    (Array1.dim x) (Array1.dim y) i0 i1 in
+  let x = if const_x then x else ba_copy x in
+  let y = if const_y then y else ba_copy y in
+  unsafe_line_of_vec p x y i0 i1
+
+let unsafe_line_of_cvec p (x: cvec) (y: cvec) i0 i1 =
+  if not p.curr_pt then (
+    (* No current point, so line_to(x.{0}, y.{0}) behaves like move_to *)
+    p.sub_x <- x.{0};
+    p.sub_y <- y.{0};
+    p.sub <- true;
+  );
+  Queue.add (C(x, y, i0, i1)) p.path;
+  p.x <- x.{i1};
+  p.y <- y.{i1};
+  p.curr_pt <- true
+
+let line_of_cvec p ?(i0=0) ?i1 ?(const_x=false) x ?(const_y=false) y =
+  let i1 = get_i1 "Archimedes.Path.line_of_array" 0
+    (Array1.dim x - 1) (Array1.dim y - 1) i0 i1 in
+  let x = if const_x then x else ba_copy x in
+  let y = if const_y then y else ba_copy y in
+  unsafe_line_of_cvec p x y i0 i1
 
 
 let rectangle p ~x ~y ~w ~h =
@@ -443,24 +471,40 @@ let map_data_to f p' = function
     let len = abs(i1 - i0) + 1 in
     let x' = Array.make len 0. and y' = Array.make len 0. in
     let j = ref i0 in
-    let update = if i0 <= i1 then incr else decr in
+    let step = if i0 <= i1 then 1 else -1 in
     for i = 0 to len - 1 do
       let fx, fy = f (x.(!j), y.(!j)) in
       x'.(i) <- fx;
       y'.(i) <- fy;
-      update j;
+      j := !j + step;
     done;
     Queue.add (Array(x', y', 0, len - 1)) p'
-  | Fortran(x, y) ->
-    let len = Array1.dim x in
+  | Fortran(x, y, i0, i1) ->
+    let len = abs(i1 - i0) + 1 in
     let x' = Array1.create float64 fortran_layout len
     and y' = Array1.create float64 fortran_layout len in
+    let j = ref i0 in
+    let step = if i0 <= i1 then 1 else -1 in
     for i = 1 to len do
-      let fx, fy = f (x.{i}, y.{i}) in
+      let fx, fy = f (x.{!j}, y.{!j}) in
       x'.{i} <- fx;
       y'.{i} <- fy;
+      j := !j + step;
     done;
-    Queue.add (Fortran(x', y')) p'
+    Queue.add (Fortran(x', y', 1, len)) p'
+  | C(x, y, i0, i1) ->
+    let len = abs(i1 - i0) + 1 in
+    let x' = Array1.create float64 c_layout len
+    and y' = Array1.create float64 c_layout len in
+    let j = ref i0 in
+    let step = if i0 <= i1 then 1 else -1 in
+    for i = 0 to len - 1 do
+      let fx, fy = f (x.{!j}, y.{!j}) in
+      x'.{i} <- fx;
+      y'.{i} <- fy;
+      j := !j + step;
+    done;
+    Queue.add (C(x', y', 0, len - 1)) p'
 
 let map p f =
   let p' = make () in
@@ -494,11 +538,17 @@ let print_data out = function
     fprintf out "|]\n  y = [|";
     Array.iter (fun y -> fprintf out "%g; " y) y;
     fprintf out "|]\n"
-  | Fortran(x, y) ->
-    fprintf out "Fortran(x, y) with\n  x = {|";
+  | Fortran(x, y, i0, i1) ->
+    fprintf out "Fortran(x, y, %i, %i) with\n  x = {|" i0 i1;
     for i = 1 to Array1.dim x do fprintf out "%g; " x.{i} done;
     fprintf out "|}\n  y = {|";
     for i = 1 to Array1.dim x do fprintf out "%g; " y.{i} done;
+    fprintf out "|}\n"
+  | C(x, y, i0, i1) ->
+    fprintf out "C(x, y, %i, %i) with\n  x = {|" i0 i1;
+    for i = 0 to Array1.dim x - 1 do fprintf out "%g; " x.{i} done;
+    fprintf out "|}\n  y = {|";
+    for i = 0 to Array1.dim x - 1 do fprintf out "%g; " y.{i} done;
     fprintf out "|}\n"
 
 let fprint out p =

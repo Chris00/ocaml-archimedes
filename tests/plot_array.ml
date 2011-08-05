@@ -1,7 +1,9 @@
-include Tests_common
+open Tests_common
 open Bigarray
 module A = Archimedes
 module V = Archimedes.Viewport
+
+let description = "Array and bigarray data"
 
 let draw backend =
   let vp = A.init ~w ~h ~dirs backend in
@@ -21,6 +23,6 @@ let draw backend =
     x.{i} <- 3. *. sin (float i *. 0.1);
   done;
   A.Axes.box vp2;
-  A.Fortran.y vp2 x;
+  A.Vec.y vp2 x;
 
   A.close vp

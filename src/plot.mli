@@ -98,29 +98,45 @@ module List : sig
 end
 
 (** Plotting Fortran bigarrays. *)
-module Fortran : sig
+module Vec : sig
   open Bigarray
-  type vec = (float, float64_elt, fortran_layout) Array1.t
+  type t = (float, float64_elt, fortran_layout) Array1.t
 
-  val y : Viewport.t -> ?base:float array -> ?fill:bool -> ?fillcolor:Color.t ->
+  val y : Viewport.t -> ?base:t -> ?fill:bool -> ?fillcolor:Color.t ->
     ?style:style ->
-    ?const:bool -> vec -> unit
+    ?const:bool -> t -> unit
   (** See {!Array.y}.  *)
 
   val xy: Viewport.t -> ?fill:bool -> ?fillcolor:Color.t ->
     ?style:[`Lines | `Points of string | `Linespoints of string ] ->
-    ?const_x:bool -> vec -> ?const_y:bool -> vec -> unit
+    ?const_x:bool -> t -> ?const_y:bool -> t -> unit
   (** See {!Array.xy}.  *)
+
+  val stack : Viewport.t -> ?colors:Color.t array ->
+    ?fill:bool -> ?fillcolors:Color.t array -> ?style:style ->
+    t array -> unit
+  (** See {!Array.stack}.  *)
 end
 
-(* module C : sig
+module CVec : sig
   open Bigarray
-  type vec = (float, float64_elt, c_layout) Array1.t
+  type t = (float, float64_elt, c_layout) Array1.t
 
-  include Common
-    with type data = (float, float64_elt, c_layout) Array1.t
-    and type data2 = (float, float64_elt, c_layout) Array2.t
-end *)
+  val y : Viewport.t -> ?base:t -> ?fill:bool -> ?fillcolor:Color.t ->
+    ?style:style ->
+    ?const:bool -> t -> unit
+  (** See {!Array.y}.  *)
+
+  val xy: Viewport.t -> ?fill:bool -> ?fillcolor:Color.t ->
+    ?style:[`Lines | `Points of string | `Linespoints of string ] ->
+    ?const_x:bool -> t -> ?const_y:bool -> t -> unit
+  (** See {!Array.xy}.  *)
+
+  val stack : Viewport.t -> ?colors:Color.t array ->
+    ?fill:bool -> ?fillcolors:Color.t array -> ?style:style ->
+    t array -> unit
+  (** See {!Array.stack}.  *)
+end
 
 
 (*----------------------------------------------------------------------*)
