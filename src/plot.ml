@@ -337,53 +337,55 @@ module C = struct
 end
 
 
-module Function = struct
+(* Functions
+ ***********************************************************************)
 
-  let x ?tlog ?n ?strategy ?cost ?(style=`Lines) ?base
-      ?(fill=false) ?(fillcolor=default_fillcolor) vp f a b =
-    (* FIXME: Implies we need to redo the sampling of we switch to log
-       scales? *)
-    let x, y = Sampler.x ?tlog ?n ?strategy ?cost f a b in
-    (* FIXME: this is similar to Array.x except that the base may have
-       its own sampling. *)
-    let path = Path.make () in
-    Path.unsafe_line_of_array path x y 0 (Array.length x - 1);
-    V.fit vp (Path.extents path);
-    (* Fill *)
-    if fill then (
-      let path_fill = Path.copy path in
-      (match base with
-      | None ->
-        Path.line_to path_fill b 0.;
-        Path.line_to path_fill a 0.
-      | Some g ->
-        (* Notice that the sampling is in reversed order: *)
-        let bx, by = Sampler.x ?tlog ?n ?strategy ?cost g b a in
-        (* FIXME: fill_samplings needs to be rewritten and moved (along
-           with this code) to Path. *)
-        Path.unsafe_line_of_array path_fill bx by 0 (Array.length bx - 1)
-      );
-      Path.close path_fill;
-      let color = V.get_color vp in
-      V.set_color vp fillcolor;
-      (* Do not fit on its extents, because we don't want to fit
-         [base]. *)
-      V.fill ~path:path_fill ~fit:false vp V.Data;
-      V.set_color vp color;
+(* FIXME: tlog to be removed and automatically detected from the
+   viewport axes).  In case the viewport axes switch to logscale, a
+   resampling should be done. *)
+let fx vp ?tlog ?n ?strategy ?cost ?(style=`Lines) ?base
+    ?(fill=false) ?(fillcolor=default_fillcolor) f a b =
+  let x, y = Sampler.x ?tlog ?n ?strategy ?cost f a b in
+  (* FIXME: this is similar to Array.x except that the base may have
+     its own sampling. *)
+  let path = Path.make () in
+  Path.unsafe_line_of_array path x y 0 (Array.length x - 1);
+  V.fit vp (Path.extents path);
+  (* Fill *)
+  if fill then (
+    let path_fill = Path.copy path in
+    (match base with
+    | None ->
+      Path.line_to path_fill b 0.;
+      Path.line_to path_fill a 0.
+    | Some g ->
+      (* Notice that the sampling is in reversed order: *)
+      let bx, by = Sampler.x ?tlog ?n ?strategy ?cost g b a in
+      (* FIXME: fill_samplings needs to be rewritten and moved (along
+         with this code) to Path. *)
+      Path.unsafe_line_of_array path_fill bx by 0 (Array.length bx - 1)
     );
-    (match style with
-    | `Lines | `Linespoints _ -> V.stroke ~path vp V.Data
-    | `Points _ -> ()); (* Do not usually make sense but convenient
+    Path.close path_fill;
+    let color = V.get_color vp in
+    V.set_color vp fillcolor;
+    (* Do not fit on its extents, because we don't want to fit
+       [base]. *)
+    V.fill ~path:path_fill ~fit:false vp V.Data;
+    V.set_color vp color;
+  );
+  (match style with
+  | `Lines | `Linespoints _ -> V.stroke ~path vp V.Data
+  | `Points _ -> ()); (* Do not usually make sense but convenient
                         so see which data points where chosen. *)
-    PlotArray.draw_marks vp style x y
+  PlotArray.draw_marks vp style x y
 
-  (* FIXME: finish implementing *)
-  let xy ?tlog ?n ?strategy ?cost ?(style=`Lines) ?(fill=false)
-      ?(fillcolor=default_fillcolor) vp f a b =
-    let x, y = Sampler.xy ?tlog ?n ?strategy ?cost f a b in
-    let n = Array.length x in
-    PlotArray.unsafe_xy vp ~fill ~fillcolor ~style x y n
-end
+
+let xyf vp ?tlog ?n ?strategy ?cost ?(style=`Lines) ?(fill=false)
+    ?(fillcolor=default_fillcolor) f a b =
+  let x, y = Sampler.xy ?tlog ?n ?strategy ?cost f a b in
+  let n = Array.length x in
+  PlotArray.unsafe_xy vp ~fill ~fillcolor ~style x y n
+
 
 
 

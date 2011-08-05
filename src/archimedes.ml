@@ -36,8 +36,6 @@ let backend_of_filename fname =
     ["tikz"; fname]
   else ["graphics"; "hold"]
 
-let fx = Plot.Function.x
-
 let set_color = Viewport.set_color
 
 (* Do it last because that will override the Array and List modules. *)

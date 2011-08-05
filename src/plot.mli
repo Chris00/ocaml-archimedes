@@ -20,20 +20,35 @@ type style =
 | `Boxes of float ]
 
 (** Plotting functions. *)
-module Function : sig
-  val x : ?tlog:bool -> ?n:int ->
-    ?strategy:Sampler.strategy -> ?cost:Sampler.cost ->
-    ?style:[`Lines | `Linespoints of string | `Points of string ] ->
-    ?base:(float -> float) -> ?fill:bool -> ?fillcolor:Color.t ->
-    Viewport.t -> (float -> float) -> float -> float -> unit
+val fx : Viewport.t -> ?tlog:bool -> ?n:int ->
+  ?strategy:Sampler.strategy -> ?cost:Sampler.cost ->
+  ?style:[`Lines | `Linespoints of string | `Points of string ] ->
+  ?base:(float -> float) -> ?fill:bool -> ?fillcolor:Color.t ->
+  (float -> float) -> float -> float -> unit
+(** [fx vp f a b] draws the graph of the function [f] on the interval
+    [[a, b]].
 
-  val xy : ?tlog:bool -> ?n:int ->
-    ?strategy:Sampler.strategy -> ?cost:Sampler.cost ->
-    ?style:[`Lines | `Linespoints of string | `Points of string ] ->
-    ?fill:bool -> ?fillcolor:Color.t ->
-    Viewport.t -> (float -> float * float) -> float -> float -> unit
+    @param style the style of the plot.  Default: [`Lines].
+    @param fill whether to fill the region between the graph of [f]
+    and the base.  Default: [false].
+    @param fillcolor the color for filling.  Default: {!Color.white_smoke}.
+    @param base the second function for delimiting the filling
+    region.  Default: the identically zero function.
 
-end
+    @param n the maximum number of function evaluations.  Default: [100].
+    @param strategy see {!Sampler.strategy}.
+    @param cost see {!Sampler.cost}. *)
+
+val xyf : Viewport.t -> ?tlog:bool -> ?n:int ->
+  ?strategy:Sampler.strategy -> ?cost:Sampler.cost ->
+  ?style:[`Lines | `Linespoints of string | `Points of string ] ->
+  ?fill:bool -> ?fillcolor:Color.t ->
+  (float -> float * float) -> float -> float -> unit
+(** [xyf vp f a b] draws the image of the function [f] on the interval
+    [[a, b]], that is the set of points (x,y) = [f](t) for t in [[a,b]].
+
+    The optional arguments are the same as for {!fx}. *)
+
 
 (** Plotting float Arrays. *)
 module Array : sig
