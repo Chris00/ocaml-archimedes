@@ -21,7 +21,7 @@ let add ~name f g =
 (* TODO Improve (remove B.move_to handle 0.5 0.5 and fix orders) *)
 let () =
   add "" (fun _ -> ()) {Matrix.x=0.; y=0.; w=0.;h=0.};
-  add "X" (fun handle ->
+  add "x" (fun handle ->
              B.move_to handle 0.5 0.5;
              B.rel_move_to handle (-0.5) (-0.5);
              B.rel_line_to handle 1. 1.;
@@ -101,14 +101,14 @@ let () =
              B.close_path handle;
              B.fill handle)
     {Matrix.x=(-0.5); y=(-0.5); w=1.;h=1.};
-  add "v" (fun handle ->
+  add "^" (fun handle ->
              B.move_to handle 0.5 0.5;
              B.rel_move_to handle (-0.5) (-0.5);
              B.rel_line_to handle 0.5 1.;
              B.rel_line_to handle 0.5 (-1.);
              B.stroke handle)
     {Matrix.x=(-0.5); y=(-0.5); w=1.;h=1.};
-  add "^" (fun handle ->
+  add "v" (fun handle ->
              B.move_to handle 0.5 0.5;
              B.rel_move_to handle (-0.5) 0.5;
              B.rel_line_to handle 0.5 (-1.);
@@ -129,7 +129,7 @@ let () =
              B.rel_line_to handle 1. 0.5;
              B.stroke handle)
     {Matrix.x=(-0.5); y=(-0.5); w=1.;h=1.};
-  add "-v" (fun handle ->
+  add "^-" (fun handle ->
               B.move_to handle 0.5 0.5;
               B.rel_move_to handle (-0.5) (-0.5);
               B.rel_line_to handle 0.5 1.;
@@ -137,7 +137,7 @@ let () =
               B.close_path handle;
               B.stroke handle)
     {Matrix.x=(-0.5); y=(-0.5); w=1.;h=1.};
-  add "^-" (fun handle ->
+  add "v-" (fun handle ->
               B.move_to handle 0.5 0.5;
               B.rel_move_to handle (-0.5) 0.5;
               B.rel_line_to handle 0.5 (-1.);
@@ -161,7 +161,7 @@ let () =
               B.close_path handle;
               B.stroke handle)
     {Matrix.x=(-0.5); y=(-0.5); w=1.;h=1.};
-  add "-V" (fun handle ->
+  add "^--" (fun handle ->
               B.move_to handle 0.5 0.5;
               B.rel_move_to handle (-0.5) (-0.5);
               B.rel_line_to handle 0.5 1.;
@@ -169,21 +169,12 @@ let () =
               B.close_path handle;
               B.fill handle)
     {Matrix.x=(-0.5); y=(-0.5); w=1.;h=1.};
-  add "--v" (fun handle ->
-               B.move_to handle 0.5 0.5;
-               B.rel_move_to handle (-0.5) (-0.5);
-               B.rel_line_to handle 0.5 1.;
-               B.rel_line_to handle 0.5 (-1.);
-               B.rel_line_to handle (-1.) 0.;
-               B.fill handle)
-    {Matrix.x=(-0.5); y=(-0.5); w=1.;h=1.};
-  add "^--" (fun handle ->
+  add "v--" (fun handle ->
                B.move_to handle 0.5 0.5;
                B.rel_move_to handle (-0.5) 0.5;
                B.rel_line_to handle 0.5 (-1.);
                B.rel_line_to handle 0.5 1.;
                B.close_path handle;
-
                B.fill handle)
     {Matrix.x=(-0.5); y=(-0.5); w=1.;h=1.};
   add "||>" (fun handle ->

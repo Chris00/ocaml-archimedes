@@ -550,6 +550,8 @@ end = struct
   let orthoinstr_direct vp ~x ~y f =
     let ms = vp.mark_size /. vp.square_side in
     let x, y = ortho_from vp Data (x, y) in
+    (* FIXME: the idea of coordinate system is that we create them
+       and use/update them, not that we create new ones all the time. *)
     let coord = Coordinate.make_translate vp.coord_orthonormal
       (x -. ms /. 2.) (y -. ms /. 2.) in
     Coordinate.scale coord ms ms;

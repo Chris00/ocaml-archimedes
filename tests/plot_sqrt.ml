@@ -10,5 +10,5 @@ let draw bk =
      point. This will be fixed with the new functions fill implementation
      (WIP). *)
   A.Viewport.set_color vp A.Color.royal_blue;
-  A.fx vp sqrt (-10.) 10.;
+  A.fx vp sqrt (-10.) 10. ~style:(`Linespoints "S");
   A.close vp
