@@ -1,5 +1,3 @@
-(** A 2D plotting library with various backends. *)
-
 
 val init : ?lines:float -> ?text:float -> ?marks:float ->
   ?w:float -> ?h:float -> ?dirs:string list -> string list -> Viewport.t

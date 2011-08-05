@@ -75,13 +75,18 @@ let () =
   section "Registering backends";
   include_file "Backend";
 
+  section "Managing viewports";
   include_file "Coordinate";
   include_file "Viewport";
+
+  section "Sampling functions";
+  include_file "Sampler";
+
+  section "High level functions";
   include_file "Pointstyle";
   include_file "Arrows";
   include_file "Tics";
   include_file "Axes";
-  include_file "Sampler";
   include_file "Plot";
   include_file "Piechart";
   include_file "archimedes_footer" ~as_module:false;
