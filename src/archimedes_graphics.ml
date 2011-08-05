@@ -584,7 +584,7 @@ struct
       try
         let sx, sy = rot (float x) (float y) in
         simg.(round sy).(round sx)
-      with Invalid_argument "index out of bounds" -> Graphics.transp
+      with Invalid_argument _ -> Graphics.transp
     in
     (Array.init (succ oh')
        (fun y -> Array.init (succ ow')
