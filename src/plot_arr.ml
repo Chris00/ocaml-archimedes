@@ -66,15 +66,18 @@ let boxes vp ~fill ?base ~fillcolor (x:t) (y:t) n w =
       Path.rectangle path
         ~x:(GET(x,i) -. w *. 0.5) ~y:(GET(b,i)) ~w ~h:(GET(y,i))
     done);
-    (* For boxes, one certainly wants to see everything *)
-  V.fit vp (Path.extents path);
+  (* For boxes, one certainly wants to see everything.  Moreover some
+     space to the left and to the right are nice to have. *)
+  let e = Path.extents path in
+  V.fit vp { e with Matrix.x = e.Matrix.x -. 0.2 *. w;
+                    w = e.Matrix.w +. 0.4 *. w};
   if fill then (
     let color = V.get_color vp in
     V.set_color vp fillcolor;
     V.fill ~path vp V.Data ~fit:false;
     V.set_color vp color;
   );
-    (* Draw (for boxes, marks do not make any sense). *)
+  (* Draw (for boxes, marks do not make any sense). *)
   V.stroke ~path vp V.Data
 
 let draw_marks vp style (x: t) (y: t) n =
