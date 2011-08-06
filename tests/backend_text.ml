@@ -28,11 +28,12 @@ let draw bk =
   in
   List.iter (fun (x,y,p) ->
     Backend.move_to b x y;
-    Backend.arc b ~r:2. ~a1:0. ~a2:two_pi;
     Backend.set_color b (Archimedes.Color.rgb 0. 0. 0.5);
     Backend.show_text b ~x ~y ~rotate:0. p "Joy";
+    Backend.move_to b x y;
+    Backend.arc b ~r:3. ~a1:0. ~a2:two_pi;
+    Backend.set_color b (Archimedes.Color.rgb 1. 0. 0.);
+    Backend.fill b;
   ) pos;
-  Backend.set_color b (Archimedes.Color.rgb 1. 0. 0.);
-  Backend.fill b;
 
   Backend.close b
