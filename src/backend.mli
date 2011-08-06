@@ -125,6 +125,16 @@ sig
   (** [fill_path_preserve] is similar to [stroke_path_preserve] except
       that it fills the path. *)
 
+  val fill_with_color : t -> Color.t -> unit
+  (** [fill_with_color t c] fill the current path of [t] with the
+      color [c].  Even if the color is transparent, it must {b
+      replace} all underlying elements (contrarily to {!Backend.fill}
+      which will show the underlying elements through a transparent
+      color).  If transparency is not supported by the backend, it
+      does the same as {!Backend.fill}, except that this operation
+      does not change the current color of the backend.  It may modify
+      the current path however. *)
+
   val show : t -> unit
   (** Some backends may not show immediately the action of {!stroke},
       {!fill}, {!stroke_path_preserve},... immediately (usually

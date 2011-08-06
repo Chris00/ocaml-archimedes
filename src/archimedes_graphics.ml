@@ -512,6 +512,15 @@ struct
     fill_preserve t;
     A.Path.clear t.current_path
 
+  let fill_with_color t c =
+    let st = get_state t in
+    let color = st.color in
+    set_color t c;
+    fill_preserve t;  (* no need to do additional work *)
+    (* Restore color *)
+    st.color <- color;
+    Graphics.set_color color
+
   let fill_path_preserve t path =
     let st = get_state t in
     let to_bk x y = A.Matrix.transform_point st.ctm x y in

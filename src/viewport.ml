@@ -601,9 +601,8 @@ end = struct
     let ctm = Coordinate.use vp.backend vp.coord_device in
     Backend.save vp.backend;
     Backend.clear_path vp.backend;
-    Backend.set_color vp.backend vp.bg_color;
     Backend.rectangle vp.backend 0. 0. 1. 1.;
-    Backend.fill vp.backend;
+    Backend.fill_with_color vp.backend vp.bg_color;
     Backend.restore vp.backend;
     Coordinate.restore vp.backend ctm
 
@@ -612,7 +611,7 @@ end = struct
   (* Note: if a vp is synchronized with one of its children, this children
      will be redrawn two times. *)
   let rec do_instructions vp =
-    if vp.saves != [] then print_string "Warning: saves list is not empty\n";
+    if vp.saves <> [] then print_string "Warning: saves list is not empty\n";
     blank vp;
     Queue.iter (fun f -> f ()) vp.instructions;
     List.iter do_instructions (List.rev vp.children)

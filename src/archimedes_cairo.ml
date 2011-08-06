@@ -176,6 +176,14 @@ struct
     P.iter p (path_to_cairo cr);
     Cairo.fill cr
 
+  let fill_with_color cr c =
+    let source = Cairo.get_source cr in
+    set_color cr c;
+    let op = Cairo.get_operator cr in
+    Cairo.set_operator cr Cairo.SOURCE;
+    Cairo.fill cr;
+    Cairo.set_operator cr op;
+    Cairo.set_source cr source
 
   let select_font_face t slant weight family =
     (* Could be (unsafely) optimized *)
