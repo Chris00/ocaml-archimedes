@@ -101,7 +101,8 @@ struct
     let surface = match options with
       | ["PDF"; fname] -> PDF.create fname width height
       | ["PS"; fname] -> PS.create fname width height
-      | ["PNG"; _] -> (* We need to modify the close function *)
+      | ["SVG"; fname] -> SVG.create ~fname ~width ~height
+      | ["PNG"; _] -> (* saving done by the close function *)
           Image.create Image.ARGB32 (truncate width) (truncate height)
       | [] -> (* interactive display. FIXME: when ready *)
           Image.create Image.ARGB32 (truncate width) (truncate height)

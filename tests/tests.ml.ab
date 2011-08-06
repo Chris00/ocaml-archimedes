@@ -17,10 +17,11 @@ let list_tests () =
   exit 0
 
 let specs = Arg.align [
-  "--ps",  Arg.Unit(cairo "PS" "ps"), " activate ps (cairo) output";
-  "--pdf", Arg.Unit(cairo "PDF" "pdf"), " activate pdf (cairo) output";
-  "--png", Arg.Unit(cairo "PNG" "png"), " activate png (cairo) output";
-  "--tex", Arg.Unit tikz, " activate LaTeX (tikz) output";
+  "--ps",  Arg.Unit(cairo "PS" "ps"), " activate PS (cairo) output";
+  "--pdf", Arg.Unit(cairo "PDF" "pdf"), " activate PDF (cairo) output";
+  "--png", Arg.Unit(cairo "PNG" "png"), " activate PNG (cairo) output";
+  "--svg", Arg.Unit(cairo "SVG" "svg"), " activate SVG (cairo) output";
+  "--tex", Arg.Unit tikz, " activate LaTeX (TikZ) output";
   "--graphics", Arg.Unit graphics, " activate graphics output (done if no \
     option is given)";
   "--tests", Arg.Unit list_tests, " list all possible tests and stop";
