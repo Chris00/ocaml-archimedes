@@ -83,7 +83,7 @@ let array_of_iterator2D iter =
   !x, !y, !i (* length *)
 ;;
 
-(* Array plotting functions
+(* (Big)Array plotting functions
  ***********************************************************************)
 
 module PlotArray =
@@ -102,6 +102,43 @@ struct
 
   INCLUDE "src/plot_arr.ml"
 end
+
+module Vec = struct
+  open Bigarray
+  type t = (float, float64_elt, fortran_layout) Array1.t
+  ;;
+  DEFINE MOD = "Archimedes.Vec";;
+  DEFINE CREATE(len) = Array1.create float64 fortran_layout len;;
+  DEFINE GET(m, i) = m.{i};;
+  DEFINE SET(m, i, v) = m.{i} <- v;;
+  DEFINE FIRST = 1;;
+  DEFINE LAST(n) = n;;
+  DEFINE DIM(m) = Array1.dim m;;
+  DEFINE COPY(m) = ba_copy m;;
+  DEFINE LINE_OF_ARRAY(path, x, y, i0, i1) =
+    Path.unsafe_line_of_vec path x y i0 i1;;
+
+  INCLUDE "src/plot_arr.ml"
+end
+
+module CVec = struct
+  open Bigarray
+  type t = (float, float64_elt, c_layout) Array1.t
+  ;;
+  DEFINE MOD = "Archimedes.CVec";;
+  DEFINE CREATE(len) = Array1.create float64 c_layout len;;
+  DEFINE GET(m, i) = m.{i};;
+  DEFINE SET(m, i, v) = m.{i} <- v;;
+  DEFINE FIRST = 0;;
+  DEFINE LAST(n) = n - 1;;
+  DEFINE DIM(m) = Array1.dim m;;
+  DEFINE COPY(m) = ba_copy m;;
+  DEFINE LINE_OF_ARRAY(path, x, y, i0, i1) =
+    Path.unsafe_line_of_cvec path x y i0 i1;;
+
+  INCLUDE "src/plot_arr.ml"
+end
+
 
 (* Generic Plotting functions
  ***********************************************************************)
@@ -152,43 +189,6 @@ module PlotList = struct
 
   let xy vp ?fill ?fillcolor ?style xyl =
     xy vp ?fill ?fillcolor ?style (iter2D xyl)
-end
-
-
-module Vec = struct
-  open Bigarray
-  type t = (float, float64_elt, fortran_layout) Array1.t
-  ;;
-  DEFINE MOD = "Archimedes.Vec";;
-  DEFINE CREATE(len) = Array1.create float64 fortran_layout len;;
-  DEFINE GET(m, i) = m.{i};;
-  DEFINE SET(m, i, v) = m.{i} <- v;;
-  DEFINE FIRST = 1;;
-  DEFINE LAST(n) = n;;
-  DEFINE DIM(m) = Array1.dim m;;
-  DEFINE COPY(m) = ba_copy m;;
-  DEFINE LINE_OF_ARRAY(path, x, y, i0, i1) =
-    Path.unsafe_line_of_vec path x y i0 i1;;
-
-  INCLUDE "src/plot_arr.ml"
-end
-
-module CVec = struct
-  open Bigarray
-  type t = (float, float64_elt, c_layout) Array1.t
-  ;;
-  DEFINE MOD = "Archimedes.CVec";;
-  DEFINE CREATE(len) = Array1.create float64 c_layout len;;
-  DEFINE GET(m, i) = m.{i};;
-  DEFINE SET(m, i, v) = m.{i} <- v;;
-  DEFINE FIRST = 0;;
-  DEFINE LAST(n) = n - 1;;
-  DEFINE DIM(m) = Array1.dim m;;
-  DEFINE COPY(m) = ba_copy m;;
-  DEFINE LINE_OF_ARRAY(path, x, y, i0, i1) =
-    Path.unsafe_line_of_cvec path x y i0 i1;;
-
-  INCLUDE "src/plot_arr.ml"
 end
 
 
