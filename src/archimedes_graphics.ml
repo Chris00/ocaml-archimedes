@@ -21,6 +21,7 @@
 open Printf
 open Bigarray
 module A = Archimedes
+module Matrix = A.Matrix
 module P = Archimedes_internals.Path
 
 let min a b = if (a:float) < b then a else b
