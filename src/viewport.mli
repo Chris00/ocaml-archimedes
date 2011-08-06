@@ -270,7 +270,7 @@ val restore : t -> unit
 (**/**)
 
 val init : ?lines:float -> ?text:float -> ?marks:float ->
-  ?w:float -> ?h:float -> ?dirs:string list -> string list -> t
+  ?bg:Color.t -> ?w:float -> ?h:float -> ?dirs:string list -> string list -> t
 (** See archimedes_footer.mli *)
 
 val close : t -> unit
