@@ -100,7 +100,15 @@ struct
   DEFINE LINE_OF_ARRAY(path, x, y, i0, i1) =
     Path.unsafe_line_of_array path x y i0 i1;;
 
-  INCLUDE "src/plot_arr.ml"
+  INCLUDE "src/plot_arr.ml";;
+
+  let xy_pairs vp ?fill ?fillcolor ?style xy =
+    let n = Array.length xy in
+    if n > 0 then (
+      let x = Array.map fst xy
+      and y = Array.map snd xy in
+      unsafe_xy vp ?fill ?fillcolor ?style x y n
+    )
 end
 
 module Vec = struct
@@ -147,26 +155,29 @@ exception Enough_elements
 
 let y vp ?base ?fill ?fillcolor ?style iter =
   let y, n = array_of_iterator1D iter in
-  let x = PlotArray.index_array n in
-  let base = match base with
-    | None -> None
-    | Some iterb ->
+  if n > 0 then (
+    let x = PlotArray.index_array n in
+    let base = match base with
+      | None -> None
+      | Some iterb ->
       (* We know how many elements we need, do not allocate more *)
-      let b = Array.make n 0. in
-      let i = ref 0 in
-      try
-        iterb (fun y ->
-          b.(!i) <- y;
-          incr i;
-          if !i >= n then raise Enough_elements);
-        invalid_arg "Archimedes.Plot.y: the base iterator does not provide \
+        let b = Array.make n 0. in
+        let i = ref 0 in
+        try
+          iterb (fun y ->
+            b.(!i) <- y;
+            incr i;
+            if !i >= n then raise Enough_elements);
+          invalid_arg "Archimedes.Plot.y: the base iterator does not provide \
           enough elements"
-      with Enough_elements -> Some b in
-  PlotArray.unsafe_y vp ?base ?fill ?fillcolor ?style x y n
+        with Enough_elements -> Some b in
+    PlotArray.unsafe_y vp ?base ?fill ?fillcolor ?style x y n
+  )
 
 let xy vp ?fill ?fillcolor ?style iter =
   let x, y, n = array_of_iterator2D iter in
-  PlotArray.unsafe_xy vp ?fill ?fillcolor ?style x y n
+  if n > 0 then
+    PlotArray.unsafe_xy vp ?fill ?fillcolor ?style x y n
 
 
 module PlotList = struct
@@ -181,14 +192,22 @@ module PlotList = struct
       | Some l -> Some(fun f -> List.iter f l) in
     y vp ?base ?fill ?fillcolor ?style yiter
 
+  let rec iter_xy x y f =
+    match x, y with
+    | [], _ | _, [] -> ()
+    | xi :: xtl, yi :: ytl -> f xi yi;  iter_xy xtl ytl f
 
-  let rec iter2D xyl f =
+  let rec iter_pairs xyl f =
     match xyl with
     | [] -> ()
-    | (x, y) :: tl -> f x y; iter2D tl f
+    | (x, y) :: tl -> f x y; iter_pairs tl f
 
-  let xy vp ?fill ?fillcolor ?style xyl =
-    xy vp ?fill ?fillcolor ?style (iter2D xyl)
+  (* The [xy] inside the bodies must be the generic plotting function. *)
+  let xy vp ?fill ?fillcolor ?style x y =
+    xy vp ?fill ?fillcolor ?style (iter_xy x y)
+
+  and xy_pairs vp ?fill ?fillcolor ?style xyl =
+    xy vp ?fill ?fillcolor ?style (iter_pairs xyl)
 end
 
 

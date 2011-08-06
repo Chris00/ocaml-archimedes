@@ -80,6 +80,11 @@ module Array : sig
       @raise Invalid_argument if [xvec] and [yvec] do not have the same
       length.*)
 
+  val xy_pairs: Viewport.t -> ?fill:bool -> ?fillcolor:Color.t ->
+    ?style:[`Lines | `Points of string | `Linespoints of string ] ->
+    (float * float) array -> unit
+  (** See {!Array.xy_pairs}. *)
+
   val stack : Viewport.t -> ?colors:Color.t array ->
     ?fill:bool -> ?fillcolors:Color.t array -> ?style:style ->
     float array array -> unit
@@ -93,8 +98,14 @@ module List : sig
 
   val xy: Viewport.t -> ?fill:bool -> ?fillcolor:Color.t ->
     ?style:[`Lines | `Points of string | `Linespoints of string ] ->
+    float list -> float list -> unit
+  (** See {!Array.xy}.  The number of elements plotted the the minimum
+      of the lengths of the two lists. *)
+
+  val xy_pairs: Viewport.t -> ?fill:bool -> ?fillcolor:Color.t ->
+    ?style:[`Lines | `Points of string | `Linespoints of string ] ->
     (float * float) list -> unit
-  (** See {!Array.xy}.  *)
+  (** See {!Array.xy_pairs}.  *)
 end
 
 (** Plotting Fortran bigarrays. *)
