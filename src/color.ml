@@ -1,21 +1,13 @@
 type t = {r:float; g:float; b:float; a:float}
 
-let in_interval ~max x = x >= 0. && x <= max
+let in_interval x = x >= 0. && x <= 1.
 
 let rgba r g b a =
-  if in_interval 1. r && in_interval 1. g && in_interval 1. b
-    && in_interval 1. a then
-    if in_interval ~max:a r
-      && in_interval ~max:a g
-      && in_interval ~max:a b then
-        {r = r; g = g; b = b; a = a}
-    else
-      {r = r*.a; g = g*.a; b = b*.a; a = a}
+  if in_interval r && in_interval g && in_interval b && in_interval a then
+    {r = r; g = g; b = b; a = a}
   else
-    let msg_intro = "color: some data is not in the range. (Values r,g,b,a :" in
-    let data ?(s=", ") x = (string_of_float x)^s in
-    let msg = msg_intro^(data r)^(data g)^(data b)^(data ~s:")" a) in
-    invalid_arg msg
+    invalid_arg(Printf.sprintf "Archimedes.Color.rgba: data not in range; \
+      r=%g, g=%g, b=%g, a=%g" r g b a)
 
 let rgb r g b = rgba r g b 1.
 
@@ -36,6 +28,14 @@ let a t = t.a
 let get_rgb t = t.r, t.g, t.b
 
 let get_rgba t = t.r, t.g, t.b, t.a
+
+(* http://en.wikipedia.org/wiki/Luma_%28video%29 *)
+let luminance t =
+  0.2126 *. t.r +. 0.7152 *. t.g +. 0.0722 *. t.b
+
+let luma t =
+  (* gamma compressed RGB? *)
+  0.299 *. t.r +. 0.587 *. t.g +. 0.114 *. t.b
 
 let black = {r = 0.; g = 0.; b = 0.; a = 1.}
 let red = {r = 1.; g = 0.; b = 0.; a = 1.}
