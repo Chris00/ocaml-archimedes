@@ -15,6 +15,7 @@ doc/html/
 src/archimedes.mli
 src/archimedes_header.mli
 src/conf.ml
+*.tar.gz
 # Tests and examples (images and TeX files)
 *.pdf
 *.png
