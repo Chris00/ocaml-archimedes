@@ -21,7 +21,7 @@ let draw bk =
   in
   A.Axes.x vp ~tics:(A.Tics.Equidistants (A.Tics.Custom tic_month, 0., 1., 0));
   A.Axes.y vp;
-  A.Array.y vp data ~style:(`Boxes 1.)
+  A.Array.y vp data ~style:(`Bars 1.)
     ~fill:true ~fillcolor:A.Color.light_blue;
 
   let cumul_data = Array.copy data in

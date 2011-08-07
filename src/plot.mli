@@ -9,7 +9,7 @@
     - [`Linespoints] Data points are joined by a line and marked with
     the mark type given in argument.
     - [`Impulses] Data points are "hit" by lines starting from zero.
-    - [`Boxes w] Data points are the top of a box of custom width [w]
+    - [`Bars w] Data points are the top of a box of custom width [w]
     which must be given in [Data] coordinates (from 0 to 1).
 *)
 type style =
@@ -17,7 +17,7 @@ type style =
 | `Points of string
 | `Linespoints of string
 | `Impulses
-| `Boxes of float ]
+| `Bars of float ]
 
 (** Plotting functions. *)
 val fx : Viewport.t -> ?tlog:bool -> ?n:int ->
@@ -68,7 +68,7 @@ module Array : sig
 
       @param base for the styles [`Lines], [`Points], and
       [`Linespoints], it gives the bottom of the filling zone.  For
-      the styles [`Impulses] and [`Boxes w], it is the Y value above
+      the styles [`Impulses] and [`Bars w], it is the Y value above
       which the boxes (of heights given by [yvec]) are drawn. *)
 
   val xy: Viewport.t -> ?fill:bool -> ?fillcolor:Color.t ->

@@ -19,7 +19,7 @@ let upload_chart stats =
 
   A.set_color vp A.Color.silver;
   A.List.y vp (List.map (fun (_, _, upl) -> float upl) stats)
-    ~style:(`Boxes 0.8) ~fill:true ~fillcolor:A.Color.light_gray;
+    ~style:(`Bars 0.8) ~fill:true ~fillcolor:A.Color.light_gray;
 
   A.set_color vp A.Color.black;
   A.set_line_width vp 3.;
