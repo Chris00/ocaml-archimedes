@@ -267,11 +267,11 @@ and Viewport : sig
     (*  val save_vp : t -> unit
         val restore_vp : t -> unit*)
   val select_font_face : t -> Backend.slant -> Backend.weight -> string -> unit
-  val show_text :
-    t -> coord_name ->
+  val text :
+    t -> ?coord:coord_name ->
     ?rotate:float ->
-    x:float -> y:float -> Backend.text_position -> string -> unit
-    (*  val text_extents : t -> string -> rectangle*)
+    float -> float -> ?pos:Backend.text_position -> string -> unit
+  (*  val text_extents : t -> string -> rectangle*)
   val ortho_from : t -> coord_name -> float * float -> float * float
   val data_from : t -> coord_name -> float * float -> float * float
   val mark : t -> x:float -> y:float -> string -> unit
@@ -1251,9 +1251,9 @@ end = struct
   let select_font_face vp slant weight family =
     add_instruction (select_font_face_direct vp slant weight family) vp
 
-  let show_text vp coord_name ?(rotate=0.) ~x ~y pos text =
+  let text vp ?(coord=Data) ?(rotate=0.) x y ?(pos=Backend.CC) text =
     (* auto_fit if Data *)
-    if coord_name = Data then begin
+    if coord = Data then begin
       let ctm = Coordinate.use vp.backend vp.coord_orthonormal in
       let rect = Backend.text_extents vp.backend text in
       Coordinate.restore vp.backend ctm;
@@ -1278,7 +1278,7 @@ end = struct
       and xend, yend = data_from vp Orthonormal (x +. w, y +. h) in
       auto_fit vp x0 y0 xend yend
     end;
-    add_instruction (show_text_direct vp coord_name ~rotate ~x ~y pos text) vp
+    add_instruction (show_text_direct vp coord ~rotate ~x ~y pos text) vp
 
   let xlabel vp s =
     add_instruction (xlabel_direct vp s) vp

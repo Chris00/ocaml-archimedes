@@ -18,6 +18,6 @@ let draw backend =
     V.set_color vp A.Color.black;
     V.mark vp x y markers.(i);
     V.set_color vp A.Color.red;
-    V.show_text vp V.Data x (y +. 0.2) A.Backend.CT markers.(i);
+    V.text vp x (y +. 0.2) markers.(i) ~pos:A.Backend.CT;
   done;
   A.close vp

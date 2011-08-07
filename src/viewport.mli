@@ -204,10 +204,20 @@ val clip_rectangle : t -> x:float -> y:float -> w:float -> h:float -> unit
 (*    val save_vp : t -> unit
       val restore_vp : t -> unit*)
 val select_font_face : t -> Backend.slant -> Backend.weight -> string -> unit
-val show_text :
-  t -> coord_name ->
+
+val text :
+  t -> ?coord:coord_name ->
   ?rotate:float ->
-  x:float -> y:float -> Backend.text_position -> string -> unit
+  float -> float -> ?pos:Backend.text_position -> string -> unit
+(** [text vp x y s] display the string [s] at position [(x, y)].
+
+    @param coord the coordinate system in which the position [(x,y)]
+    has to be understood.  Default: [Data].
+    @param rotate the angle (in radian) that the text must be rotated.
+    Default: [0.].
+    @param pos the position of the text [s] w.r.t. the position
+    [(x,y)].  Default: centering both horizontally and vertically. *)
+
 (*  val text_extents : t -> string -> rectangle*)
 val mark : t -> x:float -> y:float -> string -> unit
 (* val mark_extents : t -> string -> rectangle *)
