@@ -47,11 +47,12 @@ let arrow_offset xrange arrow =
   else xrange *. 0.03 (* FIXME: we should use arrow extends. *)
 
 let grid_style vp =
+  let br, bg, bb = Color.get_rgb(V.get_background_color vp) in
   let color = V.get_color vp in
   let r, g, b = Color.get_rgb color in
-  let r' = 1. -. (1. -. r) /. 4.
-  and g' = 1. -. (1. -. g) /. 4.
-  and b' = 1. -. (1. -. b) /. 4. in
+  let r' = 0.75 *. br +. 0.25 *. r
+  and g' = 0.75 *. bg +. 0.25 *. g
+  and b' = 0.75 *. bb +. 0.25 *. b in
   let color' = Color.rgb r' g' b' in
   V.set_color_direct vp color' ();
   (* Return a restore function *)

@@ -243,6 +243,7 @@ and Viewport : sig
   val set_global_line_join : t -> Backend.line_join -> unit
     (*  val set_global_line_width : t -> float -> unit*)
   val get_color : t -> Color.t
+  val get_background_color : t -> Color.t
   val get_line_cap : t -> Backend.line_cap
   val get_dash : t -> float array * float
   val get_line_join : t -> Backend.line_join
@@ -695,7 +696,7 @@ end = struct
   let get_line_join vp = Backend.get_line_join vp.backend
 
   let get_color vp = vp.color
-
+  let get_background_color vp = vp.bg_color
 
 (* Initialization functions
  ***********************************************************************)
