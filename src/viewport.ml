@@ -318,7 +318,7 @@ and Viewport : sig
   val ylog : t -> bool
   val close : t -> unit
 
-  val add_instruction : (unit -> unit) -> t -> unit
+  val add_instruction : t -> (unit -> unit) -> unit
   val do_instructions : t -> unit
 
   val auto_fit : t -> float -> float -> float -> float -> unit
@@ -606,7 +606,7 @@ end = struct
     Backend.restore vp.backend;
     Coordinate.restore vp.backend ctm
 
-  let add_instruction f vp = Queue.push f vp.instructions
+  let add_instruction vp f = Queue.push f vp.instructions
 
   (* Note: if a vp is synchronized with one of its children, this children
      will be redrawn two times. *)
@@ -616,8 +616,8 @@ end = struct
     Queue.iter (fun f -> f ()) vp.instructions;
     List.iter do_instructions (List.rev vp.children)
 
-  let save vp = add_instruction (save_direct vp) vp
-  let restore vp = add_instruction (restore_direct vp) vp
+  let save vp = add_instruction vp (save_direct vp)
+  let restore vp = add_instruction vp (restore_direct vp)
 
   let close vp =
     let parent = vp.parent in
@@ -633,27 +633,27 @@ end = struct
 
   let set_line_width vp lw =
     vp.line_width <- lw;
-    add_instruction (set_line_width_direct vp lw) vp
+    add_instruction vp (set_line_width_direct vp lw)
 
   let set_font_size vp ts =
     vp.font_size <- ts;
-    add_instruction (set_font_size_direct vp ts) vp
+    add_instruction vp (set_font_size_direct vp ts)
 
   let set_mark_size vp ms =
     vp.mark_size <- ms;
-    add_instruction (set_mark_size_direct vp ms) vp
+    add_instruction vp (set_mark_size_direct vp ms)
 
   let set_rel_line_width vp lw =
     vp.line_width <- (lw /. usr_lw *. vp.square_side);
-    add_instruction (set_rel_line_width_direct vp lw) vp
+    add_instruction vp (set_rel_line_width_direct vp lw)
 
   let set_rel_font_size vp ts =
     vp.font_size <- (ts /. usr_ts *. vp.square_side);
-    add_instruction (set_rel_font_size_direct vp ts) vp
+    add_instruction vp (set_rel_font_size_direct vp ts)
 
   let set_rel_mark_size vp ms =
     vp.mark_size <- (ms /. usr_ms *. vp.square_side);
-    add_instruction (set_rel_mark_size_direct vp ms) vp
+    add_instruction vp (set_rel_mark_size_direct vp ms)
 
   let get_line_width vp = vp.line_width
   let get_font_size vp = vp.font_size
@@ -678,16 +678,16 @@ end = struct
 
   let set_color vp c =
     vp.color <- c;  (* one may query the viewport! *)
-    add_instruction (set_color_direct vp c) vp
+    add_instruction vp (set_color_direct vp c)
 
   let set_global_line_cap vp lc =
-    add_instruction (set_line_cap_direct vp lc) vp
+    add_instruction vp (set_line_cap_direct vp lc)
 
   let set_global_dash vp x y =
-    add_instruction (set_dash_direct vp x y) vp
+    add_instruction vp (set_dash_direct vp x y)
 
   let set_global_line_join vp join =
-    add_instruction (set_line_join_direct vp join) vp
+    add_instruction vp (set_line_join_direct vp join)
 
   (* FIXME: a field in viewport should be added as for line_width... *)
   let get_line_cap vp = Backend.get_line_cap vp.backend
@@ -1226,30 +1226,30 @@ end = struct
     let path = get_path ~notransform:true vp path coord_name in
     if do_fit && coord_name = Data then fit vp (Path.extents path);
     let path = Path.copy path in
-    add_instruction (stroke_direct ~path vp coord_name) vp
+    add_instruction vp (stroke_direct ~path vp coord_name)
 
   let stroke ?path ?fit vp coord_name =
     stroke_preserve ?path ?fit vp coord_name;
-    if path = None then add_instruction (fun () -> Path.clear vp.path) vp
+    if path = None then add_instruction vp (fun () -> Path.clear vp.path)
 
   let fill_preserve ?path ?fit:(do_fit=true) vp coord_name =
     let path = get_path ~notransform:true vp path coord_name in
     if do_fit && coord_name = Data then fit vp (Path.extents path);
     let path = Path.copy path in
-    add_instruction (fill_direct ~path vp coord_name) vp
+    add_instruction vp (fill_direct ~path vp coord_name)
 
   let fill ?path ?fit vp coord_name =
     fill_preserve ?path ?fit vp coord_name;
-    if path = None then add_instruction (fun () -> Path.clear vp.path) vp
+    if path = None then add_instruction vp (fun () -> Path.clear vp.path)
 
   let clip_rectangle vp ~x ~y ~w ~h =
-    add_instruction (clip_rectangle_direct vp ~x ~y ~w ~h) vp
+    add_instruction vp (clip_rectangle_direct vp ~x ~y ~w ~h)
 
 (* Text, marks
  ***********************************************************************)
 
   let select_font_face vp slant weight family =
-    add_instruction (select_font_face_direct vp slant weight family) vp
+    add_instruction vp (select_font_face_direct vp slant weight family)
 
   let text vp ?(coord=Data) ?(rotate=0.) x y ?(pos=Backend.CC) text =
     (* auto_fit if Data *)
@@ -1278,20 +1278,20 @@ end = struct
       and xend, yend = data_from vp Orthonormal (x +. w, y +. h) in
       auto_fit vp x0 y0 xend yend
     end;
-    add_instruction (show_text_direct vp coord ~rotate ~x ~y pos text) vp
+    add_instruction vp (show_text_direct vp coord ~rotate ~x ~y pos text)
 
   let xlabel vp s =
-    add_instruction (xlabel_direct vp s) vp
+    add_instruction vp (xlabel_direct vp s)
 
   let ylabel vp s =
-    add_instruction (ylabel_direct vp s) vp
+    add_instruction vp (ylabel_direct vp s)
 
   let title vp s =
-    add_instruction (title_direct vp s) vp
+    add_instruction vp (title_direct vp s)
 
   let mark vp ~x ~y name =
     auto_fit vp x y x y;
-    add_instruction (mark_direct vp ~x ~y name) vp
+    add_instruction vp (mark_direct vp ~x ~y name)
 
   let xlog vp = vp.axes_system.Axes.x.Axes.log
   let ylog vp = vp.axes_system.Axes.y.Axes.log

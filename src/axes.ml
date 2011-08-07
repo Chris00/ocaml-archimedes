@@ -60,7 +60,7 @@ let grid_style vp =
   in
   restore
 
-let draw_x_axis grid major minor start stop tics offset vp () =
+let draw_x_axis grid major minor start stop tics offset vp =
   let xrange = V.xmax vp -. V.xmin vp
   and yrange = V.ymax vp -. V.ymin vp in
   let x1 = V.xmin vp -. arrow_offset xrange start
@@ -88,7 +88,7 @@ let draw_x_axis grid major minor start stop tics offset vp () =
   end;
   List.iter (draw_tic tic major minor text) tics_values
 
-let draw_y_axis grid major minor start stop tics offset vp () =
+let draw_y_axis grid major minor start stop tics offset vp =
   let xrange = V.xmax vp -. V.xmin vp
   and yrange = V.ymax vp -. V.ymin vp in
   let y1 = V.ymin vp -. arrow_offset yrange start
@@ -121,9 +121,9 @@ let x ?(grid=false)
     ?(start=Arrows.Unstyled) ?(stop=Arrows.Unstyled)
     ?(tics=Tics.Auto (Tics.Number 5)) ?(offset=Absolute 0.) vp =
   V.save vp;
-  V.add_instruction
-    (draw_x_axis grid major minor start stop tics offset vp) vp;
-  V.add_instruction (fun () -> Backend.show(V.get_backend vp)) vp;
+  V.add_instruction vp (fun () ->
+    draw_x_axis grid major minor start stop tics offset vp;
+    Backend.show(V.get_backend vp));
   V.restore vp
 
 let y ?(grid=false)
@@ -131,9 +131,9 @@ let y ?(grid=false)
     ?(start=Arrows.Unstyled) ?(stop=Arrows.Unstyled)
     ?(tics=Tics.Auto (Tics.Number 5)) ?(offset=Absolute 0.) vp =
   V.save vp;
-  V.add_instruction
-    (draw_y_axis grid major minor start stop tics offset vp) vp;
-  V.add_instruction (fun () -> Backend.show(V.get_backend vp)) vp;
+  V.add_instruction vp (fun () ->
+    draw_y_axis grid major minor start stop tics offset vp;
+    Backend.show(V.get_backend vp));
   V.restore vp
 
 

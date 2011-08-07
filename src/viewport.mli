@@ -263,7 +263,7 @@ val save_direct : t -> unit -> unit
 val restore_direct : t -> unit -> unit
 
 
-val add_instruction : (unit -> unit) -> t -> unit
+val add_instruction : t -> (unit -> unit) -> unit
 val do_instructions : t -> unit
 
 val auto_fit : t -> float -> float -> float -> float -> unit

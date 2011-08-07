@@ -110,7 +110,7 @@ let line_direct ?(size=0.01) ?(head=Simple) ?(tail=Unstyled) vp x0 y0 x y () =
 
 let line ?(size=0.01) ?(head=Simple) ?(tail=Unstyled) vp x0 y0 x y =
   V.auto_fit vp x0 y0 x y;
-  V.add_instruction (line_direct ~size ~head ~tail vp x0 y0 x y) vp
+  V.add_instruction vp (line_direct ~size ~head ~tail vp x0 y0 x y)
 
 let arc_direct ?(size=0.01) ?(head=Simple) ?(tail=Unstyled)
     vp x0 y0 r a1 a2 () =
@@ -140,4 +140,4 @@ let arc_direct ?(size=0.01) ?(head=Simple) ?(tail=Unstyled)
 let arc ?size ?head ?tail vp x0 y0 r a1 a2 =
   let cx, cy = x0 -. cos a1 *. r, y0 -. sin a1 *. r in
   V.auto_fit vp (cx -. r) (cy -. r) (cx +. r) (cy +. r);
-  V.add_instruction (arc_direct ?size ?head ?tail vp x0 y0 r a1 a2) vp
+  V.add_instruction vp (arc_direct ?size ?head ?tail vp x0 y0 r a1 a2)
