@@ -95,7 +95,7 @@ struct
       (* Re-enable previous settings in case they were changed *)
       Graphics.set_color st.color
     with Stack.Empty ->
-      invalid_arg "Archimedes_graphics.restore: no prvious save issued."
+      invalid_arg "Archimedes_graphics.restore: no previous save issued."
 
   (* On windows, the size given to open_graph is the one of the window
      WITH decorations.  These quantities tell how much need to be
