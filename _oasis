@@ -123,6 +123,13 @@ Executable "pkg_chart"
   BuildDepends: archimedes
   Install:      false
 
+Executable "anscombe"
+  Path:	        examples/
+  BuildTools:   ocamlbuild
+  MainIs:       anscombe.ml
+  BuildDepends: archimedes
+  Install:      false
+
 
 SourceRepository trunk
   Type:       svn

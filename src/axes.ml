@@ -74,14 +74,14 @@ let draw_x_axis grid major minor start stop tics offset vp =
     let y = y +. 0.02 *. dir in
     let align = if dir < 0. then Backend.CB else Backend.CT in
     V.show_text_direct vp V.Orthonormal ~x ~y align lbl () in
-  let grid_line = function
-    | Tics.Major (_, x) -> let path = Path.make() in
-                          Path.move_to path x (V.ymin vp);
-                          Path.line_to path x (V.ymax vp);
-                          V.stroke_direct vp ~path V.Data ()
-    | Tics.Minor _ -> ()
-  in
   if grid then begin
+    let grid_line = function
+      | Tics.Major (_, x) -> let path = Path.make() in
+                            Path.move_to path x (V.ymin vp);
+                            Path.line_to path x (V.ymax vp);
+                            V.stroke_direct vp ~path V.Data ()
+      | Tics.Minor _ -> ()
+    in
     let restore = grid_style vp in
     List.iter grid_line tics_values;
     restore vp
