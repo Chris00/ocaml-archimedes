@@ -17,7 +17,7 @@ let y4 = [|6.58;5.76;7.71;8.84;8.47;7.04;5.25;12.50;5.56;7.91;6.89|]
 let fit x = 3. +. 0.5 *. x
 
 let () =
-  let vp0 = A.init [] in
+  let vp0 = A.init(try A.backend_of_filename Sys.argv.(1) with _ -> []) in
   let vp = A.Viewport.grid vp0 2 2 in
 
   Array.iter (fun vpl -> Array.iter (fun v ->
