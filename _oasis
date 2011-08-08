@@ -130,6 +130,12 @@ Executable "anscombe"
   BuildDepends: archimedes
   Install:      false
 
+Executable "scatter_hist"
+  Path:	        examples/
+  BuildTools:   ocamlbuild
+  MainIs:       scatter_hist.ml
+  BuildDepends: archimedes
+  Install:      false
 
 SourceRepository trunk
   Type:       svn
