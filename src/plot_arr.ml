@@ -53,6 +53,16 @@ let lines_y vp ~fill ?base ~fillcolor (x: t) (y: t) n =
   );
   path
 
+let fill_and_stroke vp path ~fill ~fillcolor =
+  if fill then (
+    let color = V.get_color vp in
+    V.set_color vp fillcolor;
+    V.fill ~path vp `Data ~fit:false;
+    V.set_color vp color;
+  );
+  (* Draw (for bars, marks do not make any sense). *)
+  V.stroke ~path vp `Data ~fit:false
+
 let bars vp ~fill ?base ~fillcolor (x:t) (y:t) n w =
   let path = Path.make() in
   (match base with
@@ -68,22 +78,36 @@ let bars vp ~fill ?base ~fillcolor (x:t) (y:t) n w =
         ~x:(GET(x,i) -. w *. 0.5) ~y:(GET(b,i)) ~w ~h:(GET(y,i))
     done);
   (* For bars, one certainly wants to see everything.  Moreover some
-     space to the left and to the right are nice to have. *)
+     space to the left and to the right is nice to have. *)
   let e = Path.extents path in
   V.fit vp { e with Matrix.x = e.Matrix.x -. 0.2 *. w;
                     w = e.Matrix.w +. 0.4 *. w};
-  if fill then (
-    let color = V.get_color vp in
-    V.set_color vp fillcolor;
-    V.fill ~path vp `Data ~fit:false;
-    V.set_color vp color;
-  );
-  (* Draw (for bars, marks do not make any sense). *)
-  V.stroke ~path vp `Data
+  fill_and_stroke vp path ~fill ~fillcolor
+
+let horizontal_bars vp ~fill ?base ~fillcolor (x:t) (y:t) n w =
+  let path = Path.make() in
+  (match base with
+  | None ->
+    for i = FIRST to LAST(n) do
+      Path.rectangle path ~x:0. ~y:(GET(y,i) -. w *. 0.5) ~w:(GET(x,i)) ~h:w
+    done
+  | Some b ->
+    if DIM(b) <> n then
+      invalid_arg "Archimedes.Plot.Array.y: wrong length for \"base\"";
+    for i = FIRST to LAST(n) do
+      Path.rectangle path
+        ~x:(GET(b,i)) ~y:(GET(y,i) -. w *. 0.5) ~w:(GET(x,i)) ~h:w
+    done);
+  (* For horizontal bars, one certainly wants to see everything.
+     Moreover some space to the top and bottom is nice to have. *)
+  let e = Path.extents path in
+  V.fit vp { e with Matrix.y = e.Matrix.y -. 0.2 *. w;
+    h = e.Matrix.h +. 0.4 *. w};
+  fill_and_stroke vp path ~fill ~fillcolor
 
 let draw_marks vp style (x: t) (y: t) n =
   match style with
-  | `Lines | `Impulses | `Bars _ -> ()
+  | `Lines | `Impulses | `Bars _ | `HBars _ -> ()
   | `Points m | `Linespoints m ->
     for i = FIRST to LAST(n) do
       V.mark vp (GET(x,i)) (GET(y,i)) m
@@ -107,6 +131,8 @@ let unsafe_y vp ?base ?(fill=false) ?(fillcolor=default_fillcolor)
     bars vp ~fill ?base ~fillcolor x y n w
   | `Impulses ->
     bars vp ~fill ?base ~fillcolor x y n 0.
+  | `HBars w ->
+    horizontal_bars vp ~fill ?base ~fillcolor x y n w
 
 let y vp ?base ?fill ?fillcolor ?style ?(const=false) ydata =
   let n = DIM(ydata) in
@@ -174,6 +200,12 @@ let unsafe_xy vp ?(fill=false) ?(fillcolor=default_fillcolor)
     let path = lines_xy vp ~fill ~fillcolor x y n in
     V.stroke vp ~path `Data ~fit:false;
     draw_marks vp style x y n
+  | `Bars w ->
+    bars vp ~fill ?base:None ~fillcolor x y n w
+  | `Impulses ->
+    bars vp ~fill ?base:None ~fillcolor x y n 0.
+  | `HBars w ->
+    horizontal_bars vp ~fill ?base:None ~fillcolor x y n w
 
 let xy vp ?fill ?fillcolor ?style
     ?(const_x=false) xdata ?(const_y=false) ydata =

@@ -17,7 +17,8 @@ type style =
 | `Points of string
 | `Linespoints of string
 | `Impulses
-| `Bars of float ]
+| `Bars of float
+| `HBars of float ]
 
 (** Plotting functions. *)
 val fx : Viewport.t -> ?tlog:bool -> ?n:int ->
@@ -69,10 +70,11 @@ module Array : sig
       @param base for the styles [`Lines], [`Points], and
       [`Linespoints], it gives the bottom of the filling zone.  For
       the styles [`Impulses] and [`Bars w], it is the Y value above
-      which the boxes (of heights given by [yvec]) are drawn. *)
+      which the boxes (of heights given by [yvec]) are drawn.  For the
+      style [`HBars], it is the (signed) distance to Y at which the
+      horizontal bar starts. *)
 
-  val xy: Viewport.t -> ?fill:bool -> ?fillcolor:Color.t ->
-    ?style:[`Lines | `Points of string | `Linespoints of string ] ->
+  val xy: Viewport.t -> ?fill:bool -> ?fillcolor:Color.t -> ?style:style ->
     ?const_x:bool -> float array -> ?const_y:bool -> float array -> unit
   (** [xy cp xvec yvec] draws the set of points (i, yvec.(i)).
       The optional arguments are similar to {!Array.y}.
@@ -118,8 +120,7 @@ module Vec : sig
     ?const:bool -> t -> unit
   (** See {!Array.y}.  *)
 
-  val xy: Viewport.t -> ?fill:bool -> ?fillcolor:Color.t ->
-    ?style:[`Lines | `Points of string | `Linespoints of string ] ->
+  val xy: Viewport.t -> ?fill:bool -> ?fillcolor:Color.t -> ?style:style ->
     ?const_x:bool -> t -> ?const_y:bool -> t -> unit
   (** See {!Array.xy}.  *)
 
@@ -139,8 +140,7 @@ module CVec : sig
     ?const:bool -> t -> unit
   (** See {!Array.y}.  *)
 
-  val xy: Viewport.t -> ?fill:bool -> ?fillcolor:Color.t ->
-    ?style:[`Lines | `Points of string | `Linespoints of string ] ->
+  val xy: Viewport.t -> ?fill:bool -> ?fillcolor:Color.t -> ?style:style ->
     ?const_x:bool -> t -> ?const_y:bool -> t -> unit
   (** See {!Array.xy}.  *)
 

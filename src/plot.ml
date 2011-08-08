@@ -27,7 +27,8 @@ type style =
 | `Points of string
 | `Linespoints of string
 | `Impulses
-| `Bars of float ]
+| `Bars of float
+| `HBars of float ]
 
 let default_fillcolor = Color.white_smoke
 
