@@ -5,7 +5,7 @@ module V = A.Viewport
 
 let draw bk =
   let vp = A.init ~w:1024. ~h:600. ~dirs bk in
-  let vp_zoom = V.make vp V.Graph 0.5 1. 0.6 1. (fun _ _ _ -> () ) in
+  let vp_zoom = V.make vp ~coord:`Graph 0.5 1. 0.6 1. in
   A.Axes.x vp ~offset:(A.Axes.Relative 0.)
     ~tics:(A.Tics.Equidistants (A.Tics.Number 3, 0., pi, 1));
   A.Axes.y vp ~offset:(A.Axes.Relative 0.)

@@ -24,7 +24,7 @@
 type t
 (** Viewport handle. *)
 
-type coord_name = Device | Graph | Data | Orthonormal
+type coord_name = [`Device | `Graph | `Data | `Orthonormal]
 
 val get_coord_from_name : t -> coord_name -> Coordinate.t
 (** [get_coord_from_name viewport coord_name] returns one of the
@@ -32,19 +32,21 @@ val get_coord_from_name : t -> coord_name -> Coordinate.t
 
 (** {2 Create new viewports} *)
 
-val make : ?lines:float -> ?text:float -> ?marks:float ->
-  t -> coord_name -> float -> float -> float -> float ->
-  (t -> float -> float -> unit) -> t
-(** [make parent coord_name xmin xmax ymin ymax] creates and returns a
-    viewport on top of [parent] with top left corner (xmin, ymin) and
-    bottom right corner (xmax, ymax) using parent's [coord_name]
-    coordinate system.
+val make : t -> ?lines:float -> ?text:float -> ?marks:float ->
+  ?redim:(t -> float -> float -> unit) ->
+  ?coord:[`Device | `Graph | `Orthonormal] ->
+  float -> float -> float -> float -> t
+(** [make parent xmin xmax ymin ymax] creates and returns a viewport
+    on top of [parent] with top left corner ([xmin], [ymin]) and
+    bottom right corner ([xmax], [ymax]).
 
     @param lines see {!init}
-
     @param text see {!init}
-
     @param marks see {!init}
+    @param coord the coordinate system in which to interpret [xmin],
+    [xmax], [ymin], and [ymax].  Default: [`Device].
+    @param redim the function to execute when the viewport is
+    redimensioned.  Default: do nothing.
 *)
 
 val get_backend : t -> Backend.t

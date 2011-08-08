@@ -17,12 +17,12 @@ let draw bk =
 
   V.set_line_width vp 21.;
   V.set_color vp Archimedes.Color.orange;
-  V.stroke ~path:p vp V.Data;
+  V.stroke ~path:p vp `Data;
 
   V.set_color vp Archimedes.Color.forest_green;
   V.move_to vp ~x:(-3.) ~y:2.;
   V.line_to vp ~x:(-2.) ~y:3.;
-  V.stroke vp V.Data;
+  V.stroke vp `Data;
 
   V.set_mark_size vp 30.;
   V.set_line_width vp 1.;
@@ -35,11 +35,11 @@ let draw bk =
   V.move_to vp 1. 1.;
   V.line_to vp 2. 2.;
   V.set_color vp Archimedes.Color.green;
-  V.stroke vp V.Data;
+  V.stroke vp `Data;
 
   V.rectangle vp 0. 0. 1. 1.;
   V.set_color vp Archimedes.Color.red;
-  V.stroke vp V.Graph;
+  V.stroke vp `Graph;
 
   V.set_color vp Archimedes.Color.black;
   Archimedes.Axes.x vp;

@@ -48,7 +48,7 @@ let lines_y vp ~fill ?base ~fillcolor (x: t) (y: t) n =
     Path.close path_fill;
     let color = V.get_color vp in
     V.set_color vp fillcolor;
-    V.fill ~path:path_fill vp V.Data ~fit:false;
+    V.fill ~path:path_fill vp `Data ~fit:false;
     V.set_color vp color;
   );
   path
@@ -75,11 +75,11 @@ let bars vp ~fill ?base ~fillcolor (x:t) (y:t) n w =
   if fill then (
     let color = V.get_color vp in
     V.set_color vp fillcolor;
-    V.fill ~path vp V.Data ~fit:false;
+    V.fill ~path vp `Data ~fit:false;
     V.set_color vp color;
   );
   (* Draw (for bars, marks do not make any sense). *)
-  V.stroke ~path vp V.Data
+  V.stroke ~path vp `Data
 
 let draw_marks vp style (x: t) (y: t) n =
   match style with
@@ -95,13 +95,13 @@ let unsafe_y vp ?base ?(fill=false) ?(fillcolor=default_fillcolor)
   match style with
   | `Lines ->
     let path = lines_y vp ~fill ?base ~fillcolor x y n in
-    V.stroke ~path vp V.Data ~fit:false
+    V.stroke ~path vp `Data ~fit:false
   | `Points mark ->
     ignore(lines_y vp ~fill ?base ~fillcolor x y n);
     draw_marks vp style x y n
   | `Linespoints mark ->
     let path = lines_y vp ~fill ?base ~fillcolor x y n in
-    V.stroke vp ~path V.Data ~fit:false;
+    V.stroke vp ~path `Data ~fit:false;
     draw_marks vp style x y n
   | `Bars w ->
     bars vp ~fill ?base ~fillcolor x y n w
@@ -155,7 +155,7 @@ let lines_xy vp ~fill ~fillcolor (x:t) (y:t) n =
     Path.close path_fill;
     let color = V.get_color vp in
     V.set_color vp fillcolor;
-    V.fill ~path:path_fill vp V.Data ~fit:false;
+    V.fill ~path:path_fill vp `Data ~fit:false;
     V.set_color vp color;
   );
   path
@@ -166,13 +166,13 @@ let unsafe_xy vp ?(fill=false) ?(fillcolor=default_fillcolor)
   match style with
   | `Lines ->
     let path = lines_xy vp ~fill ~fillcolor x y n in
-    V.stroke ~path vp V.Data ~fit:false
+    V.stroke ~path vp `Data ~fit:false
   | `Points mark ->
     ignore(lines_xy vp ~fill ~fillcolor x y n);
     draw_marks vp style x y n
   | `Linespoints mark ->
     let path = lines_xy vp ~fill ~fillcolor x y n in
-    V.stroke vp ~path V.Data ~fit:false;
+    V.stroke vp ~path `Data ~fit:false;
     draw_marks vp style x y n
 
 let xy vp ?fill ?fillcolor ?style

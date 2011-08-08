@@ -14,16 +14,16 @@ let draw bk =
   (* Draw it (absolute) *)
   V.set_line_width vp 42.;
   V.set_color vp Archimedes.Color.red;
-  V.stroke ~path:p vp V.Device;
+  V.stroke ~path:p vp `Device;
 
   (* Draw it (relative) *)
   V.set_rel_line_width vp 5.;
   V.set_color vp Archimedes.Color.black;
-  V.stroke ~path:p vp V.Device;
+  V.stroke ~path:p vp `Device;
 
   (* Draw it (relative) *)
   V.set_rel_line_width vp 1.;
   V.set_color vp Archimedes.Color.white;
-  V.stroke ~path:p vp V.Device;
+  V.stroke ~path:p vp `Device;
 
   Archimedes.close vp

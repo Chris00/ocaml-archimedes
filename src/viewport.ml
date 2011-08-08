@@ -192,13 +192,14 @@ and Viewport : sig
     mutable clip: bool;
     mutable saves: save_data list;
   }
-  type coord_name = Device | Graph | Data | Orthonormal
+  type coord_name = [`Device | `Graph | `Data | `Orthonormal]
   val get_coord_from_name : t -> coord_name -> Coordinate.t
   val init : ?lines:float -> ?text:float -> ?marks:float ->
     ?bg:Color.t -> ?w:float -> ?h:float -> ?dirs:string list -> string list -> t
-  val make : ?lines:float -> ?text:float -> ?marks:float ->
-    t -> coord_name -> float -> float -> float -> float ->
-    (t -> float -> float -> unit) -> t
+  val make : t -> ?lines:float -> ?text:float -> ?marks:float ->
+    ?redim:(t -> float -> float -> unit) ->
+    ?coord:[`Device | `Graph | `Orthonormal] ->
+    float -> float -> float -> float -> t
 
   val get_backend : t -> Backend.t
 
@@ -388,7 +389,7 @@ end = struct
     mutable saves: save_data list;
   }
 
-  type coord_name = Device | Graph | Data | Orthonormal
+  type coord_name = [`Device | `Graph | `Data | `Orthonormal]
 
   (* Multiplier to get "user-friendly" values (e.g. 12pt instead of 0.024) *)
   let usr_lw, usr_ts, usr_ms = 500., 500., 100.
@@ -408,10 +409,10 @@ end = struct
   let ymax vp = vp.axes_system.Axes.y.Axes.gxend
 
   let get_coord_from_name vp = function
-    | Device -> vp.coord_device
-    | Graph -> vp.coord_graph
-    | Data -> vp.coord_data
-    | Orthonormal -> vp.coord_orthonormal
+    | `Device -> vp.coord_device
+    | `Graph -> vp.coord_graph
+    | `Data -> vp.coord_data
+    | `Orthonormal -> vp.coord_orthonormal
 
   let to_parent coord (x, y) = Coordinate.to_parent coord ~x ~y
   let from_parent coord (x, y) = Coordinate.from_parent coord ~x ~y
@@ -426,14 +427,14 @@ end = struct
     (axis_norm_log axes_system.Axes.x x, axis_norm_log axes_system.Axes.y y)
 
   let rec ortho_from vp coord_name pos = match coord_name with
-    | Device ->
-        ortho_from vp Orthonormal (from_parent vp.coord_orthonormal pos)
-    | Graph ->
-        ortho_from vp Device (to_parent vp.coord_graph pos)
-    | Data ->
+    | `Device ->
+        ortho_from vp `Orthonormal (from_parent vp.coord_orthonormal pos)
+    | `Graph ->
+        ortho_from vp `Device (to_parent vp.coord_graph pos)
+    | `Data ->
         let pos = data_norm_log vp.axes_system pos in
-        ortho_from vp Graph (to_parent vp.coord_data pos)
-    | Orthonormal ->
+        ortho_from vp `Graph (to_parent vp.coord_data pos)
+    | `Orthonormal ->
         pos
 
   let data_unnorm_log axes_system (x, y) =
@@ -447,19 +448,19 @@ end = struct
      axis_unnorm_log axes_system.Axes.y y)
 
   let rec data_from vp coord_name pos = match coord_name with
-    | Device -> data_from vp Graph (from_parent vp.coord_graph pos)
-    | Graph ->
+    | `Device -> data_from vp `Graph (from_parent vp.coord_graph pos)
+    | `Graph ->
         let pos = data_unnorm_log vp.axes_system pos in
         from_parent vp.coord_data pos
-    | Data -> pos
-    | Orthonormal -> data_from vp Device (to_parent vp.coord_orthonormal pos)
+    | `Data -> pos
+    | `Orthonormal -> data_from vp `Device (to_parent vp.coord_orthonormal pos)
 
   let get_path ?(notransform=false) vp p coord_name =
     let p = match p with
       | None -> vp.path
       | Some p -> p
     in
-    if coord_name = Data && not notransform &&
+    if coord_name = `Data && not notransform &&
       (vp.axes_system.Axes.x.Axes.log || vp.axes_system.Axes.y.Axes.log) then
       Path.map p (data_norm_log vp.axes_system)
     else p
@@ -509,13 +510,13 @@ end = struct
   let apply_clip vp coord_name =
     if vp.clip then (
       match coord_name with
-      | Data ->
+      | `Data ->
         let x = xmin vp and y = ymin vp in
         Backend.clip_rectangle vp.backend x y (xmax vp -. x) (ymax vp -. y);
-      | Orthonormal ->
-        let maxx, maxy = ortho_from vp Device (1., 1.) in
+      | `Orthonormal ->
+        let maxx, maxy = ortho_from vp `Device (1., 1.) in
         Backend.clip_rectangle vp.backend 0. 0. maxx maxy
-      | Device | Graph ->
+      | `Device | `Graph ->
         Backend.clip_rectangle vp.backend 0. 0. 1. 1.
     )
 
@@ -551,7 +552,7 @@ end = struct
 
   let orthoinstr_direct vp ~x ~y f =
     let ms = vp.mark_size /. vp.square_side in
-    let x, y = ortho_from vp Data (x, y) in
+    let x, y = ortho_from vp `Data (x, y) in
     (* FIXME: the idea of coordinate system is that we create them
        and use/update them, not that we create new ones all the time. *)
     let coord = Coordinate.make_translate vp.coord_orthonormal
@@ -763,12 +764,12 @@ end = struct
     set_line_join viewport def_line_join;*)
     viewport
 
-  let make ?(lines=def_lw) ?(text=def_ts) ?(marks=def_ms)
-      vp coord_name xmin xmax ymin ymax redim =
-    if coord_name = Data then
-      invalid_arg "Archimedes.Viewport.make: \
-                   can't make a subviewport in Data coordinates.";
-    let coord_parent = get_coord_from_name vp coord_name in
+  let do_nothing_when_redim _ _ _ = ()
+
+  let make vp ?(lines=def_lw) ?(text=def_ts) ?(marks=def_ms)
+      ?(redim=do_nothing_when_redim)
+      ?(coord=`Device) xmin xmax ymin ymax =
+    let coord_parent = get_coord_from_name vp coord in
     let w, h, size0 =
       (* We can't be sure of the y orientation, so we them in absolute *)
       let xmax', y2' = Coordinate.to_device coord_parent xmax ymax
@@ -966,14 +967,14 @@ end = struct
   (* FIXME: poor implementations.  The label should be stored and used
      to determine the space for the graphic. *)
   let xlabel_direct vp s =
-    show_text_direct vp Device ~x:0.5 ~y:0.01 Backend.CT s
+    show_text_direct vp `Device ~x:0.5 ~y:0.01 Backend.CT s
 
   let ylabel_direct vp s =
-    show_text_direct vp Device ~x:0.01 ~y:0.5 Backend.RC s
+    show_text_direct vp `Device ~x:0.01 ~y:0.5 Backend.RC s
       ~rotate:1.57079632679489656 (* pi / 2 *)
 
   let title_direct vp s =
-    show_text_direct vp Device ~x:0.5 ~y:0.99 Backend.CB s
+    show_text_direct vp `Device ~x:0.5 ~y:0.99 Backend.CB s
 
 
 (* Synchronization
@@ -1072,8 +1073,6 @@ end = struct
 (* Layouts
  ***********************************************************************)
 
-  let do_nothing_when_redim _ _ _ = ()
-
   (* Uniform grid; redim: identity *)
   let gen_grid vp nx ny ~cols_sync_x ~cols_sync_y ~rows_sync_x ~rows_sync_y
       set get =
@@ -1084,7 +1083,7 @@ end = struct
         and ymin = float y *. ystep in
         let xmax = xmin +. xstep
         and ymax = ymin +. ystep in
-        set x y (make vp Device xmin xmax ymin ymax do_nothing_when_redim);
+        set x y (make vp xmin xmax ymin ymax);
         if y > 0 then
           sync ~x:cols_sync_x ~y:cols_sync_y (get x y) (get x 0);
         if x > 0 then
@@ -1122,8 +1121,7 @@ end = struct
       let coord = vp.coord_device in
       Coordinate.scale coord (1. /. xfactor) 1.;
     end in
-    let vp_fixed =
-      make vp Device 0. init_prop 0. 1. redim_fixed in
+    let vp_fixed = make vp 0. init_prop 0. 1. ~redim:redim_fixed in
     let redim vp xfactor _ = begin
       let coord = vp.coord_device in
       Coordinate.scale coord (1. /. xfactor) 1.;
@@ -1132,7 +1130,7 @@ end = struct
       let vp_left, _ = Coordinate.to_parent vp.coord_device ~x:0. ~y:0. in
       Coordinate.translate coord (vp_left -. fixed_right) 0.
     end in
-    let vp' = make vp Device init_prop 1. 0. 1. redim in
+    let vp' = make vp init_prop 1. 0. 1. ~redim in
     (vp_fixed, vp')
 
   let fixed_right init_prop vp =
@@ -1142,13 +1140,12 @@ end = struct
       Coordinate.translate
         coord (-. (fst (Coordinate.to_parent coord ~x:1. ~y:0.))) 0.
     end in
-    let vp_fixed =
-      make vp Device init_prop 1. 0. 1. redim_fixed in
+    let vp_fixed = make vp init_prop 1. 0. 1. ~redim:redim_fixed in
     let redim vp xfactor _ = begin
       let coord = vp.coord_device in
       Coordinate.scale coord (1. /. xfactor) 1.
     end in
-    let vp' = make vp Device 0. init_prop 0. 1. redim in
+    let vp' = make vp 0. init_prop 0. 1. ~redim in
     (vp_fixed, vp')
 
   let fixed_top init_prop vp =
@@ -1156,8 +1153,7 @@ end = struct
       let coord = vp.coord_device in
       Coordinate.scale coord 1. (1. /. yfactor);
     end in
-    let vp_fixed =
-      make vp Device 0. 1. (1. -. init_prop) 1. redim_fixed
+    let vp_fixed = make vp 0. 1. (1. -. init_prop) 1. ~redim:redim_fixed
     in
     let rec redim vp _ yfactor = begin
       let coord = vp.coord_device in
@@ -1167,7 +1163,7 @@ end = struct
       let _, vp_top = Coordinate.to_parent vp.coord_device ~x:0. ~y:0. in
       Coordinate.translate coord (vp_top -. fixed_bottom) 0.
     end in
-    let vp' = make vp Device 0. 1. 0. (1. -. init_prop) redim in
+    let vp' = make vp 0. 1. 0. (1. -. init_prop) ~redim in
     (vp_fixed, vp')
 
   let fixed_bottom init_prop vp =
@@ -1177,13 +1173,12 @@ end = struct
       Coordinate.translate
         coord 0. (-. (snd (Coordinate.to_parent coord ~x:0. ~y:1.)))
     end in
-    let vp_fixed =
-      make vp Device 0. 1. 0. init_prop redim_fixed in
+    let vp_fixed = make vp 0. 1. 0. init_prop ~redim:redim_fixed in
     let rec redim vp _ yfactor = begin
       let coord = vp.coord_device in
       Coordinate.scale coord 1. (1. /. yfactor)
     end in
-    let vp' = make vp Device 0. 1. init_prop 1. redim in
+    let vp' = make vp 0. 1. init_prop 1. ~redim in
     (vp_fixed, vp')
 
   (* Border layouts, of desired sizes *)
@@ -1225,7 +1220,7 @@ end = struct
 
   let stroke_preserve ?path ?fit:(do_fit=true) vp coord_name =
     let path = get_path ~notransform:true vp path coord_name in
-    if do_fit && coord_name = Data then fit vp (Path.extents path);
+    if do_fit && coord_name = `Data then fit vp (Path.extents path);
     let path = Path.copy path in
     add_instruction vp (stroke_direct ~path vp coord_name)
 
@@ -1235,7 +1230,7 @@ end = struct
 
   let fill_preserve ?path ?fit:(do_fit=true) vp coord_name =
     let path = get_path ~notransform:true vp path coord_name in
-    if do_fit && coord_name = Data then fit vp (Path.extents path);
+    if do_fit && coord_name = `Data then fit vp (Path.extents path);
     let path = Path.copy path in
     add_instruction vp (fill_direct ~path vp coord_name)
 
@@ -1252,9 +1247,9 @@ end = struct
   let select_font_face vp slant weight family =
     add_instruction vp (select_font_face_direct vp slant weight family)
 
-  let text vp ?(coord=Data) ?(rotate=0.) x y ?(pos=Backend.CC) text =
+  let text vp ?(coord=`Data) ?(rotate=0.) x y ?(pos=Backend.CC) text =
     (* auto_fit if Data *)
-    if coord = Data then begin
+    if coord = `Data then begin
       let ctm = Coordinate.use vp.backend vp.coord_orthonormal in
       let rect = Backend.text_extents vp.backend text in
       Coordinate.restore vp.backend ctm;
@@ -1275,8 +1270,8 @@ end = struct
       let ext = Matrix.transform_rectangle mat rect in
       let x, y = ext.Matrix.x, ext.Matrix.y
       and w, h = ext.Matrix.w, ext.Matrix.h in
-      let x0, y0 = data_from vp Orthonormal (x, y)
-      and xend, yend = data_from vp Orthonormal (x +. w, y +. h) in
+      let x0, y0 = data_from vp `Orthonormal (x, y)
+      and xend, yend = data_from vp `Orthonormal (x +. w, y +. h) in
       auto_fit vp x0 y0 xend yend
     end;
     add_instruction vp (show_text_direct vp coord ~rotate ~x ~y pos text)

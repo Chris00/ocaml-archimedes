@@ -14,8 +14,8 @@ let draw bk =
   A.Viewport.set_font_size vp 35.;
   (try A.Viewport.select_font_face vp Backend.Upright Backend.Normal "arial"
    with _ -> ()); (* keep the default font if it fails *)
-  A.Viewport.text vp 0.25 0.5 "Joy" ~coord:A.Viewport.Device ~rotate:half_pi;
-  A.Viewport.text vp 0.1  0.8 "Joy" ~coord:A.Viewport.Device ~rotate:0.7;
+  A.Viewport.text vp 0.25 0.5 "Joy" ~coord:`Device ~rotate:half_pi;
+  A.Viewport.text vp 0.1  0.8 "Joy" ~coord:`Device ~rotate:0.7;
 
   let pos = [(0.4, 0.8, Backend.LT);
              (0.6, 0.8, Backend.CT);
@@ -33,9 +33,9 @@ let draw bk =
     A.Viewport.move_to vp x y;
     A.Viewport.arc vp ~r:0.005 ~a1:0. ~a2:two_pi;
     A.set_color vp (A.Color.rgb 0. 0. 0.5);
-    A.Viewport.text vp x y "Joy" ~coord:A.Viewport.Device ~pos;
+    A.Viewport.text vp x y "Joy" ~coord:`Device ~pos;
   ) pos;
   A.set_color vp (A.Color.rgb 1. 0. 0.);
-  A.Viewport.fill vp A.Viewport.Device;
+  A.Viewport.fill vp `Device;
 
   A.close vp

@@ -9,7 +9,7 @@ let draw bk =
   let vp = A.init ~w:1024. ~h:768. ~dirs bk in
   let subvp = A.Viewport.grid ~syncs:(true, true, false, true) vp 2 2 in
   A.Viewport.rectangle subvp.(0).(0) ~x:0. ~y:0. ~w:1. ~h:1.;
-  A.Viewport.stroke subvp.(0).(0) A.Viewport.Data;
+  A.Viewport.stroke subvp.(0).(0) `Data;
 (*  A.Viewport.xrange subvp.(0).(0) (-10.) 10.;
   A.Viewport.yrange subvp.(0).(0) (-3.) 5.;
   A.Viewport.xrange subvp.(0).(1) (-5.) 5.;

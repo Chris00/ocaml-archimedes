@@ -12,7 +12,7 @@ let draw bk =
     for y = 0 to 2 do
       let vp = subvp.(x).(y) in
       V.rectangle vp ~x:0. ~y:0. ~w:1. ~h:1.;
-      V.stroke vp V.Device;
+      V.stroke vp `Device;
       Archimedes.Axes.cross vp ~tics:(Archimedes.Tics.Equidistants
                                         (Archimedes.Tics.Number 3, 0., 2., 1))
     done;

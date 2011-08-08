@@ -71,16 +71,16 @@ let draw_x_axis grid major minor start stop tics offset vp =
   Arrows.line_direct ~head:stop ~tail:start vp x1 offset x2 offset ();
   let tic x = tic vp x offset in
   let text x lbl =
-    let x, y = V.ortho_from vp V.Data (x, offset) in
+    let x, y = V.ortho_from vp `Data (x, offset) in
     let y = y +. 0.02 *. dir in
     let align = if dir < 0. then Backend.CB else Backend.CT in
-    V.show_text_direct vp V.Orthonormal ~x ~y align lbl () in
+    V.show_text_direct vp `Orthonormal ~x ~y align lbl () in
   if grid then begin
     let grid_line = function
       | Tics.Major (_, x) -> let path = Path.make() in
                             Path.move_to path x (V.ymin vp);
                             Path.line_to path x (V.ymax vp);
-                            V.stroke_direct vp ~path V.Data ()
+                            V.stroke_direct vp ~path `Data ()
       | Tics.Minor _ -> ()
     in
     let restore = grid_style vp in
@@ -99,15 +99,15 @@ let draw_y_axis grid major minor start stop tics offset vp =
   Arrows.line_direct ~head:stop ~tail:start vp offset y1 offset y2 ();
   let tic y = tic vp offset y in
   let text y lbl =
-    let x, y = V.ortho_from vp V.Data (offset, y) in
+    let x, y = V.ortho_from vp `Data (offset, y) in
     let x = x +. 0.02 *. dir in
     let align = if dir < 0. then Backend.LC else Backend.RC in
-    V.show_text_direct vp V.Orthonormal ~x ~y align lbl () in
+    V.show_text_direct vp `Orthonormal ~x ~y align lbl () in
   let grid_line = function
     | Tics.Major (_, y) -> let path = Path.make() in
                           Path.move_to path (V.xmin vp) y;
                           Path.line_to path (V.xmax vp) y;
-                          V.stroke_direct vp ~path V.Data ()
+                          V.stroke_direct vp ~path `Data ()
     | Tics.Minor _ -> ()
   in
   if grid then begin

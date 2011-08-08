@@ -79,14 +79,14 @@ let simple ?(style=Relief) ?(colorscheme=Default) ?(keyplacement=Rectangle)
     Path.arc path radius angle endangle;
     Path.append strokepath path;
     Viewport.set_color vp defaultcolors.(position);
-    Viewport.fill ~path vp V.Graph;
+    Viewport.fill ~path vp `Graph;
     (position + 1, endangle)
   in
   let _, finalangle =
     List.fold_left draw_simple_data (0, 0.) sorted
   in
   Viewport.set_color vp Color.black;
-  Viewport.stroke ~path:strokepath vp V.Graph;
+  Viewport.stroke ~path:strokepath vp `Graph;
   if abs_float (finalangle -. 2. *. pi) > 1E-8
   then Printf.printf "warning: large numerical error in pie chart"
 

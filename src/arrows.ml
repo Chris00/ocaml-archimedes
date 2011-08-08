@@ -89,24 +89,24 @@ let path_line_to ?(size=0.01) ?(head=Simple) ?(tail=Unstyled) path x y =
   add_to_path path size alpha head
 
 let line_direct ?(size=0.01) ?(head=Simple) ?(tail=Unstyled) vp x0 y0 x y () =
-  let x0', y0' = V.ortho_from vp V.Data (x0, y0) in
-  let x', y' = V.ortho_from vp V.Data (x, y) in
+  let x0', y0' = V.ortho_from vp `Data (x0, y0) in
+  let x', y' = V.ortho_from vp `Data (x, y) in
   let alpha = atan2 (y' -. y0') (x' -. x0') in
   (* line *)
   let path_line = Path.make() in
   Path.move_to path_line x0 y0;
   Path.line_to path_line x y;
-  V.stroke_direct ~path:path_line vp V.Data ();
+  V.stroke_direct ~path:path_line vp `Data ();
   (* head *)
   let path_head = Path.make() in
   Path.move_to path_head x' y';
   add_to_path path_head size alpha head;
-  V.stroke_direct ~path:path_head vp V.Orthonormal ();
+  V.stroke_direct ~path:path_head vp `Orthonormal ();
   (* tail *)
   let path_tail = Path.make() in
   Path.move_to path_tail x0' y0';
   add_to_path path_tail size alpha tail;
-  V.stroke_direct ~path:path_tail vp V.Orthonormal ()
+  V.stroke_direct ~path:path_tail vp `Orthonormal ()
 
 let line ?(size=0.01) ?(head=Simple) ?(tail=Unstyled) vp x0 y0 x y =
   V.auto_fit vp x0 y0 x y;
@@ -115,27 +115,27 @@ let line ?(size=0.01) ?(head=Simple) ?(tail=Unstyled) vp x0 y0 x y =
 let arc_direct ?(size=0.01) ?(head=Simple) ?(tail=Unstyled)
     vp x0 y0 r a1 a2 () =
   let headangle = a2 -. pi /. 2. in (* FIXME adjust with V.Data ratio *)
-  let headx, heady = V.ortho_from vp V.Data
+  let headx, heady = V.ortho_from vp `Data
     (x0 +. r *. (cos a2 -. cos a1), y0 +. r *. (sin a2 -. sin a1)) in
   let tailangle = a1 +. pi /. 2. in (* FIXME adjust with V.Data ratio *)
-  let tailx, taily = V.ortho_from vp V.Data (x0, y0) in
+  let tailx, taily = V.ortho_from vp `Data (x0, y0) in
   let headangle = headangle +. if a1 > a2 then 0. else pi in
   let tailangle = tailangle +. if a1 > a2 then 0. else pi in
   (* arc *)
   let path_arc = Path.make() in
   Path.move_to path_arc x0 y0;
   Path.arc path_arc ~r ~a1 ~a2;
-  V.stroke_direct ~path:path_arc vp V.Data ();
+  V.stroke_direct ~path:path_arc vp `Data ();
   (* head *)
   let path_head = Path.make() in
   Path.move_to path_head headx heady;
   add_to_path path_head size headangle head;
-  V.stroke_direct ~path:path_head vp V.Orthonormal ();
+  V.stroke_direct ~path:path_head vp `Orthonormal ();
   (* tail *)
   let path_tail = Path.make() in
   Path.move_to path_tail tailx taily;
   add_to_path path_tail size tailangle tail;
-  V.stroke_direct ~path:path_tail vp V.Orthonormal ()
+  V.stroke_direct ~path:path_tail vp `Orthonormal ()
 
 let arc ?size ?head ?tail vp x0 y0 r a1 a2 =
   let cx, cy = x0 -. cos a1 *. r, y0 -. sin a1 *. r in
