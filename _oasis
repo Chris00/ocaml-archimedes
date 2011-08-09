@@ -137,6 +137,14 @@ Executable "scatter_hist"
   BuildDepends: archimedes
   Install:      false
 
+Executable "coords_report.ml"
+  Path:	        examples/
+  BuildTools:   ocamlbuild
+  MainIs:       coords_report.ml
+  BuildDepends: archimedes
+  Install:      false
+
+
 SourceRepository trunk
   Type:       svn
   Location:   svn://scm.ocamlcore.org/svn/archimedes/trunk
