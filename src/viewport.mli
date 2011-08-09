@@ -76,9 +76,11 @@ val sync_range : ?x:bool -> ?y:bool -> t -> t -> unit
     consists of a xmin and a xmax values, which defines the bounds of
     the viewport in Coordinate data.
 
-    @param x sync the x axis (default: true)
+    @param x sync the x axis (default: false, but true if neither [x] nor
+    [y] are set)
 
-    @param y sync the y axis (default: true)
+    @param y sync the y axis (default: false, but true if neither [x] nor
+    [y] are set)
 *)
 
 val desync_unit_size : ?x:bool -> ?y:bool -> t -> unit
