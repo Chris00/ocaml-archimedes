@@ -29,8 +29,8 @@ let bin a b n proj data =
   bins, perc
 
 let () =
-  let binx, px = bin (-5.) 5. 50 fst xy
-  and biny, py = bin (-5.) 5. 50 snd xy in
+  let binx, px = bin (-4.) 4. 50 fst xy
+  and biny, py = bin (-4.) 4. 50 snd xy in
 
   let vp = A.init(try A.backend_of_filename Sys.argv.(1) with _ -> []) in
   let vp0 = A.Viewport.make vp 0. 0.75 0. 0.75
