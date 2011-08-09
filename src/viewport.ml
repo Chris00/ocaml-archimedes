@@ -1010,7 +1010,13 @@ end = struct
     if y then desync_range_axis vp vp.axes_system.Axes.y;
     if x || y then update_axes_system vp
 
-  let sync_range ?(x=true) ?(y=true) vp vp_base =
+  let sync_range ?x ?y vp vp_base =
+    let x, y = match x, y with
+      | None, None -> true, true
+      | Some x, None -> x, false
+      | None, Some y -> false, y
+      | Some x, Some y -> x, y
+    in
     let sync_axis_range sync_axis axis axis_base =
       let base_range = axis_base.Axes.range in
       if sync_axis then begin
