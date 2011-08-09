@@ -9,8 +9,10 @@
     - [`Linespoints] Data points are joined by a line and marked with
     the mark type given in argument.
     - [`Impulses] Data points are "hit" by lines starting from zero.
-    - [`Bars w] Data points are the top of a box of custom width [w]
+    - [`Bars w] Data points determine the height of a box of width [w]
     which must be given in [Data] coordinates (from 0 to 1).
+    - [`HBars h] Data points determine the width of an horizontal box
+    of height [h] which must be given in [Data] coordinates (from 0 to 1).
 *)
 type style =
 [ `Lines
@@ -71,8 +73,8 @@ module Array : sig
       [`Linespoints], it gives the bottom of the filling zone.  For
       the styles [`Impulses] and [`Bars w], it is the Y value above
       which the boxes (of heights given by [yvec]) are drawn.  For the
-      style [`HBars], it is the (signed) distance to Y at which the
-      horizontal bar starts. *)
+      style [`HBars], it is the (signed) distance to the Y axis at
+      which the horizontal bar starts. *)
 
   val xy: Viewport.t -> ?fill:bool -> ?fillcolor:Color.t -> ?style:style ->
     ?const_x:bool -> float array -> ?const_y:bool -> float array -> unit
