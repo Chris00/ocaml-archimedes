@@ -476,6 +476,7 @@ Ocamlbuild_plugin.dispatch
     | After_rules ->
 
       dep ["file:src/plot.ml"] ["src" / "plot_arr.ml"];
+      dep ["file:src/path.ml"] ["src" / "path_arr.ml"];
 
     | _ -> ()
     end;

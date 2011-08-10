@@ -249,43 +249,36 @@ let extents p =
  ***********************************************************************)
 
 let move_to p ~x ~y =
-  Queue.add (Move_to(x, y)) p.path;
-  p.x <- x;
-  p.y <- y;
-  p.curr_pt <- true;
-  p.sub_x <- x;
-  p.sub_y <- y;
-  p.sub <- true
+  if is_finite x && is_finite y then (
+    Queue.add (Move_to(x, y)) p.path;
+    p.x <- x;
+    p.y <- y;
+    p.curr_pt <- true;
+    p.sub_x <- x;
+    p.sub_y <- y;
+    p.sub <- true
+  )
 
 let rel_move_to p ~x ~y =
   if not p.curr_pt then failwith "Archimedes.Path.rel_move_to";
-  move_to p (p.x +. x) (p.y +. y)
+  move_to p (p.x +. x) (p.y +. y) (* => checks is_finite *)
 
 let line_to p ~x ~y =
   (* Note: if there's no current point then line_to behaves as move_to. *)
   if p.curr_pt then (
-    Queue.add (Line_to(x, y)) p.path;
-    p.x <- x;
-    p.y <- y
-  )
-  else move_to p ~x ~y
+    if is_finite x && is_finite y then (
+      Queue.add (Line_to(x, y)) p.path;
+      p.x <- x;
+      p.y <- y
+    ))
+  else move_to p ~x ~y (* => checks is_finite *)
 
 let rel_line_to p ~x ~y =
   if not p.curr_pt then failwith "Archimedes.Path.rel_line_to";
-  line_to p (p.x +. x) (p.y +. y)
+  line_to p (p.x +. x) (p.y +. y) (* => checks is_finite *)
 
-
-let unsafe_line_of_array p x y i0 i1 =
-  if not p.curr_pt then (
-    (* No current point, so [line_to x.(i0) y.(i1)] behaves like [move_to] *)
-    p.sub_x <- x.(i0);
-    p.sub_y <- y.(i0);
-    p.sub <- true;
-  );
-  Queue.add (Array(x, y, i0, i1)) p.path;
-  p.x <- x.(i1);
-  p.y <- y.(i1);
-  p.curr_pt <- true
+(* Arrays
+ ***********************************************************************)
 
 let get_i1 name first lastx lasty i0 i1 =
   if i0 < first || i0 > lastx then
@@ -300,78 +293,99 @@ let get_i1 name first lastx lasty i0 i1 =
   if i1 > lasty then invalid_arg(name ^ ": i1 too large for y");
   i1
 
-let line_of_array p ?(i0=0) ?i1 ?(const_x=false) x ?(const_y=false) y =
-  let i1 = get_i1 "Archimedes.Path.line_of_array" 0
-    (Array.length x - 1) (Array.length y - 1) i0 i1 in
-  let x = if const_x then x else Array.copy x in
-  let y = if const_y then y else Array.copy y in
-  unsafe_line_of_array p x y i0 i1
+module FloatArray =
+struct
+  type t = float array;;
+  DEFINE CONSTRUCTOR = Array;;
+  DEFINE FNAME = "Archimedes.Path.line_of_array";;
+  DEFINE CREATE(len) = Array.make len 0.;;
+  DEFINE GET(m, i) = m.(i);;
+  DEFINE SET(m, i, v) = m.(i) <- v;;
+  DEFINE FIRST = 0;;
+  DEFINE LAST(n) = n - 1;;
+  DEFINE DIM(m) = Array.length m;;
+  DEFINE COPY(m) = Array.copy m;;
 
-let unsafe_line_of_vec p (x: vec) (y: vec) i0 i1 =
-  if not p.curr_pt then (
-    (* No current point, so line_to(x.{1}, y.{1}) behaves like move_to *)
-    p.sub_x <- x.{i0};
-    p.sub_y <- y.{i0};
-    p.sub <- true;
-  );
-  Queue.add (Fortran(x, y, i0, i1)) p.path;
-  p.x <- x.{i1};
-  p.y <- y.{i1};
-  p.curr_pt <- true
+  INCLUDE "src/path_arr.ml"
+end
 
-let line_of_vec p ?(i0=1) ?i1 ?(const_x=false) x ?(const_y=false) y =
-  let i1 = get_i1 "Archimedes.Path.line_of_array" 1
-    (Array1.dim x) (Array1.dim y) i0 i1 in
-  let x = if const_x then x else ba_copy x in
-  let y = if const_y then y else ba_copy y in
-  unsafe_line_of_vec p x y i0 i1
+module Vec = struct
+  type t = vec
+  ;;
+  DEFINE CONSTRUCTOR = Fortran;;
+  DEFINE FNAME = "Archimedes.Path.line_of_vec";;
+  DEFINE CREATE(len) = Array1.create float64 fortran_layout len;;
+  DEFINE GET(m, i) = m.{i};;
+  DEFINE SET(m, i, v) = m.{i} <- v;;
+  DEFINE FIRST = 1;;
+  DEFINE LAST(n) = n;;
+  DEFINE DIM(m) = Array1.dim m;;
+  DEFINE COPY(m) = ba_copy m;;
 
-let unsafe_line_of_cvec p (x: cvec) (y: cvec) i0 i1 =
-  if not p.curr_pt then (
-    (* No current point, so line_to(x.{0}, y.{0}) behaves like move_to *)
-    p.sub_x <- x.{0};
-    p.sub_y <- y.{0};
-    p.sub <- true;
-  );
-  Queue.add (C(x, y, i0, i1)) p.path;
-  p.x <- x.{i1};
-  p.y <- y.{i1};
-  p.curr_pt <- true
+  INCLUDE "src/path_arr.ml"
+end
 
-let line_of_cvec p ?(i0=0) ?i1 ?(const_x=false) x ?(const_y=false) y =
-  let i1 = get_i1 "Archimedes.Path.line_of_array" 0
-    (Array1.dim x - 1) (Array1.dim y - 1) i0 i1 in
-  let x = if const_x then x else ba_copy x in
-  let y = if const_y then y else ba_copy y in
-  unsafe_line_of_cvec p x y i0 i1
+module CVec = struct
+  type t = cvec
+  ;;
+  DEFINE CONSTRUCTOR = C;;
+  DEFINE FNAME = "Archimedes.Path.line_of_cvec";;
+  DEFINE CREATE(len) = Array1.create float64 c_layout len;;
+  DEFINE GET(m, i) = m.{i};;
+  DEFINE SET(m, i, v) = m.{i} <- v;;
+  DEFINE FIRST = 0;;
+  DEFINE LAST(n) = n - 1;;
+  DEFINE DIM(m) = Array1.dim m;;
+  DEFINE COPY(m) = ba_copy m;;
 
+  INCLUDE "src/path_arr.ml"
+end
+
+let unsafe_line_of_array = FloatArray.unsafe_line_to
+let line_of_array = FloatArray.line_to
+
+let unsafe_line_of_vec = Vec.unsafe_line_to
+let line_of_vec = Vec.line_to
+
+let unsafe_line_of_cvec = CVec.unsafe_line_to
+let line_of_cvec = CVec.line_to
+
+
+(* Other path construction operations
+ ********************************************************************** *)
 
 let rectangle p ~x ~y ~w ~h =
-  let x1 = x +. w and y1 = y +. h in
-  Queue.add (Move_to(x,  y)) p.path;
-  Queue.add (Line_to(x1, y)) p.path;
-  Queue.add (Line_to(x1, y1)) p.path;
-  Queue.add (Line_to(x,  y1)) p.path;
-  Queue.add (Close(x, y)) p.path;
-  p.x <- x;
-  p.y <- y;
-  p.curr_pt <- true;
-  p.sub <- false
+  if is_finite x && is_finite y && is_finite w && is_finite h then (
+    let x1 = x +. w and y1 = y +. h in
+    Queue.add (Move_to(x,  y)) p.path;
+    Queue.add (Line_to(x1, y)) p.path;
+    Queue.add (Line_to(x1, y1)) p.path;
+    Queue.add (Line_to(x,  y1)) p.path;
+    Queue.add (Close(x, y)) p.path;
+    p.x <- x;
+    p.y <- y;
+    p.curr_pt <- true;
+    p.sub <- false
+  )
 
+(* ASSUME all values are finite *)
 let curve_to_with_curr_pt p ~x0 ~y0 ~x1 ~y1 ~x2 ~y2 ~x3 ~y3 =
   Queue.add (Curve_to(x0, y0, x1, y1, x2, y2, x3, y3)) p.path;
   p.x <- x3;
   p.y <- y3
 
 let curve_to p ~x1 ~y1 ~x2 ~y2 ~x3 ~y3 =
-  let x0, y0 =
-    if p.curr_pt then p.x, p.y
-    else begin
-      Queue.add (Move_to(x1, y1)) p.path;
-      p.curr_pt <- true;
-      (x1, y1)
-    end in
-  curve_to_with_curr_pt p ~x0 ~y0 ~x1 ~y1 ~x2 ~y2 ~x3 ~y3
+  if is_finite x1 && is_finite y1 && is_finite x2 && is_finite y2
+    && is_finite x3 && is_finite y3 then (
+      let x0, y0 =
+        if p.curr_pt then p.x, p.y
+        else begin
+          Queue.add (Move_to(x1, y1)) p.path;
+          p.curr_pt <- true;
+          (x1, y1)
+        end in
+      curve_to_with_curr_pt p ~x0 ~y0 ~x1 ~y1 ~x2 ~y2 ~x3 ~y3
+    )
 
 (* FIXME: use the same procedure than in cairo for 100% compatibility. *)
 (* Constant to determine the control points so that the bezier curve
@@ -407,7 +421,8 @@ let arc p ~r ~a1 ~a2 =
   (* Approximate the arc by Bezier curves to allow for arbitrary affine
      transformations. *)
   if not p.curr_pt then failwith "archimedes_graphics.arc: no current point";
-  bezier_of_arc p curve_to_with_curr_pt ~x0:p.x ~y0:p.y ~r ~a1 ~a2
+  if is_finite r && is_finite a1 && is_finite a2 then
+    bezier_of_arc p curve_to_with_curr_pt ~x0:p.x ~y0:p.y ~r ~a1 ~a2
 
 
 let close p =
@@ -506,6 +521,7 @@ let map_data_to f p' = function
     done;
     Queue.add (C(x', y', 0, len - 1)) p'
 
+(* FIXME: should check is_finite *)
 let map p f =
   let p' = make () in
   (* Keep p'.path_with_extents empty because the extents need to be

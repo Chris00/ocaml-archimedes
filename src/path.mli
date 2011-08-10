@@ -45,18 +45,32 @@ val extents: t -> Matrix.rectangle
 (** [extents p] returns the path's extents. *)
 
 val move_to: t -> x:float -> y:float -> unit
-(** [move_to p x y] moves the path's current point to ([x], [y]) *)
+(** [move_to p x y] moves the path current point to ([x], [y]) if both
+    [x] and [y] are finite.  Otherwise, does nothing.  *)
+
+val rel_move_to: t -> x:float -> y:float -> unit
+(** [rel_move_to p x y] shifts the path's current point of [x]
+    horizontally and [y] vertically, provided both [x] and [y] are
+    finite.  Otherwise does nothing. *)
 
 val line_to: t -> x:float -> y:float -> unit
-(** [line_to p x y] draws a line from the path's current point to ([x],
-    [y]) and sets the current point to ([x], [y]) *)
+(** [line_to p x y] draws a line from the path's current point to
+    ([x], [y]) and sets the current point to ([x], [y]), provided both
+    [x] and [y] are finite.  Otherwise does nothing. *)
+
+val rel_line_to: t -> x:float -> y:float -> unit
+(** [rel_line_to p x y] shifts the path's current point of [x]
+    horizontally and [y] vertically and draws a line between the
+    current and the new point, provided both [x] and [y] are finite.
+    Otherwise does nothing. *)
 
 val line_of_array: t -> ?i0:int -> ?i1:int ->
   ?const_x:bool -> float array -> ?const_y:bool -> float array -> unit
 (** [line_of_array p x y] continue the current line (or start a new
     one) with the line formed by joining the points [x.(i), y.(i)],
     [i=i0,...,i1] (with possibly [i0 > i1] to indicate that the
-    indices must be followed in decreasing order).
+    indices must be followed in decreasing order).  Points with at
+    least one NaN or infinite coordinate are skipped.
 
     @param const_x by setting it to [true], you indicate that you will
     not modify [x] (so it will not be copied).  Default: false.
@@ -79,34 +93,25 @@ val line_of_cvec: t -> ?i0:int -> ?i1:int ->
 (** Same as {!line_of_array} but for C bigarrays. *)
 
 
-val rel_move_to: t -> x:float -> y:float -> unit
-(** [rel_move_to p x y] shifts the path's current point of [x]
-    horizontally and [y] vertically.
-
-    @param rot to consider a rotation of [rot] radians (default: [0.]). *)
-
-val rel_line_to: t -> x:float -> y:float -> unit
-(** [rel_line_to p x y] shifts the path's current point of [x]
-    horizontally and [y] vertically and draws a line between the
-    current and the new point.
-
-    @param rot (default: 0.) to consider a rotation of [rot] radians *)
-
 val rectangle: t -> x:float -> y:float -> w:float -> h:float -> unit
-(** [rectangle p x y w h] draws a rectangle specified by ([x], [y], [w],
-    [h]). *)
+(** [rectangle p x y w h] draws a rectangle specified by ([x], [y],
+    [w], [h]) if all four quantities [x], [y], [w] and [h] are finite.
+    Does nothing otherwise. *)
 
 val curve_to: t -> x1:float -> y1:float -> x2:float -> y2:float ->
   x3:float -> y3:float -> unit
-(** [curve_to p x1 y1 x2 y2 x3 y3] draws a cubic Bezier curve using the
-    path's current point as first point (x0, y0) if it is set, else
-    ([x1, y1]).  Sets the path's current point to ([x3], [y3]) *)
+(** [curve_to p x1 y1 x2 y2 x3 y3] draws a cubic Bezier curve using
+    the path's current point as first point (x0, y0) if it is set,
+    else ([x1, y1]).  Sets the path's current point to ([x3], [y3]).
+    The above holds provided all values [x1], [y1], [x2], [y2], [x3],
+    and [y3] are finite.  The function does nothing otherwise. *)
 
 val arc: t -> r:float -> a1:float -> a2:float -> unit
 (** [arc p r a1 a2] draws an arc starting at the path's current
     point. The starting angle is [a1], the radius [r] and the arc is
     drawn clockwise to the angle [a2]. The angles are given in
-    radians.  *)
+    radians.  The above holds provided the three values [r], [a1], and
+    [a2] are finite.  The function does nothing otherwise.  *)
 
 val close: t -> unit
 (** [close p] Closes the path. It is usually not required to close a
@@ -130,6 +135,8 @@ val transform : Matrix.t -> t -> t
 (*----------------------------------------------------------------------*)
 (** {4 Internal functions for efficient path rendering} *)
 
+(** All the float quantities in a path data are guaranteed to be
+    finite. *)
 type data = private
   | Move_to of float * float
   | Line_to of float * float
@@ -155,19 +162,20 @@ val fprint: out_channel -> t -> unit
 (** [print_path p] Debug function. *)
 
 val unsafe_line_of_array : t -> float array -> float array -> int -> int -> unit
-(** Same as {!line_of_array} except that the arrays are ASSUMED to be
-    of the same length, the indices valid, and the arrays are NOT
-    copied. *)
+(** [unsafe_line_of_array vp x y i0 i1]: same as {!line_of_array}
+    except that the arrays are ASSUMED to be of the same length, the
+    indices valid, that all elements [x.(i)] and [y.(i)] for [i =
+    i0,...,i1] are finite, and the arrays are NOT copied. *)
 
 val unsafe_line_of_vec: t -> vec -> vec -> int -> int -> unit
-(** Same as {!line_of_vec} except that the arrays are ASSUMED to be
-    of the same length, the indices valid, and the arrays are NOT
-    copied. *)
+(** Same as {!line_of_vec} except that the arrays are ASSUMED to be of
+    the same length, the indices valid, all points in the range are
+    finite, and the arrays are NOT copied. *)
 
 val unsafe_line_of_cvec: t -> cvec -> cvec -> int -> int -> unit
 (** Same as {!line_of_cvec} except that the arrays are ASSUMED to be
-    of the same length, the indices valid, and the arrays are NOT
-    copied. *)
+    of the same length, the indices valid, all points in the range are
+    finite, and the arrays are NOT copied. *)
 
 val bezier_of_arc : 'a ->
   ('a -> x0:float -> y0:float -> x1:float -> y1:float -> x2:float -> y2:float ->
