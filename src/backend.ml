@@ -19,11 +19,12 @@
 open Printf
 
 (* The following modules are needed by some backends and are not
-   loadable dynamically so must be referenced here so that pluging
+   loadable dynamically so must be referenced here so that plugin
    linking succeeds. *)
 module ForLinking_1__ = Callback
 module ForLinking_2__ = Hashtbl
 module ForLinking_3__ = Stack
+module ForLinking_4__ = Printexc
 
 (* Without the following, the native version reports "undefined
    symbol: caml_hash_variant" when loading Cairo. *)
