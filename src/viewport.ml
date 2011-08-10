@@ -470,6 +470,7 @@ end = struct
     let l2' = List.filter (fun x -> not (List.exists (( == ) x) l1)) l2 in
     List.rev_append l1 l2'
 
+
 (* Primitives
  ***********************************************************************)
 
@@ -623,7 +624,7 @@ end = struct
 
   let close vp =
     let parent = vp.parent in
-    parent.children <- List.filter (fun x -> not (x == vp)) parent.children;
+    parent.children <- List.filter (fun x -> x != vp) parent.children;
     if vp == parent then begin
       do_instructions vp;
       Backend.close vp.backend
