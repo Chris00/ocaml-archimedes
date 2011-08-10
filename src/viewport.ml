@@ -18,9 +18,7 @@
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the file
    LICENSE for more details. *)
 
-let is_inf x = 1. /. x = 0.
-
-let is_nan x = x <> x
+open Utils
 
 module rec Axes : sig
   type sign = Positive | Negative
@@ -922,18 +920,18 @@ end = struct
     assert (not (is_nan yrange.Axes.data_x0));
     assert (not (is_nan yrange.Axes.data_xend));
     (* Update data ranges. *)
-    if xrange.Axes.auto_x0 && not (is_inf x0') then
-      if is_inf xrange.Axes.data_x0 || x0' < xrange.Axes.data_x0 then
-        (xrange.Axes.data_x0 <- x0'; xupdated := true);
-    if xrange.Axes.auto_xend && not (is_inf x1') then
-      if is_inf xrange.Axes.data_xend || x1' > xrange.Axes.data_xend then
-        (xrange.Axes.data_xend <- x1'; xupdated := true);
-    if yrange.Axes.auto_x0 && not (is_inf y0') then
-      if is_inf yrange.Axes.data_x0 || y0' < yrange.Axes.data_x0 then
-        (yrange.Axes.data_x0 <- y0'; yupdated := true);
-    if yrange.Axes.auto_xend && not (is_inf y1') then
-      if is_inf yrange.Axes.data_xend || y1' > yrange.Axes.data_xend then
-        (yrange.Axes.data_xend <- y1'; yupdated := true);
+    if xrange.Axes.auto_x0 && is_finite x0'
+      && (is_inf xrange.Axes.data_x0 || x0' < xrange.Axes.data_x0) then
+      (xrange.Axes.data_x0 <- x0'; xupdated := true);
+    if xrange.Axes.auto_xend && is_finite x1'
+      && (is_inf xrange.Axes.data_xend || x1' > xrange.Axes.data_xend) then
+      (xrange.Axes.data_xend <- x1'; xupdated := true);
+    if yrange.Axes.auto_x0 && is_finite y0'
+      && (is_inf yrange.Axes.data_x0 || y0' < yrange.Axes.data_x0) then
+      (yrange.Axes.data_x0 <- y0'; yupdated := true);
+    if yrange.Axes.auto_xend && is_finite y1'
+      && (is_inf yrange.Axes.data_xend || y1' > yrange.Axes.data_xend) then
+      (yrange.Axes.data_xend <- y1'; yupdated := true);
     (* Update x0, xend ranges, unit_size and gx0, gxend and redraw... *)
     update_axes_ranges vp !xupdated !yupdated
 
