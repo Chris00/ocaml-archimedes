@@ -177,10 +177,11 @@ let current_point p =
 
 (** Update [p] extents to include the point (x,y). *)
 let update_point p x y =
-  if x < p.x0 then p.x0 <- x
-  else if x > p.x1 then p.x1 <- x;
-  if y < p.y0 then p.y0 <- y
-  else if y > p.y1 then p.y1 <- y
+  (* x can be both < p.x0 and > p.x1 when it is the first point! *)
+  if x < p.x0 then p.x0 <- x;
+  if x > p.x1 then p.x1 <- x;
+  if y < p.y0 then p.y0 <- y;
+  if y > p.y1 then p.y1 <- y
 
 (** Updaye [p] to contain the Bézier curve given by the control
     points. *)
