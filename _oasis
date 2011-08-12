@@ -151,6 +151,13 @@ Executable "taylor.ml"
   BuildDepends: archimedes
   Install:      false
 
+Executable "spiral.ml"
+  Path:	        examples/
+  BuildTools:   ocamlbuild
+  MainIs:       spiral.ml
+  BuildDepends: archimedes
+  Install:      false
+
 
 SourceRepository trunk
   Type:       svn

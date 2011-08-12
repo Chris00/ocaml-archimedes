@@ -1,5 +1,5 @@
 # OASIS_START
-# DO NOT EDIT (digest: c75fb2cfd9e9951efdcfcb046b3a0d0f)
+# DO NOT EDIT (digest: 2b9cca39a88e60bbe55adf23993ca242)
 # Ignore VCS directories, you can use the same kind of rule outside 
 # OASIS_START/STOP if you want to exclude directories that contains 
 # useless stuff for the build process
@@ -18,6 +18,10 @@
 # Library archimedes_cairo
 "src/archimedes_cairo.cmxs": use_archimedes_cairo
 <src/*.ml{,i}>: pkg_cairo2
+# Executable spiral.ml
+"examples/spiral.byte": use_archimedes
+"examples/spiral.byte": pkg_dynlink
+"examples/spiral.byte": pkg_bigarray
 # Library archimedes_tikz
 "src/archimedes_tikz.cmxs": use_archimedes_tikz
 # Library archimedes_toploop

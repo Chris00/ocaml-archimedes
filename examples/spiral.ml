@@ -1,13 +1,10 @@
-open Archimedes
-module P = Plot.Array
+module A = Archimedes
 
 let () =
-  try
-    let p = P.make "graphics hold" 600. 600. in
+  let p = A.init [] ~w:600. ~h:600. in
+  A.Axes.box p;
+  A.set_color p A.Color.magenta;
+  A.xyf p (fun t -> let r = 0.1 *. t in
+                 (r *. cos t, r *. sin t)) 0. 13. ~n:200;
 
-    P.xyf p (fun t -> let r = 0.1 *. t in
-             (r *. cos t, r *. sin t)) 0. 13.;
-
-    P.close p
-  with Backend.Error e ->
-    Printf.printf "%s\n" (Backend.string_of_error e)
+  A.close p
