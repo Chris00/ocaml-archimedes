@@ -1,5 +1,5 @@
 # OASIS_START
-# DO NOT EDIT (digest: 048433732756344819ae59596ef1b4be)
+# DO NOT EDIT (digest: c75fb2cfd9e9951efdcfcb046b3a0d0f)
 # Ignore VCS directories, you can use the same kind of rule outside 
 # OASIS_START/STOP if you want to exclude directories that contains 
 # useless stuff for the build process
@@ -45,6 +45,10 @@
 "examples/pythagoras_tree.byte": use_archimedes
 "examples/pythagoras_tree.byte": pkg_dynlink
 "examples/pythagoras_tree.byte": pkg_bigarray
+# Executable taylor.ml
+"examples/taylor.byte": use_archimedes
+"examples/taylor.byte": pkg_dynlink
+"examples/taylor.byte": pkg_bigarray
 # Executable anscombe
 "examples/anscombe.byte": use_archimedes
 "examples/anscombe.byte": pkg_dynlink

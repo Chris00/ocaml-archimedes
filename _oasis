@@ -144,6 +144,13 @@ Executable "coords_report.ml"
   BuildDepends: archimedes
   Install:      false
 
+Executable "taylor.ml"
+  Path:	        examples/
+  BuildTools:   ocamlbuild
+  MainIs:       taylor.ml
+  BuildDepends: archimedes
+  Install:      false
+
 
 SourceRepository trunk
   Type:       svn
