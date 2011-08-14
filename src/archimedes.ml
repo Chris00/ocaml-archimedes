@@ -38,6 +38,10 @@ let backend_of_filename fname =
 
 let set_color = Viewport.set_color
 let set_line_width = Viewport.set_line_width
+let xrange = Viewport.xrange
+let yrange = Viewport.yrange
+
+let show = Viewport.show
 
 (* Do it last because that will override the Array and List modules. *)
 include Plot

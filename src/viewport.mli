@@ -49,6 +49,10 @@ val make : t -> ?lines:float -> ?text:float -> ?marks:float ->
     redimensioned.  Default: do nothing.
 *)
 
+val show : t -> unit
+(** [show vp] forces the viewport [vp] and all its children to
+    immediately display their current content. *)
+
 val get_backend : t -> Backend.t
 (** [get_backend vp] returns the backend associated to [vp], if vp is
     built over another viewport, the same backend is used. *)
@@ -230,7 +234,9 @@ val mark : t -> x:float -> y:float -> string -> unit
 val axes_ratio : t -> float -> unit
 (** [axes_ratio vp ratio] forces axes to keep [ratio] ([w / h]). *)
 val xrange : t -> float -> float -> unit
+(** [xrange vp xmin xmax] *)
 val yrange : t -> float -> float -> unit
+(** [yrange vp ymin ymax] *)
 val xlabel : t -> string -> unit
 val ylabel : t -> string -> unit
 val title : t -> string -> unit

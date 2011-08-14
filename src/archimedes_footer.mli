@@ -37,6 +37,9 @@ val backend_of_filename : string -> string list
     is not matched (this in particular for [""]), the graphics backend
     is selected. *)
 
+val show : Viewport.t -> unit
+(** Alias for {!Viewport.show}. *)
+
 val close : Viewport.t -> unit
 
 val set_color : Viewport.t -> Color.t -> unit
@@ -44,3 +47,9 @@ val set_color : Viewport.t -> Color.t -> unit
 
 val set_line_width : Viewport.t -> float -> unit
 (** Alias for {!Viewport.set_line_width}. *)
+
+val xrange : Viewport.t -> float -> float -> unit
+(** Alias for {!Viewport.xrange}. *)
+
+val yrange : Viewport.t -> float -> float -> unit
+(** Alias for {!Viewport.yrange}. *)

@@ -199,6 +199,8 @@ and Viewport : sig
     ?coord:[`Device | `Graph | `Orthonormal] ->
     float -> float -> float -> float -> t
 
+  val show : t -> unit
+
   val get_backend : t -> Backend.t
 
   val desync_ratio : t -> unit
@@ -619,6 +621,10 @@ end = struct
 
   let save vp = add_instruction vp (save_direct vp)
   let restore vp = add_instruction vp (restore_direct vp)
+
+  let show vp =
+    do_instructions vp; (* => also for children *)
+    Backend.show vp.backend
 
   let close vp =
     let parent = vp.parent in
@@ -1299,3 +1305,7 @@ end = struct
 end
 
 include Viewport
+
+(* Local Variables: *)
+(* compile-command: "make -k -C .." *)
+(* End: *)
