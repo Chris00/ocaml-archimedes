@@ -1,5 +1,39 @@
 #+STARTUP: showall
 
+* Higher priority
+
+Fix clipping in cairo that clips thick lines at the border of the data
+graph. A thick line should be authorized to overlap out of the clip area.
+
+Rename Viewport coord name `Device to `Viewport.
+
+Auto tics placement should take a number of tics relative to the available
+space, taking the text size into account.
+For example, on Plot_stack test, we would want 0, 1, 2, 3, 4, ..., 8 tics
+instead of 0, 2, 4, 6, 8.
+
+Fully handle different left and right y axes.
+
+Axes_ylog test hasn't got any labels on the x axis. It is not a bug, but
+looks like, make it so that there's some.
+
+Add support for multi-line labels and use it in Axes_dates test.
+
+In Graphics backend, when drawing text, there's a rectangle of the size of
+the text in the bottom left corner of the screen.
+
+Tics.tics isn't usefull for the user, hide it.
+
+Use abstract types for Tics and create them with functions to be more
+instinctive for users.
+
+Treat axes, labels, grid, fillings, specially. For example, axes should always be
+drawn last and have their own color.
+Implement layers or multi instructions queues (prefered to layers, less heavier).
+
+Suppose rectangles x1, xend and xend, x1 are the same rectangles.
+
+
 * Before 1.0
 
 resizing
@@ -30,16 +64,21 @@ Support for reversing the orientation of axes
 
 Arrows should be implemented in backends (since TikZ has its own implementation)
 
-Add support of multi-line custom tics labels.
-
-Add title function in viewports
-
 Add support for "auto-ratio" syncing (don't require to specify a fixed ratio to
 share).
 
+Consider merge Tics into Axes if it stays poor.
+
+Change the record of matrix to a private record type and keep them mutable
+(only by the functions of Matrix).
+
+Add support for keys, functions titles and automatic maximization of the
+viewport graph area to fit with those options.
 
 * Far fetched
 
 - advi => read TeX font metrics => correct text extents
 
-
+Forbid the user to rotate the coordinate system (we never pay attention to
+that). For that, export a (sub)module that only allows
+translations/dilatations.
