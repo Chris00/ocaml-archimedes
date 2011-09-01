@@ -38,11 +38,11 @@ let lines_y vp ~fill ?base ~fillcolor (x: t) (y: t) n =
     let path_fill = Path.copy path in
     (match base with
     | None ->
-      Path.line_to path (float(LAST(n))) 0.;
-      Path.line_to path (float FIRST) 0.
+      Path.line_to path_fill (float(LAST(n))) 0.;
+      Path.line_to path_fill (float FIRST) 0.
     | Some b ->
       if DIM(b) <> n then invalid_arg(MOD ^ ".y: wrong length for \"base\"");
-      LINE_OF_ARRAY(path_fill, x, COPY(b), LAST(n), FIRST);
+      LINE_OF_ARRAY(path_fill, x, b, LAST(n), FIRST);
       V.fit vp (Path.extents path_fill); (* update for base *)
     );
     Path.close path_fill;
@@ -75,7 +75,7 @@ let bars vp ~fill ?base ~fillcolor (x:t) (y:t) n w =
       invalid_arg "Archimedes.Plot.Array.y: wrong length for \"base\"";
     for i = FIRST to LAST(n) do
       Path.rectangle path
-        ~x:(GET(x,i) -. w *. 0.5) ~y:(GET(b,i)) ~w ~h:(GET(y,i))
+        ~x:(GET(x,i) -. w *. 0.5) ~y:(GET(b,i)) ~w ~h:(GET(y,i) -. GET(b,i))
     done);
   (* For bars, one certainly wants to see everything.  Moreover some
      space to the left and to the right is nice to have. *)
@@ -96,7 +96,7 @@ let horizontal_bars vp ~fill ?base ~fillcolor (x:t) (y:t) n w =
       invalid_arg "Archimedes.Plot.Array.y: wrong length for \"base\"";
     for i = FIRST to LAST(n) do
       Path.rectangle path
-        ~x:(GET(b,i)) ~y:(GET(y,i) -. w *. 0.5) ~w:(GET(x,i)) ~h:w
+        ~x:(GET(b,i)) ~y:(GET(y,i) -. w *. 0.5) ~w:(GET(x,i) -. GET(b,i)) ~h:w
     done);
   (* For horizontal bars, one certainly wants to see everything.
      Moreover some space to the top and bottom is nice to have. *)
@@ -158,16 +158,17 @@ let stack vp ?colors ?(fill=true) ?(fillcolors=[| |])
     let x = index_array n in
     let y0 = COPY(yvecs.(0)) in
     unsafe_y vp ~fill ~fillcolor:fillcolors.(0) ~style x y0 n;
-    let base = COPY(y0) in
-    for i = 1 to Array.length yvecs - 1 do
+    let base = ref y0 in
+    for i = 1 to pred (Array.length yvecs) do
       if DIM(yvecs.(i)) < n then
         invalid_arg(sprintf "Archimedes.Array.stack: length yvec.(%i) < %i"
                       i n);
-      let yi = COPY(yvecs.(i)) in
+      let yi = CREATE(n) in
+      let b = !base in
+      for j = FIRST to LAST(n) do SET(yi, j, GET(b,j) +. GET(yvecs.(i),j)) done;
       let fillcolor = fillcolors.(i mod nc) in
-      unsafe_y vp ~base:base ~fill ~fillcolor ~style x yi n;
-        (* [base] is saved in the path, it can be overwritten  *)
-      for i = FIRST to LAST(n) do SET(base, i, GET(base,i) +. GET(yi,i)) done
+      unsafe_y vp ~base:b ~fill ~fillcolor ~style x yi n;
+      base := yi
     done
   )
 
