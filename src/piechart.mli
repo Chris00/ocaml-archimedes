@@ -7,22 +7,22 @@ type style =
 | Relief        (** A simple 3D pie *)
 
 type colorscheme =
-| Default    (** A set of colors that should render good for any data *)
-| Monochrome (** A gradient from black to white *)
-| None       (** No colors at all, the Overpie or Outer keyscheme should then
-                 be used *)
+| Default    (** A set of colors that should render good for any data. *)
+| Monochrome (** A gradient from black to white. *)
+| Black      (** No colors other than black, the [Overpie] or [Outer]
+                 keyscheme should then be used. *)
 | CustomColors of (string * Color.t) list
-(** A color scheme associating a custom color to each data *)
+(** A color scheme associating a custom color to each data. *)
 | ValueDependant of (float -> Color.t)
 (** Sometimes it is desirable to use color to express something on
     the piechart depending on the data values, this color scheme
-    permits it *)
+    permits it. *)
 | LevelValueDependant of (int -> int -> float -> Color.t -> float -> Color.t)
   (** For multi-levels pie charts, the color may depend of the
       level, the position (in the parent children's list), the
       parent data value/color and the actual value of the data to
-      draw. The level 0 is the first level with at least two
-      elements *)
+      draw.  The level 0 is the first level with at least two
+      elements. *)
 
 type keyplacement =
 | Rectangle (** A rectangle containing the color followed by the label

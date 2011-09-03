@@ -31,7 +31,7 @@ type style =
 type colorscheme =
   | Default
   | Monochrome
-  | None
+  | Black
   | CustomColors of (string * Color.t) list
   | ValueDependant of (float -> Color.t)
   | LevelValueDependant of
@@ -62,11 +62,11 @@ let defaultcolors = [|
 let simple ?(style=Relief) ?(colorscheme=Default) ?(keyplacement=Rectangle)
     ?(keylabels=WithValues) ?(x0=0.) ?(y0=0.16) ?(xend=1.) ?(yend=1.)
     vp data =
-  let center = (x0 +. xend) /. 2., (y0 +. yend) /. 2. in
-  let centerx, centery = center in
+  let centerx = 0.5 *. (x0 +. xend)
+  and centery = 0.5 *. (y0 +. yend) in
   (* TODO we consider we have all the space to draw pie, we need to keep
      space for the key *)
-  let radius = (min ((xend -. x0) /. 2.) ((yend -. y0) /. 2.)) in
+  let radius = min (0.5 *. (xend -. x0)) (0.5 *. (yend -. y0)) in
   let sorted = List.sort (fun (_, x) (_, y) -> compare y x) data in
   let total = List.fold_left (fun acc (_, x) -> acc +. x) 0. sorted in
   let strokepath = Path.make () in
@@ -89,24 +89,26 @@ let simple ?(style=Relief) ?(colorscheme=Default) ?(keyplacement=Rectangle)
   Viewport.stroke ~path:strokepath vp `Graph;
   if abs_float (finalangle -. 2. *. pi) > 1E-8
   then Printf.printf "warning: large numerical error in pie chart"
+(* FIXME: Cannot simply print things to indicate an error. *)
 
-  type multidata = {
-    name: string;
-    value: float;
-    children: multidata list
-  }
+type multidata = {
+  name: string;
+  value: float;
+  children: multidata list
+}
 
-  let defaultmultilevelcolorscheme = LevelValueDependant (
-    fun level position parentvalue parentcolor value ->
-      if level = 0 then defaultcolors.(position)
-      else if level < 0 then Color.white
-      else parentcolor (* TODO lighten:
-                          value = parentvalue => parentcolor,
-                          (                gradient        ),
-                          value = 0           => white     *)
-  )
+let defaultmultilevelcolorscheme = LevelValueDependant (
+  fun level position parentvalue parentcolor value ->
+    if level = 0 then defaultcolors.(position)
+    else if level < 0 then Color.white
+    else parentcolor (* TODO lighten:
+                        value = parentvalue => parentcolor,
+                        (                gradient        ),
+                        value = 0           => white     *)
+)
 
-  let multilevel ?(style=Flat) ?(colorscheme=defaultmultilevelcolorscheme)
-      ?(keyplacement=OverPie) ?(keylabels=Key)
-      ?(x0=0.) ?(y0=0.16) ?(xend=1.) ?(yend=1.)
-      vp multidata = ()
+let multilevel ?(style=Flat) ?(colorscheme=defaultmultilevelcolorscheme)
+    ?(keyplacement=OverPie) ?(keylabels=Key)
+    ?(x0=0.) ?(y0=0.16) ?(xend=1.) ?(yend=1.)
+    vp multidata =
+  failwith "FIXME: to be implemented"
