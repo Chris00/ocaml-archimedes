@@ -1265,19 +1265,19 @@ end = struct
       let rect = Backend.text_extents vp.backend text in
       Coordinate.restore vp.backend ctm;
       let w, h = rect.Matrix.w, rect.Matrix.h in
-      let module B = Backend in
       let tr_x = match pos with
-        | B.CC | B.CT | B.CB -> w /. 2.
-        | B.LC | B.LT | B.LB -> w
-        | B.RC | B.RT | B.RB -> 0.
+        | Backend.CC | Backend.CT | Backend.CB -> 0.5 *. w
+        | Backend.LC | Backend.LT | Backend.LB -> w
+        | Backend.RC | Backend.RT | Backend.RB -> 0.
       and tr_y = match pos with
-        | B.CC | B.LC | B.RC -> h /. 2.
-        | B.CT | B.LT | B.RT -> h
-        | B.CB | B.LB | B.RB -> 0.
+        | Backend.CC | Backend.LC | Backend.RC -> 0.5 *. h
+        | Backend.CT | Backend.LT | Backend.RT -> h
+        | Backend.CB | Backend.LB | Backend.RB -> 0.
       in
-      let mat = Matrix.make_translate (-. tr_x) (-. tr_y) in
+      let x_ortho, y_ortho = ortho_from vp coord (x, y) in
+      let mat = Matrix.make_translate x_ortho y_ortho in
       Matrix.rotate mat rotate;
-      Matrix.translate mat (tr_x -. x) (tr_y -. y);
+      Matrix.translate mat (-. tr_x) (-. tr_y);
       let ext = Matrix.transform_rectangle mat rect in
       let x, y = ext.Matrix.x, ext.Matrix.y
       and w, h = ext.Matrix.w, ext.Matrix.h in
