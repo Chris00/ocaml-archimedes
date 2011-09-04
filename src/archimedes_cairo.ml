@@ -146,7 +146,7 @@ struct
     | P.Curve_to(_, _, x1, y1, x2, y2, x3, y3) ->
       Cairo.curve_to cr x1 y1 x2 y2 x3 y3
     | P.Close(_, _) -> Cairo.Path.close cr
-    | P. Array(x, y, i0, i1) ->
+    | P.Array(x, y, i0, i1) ->
       if i0 <= i1 then
         for i = i0 to i1 do Cairo.line_to cr x.(i) y.(i) done
       else
