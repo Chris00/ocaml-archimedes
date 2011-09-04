@@ -132,10 +132,15 @@ let unsafe_y vp ?base ?(fill=false) ?(fillcolor=default_fillcolor)
   | `HBars w ->
     horizontal_bars vp ~fill ?base ~fillcolor x y n w
 
-let y vp ?base ?fill ?fillcolor ?style ?(const=false) ydata =
+let y vp ?(const_base=false) ?base ?fill ?fillcolor ?style
+    ?(const_y=false) ydata =
   let n = DIM(ydata) in
   if n > 0 then (
-    let y = if const then ydata else COPY(ydata) in
+    let base = match base with
+      | None -> None
+      | Some b -> if const_base then b else COPY(b)
+    in
+    let y = if const_y then ydata else COPY(ydata) in
     let x = index_array n in
     unsafe_y vp ?base ?fill ?fillcolor ?style x y n
   )

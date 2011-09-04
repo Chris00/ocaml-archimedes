@@ -55,9 +55,9 @@ val xyf : Viewport.t -> ?tlog:bool -> ?n:int ->
 
 (** Plotting float Arrays. *)
 module Array : sig
-  val y : Viewport.t -> ?base:float array -> ?fill:bool -> ?fillcolor:Color.t ->
-    ?style:style ->
-    ?const:bool -> float array -> unit
+  val y : Viewport.t -> ?const_base:bool -> ?base:float array ->
+    ?fill:bool -> ?fillcolor:Color.t -> ?style:style ->
+    ?const_y:bool -> float array -> unit
   (** [y vp yvec] draws the set of points (i, yvec.(i)).
 
       @param style the style used for the plot.  The default style is
@@ -66,7 +66,7 @@ module Array : sig
       @param fill whether to fill the surface between the base and the
       values [yval].
       @param fillcolor the filling color (default: {!Color.white_smoke}).
-      @param const whether the input vector [yvec] will not be modified
+      @param const_y whether the input vector [yvec] will not be modified
       anymore (so there is no need to cache its current values).
 
       @param base for the styles [`Lines], [`Points], and
@@ -74,7 +74,8 @@ module Array : sig
       the styles [`Impulses] and [`Bars w], it is the Y value above
       which the boxes (of heights given by [yvec]) are drawn.  For the
       style [`HBars], it is the (signed) distance to the Y axis at
-      which the horizontal bar starts. *)
+      which the horizontal bar starts.
+      @param const_base same as [const_y] for the base. *)
 
   val xy: Viewport.t -> ?fill:bool -> ?fillcolor:Color.t -> ?style:style ->
     ?const_x:bool -> float array -> ?const_y:bool -> float array -> unit
