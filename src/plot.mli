@@ -92,7 +92,7 @@ module Array : sig
 
   val stack : Viewport.t ->
     ?fill:bool -> ?fillcolors:Color.t array -> ?style:style ->
-    float array array -> unit
+    ?const:bool -> float array array -> unit
   (** [stack yvecs] plot the data in a stacked fashion, the Y values
       contained in [yvecs.(i)] are represented as the deviation above
       [yvecs.(i-1)].  This makes sense only if the data is non-negative.
@@ -107,14 +107,17 @@ module Array : sig
       @param fillcolors the [i]th color is used to fill the area under
       the data points [yvecs.(i)].  If the array is empty, a default
       palette is used.  If there are less colors than vectors in
-      [yvecs], they are used in a circular way. *)
+      [yvecs], they are used in a circular way.
+
+      @parm const_y whether the input vector [yvec] will not be modified
+      anymore (so there is no need to cache its current values). *)
   ;;
 end
 
 (** Plotting Lists of floats. *)
 module List : sig
-  val y : Viewport.t -> ?base:float list -> ?fill:bool -> ?fillcolor:Color.t ->
-    ?style:style -> float list -> unit
+  val y : Viewport.t -> ?base:float list -> ?fill:bool ->
+    ?fillcolor:Color.t -> ?style:style -> float list -> unit
   (** See {!Array.y}.  *)
 
   val xy: Viewport.t -> ?fill:bool -> ?fillcolor:Color.t ->
@@ -134,9 +137,9 @@ module Vec : sig
   open Bigarray
   type t = (float, float64_elt, fortran_layout) Array1.t
 
-  val y : Viewport.t -> ?base:t -> ?fill:bool -> ?fillcolor:Color.t ->
-    ?style:style ->
-    ?const:bool -> t -> unit
+  val y : Viewport.t -> ?const_base:bool -> ?base:t -> ?fill:bool ->
+    ?fillcolor:Color.t -> ?style:style ->
+    ?const_y:bool -> t -> unit
   (** See {!Array.y}.  *)
 
   val xy: Viewport.t -> ?fill:bool -> ?fillcolor:Color.t -> ?style:style ->
@@ -145,7 +148,7 @@ module Vec : sig
 
   val stack : Viewport.t ->
     ?fill:bool -> ?fillcolors:Color.t array -> ?style:style ->
-    t array -> unit
+    ?const:bool -> t array -> unit
   (** See {!Array.stack}.  *)
 end
 
@@ -154,9 +157,9 @@ module CVec : sig
   open Bigarray
   type t = (float, float64_elt, c_layout) Array1.t
 
-  val y : Viewport.t -> ?base:t -> ?fill:bool -> ?fillcolor:Color.t ->
-    ?style:style ->
-    ?const:bool -> t -> unit
+  val y : Viewport.t -> ?const_base:bool -> ?base:t -> ?fill:bool ->
+    ?fillcolor:Color.t -> ?style:style ->
+    ?const_y:bool -> t -> unit
   (** See {!Array.y}.  *)
 
   val xy: Viewport.t -> ?fill:bool -> ?fillcolor:Color.t -> ?style:style ->
@@ -165,7 +168,7 @@ module CVec : sig
 
   val stack : Viewport.t ->
     ?fill:bool -> ?fillcolors:Color.t array -> ?style:style ->
-    t array -> unit
+    ?const:bool -> t array -> unit
   (** See {!Array.stack}.  *)
 end
 
