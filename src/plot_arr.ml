@@ -147,7 +147,7 @@ let default_fillcolors =
   [| default_fillcolor; Color.thistle; Color.misty_rose; Color.old_lace;
      Color.linen; Color.plum |]
 
-let stack vp ?colors ?(fill=true) ?(fillcolors=[| |])
+let stack vp ?(fill=true) ?(fillcolors=[| |])
     ?(style=`Bars 0.5) yvecs =
   if Array.length yvecs > 0 && DIM(yvecs.(0)) > 0 then (
     let fillcolors =

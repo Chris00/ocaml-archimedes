@@ -87,11 +87,27 @@ module Array : sig
   val xy_pairs: Viewport.t -> ?fill:bool -> ?fillcolor:Color.t ->
     ?style:[`Lines | `Points of string | `Linespoints of string ] ->
     (float * float) array -> unit
-  (** See {!Array.xy_pairs}. *)
+  (** See {!Array.xy}. *)
 
-  val stack : Viewport.t -> ?colors:Color.t array ->
+  val stack : Viewport.t ->
     ?fill:bool -> ?fillcolors:Color.t array -> ?style:style ->
     float array array -> unit
+  (** [stack yvecs] plot the data in a stacked fashion, the Y values
+      contained in [yvecs.(i)] are represented as the deviation above
+      [yvecs.(i-1)].  This makes sense only if the data is non-negative.
+
+      @param style how to represent each data point.  Default [`Bars 0.5].
+
+      @param colors the colors for the data lines.
+
+      @param fill whether to fill the boxes or area under the data
+      points.  Default: [true].
+
+      @param fillcolors the [i]th color is used to fill the area under
+      the data points [yvecs.(i)].  If the array is empty, a default
+      palette is used.  If there are less colors than vectors in
+      [yvecs], they are used in a circular way. *)
+  ;;
 end
 
 (** Plotting Lists of floats. *)
@@ -126,7 +142,7 @@ module Vec : sig
     ?const_x:bool -> t -> ?const_y:bool -> t -> unit
   (** See {!Array.xy}.  *)
 
-  val stack : Viewport.t -> ?colors:Color.t array ->
+  val stack : Viewport.t ->
     ?fill:bool -> ?fillcolors:Color.t array -> ?style:style ->
     t array -> unit
   (** See {!Array.stack}.  *)
@@ -146,7 +162,7 @@ module CVec : sig
     ?const_x:bool -> t -> ?const_y:bool -> t -> unit
   (** See {!Array.xy}.  *)
 
-  val stack : Viewport.t -> ?colors:Color.t array ->
+  val stack : Viewport.t ->
     ?fill:bool -> ?fillcolors:Color.t array -> ?style:style ->
     t array -> unit
   (** See {!Array.stack}.  *)
