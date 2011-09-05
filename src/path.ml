@@ -568,9 +568,16 @@ let print_data out = function
     for i = 0 to Array1.dim x - 1 do fprintf out "%g; " y.{i} done;
     fprintf out "|}\n"
 
-let fprint out p =
+let fprint out ?update_extents:(updt_extents=false) p =
   if is_empty p then fprintf out "<Empty path>\n"
-  else iter p (print_data out);
+  else (
+    if updt_extents then update_extents p;
+    fprintf out "Portion of the path for which the extents was computed.\n";
+    fprintf out "extents : (%f, %f, %f, %f)\n" p.x0 p.y0 p.x1 p.y1;
+    Queue.iter (print_data out) p.path_with_extents;
+    fprintf out "Portion of the path for which no extents was computed yet.\n";
+    Queue.iter (print_data out) p.path;
+  );
   flush out
 
 (* Local Variables: *)

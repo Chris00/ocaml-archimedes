@@ -158,7 +158,7 @@ type data = private
 val iter : t ->  (data -> unit) -> unit
 (** [iter p f] iterates [f] on all components of the path [p]. *)
 
-val fprint: out_channel -> t -> unit
+val fprint: out_channel -> ?update_extents:bool -> t -> unit
 (** [print_path p] Debug function. *)
 
 val unsafe_line_of_array : t -> float array -> float array -> int -> int -> unit
