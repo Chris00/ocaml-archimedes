@@ -181,8 +181,11 @@ let stack vp ?(fill=true) ?(fillcolors=[| |])
   )
 
 (* ASSUME n > 0 *)
-let lines_xy vp ~fill ~fillcolor (x:t) (y:t) n =
+let lines_xy vp ~fill ~fillcolor
+    ?(const_x=false) (x:t) ?(const_y=false) (y:t) n =
   let path = Path.make() in
+  let x = if const_x then x else COPY(x)
+  and y = if const_y then y else COPY(y) in
   LINE_OF_ARRAY(path, x, y, FIRST, LAST(n));
   V.fit vp (Path.extents path);
   if fill then (
@@ -197,16 +200,16 @@ let lines_xy vp ~fill ~fillcolor (x:t) (y:t) n =
 
 (* ASSUME n > 0 *)
 let unsafe_xy vp ?(fill=false) ?(fillcolor=default_fillcolor)
-    ?(style=`Points "O") (x:t) (y:t) n =
+    ?(style=`Points "O") ?const_x (x:t) ?const_y (y:t) n =
   match style with
   | `Lines ->
-    let path = lines_xy vp ~fill ~fillcolor x y n in
+    let path = lines_xy vp ~fill ~fillcolor ?const_x x ?const_y y n in
     V.stroke ~path vp `Data ~fit:false
   | `Points mark ->
-    ignore(lines_xy vp ~fill ~fillcolor x y n);
+    ignore(lines_xy vp ~fill ~fillcolor ?const_x x ?const_y y n);
     draw_marks vp style x y n
   | `Linespoints mark ->
-    let path = lines_xy vp ~fill ~fillcolor x y n in
+    let path = lines_xy vp ~fill ~fillcolor ?const_x x ?const_y y n in
     V.stroke vp ~path `Data ~fit:false;
     draw_marks vp style x y n
   | `Bars w ->
@@ -216,13 +219,9 @@ let unsafe_xy vp ?(fill=false) ?(fillcolor=default_fillcolor)
   | `HBars w ->
     horizontal_bars vp ~fill ?base:None ~fillcolor x y n w
 
-let xy vp ?fill ?fillcolor ?style
-    ?(const_x=false) xdata ?(const_y=false) ydata =
+let xy vp ?fill ?fillcolor ?style ?const_x xdata ?const_y ydata =
   let n = DIM(xdata) in
   if n <> DIM(ydata) then
     invalid_arg(MOD ^ ".xy: arrays do not have the same length");
-  if n > 0 then (
-    let x = if const_x then xdata else COPY(xdata) in
-    let y = if const_y then ydata else COPY(ydata) in
-    unsafe_xy vp ?fill ?fillcolor ?style x y n
-  )
+  if n > 0 then
+    unsafe_xy vp ?fill ?fillcolor ?style ?const_x xdata ?const_y ydata n
