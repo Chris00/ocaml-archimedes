@@ -234,11 +234,9 @@ struct
       text". So we need to go to user coordinates.*)
     (*Note: The following transformations assume that the coordinates
       are orthogonal.*)
-    (*let x,y = Cairo.device_to_user_distance t te.x_bearing te.y_bearing in
+    let x,y = Cairo.device_to_user_distance t te.x_bearing te.y_bearing in
     let w,h = Cairo.device_to_user_distance t te.width te.height in
-    { M.x = x; y = -.y; w = w; h = -.h}*)
-    { M.x = te.x_bearing; y = te.y_bearing;
-      w = te.width; h = te.height}
+    { M.x = x; y = -.y; w = w; h = -.h }
 end
 
 let () =
