@@ -75,6 +75,12 @@ Change the record of matrix to a private record type and keep them mutable
 Add support for keys, functions titles and automatic maximization of the
 viewport graph area to fit with those options.
 
+Backends should provide normalized coordinates (to be used by Viewport and
+higher level functions) and device coordinates (to be used by user for device
+specific drawing). Then Viewport coordinate systems (`Data, `Graph, etc...)
+should also support a custom coordinate system (that might be the device
+coordinates of the backend).
+
 * Far fetched
 
 - advi => read TeX font metrics => correct text extents
