@@ -309,6 +309,8 @@ and Viewport : sig
   val ylabel : t -> string -> unit
   val title  : t -> string -> unit
 
+  val xlog : t -> bool
+  val ylog : t -> bool
   val set_xlog : t -> bool -> unit
   val set_ylog : t -> bool -> unit
 
@@ -316,8 +318,6 @@ and Viewport : sig
   val xmax : t -> float
   val ymin : t -> float
   val ymax : t -> float
-  val xlog : t -> bool
-  val ylog : t -> bool
   val close : t -> unit
 
   val add_instruction : t -> (unit -> unit) -> unit
@@ -644,6 +644,9 @@ end = struct
 
   let set_font_size vp ts =
     vp.font_size <- ts;
+    (* Call the instruction directly so that extents are well computed
+       with the *new* font size. *)
+    set_font_size_direct vp ts ();
     add_instruction vp (set_font_size_direct vp ts)
 
   let set_mark_size vp ms =
@@ -656,6 +659,9 @@ end = struct
 
   let set_rel_font_size vp ts =
     vp.font_size <- (ts /. usr_ts *. vp.square_side);
+    (* Call the instruction directly so that extents are well computed
+       with the *new* font size. *)
+    set_rel_font_size_direct vp ts ();
     add_instruction vp (set_rel_font_size_direct vp ts)
 
   let set_rel_mark_size vp ms =
@@ -666,7 +672,7 @@ end = struct
   let get_font_size vp = vp.font_size
   let get_mark_size vp = vp.mark_size
 
-(* ......................................................................... *)
+  (* ......................................................................... *)
 
   let lower_left_corner vp =
     Coordinate.to_device vp.coord_device ~x:0. ~y:0.
@@ -966,6 +972,9 @@ end = struct
   let xrange vp = update_axis vp vp.axes_system.Axes.x vp.xaxis_size
   let yrange vp = update_axis vp vp.axes_system.Axes.y vp.yaxis_size
 
+  let xlog vp = vp.axes_system.Axes.x.Axes.log
+  let ylog vp = vp.axes_system.Axes.y.Axes.log
+
   let set_xlog vp v = vp.axes_system.Axes.x.Axes.log <- v
   let set_ylog vp v = vp.axes_system.Axes.y.Axes.log <- v
 
@@ -1261,28 +1270,65 @@ end = struct
   let text vp ?(coord=`Data) ?(rotate=0.) x y ?(pos=Backend.CC) text =
     (* auto_fit if Data *)
     if coord = `Data then begin
+      (* Compute the extents of the text in Orthonormal coordinates as if
+         it's placed at the origin. *)
       let ctm = Coordinate.use vp.backend vp.coord_orthonormal in
       let rect = Backend.text_extents vp.backend text in
       Coordinate.restore vp.backend ctm;
-      let w, h = rect.Matrix.w, rect.Matrix.h in
+      (* Consider the text position in those extents. *)
       let tr_x = match pos with
-        | Backend.CC | Backend.CT | Backend.CB -> 0.5 *. w
-        | Backend.LC | Backend.LT | Backend.LB -> w
-        | Backend.RC | Backend.RT | Backend.RB -> 0.
+        | Backend.CC | Backend.CT | Backend.CB ->
+          rect.Matrix.x +. 0.5 *. rect.Matrix.w
+        | Backend.RC | Backend.RT | Backend.RB ->
+          rect.Matrix.x
+        | Backend.LC | Backend.LT | Backend.LB ->
+          rect.Matrix.x +. rect.Matrix.w
       and tr_y = match pos with
-        | Backend.CC | Backend.LC | Backend.RC -> 0.5 *. h
-        | Backend.CT | Backend.LT | Backend.RT -> h
-        | Backend.CB | Backend.LB | Backend.RB -> 0.
+        | Backend.CC | Backend.LC | Backend.RC ->
+          rect.Matrix.y +. 0.5 *. rect.Matrix.h
+        | Backend.CT | Backend.LT | Backend.RT ->
+          rect.Matrix.y +. rect.Matrix.h
+        | Backend.CB | Backend.LB | Backend.RB ->
+          rect.Matrix.y
       in
-      let x_ortho, y_ortho = ortho_from vp coord (x, y) in
-      let mat = Matrix.make_translate x_ortho y_ortho in
+      let mat = Matrix.make_translate (-. tr_x) (-. tr_y) in
       Matrix.rotate mat rotate;
-      Matrix.translate mat (-. tr_x) (-. tr_y);
-      let ext = Matrix.transform_rectangle mat rect in
-      let x, y = ext.Matrix.x, ext.Matrix.y
-      and w, h = ext.Matrix.w, ext.Matrix.h in
-      let x0, y0 = data_from vp `Orthonormal (x, y)
-      and xend, yend = data_from vp `Orthonormal (x +. w, y +. h) in
+      (* The extents relative to the origin in Orthonormal coordinates are
+         the smallest rectangle containing the text box placed according
+         to [pos] and rotated. *)
+      let ortho_extents = Matrix.transform_rectangle mat rect in
+      (* Now transform those extents in Data coordinates. We can't use
+         [data_from vp `Orthonormal] since the auto fitted range acts as a
+         feedback term for the extents ; [data_from] assumes the range is
+         fixed. Here we can have the range updated by [auto_fit] and it
+         then changes the Data coordinates of the text extents. So we have
+         to do something special. *)
+      let ow' = -. ortho_extents.Matrix.x
+      and oh' = -. ortho_extents.Matrix.y in
+      let ow = ortho_extents.Matrix.w -. ow'
+      and oh = ortho_extents.Matrix.h -. oh' in
+      let x0, x1 = xmin vp, xmax vp
+      and y0, y1 = ymin vp, ymax vp in
+      let x0, x, x1, xexp =
+        if xlog vp then log x0, log x, log x1, exp
+        else x0, x, x1, (fun x -> x)
+      and y0, y, y1, yexp =
+        if ylog vp then log y0, log y, log y1, exp
+        else y0, y, y1, (fun y -> y)
+      in
+      let xaxs, yaxs =
+        let xaxs0, yaxs0 = ortho_from vp `Graph (0., 0.)
+        and xaxs1, yaxs1 = ortho_from vp `Graph (1., 1.) in
+        (xaxs1 -. xaxs0, yaxs1 -. yaxs0)
+      in
+      let x0' = xexp ((x *. xaxs -. ow' *. x1) /. (xaxs -. ow'))
+      and xend' = xexp ((x *. xaxs -. ow *. x0) /. (xaxs -. ow))
+      and y0' = yexp ((y *. yaxs -. oh' *. y1) /. (yaxs -. oh'))
+      and yend' = yexp ((y *. yaxs -. oh *. y0) /. (yaxs -. oh)) in
+      let x0 = min x x0'
+      and xend = max x xend'
+      and y0 = min y y0'
+      and yend = max y yend' in
       auto_fit vp x0 y0 xend yend
     end;
     add_instruction vp (show_text_direct vp coord ~rotate ~x ~y pos text)
@@ -1300,8 +1346,6 @@ end = struct
     auto_fit vp x y x y;
     add_instruction vp (mark_direct vp ~x ~y name)
 
-  let xlog vp = vp.axes_system.Axes.x.Axes.log
-  let ylog vp = vp.axes_system.Axes.y.Axes.log
 end
 
 include Viewport
