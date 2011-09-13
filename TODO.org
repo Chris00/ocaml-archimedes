@@ -81,6 +81,10 @@ specific drawing). Then Viewport coordinate systems (`Data, `Graph, etc...)
 should also support a custom coordinate system (that might be the device
 coordinates of the backend).
 
+Backend.text_extents should provide higher level extents taking rotation and
+position. So that it make it possible to factorize the computation of text
+extents.
+
 * Far fetched
 
 - advi => read TeX font metrics => correct text extents
