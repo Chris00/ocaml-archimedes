@@ -245,8 +245,7 @@ struct
        origin to *topmost* part of the glyphs. However, in normalized
        coordinates (e.g: for Viewport), we want them to be expressed from
        the downmost part. *)
-    { M.x = x; y = -.y; w = w; h = h }
-
+    { M.x = x; y = -. y; w = w; h = h }
 end
 
 let () =
