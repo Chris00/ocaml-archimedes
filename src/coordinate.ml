@@ -160,7 +160,7 @@ let to_coord_distance coord ~dx ~dy =
  ***********************************************************************)
 
 let make_root m =
-  let m = Matrix.copy m in
+  let m = Matrix.copy (Matrix.Homothety.to_matrix m) in
   let rec dev =
     { depends_on = dev; (* fake parent, physically equal *)
       tm = m;

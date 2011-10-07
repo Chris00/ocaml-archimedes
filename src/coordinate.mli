@@ -1,8 +1,9 @@
-(** Affine systems of coordinates relative to other coordinate systems
-    with automatic updates.  The automatic update refers to the fact
-    that, if a coordinate system is upated, all coordinate systems
-    which depend on it (possibly through several intermediate
-    coordinate systems), they will use the updated version. *)
+(** Systems of coordinates (inhomogeneous homotheties) relative to
+    other coordinate systems with automatic updates.  The automatic
+    update refers to the fact that, if a coordinate system is upated,
+    all coordinate systems which depend on it (possibly through
+    several intermediate coordinate systems), they will use the
+    updated version. *)
 
 type t
 (** Mutable affine coordinate system. *)
@@ -52,7 +53,7 @@ val to_coord_distance : t -> dx:float -> dy:float -> float * float
 
 (** {2 Creating new coordinate systems} *)
 
-val make_root : Matrix.t -> t
+val make_root : Matrix.Homothety.t -> t
 (** [make_root m] make a system of coordinates which, when used,
     amounts to use [m].  This coordinate system depends on no
     other  so will never be updated.  It can be modified however
@@ -74,13 +75,7 @@ val make_scale : t -> x:float -> y:float -> t
     and [y] respectively.  If [coord] is modified, the new system
     will be updated as well. *)
 
-val make_rotate : t -> angle:float -> t
-(** [make_rotate coord a] defines a new coordinate system that
-    consists in rotating the axis X and Y of [coord] by [a] radians
-    (assuming the axis of the system [coord] are orthonormal).  If
-    [coord] is modified, the new system will be updated as well.  *)
-
-val make_from_transform : t -> Matrix.t -> t
+(* val make_from_transform : t -> Matrix.t -> t *)
 (** [make_from_transform coord tm] defines a new coordinate system
     that consists first in applying [tm] and then the tranformation
     in [coord].  In other words, [tm] is the affine transformation
@@ -103,11 +98,6 @@ val scale : t -> x:float -> y:float -> unit
 (** [scale coord x y] modifies the coordinate system [coord]
     dilating its axis X and Y by a factor of [x] and [y]
     respectively. *)
-
-val rotate : t -> angle:float -> unit
-(** [rotate coord a] modifies the coordinate system [coord] rotating
-    its axis X and Y by [a] radians (assuming the axis of the system
-    [coord] are orthonormal). *)
 
 val transform : t -> Matrix.t -> unit
 (** [transform coord tm] modifies the coordinate system [coord]
