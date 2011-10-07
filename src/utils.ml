@@ -25,3 +25,5 @@ let ba_copy x =
   let x' = Array1.create (Array1.kind x) (Array1.layout x) (Array1.dim x) in
   Array1.blit x x';
   x'
+
+let failwithf fmt = Printf.ksprintf failwith fmt

@@ -241,6 +241,8 @@ val height : t -> float
 val width : t -> float
   (** Returns the height of the backend canvas. *)
 
+val name : t -> string
+(** Returns the name under which the backend was registered. *)
 
 val registered: unit -> string list
   (** Return the list of registered (i.e. loaded) backends. *)

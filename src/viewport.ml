@@ -19,6 +19,7 @@
    LICENSE for more details. *)
 
 open Utils
+module M = Matrix.Homothety
 
 type sign = Positive | Negative
 
@@ -509,16 +510,18 @@ let get_background_color vp = vp.bg_color
 let init ?(lines=def_lw) ?(text=def_ts) ?(marks=def_ms)
     ?(bg=Color.white) ?(w=640.) ?(h=480.) ?dirs backend_name =
   let backend = Backend.make ?dirs backend_name w h in
+  let backend_orig_mat =
+    try M.of_matrix(Backend.get_matrix backend)
+    with e -> failwithf "Archimedes.Viewport.init: original matrix \
+      for backend %S contrains shearing!" (Backend.name backend) in
   let coord_root =
     if Backend.flipy backend then
-      let flip =
+      let flip = Matrix.unsafe_of_matrix
         { Matrix.xx = 1.; Matrix.yx = 0.;
-          Matrix.xy = 0.;  Matrix.yy = -1. ; Matrix.x0 = 0.; Matrix.y0 = h }
-      in
-      Coordinate.make_root (Matrix.mul flip (Backend.get_matrix backend))
+          Matrix.xy = 0.;  Matrix.yy = -1.; Matrix.x0 = 0.; Matrix.y0 = h } in
+      Coordinate.make_root (M.mul flip backend_orig_mat)
     else
-      Coordinate.make_root (Backend.get_matrix backend)
-  in
+      Coordinate.make_root backend_orig_mat in
   let size0 = min w h in
   let coord_device = Coordinate.make_scale coord_root w h in
   let coord_graph =

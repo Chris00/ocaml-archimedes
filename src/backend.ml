@@ -125,6 +125,7 @@ end
 (* Internals of a backend handle
  ***********************************************************************)
 type t = {
+  name: string;  (* useful for error messages *)
   width: float;  (* width of the backend canvas in its original units *)
   height: float; (* height of the backend canvas in its original units *)
   close: unit -> unit;
@@ -203,7 +204,8 @@ struct
   if not(M.mem B.name !registry) then
     let make options w h =
       let handle = B.make options w h in
-      { width = w;  height = h;
+      { name = B.name;
+        width = w;  height = h;
         close = (fun () -> B.close ~options handle);
         set_color = B.set_color handle;
         set_line_width = B.set_line_width handle;
@@ -260,6 +262,7 @@ end
 
 (* Allow partial evaluation on [t] to recover the function (allows to
    avoid indirections) *)
+let name t = t.name
 let width t = t.width
 let height t = t.height
 let close t = t.close()
