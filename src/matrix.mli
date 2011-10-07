@@ -135,13 +135,14 @@ val transform_rectangle: ?dist_basepoint:bool -> t -> rectangle -> rectangle
     each canonical direction). *)
 module Homothety :
 sig
-  type t = { mutable xx: float; mutable yy: float;
-             mutable x0: float; mutable y0: float; }
+  type t
   (** See {!Matrix.t}, setting [xy = 0 = yx]. *)
 
   val of_matrix : affine -> t
   (** [of_matrix m] returns a copy of the transformation [m] if it
       contains no rotation or raise [Invalid_argument] otherwise. *)
+
+  external to_matrix : t -> affine = "%identity"
 
   val make_identity : unit -> t
   (** See {!Matrix.make_identity}. *)
@@ -187,7 +188,8 @@ end
 val inv_transform_rectangle: ?dist_basepoint:bool -> t -> rectangle -> rectangle
 (** Inverse transformation of rectangles. *)
 
-
+external unsafe_of_matrix : t -> Homothety.t = "%identity"
+(** Same as {!Homothety.of_matrix} but without checks and copying. *)
 
 (* Local Variables: *)
 (* compile-command: "make -C .." *)
