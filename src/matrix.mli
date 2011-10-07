@@ -188,7 +188,7 @@ end
 val inv_transform_rectangle: ?dist_basepoint:bool -> t -> rectangle -> rectangle
 (** Inverse transformation of rectangles. *)
 
-external unsafe_of_matrix : t -> Homothety.t = "%identity"
+external unsafe_to_homothety : t -> Homothety.t = "%identity"
 (** Same as {!Homothety.of_matrix} but without checks and copying. *)
 
 (* Local Variables: *)

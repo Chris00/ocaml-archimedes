@@ -516,7 +516,7 @@ let init ?(lines=def_lw) ?(text=def_ts) ?(marks=def_ms)
       for backend %S contrains shearing!" (Backend.name backend) in
   let coord_root =
     if Backend.flipy backend then
-      let flip = Matrix.unsafe_of_matrix
+      let flip = Matrix.unsafe_to_homothety
         { Matrix.xx = 1.; Matrix.yx = 0.;
           Matrix.xy = 0.;  Matrix.yy = -1.; Matrix.x0 = 0.; Matrix.y0 = h } in
       Coordinate.make_root (M.mul flip backend_orig_mat)

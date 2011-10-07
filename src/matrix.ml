@@ -242,4 +242,4 @@ include Affine
 
 type t = Affine.affine
 
-external unsafe_of_matrix : t -> Homothety.t = "%identity"
+external unsafe_to_homothety : t -> Homothety.t = "%identity"
