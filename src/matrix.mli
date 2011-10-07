@@ -8,9 +8,11 @@
     {[
     x_new = xx *. x +. xy *. y +. x0;
     y_new = yx *. x +. yy *. y +. y0;      ]} *)
-type t = { mutable xx: float; mutable yx: float;
-           mutable xy: float; mutable yy: float;
-           mutable x0: float; mutable y0: float; }
+type affine = { mutable xx: float; mutable yx: float;
+                mutable xy: float; mutable yy: float;
+                mutable x0: float; mutable y0: float; }
+
+type t = affine
 
 exception Not_invertible
 
@@ -113,8 +115,8 @@ val has_shear: t -> bool
 type rectangle = {
   x:float;   (** X coordinate of the left side of the rectangle *)
   y:float;   (** Y coordinate of the the top side of the rectangle  *)
-  w:float;   (** width of the rectangle *)
-  h:float;   (** height of the rectangle  *)
+  w:float;   (** width of the rectangle  [>= 0]. *)
+  h:float;   (** height of the rectangle [>= 0]. *)
 }
 
 val transform_rectangle: ?dist_basepoint:bool -> t -> rectangle -> rectangle
@@ -128,8 +130,65 @@ val transform_rectangle: ?dist_basepoint:bool -> t -> rectangle -> rectangle
     - Specified as [false]: no transformation of the base point.*)
 
 
+(** Transformations that are the composition of translations and
+    inhomogeneous dilations (different scaling factors are allowed in
+    each canonical direction). *)
+module Homothety :
+sig
+  type t = { mutable xx: float; mutable yy: float;
+             mutable x0: float; mutable y0: float; }
+  (** See {!Matrix.t}, setting [xy = 0 = yx]. *)
+
+  val of_matrix : affine -> t
+  (** [of_matrix m] returns a copy of the transformation [m] if it
+      contains no rotation or raise [Invalid_argument] otherwise. *)
+
+  val make_identity : unit -> t
+  (** See {!Matrix.make_identity}. *)
+  val make_translate : x:float -> y:float -> t
+  (** See {!Matrix.make_translate}. *)
+  val make_scale : x:float -> y:float -> t
+  (** See {!Matrix.make_scale}. *)
+  val set_to_identity : t -> unit
+  (** See {!Matrix.set_to_identity}. *)
+  val copy: t -> t
+  (** See {!Matrix.copy}. *)
+  val blit : t -> t -> unit
+  (** See {!Matrix.blit}. *)
+  val translate : t -> x:float -> y:float -> unit
+  (** See {!Matrix.translate}. *)
+  val scale : t -> x:float -> y:float -> unit
+  (** See {!Matrix.scale}. *)
+  val invert : t -> unit
+  (** See {!Matrix.invert}. *)
+  val det : t -> float
+  (** See {!Matrix.det}. *)
+
+  val mul : t -> t -> t
+  (** See {!Matrix.mul}. *)
+  val mul_in : t -> t -> t -> unit
+  (** See {!Matrix.mul_in}. *)
+  val transform_point : t -> x:float -> y:float -> float * float
+  (** See {!Matrix.transform_point}. *)
+  val transform_distance : t -> dx:float -> dy:float -> float * float
+  (** See {!Matrix.transform_distance}. *)
+  val inv_transform_point : t -> x:float -> y:float -> float * float
+  (** See {!Matrix.inv_transform_point}. *)
+  val inv_transform_distance : t -> dx:float -> dy:float -> float * float
+  (** See {!Matrix.inv_transform_distance}. *)
+
+  val transform_rectangle: ?dist_basepoint:bool -> t -> rectangle -> rectangle
+  (** See {!Matrix.transform_rectangle}. *)
+end
+
 
 (**/**)
 
 val inv_transform_rectangle: ?dist_basepoint:bool -> t -> rectangle -> rectangle
 (** Inverse transformation of rectangles. *)
+
+
+
+(* Local Variables: *)
+(* compile-command: "make -C .." *)
+(* End: *)
