@@ -53,4 +53,4 @@ let () =
       Format.eprintf "Problem aliasing the Archimedes module!@."
   )
   else
-    Format.eprintf "Problem loading Archimedes module@."
+    Format.eprintf "Problem loading Archimedes module.@."
