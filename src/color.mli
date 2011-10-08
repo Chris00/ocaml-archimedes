@@ -39,7 +39,7 @@ val get_rgba : t -> float * float * float * float
 (** Equivalent to ([r t],[g t],[b t], [a t]).*)
 
 val luminance : t -> float
-(** @returns the luminance of the color.  See
+(** @return the luminance of the color.  See
     e.g. {{:http://en.wikipedia.org/wiki/Luminance_%28relative%29}Wikipedia}.
 *)
 

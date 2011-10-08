@@ -13,6 +13,10 @@
     which must be given in [Data] coordinates (from 0 to 1).
     - [`HBars h] Data points determine the width of an horizontal box
     of height [h] which must be given in [Data] coordinates (from 0 to 1).
+
+    For the list of default marks for [`Points] and [`Linespoints]
+    have a look to {!Pointstyle.names}.  You can also define your own
+    with {!Pointstyle.add}.
 *)
 type style =
 [ `Lines
@@ -58,10 +62,11 @@ module Array : sig
   val y : Viewport.t -> ?const_base:bool -> ?base:float array ->
     ?fill:bool -> ?fillcolor:Color.t -> ?style:style ->
     ?const_y:bool -> float array -> unit
-  (** [y vp yvec] draws the set of points (i, yvec.(i)).
+  (** [y vp yvec] draws the set of points [(i, yvec.(i))].
 
       @param style the style used for the plot.  The default style is
       [`Points "O"] which means data points are marked by a small disk.
+      See {!Archimedes.style} for a full list.
 
       @param fill whether to fill the surface between the base and the
       values [yval].
@@ -79,16 +84,20 @@ module Array : sig
 
   val xy: Viewport.t -> ?fill:bool -> ?fillcolor:Color.t -> ?style:style ->
     ?const_x:bool -> float array -> ?const_y:bool -> float array -> unit
-  (** [xy cp xvec yvec] draws the set of points (i, yvec.(i)).
+  (** [xy cp xvec yvec] draws the set of points [(xvec.(i), yvec.(i))].
       The optional arguments are similar to {!Array.y}.
 
       @raise Invalid_argument if [xvec] and [yvec] do not have the same
-      length.*)
+      length.
+
+      See {!Array.y} for the meaning of optional arguments. *)
 
   val xy_pairs: Viewport.t -> ?fill:bool -> ?fillcolor:Color.t ->
     ?style:[`Lines | `Points of string | `Linespoints of string ] ->
     (float * float) array -> unit
-  (** See {!Array.xy}. *)
+  (** See {!Array.xy}.  The only difference is that this function
+      takes an array of couples (x,y) instead of two arrays, one for x
+      and a second of y. *)
 
   val stack : Viewport.t ->
     ?fill:bool -> ?fillcolors:Color.t array -> ?style:style ->
@@ -109,7 +118,7 @@ module Array : sig
       palette is used.  If there are less colors than vectors in
       [yvecs], they are used in a circular way.
 
-      @parm const_y whether the input vector [yvec] will not be modified
+      @param const_y whether the input vector [yvec] will not be modified
       anymore (so there is no need to cache its current values). *)
   ;;
 end

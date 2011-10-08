@@ -128,10 +128,10 @@ sig
   val fill_with_color : t -> Color.t -> unit
   (** [fill_with_color t c] fill the current path of [t] with the
       color [c].  Even if the color is transparent, it must {b
-      replace} all underlying elements (contrarily to {!Backend.fill}
+      replace} all underlying elements (contrarily to {!Backend.T.fill}
       which will show the underlying elements through a transparent
       color).  If transparency is not supported by the backend, it
-      does the same as {!Backend.fill}, except that this operation
+      does the same as {!Backend.T.fill}, except that this operation
       does not change the current color of the backend.  It may modify
       the current path however. *)
 

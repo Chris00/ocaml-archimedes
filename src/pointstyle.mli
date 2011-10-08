@@ -15,7 +15,22 @@ val add : name:name -> (Backend.t -> unit) -> Matrix.rectangle -> unit
     (that is, the previous binding disappears).*)
 
 val names : unit -> name list
-(** @return a list of all names declared. *)
+(** @return a list of all names currently declared.
+
+    By default, the following marks are defined (a short explanation
+    is given if the mark is not clear from the string):
+    - ["x"], ["-"], ["|"], ["+"], ["*"],
+    - ["o"] (a circle), ["O"] (a disk, i.e. same as ["o"] but filled),
+    - ["s"] (a square), ["S"] (a filled square),
+    - ["d"] (a diamond), ["D"] (a filled diamond),
+    - ["^"] (an inverted V),  ["v"], [">"], ["<"],
+    - ["^-"] (a triangle pointing upward), ["v-"], ["|>"], ["<|"],
+    - ["^--"] (a filled triangle pointing upward), ["v--"], ["||>"], ["<||"],
+    - ["p"] (a pentagon), ["P"] (a filled pentagon),
+    - ["h"] (an hexagon), ["H"] (a filled hexagon),
+    - ["tic_up"] (a small bar above the current location),
+      ["tic_down"], ["tic_left"], ["tic_right"].
+*)
 
 (**/**)
 
