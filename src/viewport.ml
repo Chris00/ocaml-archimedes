@@ -25,7 +25,7 @@ type sign = Positive | Negative
 
 type t = {
   backend: Backend.t;
-  parent: t;
+  parent: t; (* = itself iff it is the root viewport. *)
   bg_color: Color.t;  (* background color *)
   mutable children: t list;
 
@@ -39,11 +39,11 @@ type t = {
   mutable coord_device: Coordinate.t; (* AA *)
   mutable coord_graph: Coordinate.t; (* BB *)
   mutable coord_orthonormal: Coordinate.t; (* AE *)
-  mutable coord_data: Coordinate.t; (* CC *)
+  mutable coord_data: Coordinate.t; (* CC, points set in data coordinates *)
 
   mutable square_side: float;
 
-  path: Path.t;
+  path: Path.t; (* current path on this view port *)
 
   (* Axes system associated to the viewport *)
   mutable axes_system: axes_t;
