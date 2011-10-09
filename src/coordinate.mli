@@ -75,12 +75,12 @@ val make_scale : t -> x:float -> y:float -> t
     and [y] respectively.  If [coord] is modified, the new system
     will be updated as well. *)
 
-(* val make_from_transform : t -> Matrix.t -> t *)
+val make_from_transform : t -> Matrix.Homothety.t -> t
 (** [make_from_transform coord tm] defines a new coordinate system
-    that consists first in applying [tm] and then the tranformation
-    in [coord].  In other words, [tm] is the affine transformation
-    from the desired coordinate system to [coord].  If [coord] is
-    modified, the new system will be updated as well. *)
+    that consists first in applying [tm] and then the tranformation in
+    [coord].  In other words, [tm] is the transformation from the
+    desired coordinate system to [coord].  If [coord] is modified, the
+    new system will be updated as well. *)
 
 val copy : t -> t
 (** Returns a completely independent copy of the current coordinate

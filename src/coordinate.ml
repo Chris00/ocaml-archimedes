@@ -206,16 +206,14 @@ let make_identity coord =
   make_from_transform_with_ctm coord id (Matrix.copy coord.ctm)
 
 let make_from_transform coord tm =
+  let tm = Matrix.unsafe_of_homothety tm in
   make_from_transform_with_ctm coord tm (Matrix.mul coord.ctm tm)
 
 let make_translate coord ~x ~y =
-  make_from_transform coord (Matrix.make_translate ~x ~y)
+  make_from_transform coord (Matrix.Homothety.make_translate ~x ~y)
 
 let make_scale coord ~x ~y =
-  make_from_transform coord (Matrix.make_scale ~x ~y)
-
-let make_rotate coord ~angle =
-  make_from_transform coord (Matrix.make_rotate ~angle)
+  make_from_transform coord (Matrix.Homothety.make_scale ~x ~y)
 
 
 (* Changing this coordinate system
