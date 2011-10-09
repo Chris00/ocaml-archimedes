@@ -189,7 +189,7 @@ struct
        is preserved in the future. *)
     copy m
 
-  external to_matrix : t -> affine = "%identity"
+  let to_matrix = copy (* need to copy because of mutability *)
 
   (* Redefine [invert] -- and the functions that use it -- to be more
      efficient *)
@@ -243,3 +243,4 @@ include Affine
 type t = Affine.affine
 
 external unsafe_to_homothety : t -> Homothety.t = "%identity"
+external unsafe_of_homothety : Homothety.t -> t = "%identity"

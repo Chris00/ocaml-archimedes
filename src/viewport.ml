@@ -43,7 +43,7 @@ type t = {
 
   mutable square_side: float;
 
-  path: Path.t; (* current path on this view port *)
+  path: Path.t; (* current path on this viewport *)
 
   (* Axes system associated to the viewport *)
   mutable axes_system: axes_t;

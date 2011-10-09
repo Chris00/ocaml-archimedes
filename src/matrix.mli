@@ -142,7 +142,8 @@ sig
   (** [of_matrix m] returns a copy of the transformation [m] if it
       contains no rotation or raise [Invalid_argument] otherwise. *)
 
-  external to_matrix : t -> affine = "%identity"
+  val to_matrix : t -> affine
+  (** [to_matrix m] returns a copy of the transformation [m]. *)
 
   val make_identity : unit -> t
   (** See {!Matrix.make_identity}. *)
@@ -190,6 +191,11 @@ val inv_transform_rectangle: ?dist_basepoint:bool -> t -> rectangle -> rectangle
 
 external unsafe_to_homothety : t -> Homothety.t = "%identity"
 (** Same as {!Homothety.of_matrix} but without checks and copying. *)
+
+external unsafe_of_homothety : Homothety.t -> t = "%identity"
+(** Same as {!Homothety.to_matrix} but without copying. *)
+
+
 
 (* Local Variables: *)
 (* compile-command: "make -C .." *)
