@@ -3,7 +3,7 @@
    Copyright (C) 2009-2011
 
      Christophe Troestler <Christophe.Troestler@umons.ac.be>
-     Pierre Hauweele <antegallya@gmail.com>
+     Pierre Hauweele <pierre@hauweele.net>
      Noemie Meunier <noemie_6462@hotmail.com>
      Fabian Pijcke <fabian.pijcke@gmail.com>
      WWW: http://math.umons.ac.be/an/software/
