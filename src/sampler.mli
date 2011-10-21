@@ -25,11 +25,14 @@ type strategy = float -> float -> float
     point tm between t1 and t2 which will be used to decide if we
     need to increment precision or not. *)
 
-type cost = float -> float -> float -> float -> float -> float -> float
-(** A cost [f x0 y0 xm ym x1 y1] which returns the cost measuring how
-    much the three points [(x0, y0)], [(xm, ym)], and [(x1, y1)]
-    differ from a straight line.  A cost of [0.] means one is
-    satisfied with it. *)
+type cost = Matrix.rectangle ->
+  float -> float -> float -> float -> float -> float -> float
+(** A cost [f bb x0 y0 xm ym x1 y1] which returns the cost measuring
+    how much the three points [(x0, y0)], [(xm, ym)], and [(x1, y1)]
+    differ from a straight line.  [bb] is a rough bounding box of the
+    set of points that can be used to determine whether two points are
+    close (in relative measure).  A cost [<= 0.] means one is satisfied
+    with drawing straight lines connecting the three points. *)
 
 val xy : ?tlog:bool -> ?n:int -> ?strategy:strategy -> ?cost:cost ->
   (float -> float * float) -> float -> float -> float array * float array
@@ -41,7 +44,7 @@ val xy : ?tlog:bool -> ?n:int -> ?strategy:strategy -> ?cost:cost ->
     @param min_step don't increment precision more than this threshold
 
     @param n is a maximum number of evaluation of [f] we allow.
-             Default: [100].
+    Default: [100].
     @param strategy a customized strategy.
     @param cost a customized cost.
 *)
