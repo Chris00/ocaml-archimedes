@@ -114,7 +114,8 @@ type interval = {
 let xy ?tlog ?(n=100)
     ?(strategy=strategy_default) ?(cost=cost_default) f a b =
   if n < 2 then
-    invalid_arg "Archimedes.Sampler.xy: must at least evaluate 2 points to graph a function";
+    invalid_arg "Archimedes.Sampler.xy: must at least evaluate 2 points \
+      to graph a function";
   if not(is_finite a && is_finite b) then
     invalid_arg "Archimedes.Sampler.xy: bounds of the function must be finite";
   let q = PQ.make() in

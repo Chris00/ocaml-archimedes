@@ -66,10 +66,16 @@ val strategy_center_random : strategy
 
 
 val cost_angle : cost
-(** A criterion that tells to increment precision only if the angle
-    xMy is leather than threshold. *)
+(** Measures the angle at the middle point [(xm, ym)], the flatter the
+    angle, the lower the cost. *)
+
+val cost_angle_dist : cost
+(** Measures the angle at the middle point [(xm, ym)], the flatter the
+    angle, the better and combines it with the distance of the points
+    [(x0, y0)] and [(x1, y1)] to the middle point, the smaller the
+    distance, the better. *)
 
 val cost_angle_log : bool -> bool -> cost
-(** Same criterion as criterion_angle, but one can tell that the x/y
-    axis is logarithmic, and increment precision in a more wise way *)
+(** Same criterion as {!cost_angle} suitable for logarithmic
+    cordinates. *)
 
