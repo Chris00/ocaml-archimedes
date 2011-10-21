@@ -2,6 +2,14 @@
 
 * Higher priority
 
+The Y label does not work (graphics).  Should also remove the debugging.
+
+Palettes should be offered (and being possible to create from
+gradients with as many levels as we like) in the Color module.
+
+[fx f a b] with a > b should revert the axis labels.  If there are
+both reverted axis and "direct" ones, choose the direct ones.
+
 Fix clipping in cairo that clips thick lines at the border of the data
 graph. A thick line should be authorized to overlap out of the clip area.
 

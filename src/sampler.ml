@@ -113,11 +113,13 @@ type interval = {
 (* FIXME: need to manage NaNs *)
 let xy ?tlog ?(n=100)
     ?(strategy=strategy_default) ?(cost=cost_default) f a b =
+  if n < 2 then
+    invalid_arg "Archimedes.Sampler.xy: must at least evaluate 2 points to graph a function";
   if not(is_finite a && is_finite b) then
     invalid_arg "Archimedes.Sampler.xy: bounds of the function must be finite";
   let q = PQ.make() in
   (* Rough sampling with [2*n0+1] points, including middle points *)
-  let n0 = 15 in
+  let n0 = truncate(0.15 *. float n) in
   let dt = (b -. a) /. (float n0) in
   (* Compute the bounding box so it can be used to dertermine when two
      points are close (in relative error) — which can be useful for
