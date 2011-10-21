@@ -36,8 +36,8 @@ type cost = Matrix.rectangle ->
 
 val xy : ?tlog:bool -> ?n:int -> ?strategy:strategy -> ?cost:cost ->
   (float -> float * float) -> float -> float -> float array * float array
-(** [create f t1 t2] samples the parametric function f from t1 to t2,
-    returning a list of the points in the sample.
+(** [create f t1 t2] samples the parametric function [f] from [t1] to
+    [t2] returning a list of the points in the sample.
 
     @param tlog do we need to step in a logarithmic way ?
 
