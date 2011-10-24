@@ -30,6 +30,7 @@ let max a b = if (a:float) > b then a else b
 let round x = truncate(if x < 0. then x -. 0.5 else x +. 0.5)
 
 let fourth_pi = atan 1.
+let half_pi = 2. *. fourth_pi
 let pi = 4. *. fourth_pi
 
 
@@ -561,29 +562,29 @@ struct
     let w, h = Graphics.text_size txt in
     { A.Matrix.x = 0.; y = 0.; w = float w ; h = float h }
 
-  let rotate_extents angle x0 y0 w0 h0 =
-    Printf.printf "DEBUG: Before: %f %f %f %f\n%!" x0 y0 w0 h0;
+  let rotate_extents angle x0 y0 w h =
+    (* Printf.printf "DEBUG: Before: %f %f %f %f\n%!" x0 y0 w h; *)
     let angle = mod_float angle (2. *. pi) in
-    let sina, cosa = sin angle, cos angle in
-    let x, y, w, h = -. w0 /. 2., -. h0 /. 2., w0, h0 in
-    Printf.printf "DEBUG: Normalized: %f %f %f %f\n%!" x y w h;
+    let sina = sin angle and cosa = cos angle in
+    let x = -. w /. 2. and y = -. h /. 2. in
+    (* Printf.printf "DEBUG: Normalized: %f %f %f %f\n%!" x y w h; *)
     let xproj x y = cosa *. x -. sina *. y in
     let yproj x y = sina *. x +. cosa *. y in
     let x =
-      if angle < pi /. 2. then xproj x (y +. h)
+      if angle < half_pi then xproj x (y +. h)
       else if angle < pi then xproj (x +. w) (y +. h)
       else if angle < 1.5 *. pi then xproj (x +. w) y
       else xproj x y
     and y =
-      if angle < pi /. 2. then yproj x y
+      if angle < half_pi then yproj x y
       else if angle < pi then yproj x (y +. h)
       else if angle < 1.5 *. pi then yproj (x +. w) (y +. h)
       else yproj (x +. w) y
     in
-    Printf.printf "DEBUG: %f %f\n%!" x y;
+    (* Printf.printf "DEBUG: %f %f\n%!" x y; *)
     let retw, reth = -. 2. *. x, -. 2. *. y in
-    let retx, rety = x0 -. (retw -. w0) /. 2., y0 -. (reth -. h0) /. 2. in
-    Printf.printf "DEBUG: After: %f %f %f %f\n%!" retx rety retw reth;
+    let retx, rety = x0 -. (retw -. w) /. 2., y0 -. (reth -. h) /. 2. in
+    (* Printf.printf "DEBUG: After: %f %f %f %f\n%!" retx rety retw reth; *)
     retx, rety, retw, reth
 
   (* Rotation of a color matrix image from center point using nearest
