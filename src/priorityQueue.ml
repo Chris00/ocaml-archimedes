@@ -20,6 +20,7 @@
 
    FIXME: Is it interesting to implement it as a Fibonacci heap? *)
 
+open Utils
 
 type 'a pairing_heap =
 | Empty
@@ -28,13 +29,12 @@ type 'a pairing_heap =
 
 type 'a t = 'a pairing_heap ref
 
-
 let make () = ref Empty
 
 let is_empty q = !q = Empty
 
 let max q = match !q with
-  | Empty -> failwith "PriorityQueue.max: empty"
+  | Empty -> failwith "Archimedes.PriorityQueue.max: empty"
   | Heap(_, x, _) -> x
 
 let max_priority q = match !q with
@@ -50,6 +50,8 @@ let merge q1 q2 =
     else Heap(p2, e2, q1 :: h2)
 
 let add q p x =
+  if is_nan p then
+    invalid_arg "Archimedes.PriorityQueue: NaN priority not allowed";
   q := merge (Heap(p, x, [])) !q
 
 let rec merge_pairs = function
@@ -59,7 +61,7 @@ let rec merge_pairs = function
 
 let delete_max q =
   match !q with
-  | Empty -> failwith "PriorityQueue.delete_max: empty"
+  | Empty -> failwith "Archimedes.PriorityQueue.delete_max: empty"
   | Heap(_, x, []) -> q := Empty; x
   | Heap(_, x, [h]) -> q := h; x
   | Heap(_, x, hs) -> q := merge_pairs hs; x

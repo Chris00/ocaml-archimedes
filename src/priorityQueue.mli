@@ -25,7 +25,9 @@ val is_empty : 'a t -> bool
 (** [is_empty q] tells whether the queue [q] is empty. *)
 
 val add : 'a t -> float -> 'a -> unit
-(** [add q p x] adds the elements [x] to the queue [q] with priority [p]. *)
+(** [add q p x] adds the elements [x] to the queue [q] with priority [p].
+
+    @raise Invalid_argument if [p] is NaN. *)
 
 val max : 'a t -> 'a
 (** [max q] returns an element of [q] with maximum priority.  [q]
