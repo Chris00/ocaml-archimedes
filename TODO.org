@@ -30,17 +30,23 @@ Add support for multi-line labels and use it in Axes_dates test.
 In Graphics backend, when drawing text, there's a rectangle of the size of
 the text in the bottom left corner of the screen.
 
-Tics.tics isn't usefull for the user, hide it.
+Tics.tics isn't useful for the user, hide it.
 
 Use abstract types for Tics and create them with functions to be more
 instinctive for users.
+Consider the following example : the user wants to draw tics with non constant
+step-size ; to plot dates where we have tics at each month, but the number of
+days between each month is different.
 
 Treat axes, labels, grid, fillings, specially. For example, axes should always be
 drawn last and have their own color.
+For that, consider attaching the style parameters to the plot via some handle ;
+in the same way of "save", but give a function to recover the handle of the
+last plotting instruction. Also consider adding the plot ranges in that handle
+to be able to remove a plot instruction and reset the ranges to old one.
 Implement layers or multi instructions queues (prefered to layers, less heavier).
 
 Suppose rectangles x1, xend and xend, x1 are the same rectangles.
-
 
 * Before 1.0
 

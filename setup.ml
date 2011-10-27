@@ -4933,7 +4933,7 @@ let setup_t =
           authors =
             [
                "Christophe Troestler <Christophe.Troestler@umons.ac.be>";
-               "Pierre Hauweele <antegallya@gmail.com>";
+               "Pierre Hauweele <pierre@hauweele.net>";
                "Fabian Pijcke <fabian.pijcke@gmail.com>";
                "No\195\169mie Meunier <noemie_6462@hotmail.com>";
                "Bertrand Desmons <bibi-6@hotmail.fr>"
