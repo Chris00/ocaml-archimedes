@@ -24,12 +24,9 @@ open Bigarray
 type vec = (float, float64_elt, fortran_layout) Array1.t
 type cvec = (float, float64_elt, c_layout) Array1.t
 
-let fourth_pi = atan 1.
-
 (* Helper functions
  ***********************************************************************)
 
-let is_infinite x = 1. /. x = 0.
 let min a b = if (a:float) < b then a else b (* assume no NaN *)
 let max a b = if (a:float) > b then a else b
 

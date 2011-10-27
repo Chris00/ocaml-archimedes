@@ -26,7 +26,7 @@ let index_array n =
     m
   )
 
-(* Plotting functions
+(* Functions to plot arrays
  ***********************************************************************)
 
 (* ASSUME n > 0. *)

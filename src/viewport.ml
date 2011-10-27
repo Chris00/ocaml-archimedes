@@ -726,16 +726,16 @@ let auto_fit vp x0 y0 x1 y1 =
   assert (not (is_nan yrange.data_xend));
   (* Update data ranges. *)
   if xrange.auto_x0 && is_finite x0'
-    && (is_inf xrange.data_x0 || x0' < xrange.data_x0) then
+    && (is_infinite xrange.data_x0 || x0' < xrange.data_x0) then
     (xrange.data_x0 <- x0'; xupdated := true);
   if xrange.auto_xend && is_finite x1'
-    && (is_inf xrange.data_xend || x1' > xrange.data_xend) then
+    && (is_infinite xrange.data_xend || x1' > xrange.data_xend) then
     (xrange.data_xend <- x1'; xupdated := true);
   if yrange.auto_x0 && is_finite y0'
-    && (is_inf yrange.data_x0 || y0' < yrange.data_x0) then
+    && (is_infinite yrange.data_x0 || y0' < yrange.data_x0) then
     (yrange.data_x0 <- y0'; yupdated := true);
   if yrange.auto_xend && is_finite y1'
-    && (is_inf yrange.data_xend || y1' > yrange.data_xend) then
+    && (is_infinite yrange.data_xend || y1' > yrange.data_xend) then
     (yrange.data_xend <- y1'; yupdated := true);
   (* Update x0, xend ranges, unit_size and gx0, gxend and redraw... *)
   update_axes_ranges vp !xupdated !yupdated
@@ -748,10 +748,10 @@ let fit vp r =
 let update_axis vp axis axis_size x0 xend =
   if x0 < xend then begin
     let range = axis.range.value in
-    range.auto_x0 <- is_inf x0;
-    if not (is_inf x0) then range.x0 <- x0;
-    range.auto_xend <- is_inf xend;
-    if not (is_inf xend) then range.xend <- xend;
+    range.auto_x0 <- is_infinite x0;
+    if not (is_infinite x0) then range.x0 <- x0;
+    range.auto_xend <- is_infinite xend;
+    if not (is_infinite xend) then range.xend <- xend;
     norm_ratio_auto_axes vp.axes_system;
     let unit_size = axis_size /. (range.xend -. range.x0) in
     if unit_size < axis.unit_size.value then begin

@@ -18,7 +18,8 @@
 open Bigarray
 
 let is_nan (x: float) = x <> x
-let is_inf y = 1. /. y = 0.
+let is_not_nan (x: float) = x = x
+let is_infinite y = 1. /. y = 0.
 let is_finite x = neg_infinity < x && x < infinity
 let min_float x y = if (x: float) <= y then x else y
 let max_float x y = if (x: float) >= y then x else y
