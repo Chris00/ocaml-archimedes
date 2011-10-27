@@ -1134,8 +1134,10 @@ let title vp s =
   add_instruction vp (title_direct vp s)
 
 let mark vp ~x ~y name =
-  auto_fit vp x y x y;
-  add_instruction vp (mark_direct vp ~x ~y name)
+  if is_finite x && is_finite y then (
+    auto_fit vp x y x y;
+    add_instruction vp (mark_direct vp ~x ~y name)
+  )
 
 
 

@@ -228,7 +228,12 @@ val text :
     [(x,y)].  Default: centering both horizontally and vertically. *)
 
 (*  val text_extents : t -> string -> rectangle*)
+
 val mark : t -> x:float -> y:float -> string -> unit
+(** [mark vp x y m] draw the mark given by [m] on the viewport [vp] at
+    position [(x,y)] if both [x] and [y] are finite.  Otherwise, does
+    nothing. *)
+
 (* val mark_extents : t -> string -> rectangle *)
 
 val axes_ratio : t -> float -> unit
