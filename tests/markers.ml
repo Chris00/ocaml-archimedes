@@ -4,7 +4,7 @@ module V = A.Viewport
 
 let description = "Show all implemented marks."
 
-let markers = Array.of_list (Archimedes.Pointstyle.names ())
+let markers = Array.of_list (Archimedes.Marker.names ())
 
 let draw backend =
   let vp = A.init ~w ~h ~dirs backend in

@@ -24,8 +24,8 @@ module V = Viewport
 
 type style =
 [ `Lines
-| `Points of string
-| `Linespoints of string
+| `Markers of string
+| `Linesmarkers of string
 | `Impulses
 | `Bars of float
 | `HBars of float ]
@@ -249,9 +249,9 @@ let fx vp ?tlog ?n ?strategy ?cost ?(style=`Lines) ?base
     V.set_color vp color;
   );
   (match style with
-  | `Lines | `Linespoints _ -> V.stroke ~path vp `Data
-  | `Points _ -> ()); (* Do not usually make sense but convenient
-                        so see which data points where chosen. *)
+  | `Lines | `Linesmarkers _ -> V.stroke ~path vp `Data
+  | `Markers _ -> ()); (* Do not usually make sense but convenient
+                         so see which data points where chosen. *)
   PlotArray.draw_marks vp style x y (Array.length x)
 
 

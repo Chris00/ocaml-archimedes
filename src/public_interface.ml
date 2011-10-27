@@ -83,7 +83,7 @@ let () =
   include_file "Sampler";
 
   section "High level functions";
-  include_file "Pointstyle";
+  include_file "Marker";
   include_file "Arrows";
   include_file "Tics";
   include_file "Axes";

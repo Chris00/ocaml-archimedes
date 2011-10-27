@@ -11,7 +11,7 @@ let draw bk =
   A.Axes.box vp;
   A.Viewport.set_mark_size vp 1.;
   A.Viewport.set_color vp A.Color.dark_olive_green;
-  A.fx vp f (-0.4) 0.4 ~n:200 ~style:(`Points "o")
+  A.fx vp f (-0.4) 0.4 ~n:200 ~style:(`Markers "o")
     ~fill:true ~fillcolor:A.Color.light_goldenrod;
   A.close vp;
   printf "  Number of function evaluations: %i\n" !neval

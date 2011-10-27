@@ -16,7 +16,7 @@ let draw backend =
   A.Array.y vp1 x ~style:`Lines;
   V.set_color vp1 A.Color.firebrick;
   V.set_mark_size vp1 20.;
-  A.Array.y vp1 x ~style:(`Points "*");
+  A.Array.y vp1 x ~style:(`Markers "*");
 
   let x = Array1.create float64 fortran_layout 20 in
   for i = 1 to Array1.dim x do

@@ -361,7 +361,7 @@ let path_direct vp ~x ~y path () =
   orthoinstr_direct vp ~x ~y (fun b -> Backend.stroke_path_preserve b path)
 
 let mark_direct vp ~x ~y name () =
-  orthoinstr_direct vp ~x ~y (Pointstyle.render name)
+  orthoinstr_direct vp ~x ~y (Marker.render name)
 
 let save_direct vp () =
   let save = {

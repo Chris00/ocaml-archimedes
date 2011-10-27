@@ -110,25 +110,25 @@ let horizontal_bars vp ~fill ?base ~fillcolor (x:t) (y:t) n w =
 let draw_marks vp style (x: t) (y: t) n =
   match style with
   | `Lines | `Impulses | `Bars _ | `HBars _ -> ()
-  | `Points m | `Linespoints m ->
+  | `Markers m | `Linesmarkers m ->
     for i = FIRST to LAST(n) do
       V.mark vp (GET(x,i)) (GET(y,i)) m
     done
 
 (* ASSUME n > 0. *)
 let unsafe_y vp ?const_base ?base ?(fill=false) ?(fillcolor=default_fillcolor)
-    ?(style=`Points "O") ?const_x x ?const_y y n =
+    ?(style=`Markers "O") ?const_x x ?const_y y n =
   match style with
   | `Lines ->
     let path =
       lines_y vp ~fill ?const_base ?base ~fillcolor ?const_x x ?const_y y n
     in
     V.stroke ~path vp `Data ~fit:false
-  | `Points mark ->
+  | `Markers mark ->
     ignore(lines_y vp ~fill
              ?const_base ?base ~fillcolor ?const_x x ?const_y y n);
     draw_marks vp style x y n
-  | `Linespoints mark ->
+  | `Linesmarkers mark ->
     let path =
       lines_y vp ~fill ?const_base ?base ~fillcolor ?const_x x ?const_y y n
     in
@@ -200,15 +200,15 @@ let lines_xy vp ~fill ~fillcolor
 
 (* ASSUME n > 0 *)
 let unsafe_xy vp ?(fill=false) ?(fillcolor=default_fillcolor)
-    ?(style=`Points "O") ?const_x (x:t) ?const_y (y:t) n =
+    ?(style=`Markers "O") ?const_x (x:t) ?const_y (y:t) n =
   match style with
   | `Lines ->
     let path = lines_xy vp ~fill ~fillcolor ?const_x x ?const_y y n in
     V.stroke ~path vp `Data ~fit:false
-  | `Points mark ->
+  | `Markers mark ->
     ignore(lines_xy vp ~fill ~fillcolor ?const_x x ?const_y y n);
     draw_marks vp style x y n
-  | `Linespoints mark ->
+  | `Linesmarkers mark ->
     let path = lines_xy vp ~fill ~fillcolor ?const_x x ?const_y y n in
     V.stroke vp ~path `Data ~fit:false;
     draw_marks vp style x y n
