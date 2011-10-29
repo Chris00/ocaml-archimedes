@@ -21,9 +21,10 @@
 (** Adaptative sampling of functions. *)
 
 type strategy = float -> float -> float
-(** A strategy is a function [f t1 t2] that returns an internal
-    point tm between t1 and t2 which will be used to decide if we
-    need to increment precision or not. *)
+(** A strategy is a function [f t1 t2] that returns an internal point
+    tm between [t1] and [t2] which will be used to decide if we need
+    to increment precision or not.  The given [t1] and [t2] will
+    always be finite. *)
 
 type cost = Matrix.rectangle ->
   float -> float -> float -> float -> float -> float -> float
@@ -36,14 +37,15 @@ type cost = Matrix.rectangle ->
 
 val xy : ?tlog:bool -> ?n:int -> ?strategy:strategy -> ?cost:cost ->
   (float -> float * float) -> float -> float -> float array * float array
-(** [create f t1 t2] samples the parametric function [f] from [t1] to
-    [t2] returning a list of the points in the sample.
+(** [xy f t1 t2] samples the parametric function [f] on the
+    interval going from [t1] to [t2].  Returns a list of the points in
+    the sample.
 
     @param tlog do we need to step in a logarithmic way ?
 
     @param min_step don't increment precision more than this threshold
 
-    @param n is a maximum number of evaluation of [f] we allow.
+    @param n is a maximum number of evaluations of [f] that are allowed.
     Default: [100].
     @param strategy a customized strategy.
     @param cost a customized cost.
@@ -51,7 +53,8 @@ val xy : ?tlog:bool -> ?n:int -> ?strategy:strategy -> ?cost:cost ->
 
 val x : ?tlog:bool -> ?n:int -> ?strategy:strategy -> ?cost:cost ->
   (float -> float) -> float -> float -> float array * float array
-
+(** [x f x1 x2] same as {!Sampler.xy} but for the scalar function [f]
+    on the interval going from [x1] to [x2]. *)
 
 val strategy_midpoint : strategy
 (** The default strategy: choose the middle point *)

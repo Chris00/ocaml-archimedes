@@ -18,9 +18,10 @@ let draw backend =
   V.set_mark_size vp1 20.;
   A.Array.y vp1 x ~style:(`Markers "*");
 
-  let x = Array1.create float64 fortran_layout 20 in
+  let n = 10 in
+  let x = Array1.create float64 fortran_layout (2 * n + 1) in
   for i = 1 to Array1.dim x do
-    x.{i} <- 3. *. sin (float i *. 0.1);
+    x.{i} <- 1. /. sin(float(i - 1 - n) *. 0.1);
   done;
   A.Axes.box vp2;
   A.Vec.y vp2 x;

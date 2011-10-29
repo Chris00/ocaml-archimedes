@@ -21,8 +21,14 @@ let is_nan (x: float) = x <> x
 let is_not_nan (x: float) = x = x
 let is_infinite y = 1. /. y = 0.
 let is_finite x = neg_infinity < x && x < infinity
-let min_float x y = if (x: float) <= y then x else y
-let max_float x y = if (x: float) >= y then x else y
+
+(* Ignore NaN (unless both are NaN). *)
+let float_min x y =
+  if (x: float) <= y then x
+  else if is_nan y then x else y
+let float_max x y =
+  if (x: float) >= y then x
+  else if is_nan y then x else y
 
 let ba_copy x =
   let x' = Array1.create (Array1.kind x) (Array1.layout x) (Array1.dim x) in

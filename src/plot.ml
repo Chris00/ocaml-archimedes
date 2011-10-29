@@ -224,7 +224,7 @@ let fx vp ?tlog ?n ?strategy ?cost ?(style=`Lines) ?base
   (* FIXME: this is similar to Array.x except that the base may have
      its own sampling. *)
   let path = Path.make () in
-  Path.unsafe_line_of_array path x y 0 (Array.length x - 1);
+  Path.line_of_array path x y ~const_x:true ~const_y:true;
   V.fit vp (Path.extents path);
   (* Fill *)
   if fill then (
@@ -243,8 +243,7 @@ let fx vp ?tlog ?n ?strategy ?cost ?(style=`Lines) ?base
     Path.close path_fill;
     let color = V.get_color vp in
     V.set_color vp fillcolor;
-    (* Do not fit on its extents, because we don't want to fit
-       [base]. *)
+    (* Do not fit on its extents, because we don't want to fit [base]. *)
     V.fill ~path:path_fill ~fit:false vp `Data;
     V.set_color vp color;
   );

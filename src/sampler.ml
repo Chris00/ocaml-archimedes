@@ -106,9 +106,57 @@ let cost_default = cost_angle_dist
 type interval = {
   t0: float; x0: float;  y0: float; (* t0 = left point;  (x0, y0) = f t0 *)
   t1: float; x1: float;  y1: float; (* t1 = right point; (x1, y1) = f t1 *)
-  tm: float; xm: float;  ym: float; (* mid point *)
-  scale: float; (* scale, decreasing as one divides the interval *)
+  side: float; (* = 0 if [(x0,y0)] and [(x1,y1)] are finite;
+                  < 0 if [(x0,y0)] is finite but not the other one;
+                  > 0 if [(x1,y1)] is finite but not the other one.  *)
+  scale: float; (* cost scaling factor, decreasing as one divides the
+                   interval *)
 }
+(* [t0] and [t1] will always be finite (they are constructed by the
+   functions below).  The fact that [side] is a float is to allow the
+   float optimization for records to kick in.  *)
+
+let pt_is_finite x y = is_finite x && is_finite y
+
+(** Return a priority queue containing the sampling of [f] on the
+    interval [[a,b]] with [n0] equidistant evals.  The initial cost of
+    all intervals is infinity to make sure they are processed each at least once. *)
+let initial_sampling n0 f a b =
+  let q = PQ.make() in
+  let dt = (b -. a) /. float(n0-1) in
+  (* Compute the bounding box so it can be used to dertermine when two
+     points are close (in relative error) — which can be useful for
+     the cost function.  Store the eval of [f] which may be costly. *)
+  let xmin = ref infinity and xmax = ref neg_infinity
+  and ymin = ref infinity and ymax = ref neg_infinity in
+  let x_a, y_a = f a in
+  let t_prev = ref a and x_prev = ref x_a and y_prev = ref y_a in
+  let finite_prev = ref(pt_is_finite x_a y_a) in
+  for i = 1 to n0 - 1 do
+    let t = a +. float i *. dt in
+    let x, y = f t in
+    xmin := float_min !xmin x;  xmax := float_max !xmax x;
+    ymin := float_min !ymin y;  ymax := float_max !ymax y;
+    let finite_xy = pt_is_finite x y in
+    if !finite_prev then
+      PQ.add q max_float { t0 = !t_prev;  x0 = !x_prev;  y0 = !y_prev;
+                           t1 = t;  x1 = x;  y1 = y;
+                           side = if finite_xy then 0. else -1.;
+                           scale = 0.5 }
+    else if finite_xy then
+      PQ.add q max_float { t0 = !t_prev;  x0 = !x_prev;  y0 = !y_prev;
+                           t1 = t;  x1 = x;  y1 = y;
+                           side = 1.;
+                           scale = 0.5 };
+    (* If both points are not-finite, then drop the interval. *)
+    t_prev := t;
+    x_prev := x;
+    y_prev := y;
+    finite_prev := finite_xy;
+  done;
+  let bb = { Matrix.x = !xmin; y = !ymin;
+             w = !xmax -. !xmin;  h = !ymax -. !ymin } in
+  q, bb
 
 (* FIXME: need to manage NaNs *)
 let xy ?tlog ?(n=100) ?(strategy=strategy_default) ?(cost=cost_default) f a b =
@@ -116,104 +164,71 @@ let xy ?tlog ?(n=100) ?(strategy=strategy_default) ?(cost=cost_default) f a b =
     invalid_arg "Archimedes.Sampler.xy: must at least evaluate 3 points \
       to sensibly graph a function";
   if not(is_finite a && is_finite b) then
-    invalid_arg "Archimedes.Sampler.xy: bounds of the function must be finite";
-  let q = PQ.make() in
-  (* Rough sampling with [2*n0+1] points, including middle points *)
-  let n0 = max 1 (truncate(0.15 *. float n)) in
-  let dt = (b -. a) /. (float n0) in
-  (* Compute the bounding box so it can be used to dertermine when two
-     points are close (in relative error) — which can be useful for
-     the cost function.  Store the eval of [f] which may be costly. *)
-  let x_b, y_b = f b in
-  let xmin = ref x_b and xmax = ref x_b
-  and ymin = ref y_b and ymax = ref y_b in
-  let n_eval = 2 * n0 + 1 in
-  let t = Array.make n_eval b  (* => t.(n_eval-1) = b (no error) *)
-  and x = Array.make n_eval x_b
-  and y = Array.make n_eval y_b in
-  for i = 0 to n0 - 1 do
-    let j0 = 2 * i in
-    let jm = j0 + 1 in
-    let t0 = a +. float i *. dt in
-    let x0, y0 = f t0 in
-    t.(j0) <- t0;
-    x.(j0) <- x0;
-    y.(j0) <- y0;
-    xmin := min_float !xmin x0;  xmax := max_float !xmax x0;
-    ymin := min_float !ymin y0;  ymax := max_float !ymax y0;
-    let tm = strategy t0 (t0 +. dt) in
-    let xm, ym = f tm in
-    t.(jm) <- tm;
-    x.(jm) <- xm;
-    y.(jm) <- ym;
-    xmin := min_float !xmin xm;  xmax := max_float !xmax xm;
-    ymin := min_float !ymin ym;  ymax := max_float !ymax ym;
-  done;
-  let bb = { Matrix.x = !xmin; y = !ymin;
-             w = !xmax -. !xmin;  h = !ymax -. !ymin } in
-  for i = 0 to n0 - 1 do
-    let j0 = 2 * i in
-    let jm = j0 + 1 and j1 = j0 + 2 in
-    let t0 = t.(j0) and tm = t.(jm) and t1 = t.(j1)
-    and x0 = x.(j0) and xm = x.(jm) and x1 = x.(j1)
-    and y0 = y.(j0) and ym = y.(jm) and y1 = y.(j1) in
-    PQ.add q (cost bb x0 y0 xm ym x1 y1) { t0 = t0; x0 = x0; y0 = y0;
-                                           t1 = t1; x1 = x1; y1 = y1;
-                                           tm = tm; xm = xm; ym = ym;
-                                           scale = 0.5 };
-  done;
-  (* Add points (intervals) until the evaluations are exhausted or all
-     costs are <= 0. *)
-  let n = ref(n - n_eval) in
-  let b_alone = ref false in
+    invalid_arg "Archimedes.Sampler.xy: bounds of the interval must be finite";
+  let n0 = max 1 (truncate(0.1 *. float n)) in
+  let q, bb = initial_sampling n0 f a b in
+  (* Add points (intervals) until the number [n] of evaluations is
+     exhausted or all costs are <= 0. *)
+  let n = ref(n - n0) in
   while !n > 0 && PQ.max_priority q > 0. do
+    let c0 = PQ.max_priority q in
     let i = PQ.delete_max q in
     (* Scale after the interval is divided *)
     let s = i.scale *. i.scale in
-    (* If only a single eval remain, add the point to the left because
-       [t.(last) = b] (no error). *)
-    let tm1 = strategy i.t0 i.tm in
-    let xm1, ym1 = f tm1 in
-    PQ.add q (cost bb i.x0 i.y0 xm1 ym1 i.xm i.ym *. s)
-      { i with
-        tm = tm1;  xm = xm1;  ym = ym1;
-        t1 = i.tm; x1 = i.xm; y1 = i.ym;
-        scale = s };
+    let tm = strategy i.t0 i.t1 in
+    let xm, ym = f tm in
     decr n;
-    if !n > 0 then (
-      let tm2 = strategy i.tm i.t1 in
-      let xm2, ym2 = f tm2 in
-      PQ.add q (cost bb i.xm i.ym xm2 ym2 i.x1 i.y1 *. s)
-        { i with
-          t0 = i.tm; x0 = i.xm; y0 = i.ym;
-          tm = tm2;  xm = xm2;  ym = ym2;
-          scale = s };
-      decr n;
-    ) else
-      (* [i.t1] is part of another "interval" unless this is the last one.  *)
-      b_alone := (i.t1 = b); (* <=> the last pt is not in the PQ. *)
+    let finite_m = pt_is_finite xm ym in
+    if i.side = 0. then                 (* (x0,y0), (x1,y1) both finite *)
+      if finite_m then (
+        let c = cost bb i.x0 i.y0 xm ym i.x1 i.y1 *. s in
+        let c = if is_finite c then c else c0 *. s in
+        PQ.add q c { i with t1 = tm; x1 = xm; y1 = ym; scale = s; side = 0. };
+        PQ.add q c { i with t0 = tm; x0 = xm; y0 = ym; scale = s; side = 0. };
+      )
+      else (
+        let c = c0 *. s in
+        PQ.add q c { i with t1 = tm; x1 = xm; y1 = ym; scale = s; side = -1. };
+        PQ.add q c { i with t0 = tm; x0 = xm; y0 = ym; scale = s; side = 1. };
+      )
+    else if i.side < 0. then            (* (x0,y0) finite *)
+      let c = c0 *. s in
+      if finite_m then (
+        PQ.add q c { i with t1 = tm; x1 = xm; y1 = ym; scale = s; side = 0. };
+        PQ.add q c { i with t0 = tm; x0 = xm; y0 = ym; scale = s; side = -1. }
+      )
+      else
+        PQ.add q c { i with t1 = tm; x1 = xm; y1 = ym; scale = s; side = -1. }
+    else (* i.side > 0.  i.e.  (x1,y1) finite *)
+      let c = c0 *. s in
+      if finite_m then (
+        PQ.add q c { i with t1 = tm; x1 = xm; y1 = ym; scale = s; side = 1. };
+        PQ.add q c { i with t0 = tm; x0 = xm; y0 = ym; scale = s; side = 0. }
+      )
+      else
+        PQ.add q c { i with t0 = tm; x0 = xm; y0 = ym; scale = s; side = 1. }
   done;
   (* Sort the interval in order the same order a b was given returns
      the points.  There may be less eval than allowed if [cost] say
      one is happy with the result. *)
   let qt = PQ.make() in
   let ni = ref 0 in
-  if a <= b then PQ.iter q (fun i -> incr ni; PQ.add qt (-. i.tm) i)
-  else PQ.iter q (fun i -> incr ni; PQ.add qt i.tm i);
-  let n = if !b_alone then 2 * !ni + 2 else 2 * !ni + 1 in
+  if a <= b then PQ.iter q (fun i -> incr ni; PQ.add qt (-. i.t0) i)
+  else PQ.iter q (fun i -> incr ni; PQ.add qt i.t0 i);
+  let n = !ni + 1 in
   let x = Array.make n 0.
   and y = Array.make n 0. in
+  (* We were careful above to make sure that if there is a gap,
+     intervals around the gap will have a not-finite endoint.
+     FIXME: double check. *)
   let first_i = PQ.max qt in
   x.(0) <- first_i.x0;
   y.(0) <- first_i.y0;
   for k = 1 to !ni do
     let i = PQ.delete_max qt in
-    let k1 = 2 * k in
-    let km = k1 - 1 in
-    x.(km) <- i.xm;  y.(km) <- i.ym;
-    x.(k1) <- i.x1;  y.(k1) <- i.y1;
+    x.(k) <- i.x1;
+    y.(k) <- i.y1;
   done;
-  if !b_alone then (x.(n-1) <- x_b; y.(n-1) <- y_b);
   x, y
 ;;
 

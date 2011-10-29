@@ -107,3 +107,6 @@ extents.
 Forbid the user to rotate the coordinate system (we never pay attention to
 that). For that, export a (sub)module that only allows
 translations/dilatations.
+
+- http://code.google.com/p/flot/ use it to create an HTML backend?
+  Example: https://github.com/bos/statistics/tree/master/examples/kde

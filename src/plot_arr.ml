@@ -72,6 +72,7 @@ let bars vp ~fill ?base ~fillcolor (x:t) (y:t) n w =
   (match base with
   | None ->
     for i = FIRST to LAST(n) do
+      (* Does nothing if its arguments are not finite: *)
       Path.rectangle path ~x:(GET(x,i) -. w *. 0.5) ~y:0. ~w ~h:(GET(y,i))
     done
   | Some b ->
@@ -92,6 +93,7 @@ let horizontal_bars vp ~fill ?base ~fillcolor (x:t) (y:t) n w =
   (match base with
   | None ->
     for i = FIRST to LAST(n) do
+      (* Does nothing if its arguments are not finite: *)
       Path.rectangle path ~x:0. ~y:(GET(y,i) -. w *. 0.5) ~w:(GET(x,i)) ~h:w
     done
   | Some b ->
@@ -112,6 +114,7 @@ let draw_marks vp style (x: t) (y: t) n =
   | `Lines | `Impulses | `Bars _ | `HBars _ -> ()
   | `Markers m | `Linesmarkers m ->
     for i = FIRST to LAST(n) do
+      (* Does nothing if its args are not finite: *)
       V.mark vp (GET(x,i)) (GET(y,i)) m
     done
 
