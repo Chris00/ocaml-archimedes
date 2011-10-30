@@ -346,9 +346,11 @@ let unsafe_subpath_line_of_array = FloatArray.unsafe_subpath_line_to
 let line_of_array = FloatArray.line_to
 
 let unsafe_line_of_vec = Vec.unsafe_line_to
+let unsafe_subpath_line_of_vec = Vec.unsafe_subpath_line_to
 let line_of_vec = Vec.line_to
 
 let unsafe_line_of_cvec = CVec.unsafe_line_to
+let unsafe_subpath_line_of_cvec = CVec.unsafe_subpath_line_to
 let line_of_cvec = CVec.line_to
 
 

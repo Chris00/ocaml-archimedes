@@ -56,12 +56,12 @@ DEFINE SUBDIVIDE(fn_name, p, x, y, i0, i1,
     )
   );;
 
-DEFINE CALL_WITH_SUBPATH(f) =
+DEFINE WITH_SUBPATH_CALL(f) =
   let sub_p = make() in
   SET_CURR_SUB(sub_p, x, y, i0);
   Queue.add (CONSTRUCTOR(x, y, i0, i)) sub_p.path;
-  SET_CURR_PT(sub_p, x, y, i1);
-  f sub_p
+  SET_CURR_PT(sub_p, x, y, i);
+  f sub_p i0 i
 ;;
 
 (* Assume the point is finite at index [i0] and that the range is valid. *)
@@ -76,12 +76,12 @@ let rec subdivide_decr p x y i0 i1 = (* i0 >= i1 *)
 let rec subdivide_subpath_incr f p x y i0 i1 =
   SUBDIVIDE(subdivide_subpath_incr f, p, x, y, i0, i1,
             i+1, index_all_finite_incr, index_finite_incr, (>),
-            CALL_WITH_SUBPATH(f))
+            WITH_SUBPATH_CALL(f))
 
 let rec subdivide_subpath_decr f p x y i0 i1 = (* i0 >= i1 *)
   SUBDIVIDE(subdivide_subpath_decr f, p, x, y, i0, i1,
             i-1, index_all_finite_decr, index_finite_decr, (<),
-            CALL_WITH_SUBPATH(f))
+            WITH_SUBPATH_CALL(f))
 ;;
 
 DEFINE UNSAFE_LINE_TO(p, x, y, i0, i1,  subdivide_incr, subdivide_decr) =

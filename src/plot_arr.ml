@@ -32,29 +32,37 @@ let index_array n =
 (* ASSUME n > 0. *)
 let lines_y vp ~fill ?(const_base=false) ?base ~fillcolor
     ?(const_x=false) (x: t) ?(const_y=false) (y: t) n =
-  let path = Path.make() in
   let x = if const_x then x else COPY(x)
   and y = if const_y then y else COPY(y) in
-  LINE_OF_ARRAY(path, x, y, FIRST, LAST(n));
+  let fill_subpath =
+    if fill then
+      (match base with
+      | None ->
+        (fun sub_path i0 i1 ->
+          Printf.printf "%i %i\n%!" i0 i1;
+          Path.line_to sub_path (float i1) 0.;
+          Path.line_to sub_path (float i0) 0.;
+          Path.close sub_path;
+          let color = V.get_color vp in
+          V.set_color vp fillcolor;
+          V.fill ~path:sub_path vp `Data ~fit:false;
+          V.set_color vp color;
+        )
+      | Some b ->
+        let b = if const_base then b else COPY(b) in
+        if DIM(b) <> n then invalid_arg(MOD ^ ".y: wrong length for \"base\"");
+        (fun sub_path i0 i1 ->
+          LINE_OF_ARRAY(sub_path, x, b, i1, i0);
+          let color = V.get_color vp in
+          V.set_color vp fillcolor;
+          V.fill ~path:sub_path vp `Data ~fit:false;
+          V.set_color vp color;
+        );
+      )
+    else do_nothing in
+  let path = Path.make() in
+  SUBPATH_LINE_OF_ARRAY(path, x, y, FIRST, LAST(n), fill_subpath);
   V.fit vp (Path.extents path);
-  if fill then (
-    let path_fill = Path.copy path in
-    (match base with
-    | None ->
-      Path.line_to path_fill (float(LAST(n))) 0.;
-      Path.line_to path_fill (float FIRST) 0.
-    | Some b ->
-      let b = if const_base then b else COPY(b) in
-      if DIM(b) <> n then invalid_arg(MOD ^ ".y: wrong length for \"base\"");
-      LINE_OF_ARRAY(path_fill, x, b, LAST(n), FIRST);
-      V.fit vp (Path.extents path_fill); (* update for base *)
-    );
-    Path.close path_fill;
-    let color = V.get_color vp in
-    V.set_color vp fillcolor;
-    V.fill ~path:path_fill vp `Data ~fit:false;
-    V.set_color vp color;
-  );
   path
 
 let fill_and_stroke vp path ~fill ~fillcolor =

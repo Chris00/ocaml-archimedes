@@ -87,6 +87,8 @@ let array_of_iterator2D iter =
 (* (Big)Array plotting functions
  ***********************************************************************)
 
+let do_nothing _ _ _ = ()
+
 module PlotArray =
 struct
   type t = float array;;
@@ -100,6 +102,8 @@ struct
   DEFINE COPY(m) = Array.copy m;;
   DEFINE LINE_OF_ARRAY(path, x, y, i0, i1) =
     Path.unsafe_line_of_array path x y i0 i1;;
+  DEFINE SUBPATH_LINE_OF_ARRAY(path, x, y, i0, i1, f) =
+    Path.unsafe_subpath_line_of_array path x y i0 i1 f;;
 
   INCLUDE "src/plot_arr.ml";;
 
@@ -126,6 +130,8 @@ module Vec = struct
   DEFINE COPY(m) = ba_copy m;;
   DEFINE LINE_OF_ARRAY(path, x, y, i0, i1) =
     Path.unsafe_line_of_vec path x y i0 i1;;
+  DEFINE SUBPATH_LINE_OF_ARRAY(path, x, y, i0, i1, f) =
+    Path.unsafe_subpath_line_of_vec path x y i0 i1 f;;
 
   INCLUDE "src/plot_arr.ml"
 end
@@ -144,6 +150,8 @@ module CVec = struct
   DEFINE COPY(m) = ba_copy m;;
   DEFINE LINE_OF_ARRAY(path, x, y, i0, i1) =
     Path.unsafe_line_of_cvec path x y i0 i1;;
+  DEFINE SUBPATH_LINE_OF_ARRAY(path, x, y, i0, i1, f) =
+    Path.unsafe_subpath_line_of_cvec path x y i0 i1 f;;
 
   INCLUDE "src/plot_arr.ml"
 end
@@ -222,7 +230,7 @@ let fx vp ?tlog ?n ?strategy ?cost ?(style=`Lines) ?base
     ?(fill=false) ?(fillcolor=default_fillcolor) f a b =
   let x, y = Sampler.x ?tlog ?n ?strategy ?cost f a b in
   let fill_subpath =
-    if fill then (fun sub_path ->
+    if fill then (fun sub_path _ _ ->
       let sub_a = Path.subpath_x sub_path
       and sub_b, _ = Path.current_point sub_path in
       (match base with
@@ -241,7 +249,7 @@ let fx vp ?tlog ?n ?strategy ?cost ?(style=`Lines) ?base
       V.fill ~path:sub_path ~fit:false vp `Data;
       V.set_color vp color;
     )
-    else (fun _ -> ()) in
+    else do_nothing in
   (* Construct the drawing path, filling each subpath. *)
   let path = Path.make () in
   Path.unsafe_subpath_line_of_array path x y 0 (Array.length x - 1)
