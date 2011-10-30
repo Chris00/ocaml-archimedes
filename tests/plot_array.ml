@@ -24,6 +24,6 @@ let draw backend =
     x.{i} <- 1. /. sin(float(i - 1 - n) *. 0.1);
   done;
   A.Axes.box vp2;
-  A.Vec.y vp2 x;
+  A.Vec.y vp2 x ~fill:true;
 
   A.close vp

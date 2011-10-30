@@ -224,7 +224,7 @@ let fx vp ?tlog ?n ?strategy ?cost ?(style=`Lines) ?base
   (* FIXME: this is similar to Array.x except that the base may have
      its own sampling. *)
   let path = Path.make () in
-  Path.line_of_array path x y ~const_x:true ~const_y:true;
+  Path.unsafe_line_of_array path x y 0 (Array.length x - 1);
   V.fit vp (Path.extents path);
   (* Fill *)
   if fill then (

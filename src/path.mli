@@ -166,18 +166,16 @@ val fprint: out_channel -> ?update_extents:bool -> t -> unit
 val unsafe_line_of_array : t -> float array -> float array -> int -> int -> unit
 (** [unsafe_line_of_array vp x y i0 i1]: same as {!line_of_array}
     except that the arrays are ASSUMED to be of the same length, the
-    indices valid, that all elements [x.(i)] and [y.(i)] for [i =
-    i0,...,i1] are finite, and the arrays are NOT copied. *)
+    indices valid, and the arrays are NOT copied.  The presence of
+    points that are not-finite is checked. *)
 
 val unsafe_line_of_vec: t -> vec -> vec -> int -> int -> unit
 (** Same as {!line_of_vec} except that the arrays are ASSUMED to be of
-    the same length, the indices valid, all points in the range are
-    finite, and the arrays are NOT copied. *)
+    the same length, the indices valid, and the arrays are NOT copied. *)
 
 val unsafe_line_of_cvec: t -> cvec -> cvec -> int -> int -> unit
 (** Same as {!line_of_cvec} except that the arrays are ASSUMED to be
-    of the same length, the indices valid, all points in the range are
-    finite, and the arrays are NOT copied. *)
+    of the same length, the indices valid, and the arrays are NOT copied. *)
 
 val bezier_of_arc : 'a ->
   ('a -> x0:float -> y0:float -> x1:float -> y1:float -> x2:float -> y2:float ->
