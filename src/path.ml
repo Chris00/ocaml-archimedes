@@ -169,6 +169,8 @@ let current_point p =
   if p.curr_pt then p.x, p.y
   else failwith "Archimedes.Path.current_point"
 
+let subpath_x p = p.sub_x
+
 (* Compute extents
  ***********************************************************************)
 
@@ -340,6 +342,7 @@ module CVec = struct
 end
 
 let unsafe_line_of_array = FloatArray.unsafe_line_to
+let unsafe_subpath_line_of_array = FloatArray.unsafe_subpath_line_to
 let line_of_array = FloatArray.line_to
 
 let unsafe_line_of_vec = Vec.unsafe_line_to

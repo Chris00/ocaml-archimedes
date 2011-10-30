@@ -15,5 +15,5 @@ let draw bk =
   A.fx vp sqrt (-10.) 10. ~style:(`Linesmarkers "S");
   A.Viewport.set_color vp A.Color.indian_red;
   A.fx vp (fun x -> 0.3 *. sqrt(x *. x -. 4.)) (-10.) 10.
-  ~style:(`Linesmarkers "o");
+  ~style:(`Linesmarkers "o") ~fill:true;
   A.close vp

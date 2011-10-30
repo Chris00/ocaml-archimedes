@@ -221,32 +221,32 @@ end
 let fx vp ?tlog ?n ?strategy ?cost ?(style=`Lines) ?base
     ?(fill=false) ?(fillcolor=default_fillcolor) f a b =
   let x, y = Sampler.x ?tlog ?n ?strategy ?cost f a b in
-  (* FIXME: this is similar to Array.x except that the base may have
-     its own sampling. *)
+  let fill_subpath =
+    if fill then (fun sub_path ->
+      let sub_a = Path.subpath_x sub_path
+      and sub_b, _ = Path.current_point sub_path in
+      (match base with
+      | None ->
+        Path.line_to sub_path sub_b 0.;
+        Path.line_to sub_path sub_a 0.
+      | Some g ->
+        (* Notice that the sampling is in reversed order: *)
+        let bx, by = Sampler.x ?tlog ?n ?strategy ?cost g sub_b sub_a in
+        Path.unsafe_line_of_array sub_path bx by 0 (Array.length bx - 1)
+      );
+      Path.close sub_path;
+      let color = V.get_color vp in
+      V.set_color vp fillcolor;
+      (* Do not fit on its extents, because we don't want to fit [base]. *)
+      V.fill ~path:sub_path ~fit:false vp `Data;
+      V.set_color vp color;
+    )
+    else (fun _ -> ()) in
+  (* Construct the drawing path, filling each subpath. *)
   let path = Path.make () in
-  Path.unsafe_line_of_array path x y 0 (Array.length x - 1);
+  Path.unsafe_subpath_line_of_array path x y 0 (Array.length x - 1)
+    fill_subpath;
   V.fit vp (Path.extents path);
-  (* Fill *)
-  if fill then (
-    let path_fill = Path.copy path in
-    (match base with
-    | None ->
-      Path.line_to path_fill b 0.;
-      Path.line_to path_fill a 0.
-    | Some g ->
-      (* Notice that the sampling is in reversed order: *)
-      let bx, by = Sampler.x ?tlog ?n ?strategy ?cost g b a in
-      (* FIXME: fill_samplings needs to be rewritten and moved (along
-         with this code) to Path. *)
-      Path.unsafe_line_of_array path_fill bx by 0 (Array.length bx - 1)
-    );
-    Path.close path_fill;
-    let color = V.get_color vp in
-    V.set_color vp fillcolor;
-    (* Do not fit on its extents, because we don't want to fit [base]. *)
-    V.fill ~path:path_fill ~fit:false vp `Data;
-    V.set_color vp color;
-  );
   (match style with
   | `Lines | `Linesmarkers _ -> V.stroke ~path vp `Data
   | `Markers _ -> ()); (* Do not usually make sense but convenient

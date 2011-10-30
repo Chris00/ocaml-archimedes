@@ -156,6 +156,9 @@ type data = private
   | Fortran of vec * vec * int * int
   | C of cvec * cvec * int * int
 
+val subpath_x : t -> float
+(** Beginning of the current subpath (if the path is non empty which
+    is not checked). *)
 
 val iter : t ->  (data -> unit) -> unit
 (** [iter p f] iterates [f] on all components of the path [p]. *)
@@ -168,6 +171,13 @@ val unsafe_line_of_array : t -> float array -> float array -> int -> int -> unit
     except that the arrays are ASSUMED to be of the same length, the
     indices valid, and the arrays are NOT copied.  The presence of
     points that are not-finite is checked. *)
+
+val unsafe_subpath_line_of_array :
+  t -> float array -> float array -> int -> int -> (t -> unit) -> unit
+(** [unsafe_subpath_line_of_array vp x y i0 i1 f] does the same as
+    {!unsafe_line_of_array} except that [f] is called on each subpath
+    (each contiguous set of indices in the range [i0]..[i1] delimited
+    by non-finite points). *)
 
 val unsafe_line_of_vec: t -> vec -> vec -> int -> int -> unit
 (** Same as {!line_of_vec} except that the arrays are ASSUMED to be of
