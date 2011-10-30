@@ -70,7 +70,9 @@ val line_of_array: t -> ?i0:int -> ?i1:int ->
     one) with the line formed by joining the points [x.(i), y.(i)],
     [i=i0,...,i1] (with possibly [i0 > i1] to indicate that the
     indices must be followed in decreasing order).  Points with at
-    least one NaN or infinite coordinate are skipped.
+    least one NaN or infinite coordinate are skipped when they are at
+    the beginning or the end and result in a {!move_to} when
+    separating finite points.
 
     @param const_x by setting it to [true], you indicate that you will
     not modify [x] (so it will not be copied).  Default: false.

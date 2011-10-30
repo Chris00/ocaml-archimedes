@@ -46,7 +46,6 @@ let rec index_all_finite_decr (x:t) (y:t) i0 i i1 =
 (* Assume the point is finite at index [i0] and that the range is valid. *)
 let rec subdivide_incr p x y i0 i1 =
   let i = index_all_finite_incr x y i0 i0 i1 in
-  Queue.add (Move_to(GET(x,i0), GET(y,i0))) p.path;
   Queue.add (CONSTRUCTOR(x, y, i0, i)) p.path;
   if i = i1 then i
   else (
@@ -54,12 +53,14 @@ let rec subdivide_incr p x y i0 i1 =
     let i0 = i + 1 in
     let j = index_finite_incr x y i0 i0 i1 in
     if j > i1 then i (* = last finite index *)
-    else subdivide_incr p x y j i1
+    else (
+      Queue.add (Move_to(GET(x,j), GET(y,j))) p.path;
+      subdivide_incr p x y j i1
+    )
   )
 
 let rec subdivide_decr p x y i0 i1 = (* i0 >= i1 *)
   let i = index_all_finite_decr x y i0 i0 i1 in
-  Queue.add (Move_to(GET(x,i0), GET(y,i0))) p.path;
   Queue.add (CONSTRUCTOR(x, y, i0, i)) p.path;
   if i = i1 then i
   else (
@@ -67,7 +68,10 @@ let rec subdivide_decr p x y i0 i1 = (* i0 >= i1 *)
     let i0 = i - 1 in
     let j = index_finite_decr x y i0 i0 i1 in
     if j < i1 then i (* = last finite index *)
-    else subdivide_decr p x y j i1
+    else (
+      Queue.add (Move_to(GET(x,j), GET(y,j))) p.path;
+      subdivide_decr p x y j i1
+    )
   )
 
 
