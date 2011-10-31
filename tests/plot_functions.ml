@@ -23,5 +23,7 @@ let draw backend =
   ~style:(`Linesmarkers "o");
 
   A.Axes.box vp.(1).(1);
-  A.fx vp.(1).(1) (fun x -> sin x +. 1.) (-3.) 3.;
+  A.xyf vp.(1).(1) (fun x -> (cos x, sin x)) 0. 6.3 ~n:3;
+  A.set_color vp.(1).(1) A.Color.red;
+  A.xyf vp.(1).(1) (fun x -> (cos x, sin x)) 0. 6.3;
   A.close p

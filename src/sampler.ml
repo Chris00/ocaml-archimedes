@@ -160,12 +160,12 @@ let initial_sampling n0 f a b =
 
 (* FIXME: need to manage NaNs *)
 let xy ?tlog ?(n=100) ?(strategy=strategy_default) ?(cost=cost_default) f a b =
-  if n < 3 then
+  if n < 2 then
     invalid_arg "Archimedes.Sampler.xy: must at least evaluate 3 points \
       to sensibly graph a function";
   if not(is_finite a && is_finite b) then
     invalid_arg "Archimedes.Sampler.xy: bounds of the interval must be finite";
-  let n0 = max 1 (truncate(0.1 *. float n)) in
+  let n0 = max 2 (truncate(0.1 *. float n)) in
   let q, bb = initial_sampling n0 f a b in
   (* Add points (intervals) until the number [n] of evaluations is
      exhausted or all costs are <= 0. *)
