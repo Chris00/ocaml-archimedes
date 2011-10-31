@@ -9,6 +9,7 @@ let draw backend =
 
   A.Viewport.set_mark_size vp.(0).(0) 3.;
   A.Axes.box vp.(0).(0);
+  A.fx vp.(0).(0) (fun x -> x +. 2.) (-3.) 3. ~n:2;
   A.set_color vp.(0).(0) A.Color.blue;
   A.fx vp.(0).(0) (fun x -> x *. x) (-3.) 3. ~style:(`Linesmarkers "+");
 
@@ -24,6 +25,8 @@ let draw backend =
 
   A.Axes.box vp.(1).(1);
   A.xyf vp.(1).(1) (fun x -> (cos x, sin x)) 0. 6.3 ~n:3;
+  A.set_color vp.(1).(1) A.Color.blue;
+  A.xyf vp.(1).(1) (fun x -> (cos x, sin x)) 0. 6.3 ~n:10;
   A.set_color vp.(1).(1) A.Color.red;
   A.xyf vp.(1).(1) (fun x -> (cos x, sin x)) 0. 6.3;
   A.close p
