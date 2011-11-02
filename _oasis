@@ -158,6 +158,12 @@ Executable "spiral.ml"
   BuildDepends: archimedes
   Install:      false
 
+Executable "multi_hue.ml"
+  Path:	        examples/
+  BuildTools:   ocamlbuild
+  MainIs:       multi_hue.ml
+  BuildDepends: archimedes
+  Install:      false
 
 SourceRepository trunk
   Type:       bzr

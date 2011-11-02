@@ -1,3 +1,5 @@
+open Printf
+
 type t = {r:float; g:float; b:float; a:float}
 
 let in_interval x = x >= 0. && x <= 1.
@@ -6,16 +8,28 @@ let rgba r g b a =
   if in_interval r && in_interval g && in_interval b && in_interval a then
     {r = r; g = g; b = b; a = a}
   else
-    invalid_arg(Printf.sprintf "Archimedes.Color.rgba: data not in range; \
+    invalid_arg(sprintf "Archimedes.Color.rgba: data not in range; \
       r=%g, g=%g, b=%g, a=%g" r g b a)
 
 let rgb r g b = rgba r g b 1.
 
-let hex c =
+let int c =
   let r = (c lsr 16) land 0xFF
   and g = (c lsr 8) land 0xFF
   and b = c land 0xFF in
   rgb (float r /. 255.) (float g /. 255.) (float b /. 255.)
+
+let hue h =
+  let f, hi = modf (h /. 60.) in
+  match hi with
+  | 0. -> {r = 1.; g = f; b = 0.; a = 1.}
+  | 1. -> {r = (1. -. f); g = 1.; b = 0.; a = 1.}
+  | 2. -> {r = 0.; g = 1.; b = f; a = 1.}
+  | 3. -> {r = 0.; g = (1. -. f); b = 1.; a = 1.}
+  | 4. -> {r = f; g = 0.; b = 1.; a = 1.}
+  | 5. -> {r = 1.; g = 0.; b = (1. -. f); a = 1.}
+  | _ -> invalid_arg
+    (sprintf "Archimedes.Color.hue: hue not in range; h=%g" h)
 
 let r t = t.r
 
