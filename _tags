@@ -1,35 +1,14 @@
 # OASIS_START
-# DO NOT EDIT (digest: 2b9cca39a88e60bbe55adf23993ca242)
-# Ignore VCS directories, you can use the same kind of rule outside 
-# OASIS_START/STOP if you want to exclude directories that contains 
-# useless stuff for the build process
-<**/.svn>: -traverse
-<**/.svn>: not_hygienic
-".bzr": -traverse
-".bzr": not_hygienic
-".hg": -traverse
-".hg": not_hygienic
-".git": -traverse
-".git": not_hygienic
-"_darcs": -traverse
-"_darcs": not_hygienic
+# DO NOT EDIT (digest: b64630ee4e375ff4c7d22d9c977ed65a)
 # Library archimedes
-"src/archimedes.cmxs": use_archimedes
 # Library archimedes_cairo
-"src/archimedes_cairo.cmxs": use_archimedes_cairo
 <src/*.ml{,i}>: pkg_cairo2
-# Executable spiral.ml
-"examples/spiral.byte": use_archimedes
-"examples/spiral.byte": pkg_dynlink
-"examples/spiral.byte": pkg_bigarray
-# Library archimedes_tikz
-"src/archimedes_tikz.cmxs": use_archimedes_tikz
-# Library archimedes_toploop
-"src/archimedes_toploop.cmxs": use_archimedes_toploop
 # Executable coordinate_pairs
 "examples/coordinate_pairs.byte": use_archimedes
 "examples/coordinate_pairs.byte": pkg_dynlink
 "examples/coordinate_pairs.byte": pkg_bigarray
+# Library archimedes_graphics
+<src/*.ml{,i}>: pkg_graphics
 # Executable pkg_chart
 "examples/pkg_chart.byte": use_archimedes
 "examples/pkg_chart.byte": pkg_dynlink
@@ -45,6 +24,10 @@
 <tests/*.ml{,i}>: use_archimedes
 <tests/*.ml{,i}>: pkg_dynlink
 <tests/*.ml{,i}>: pkg_bigarray
+# Executable multi_hue.ml
+"examples/multi_hue.byte": use_archimedes
+"examples/multi_hue.byte": pkg_dynlink
+"examples/multi_hue.byte": pkg_bigarray
 # Executable pythagoras_tree
 "examples/pythagoras_tree.byte": use_archimedes
 "examples/pythagoras_tree.byte": pkg_dynlink
@@ -53,10 +36,20 @@
 "examples/taylor.byte": use_archimedes
 "examples/taylor.byte": pkg_dynlink
 "examples/taylor.byte": pkg_bigarray
+# Library archimedes_tikz
 # Executable anscombe
 "examples/anscombe.byte": use_archimedes
 "examples/anscombe.byte": pkg_dynlink
 "examples/anscombe.byte": pkg_bigarray
+# Library archimedes_toploop
+"src": include
+<src/*.ml{,i}>: use_archimedes
+<src/*.ml{,i}>: pkg_dynlink
+<src/*.ml{,i}>: pkg_bigarray
+# Executable spiral.ml
+"examples/spiral.byte": use_archimedes
+"examples/spiral.byte": pkg_dynlink
+"examples/spiral.byte": pkg_bigarray
 # Executable coords_report.ml
 "examples/coords_report.byte": use_archimedes
 "examples/coords_report.byte": pkg_dynlink
@@ -64,13 +57,6 @@
 <examples/*.ml{,i}>: use_archimedes
 <examples/*.ml{,i}>: pkg_dynlink
 <examples/*.ml{,i}>: pkg_bigarray
-# Library archimedes_graphics
-"src": include
-"src/archimedes_graphics.cmxs": use_archimedes_graphics
-<src/*.ml{,i}>: use_archimedes
-<src/*.ml{,i}>: pkg_graphics
-<src/*.ml{,i}>: pkg_dynlink
-<src/*.ml{,i}>: pkg_bigarray
 # OASIS_STOP
 
 <**/*.ml>: annot

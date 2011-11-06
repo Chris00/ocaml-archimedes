@@ -22,22 +22,33 @@
 
 
 type labels =
-| No_label
-| Text of (string * float) array (* TODO use lists *)
-| Number of int
-| Expnumber of float
-| Expnumber_named of float * string
+| No_label (** [No_label] just draw a vertical bar without any text *)
+| Text of (string * float) array (** Not yet implemented *)
+| Number of int (** [Number n] draw number labels using [n] digits *)
+| Expnumber of float (** Not yet implemented *)
+| Expnumber_named of float * string (** Not yet implemented*)
 | Custom of (float -> string)
+(** [Custom f] for labeling with a function [f] *)
 
 type t =
 | Fixed of labels * float list
+(** Not Yet implemented *)
 | Fixed_norm of labels * float list
+(** Not Yet implemented *)
 | Equidistants of labels * float * float * int
+(** [Archimede.Tics.Equidistants (label, start, step, n)]
+    draws [Major Tics] from [start] equidistants of [step] along the axe
+    and with [n] [Minor Tics] between each of them and the labels defined
+    with [label] *)
 | Auto of labels
+(** [Archimede.Tics.Auto label] draws [Major Tics] to fit the axe and the
+    [label] automaticaly*)
 
 type tic =
 | Major of string * float
+(** Major Tic is a big vertical bar on a axe *)
 | Minor of float
+(** Minor Tic is a little vertical bar on a axe *)
 
 val tics: ?log:bool -> float -> float -> t -> tic list
 (** [tics xmin xmax spec] return a description of the tics for the
