@@ -44,6 +44,7 @@ type t =
 (** [Archimede.Tics.Auto label] draws [Major Tics] to fit the axe and the
     [label] automaticaly*)
 
+(**/**)
 type tic =
 | Major of string * float
 (** Major Tic is a big vertical bar on a axe *)
@@ -55,3 +56,5 @@ val tics: ?log:bool -> float -> float -> t -> tic list
     interval [xmin .. xmax] according to the specification [spec].
 
     @param log whether log scales are desired.  Default: [false]. *)
+
+(**/**)
