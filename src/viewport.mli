@@ -162,27 +162,62 @@ val ortho_from : t -> coord_name -> float * float -> float * float
 val data_from : t -> coord_name -> float * float -> float * float
 
 val set_line_width : t -> float -> unit
+(** [set_line_width vp w] set the absolute width of the lines on the
+    viewport [vp] to [w]. Default is 1.*)
+
 val set_font_size : t -> float -> unit
+(** [set_font_size vp s] set the absolute font size of the viewport
+    [vp] to [s]. Default is 12. *)
+
 val set_mark_size : t -> float -> unit
+(** [set_mark_size vp s] set the absolute mark size of the viewport
+    [vp] to [s] . Default is 7 *)
+
 val set_rel_line_width : t -> float -> unit
+(** [set_rel_line_width vp w]. Same as set_line_width but relative
+    to the viewport. *)
+
 val set_rel_font_size : t -> float -> unit
+(** [set_rel_font_size vp s]. Same as set_font_size but relative to
+    the viewport *)
+
 val set_rel_mark_size : t -> float -> unit
+(** [set_rel_mark_size vp s] Same as set_mark_size but relative to
+    the viewport *)
+
 val get_color : t -> Color.t
+(** [get_color vp] return the current tracing color of the viewport
+    [vp] *)
+
 val get_background_color : t -> Color.t
+(** [get_background_color vp] return the current background color of
+    the viewport [vp] *)
+
 val get_line_width : t -> float
+(** [get_line_width vp] return the current width of the lines on the
+    viewport [vp] *)
+
 val get_font_size : t -> float
+(** [get_font_size vp] return the current size of the font on the
+    viewport [vp] *)
+
 val get_mark_size : t -> float
+(** [get_mark_size vp] return the current size of the marks on the
+    viewport [vp] *)
 
 val lower_left_corner  : t -> float * float
 (** The device's coordinates of the viewport's lower left corner *)
+
 val upper_right_corner : t -> float * float
 (** The device's coordinates of the viewport's upper right corner *)
+
 val dimensions : t -> float * float
 (** The device's width and height of the viewport *)
 
-(* set_global_param set param of backend and then of all viewports *)
 val set_color : t -> Color.t -> unit
-(** [set_color vp c] set the color [c] for all graph on the viewport [vp] *)
+(** [set_color vp c] change the color of the elements in the
+    viewport [vp] to the color [c] *)
+
 val set_global_line_cap : t -> Backend.line_cap -> unit
 val set_global_dash : t -> float -> float array -> unit
 val set_global_line_join : t -> Backend.line_join -> unit
