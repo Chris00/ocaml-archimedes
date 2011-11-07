@@ -149,8 +149,13 @@ module Axes = struct
     let size = max size (r.xend -. r.x0) in
     match r.auto_x0, r.auto_xend with
     | false, false | true, true ->
-      axis.gx0 <- (r.x0 +. r.xend -. size) *. 0.5;
-      axis.gxend <- (r.x0 +. r.xend +. size) *. 0.5
+      if axis.log then
+        let f = r.xend /. size -. r.x0 /. size in
+        axis.gx0 <- r.x0 /. f; axis.gxend <- r.xend *. f
+      else
+        let c = r.x0 *. 0.5 +. r.xend *. 0.5
+        and s2 = size *. 0.5 in
+        axis.gx0 <- c -. s2; axis.gxend <- c +. s2;
     | false, true ->
       axis.gxend <- r.x0 +. size
     | true, false ->
