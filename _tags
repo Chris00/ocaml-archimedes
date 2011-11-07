@@ -1,5 +1,5 @@
 # OASIS_START
-# DO NOT EDIT (digest: 2b9cca39a88e60bbe55adf23993ca242)
+# DO NOT EDIT (digest: 2ddd1426e2909f26547b28bce3a5106e)
 # Ignore VCS directories, you can use the same kind of rule outside 
 # OASIS_START/STOP if you want to exclude directories that contains 
 # useless stuff for the build process
@@ -26,6 +26,10 @@
 "src/archimedes_tikz.cmxs": use_archimedes_tikz
 # Library archimedes_toploop
 "src/archimedes_toploop.cmxs": use_archimedes_toploop
+# Executable multi_hue.ml
+"examples/multi_hue.byte": use_archimedes
+"examples/multi_hue.byte": pkg_dynlink
+"examples/multi_hue.byte": pkg_bigarray
 # Executable coordinate_pairs
 "examples/coordinate_pairs.byte": use_archimedes
 "examples/coordinate_pairs.byte": pkg_dynlink

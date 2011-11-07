@@ -1,13 +1,13 @@
 # OASIS_START
-# DO NOT EDIT (digest: 624af1b584c1e2ca45af31d934125c57)
-version = "0.4.8"
+# DO NOT EDIT (digest: 1943d3505f84dc9be2a688f0ea1a8171)
+version = "0.4.9"
 description = "Extensible 2D plotting library."
 requires = "dynlink bigarray"
 archive(byte) = "archimedes.cma"
 archive(native) = "archimedes.cmxa"
 exists_if = "archimedes.cma"
 package "graphics" (
- version = "0.4.8"
+ version = "0.4.9"
  description = "Extensible 2D plotting library."
  requires = "graphics archimedes"
  archive(byte) = "archimedes_graphics.cma"
@@ -16,7 +16,7 @@ package "graphics" (
 )
 
 package "top" (
- version = "0.4.8"
+ version = "0.4.9"
  description = "Extensible 2D plotting library."
  requires = "archimedes"
  archive(byte) = "archimedes_toploop.cma"
@@ -25,7 +25,7 @@ package "top" (
 )
 
 package "tikz" (
- version = "0.4.8"
+ version = "0.4.9"
  description = "Extensible 2D plotting library."
  requires = "archimedes"
  archive(byte) = "archimedes_tikz.cma"
@@ -34,7 +34,7 @@ package "tikz" (
 )
 
 package "cairo" (
- version = "0.4.8"
+ version = "0.4.9"
  description = "Extensible 2D plotting library."
  requires = "cairo2 archimedes"
  archive(byte) = "archimedes_cairo.cma"
