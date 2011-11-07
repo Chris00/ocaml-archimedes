@@ -182,6 +182,7 @@ val dimensions : t -> float * float
 
 (* set_global_param set param of backend and then of all viewports *)
 val set_color : t -> Color.t -> unit
+(** [set_color vp c] set the color [c] for all graph on the viewport [vp] *)
 val set_global_line_cap : t -> Backend.line_cap -> unit
 val set_global_dash : t -> float -> float array -> unit
 val set_global_line_join : t -> Backend.line_join -> unit
@@ -239,22 +240,37 @@ val mark : t -> x:float -> y:float -> string -> unit
 val axes_ratio : t -> float -> unit
 (** [axes_ratio vp ratio] forces axes to keep [ratio] ([w / h]). *)
 val xrange : t -> float -> float -> unit
-(** [xrange vp xmin xmax] *)
+(** [xrange vp xmin xmax] set the OX interval of the viewport [vp] from
+    [xmin] to [xmax] *)
 val yrange : t -> float -> float -> unit
-(** [yrange vp ymin ymax] *)
+(** [yrange vp ymin ymax] set the OY interval of the viewport [vp]
+    from [xmin] to [xmax] *)
 val xlabel : t -> string -> unit
+(** [xlabel vp label] set the OX representation to [label] for the
+    viewport [vp] *)
 val ylabel : t -> string -> unit
+(** [ylabel vp label] set the OY representation to [label] for the
+    viewport [vp] *)
 val title : t -> string -> unit
+(** [title vp t] set the title [t] above the viewport [vp] *)
 
 val xmin : t -> float
+(** [xmin vp] return the [xmin] of the range on the viewport [vp] *)
 val xmax : t -> float
+(** [xmax vp] return the [xmax] of the range on the viewport [vp] *)
 val ymin : t -> float
+(** [ymin vp] return the [ymin] of the range on the viewport [vp] *)
 val ymax : t -> float
+(** [ymax vp] return the [ymax] of the range on the viewport [vp] *)
 
 val xlog : t -> bool
+(** [xlog vp] return true if OX is in log scale on the viewport [vp] *)
 val ylog : t -> bool
+(** [ylog vp] return true if OY is in log scale on the viewport [vp] *)
 val set_xlog : t -> bool -> unit
+(** [set_xlog vp true] set a log scale on OX on the viewport [vp] *)
 val set_ylog : t -> bool -> unit
+(** [set_ylog vp true] set a log scale on OY on the viewport [vp] *)
 
 val set_line_width_direct : t -> float -> unit -> unit
 val set_font_size_direct : t -> float -> unit -> unit
