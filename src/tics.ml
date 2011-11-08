@@ -89,6 +89,8 @@ let loose_labels ?(ntics=5) log xmin xmax label =
   aux [] graphmin
 
 let equi_labels log offset d_major num_minor xmin xmax labels =
+  if log && offset = 0. then
+    invalid_arg "Tics.Equidistants : offset in logarithmic scale can't be 0.";
   let first_major =
     if log then offset *. d_major ** floor (lg d_major (xmin /. offset))
     else xmin +. (md (offset -. xmin) d_major) in
