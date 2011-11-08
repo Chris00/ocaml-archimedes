@@ -517,7 +517,7 @@ struct
     let st = get_state t in
     let color = st.color in
     set_color t c;
-    fill_preserve t;  (* no need to do additional work *)
+    fill t;
     (* Restore color *)
     st.color <- color;
     Graphics.set_color color

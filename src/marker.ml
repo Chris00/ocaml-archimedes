@@ -51,6 +51,7 @@ let () =
              B.move_to handle 0.5 0.5;
              B.rel_move_to handle 0.5 0.;
              B.arc handle 0.5 0. two_pi;
+             B.close_path handle;
              B.fill handle)
     {Matrix.x=(-0.5); y=(-0.5); w=1.;h=1.};
   add "+" (fun handle ->
