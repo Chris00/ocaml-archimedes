@@ -264,12 +264,6 @@ let get_path ?(notransform=false) vp p coord_name =
     Path.map p (data_norm_log vp.axes_system)
   else p
 
-(* Merges two non-sorted lists without duplicates. *)
-let merge l1 l2 =
-  let l2' = List.filter (fun x -> not (List.exists (( == ) x) l1)) l2 in
-  List.rev_append l1 l2'
-
-
 (* Primitives
  ***********************************************************************)
 
