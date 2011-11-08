@@ -10,7 +10,8 @@ Authors:     Christophe Troestler <Christophe.Troestler@umons.ac.be>,
   Pierre Hauweele <pierre@hauweele.net>,
   Fabian Pijcke <fabian.pijcke@gmail.com>,
   Noémie Meunier <noemie_6462@hotmail.com>,
-  Bertrand Desmons <bibi-6@hotmail.fr>
+  Bertrand Desmons <bibi-6@hotmail.fr>,
+  Xavier Deschuyteneer <xavier.deschuyteneer@gmail.com>
 License:     LGPL-3.0 with OCaml linking exception
 Homepage:    http://forge.ocamlcore.org/projects/archimedes/
 Plugins:     META (0.2), StdFiles (0.2)
