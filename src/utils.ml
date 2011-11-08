@@ -36,3 +36,8 @@ let ba_copy x =
   x'
 
 let failwithf fmt = Printf.ksprintf failwith fmt
+
+(* Merges two non-sorted lists without duplicates. *)
+let merge l1 l2 =
+  let l2' = List.filter (fun x -> not (List.exists (( == ) x) l1)) l2 in
+  List.rev_append l1 l2'
