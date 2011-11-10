@@ -476,15 +476,16 @@ let upper_right_corner vp =
 let dimensions vp =
   Coordinate.to_device_distance vp.coord_device ~dx:1. ~dy:1.
 
-let set_clip vp =
-  vp.clip = true
+let set_clip_direct vp c =
+  vp.clip <- clip
 
-let set_noclip vp =
-  vp.clip = false
+let set_clip vp c =
+  set_clip_direct vp c;
+  add_instruction vp (set_clip_direct vp c)
 
 let set_color vp c =
   vp.color <- c;  (* one may query the viewport! *)
-    add_instruction vp (set_color_direct vp c)
+  add_instruction vp (set_color_direct vp c)
 
 let set_global_line_cap vp lc =
   add_instruction vp (set_line_cap_direct vp lc)

@@ -245,6 +245,9 @@ val stroke : ?path:Path.t -> ?fit:bool -> t -> coord_name -> unit
     coordinate system, does clear the viewport's path if no path given *)
 val fill_preserve : ?path:Path.t -> ?fit:bool -> t -> coord_name -> unit
 val fill : ?path:Path.t -> ?fit:bool -> t -> coord_name -> unit
+val set_clip : t -> bool -> unit
+(** [set_clip vp c] whether to enable or disable clipping for every
+    following instructions on [vp]. *)
 val clip_rectangle : t -> x:float -> y:float -> w:float -> h:float -> unit
 (*    val save_vp : t -> unit
       val restore_vp : t -> unit*)
