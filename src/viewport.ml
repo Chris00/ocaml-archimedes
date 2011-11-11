@@ -476,11 +476,11 @@ let upper_right_corner vp =
 let dimensions vp =
   Coordinate.to_device_distance vp.coord_device ~dx:1. ~dy:1.
 
-let set_clip_direct vp c =
-  vp.clip <- clip
+let set_clip_direct vp c () =
+  vp.clip <- c
 
 let set_clip vp c =
-  set_clip_direct vp c;
+  set_clip_direct vp c ();
   add_instruction vp (set_clip_direct vp c)
 
 let set_color vp c =
