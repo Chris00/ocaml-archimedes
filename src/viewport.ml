@@ -415,6 +415,14 @@ let rec do_instructions vp =
 let save vp = add_instruction vp (save_direct vp)
 let restore vp = add_instruction vp (restore_direct vp)
 
+let remove_last_instruction vp =
+  (* Avoid the specialisation in order to avoid a compiler warning on
+     partial evaluation (because [vp.instructions] is a [(unit ->
+     unit) Queue.t]). *)
+  let aux q = ignore (Queue.pop q) in
+  aux vp.instructions
+let clear_instructions vp = Queue.clear vp.instructions
+
 let show vp =
   do_instructions vp; (* => also for children *)
     Backend.show vp.backend
