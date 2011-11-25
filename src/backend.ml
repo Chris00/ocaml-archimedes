@@ -351,7 +351,7 @@ let get_dependencies dirs basename =
 
 let loaded_dependencies = ref []
 
-let make ?(dirs=[Conf.plugins_dir; Conf.datadir]) b width height =
+let make ?(dirs=Conf.plugins_dirs () @ Conf.datadirs) b width height =
   let backend, options = match b with
     | [] -> "graphics", ["hold"]
     | b :: o -> String.lowercase b, o in

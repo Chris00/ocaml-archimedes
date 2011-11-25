@@ -17,7 +17,12 @@
 
 (** Configuration values, possibly put by the 'configure' script. *)
 
-let destdir = "$(ocamlfind_destdir)"
-let plugins_dir = Filename.concat destdir "$(pkg_name)"
+let destdirs () =
+  let destdir = [ "$(ocamlfind_destdir)" ] in
+  try Sys.getenv "OCAMLPATH" :: destdir
+  with Not_found -> destdir
 
-let datadir = Filename.concat "$(datarootdir)" "$(pkg_name)"
+let plugins_dirs () =
+  List.map (fun destdir -> Filename.concat destdir "$(pkg_name)") (destdirs ())
+
+let datadirs = [ Filename.concat "$(datarootdir)" "$(pkg_name)" ]
