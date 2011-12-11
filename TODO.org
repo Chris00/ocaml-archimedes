@@ -99,6 +99,8 @@ Backend.text_extents should provide higher level extents taking rotation and
 position. So that it make it possible to factorize the computation of text
 extents.
 
+Use the ideas at http://alaska-kamtchatka.blogspot.com/2011/10/first-principles-gif-encoder.html
+to make a GIF output for the Graphics output (triggered by shortcut?).
 
 * Far fetched
 
