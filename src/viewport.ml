@@ -935,87 +935,25 @@ let columns ?syncs:((cols_sync_x, cols_sync_y)=(false, false)) vp n =
     ~rows_sync_x:false ~rows_sync_y:false set get;
   ret
 
-let fixed_left init_prop vp =
-  let redim_fixed vp xfactor _ = begin
-    let coord = vp.coord_device in
-    Coordinate.scale coord (1. /. xfactor) 1.;
-  end in
-  let vp_fixed = make vp 0. init_prop 0. 1. ~redim:redim_fixed in
-  let redim vp xfactor _ = begin
-    let coord = vp.coord_device in
-    Coordinate.scale coord (1. /. xfactor) 1.;
-    let fixed_right, _ =
-      Coordinate.to_parent vp_fixed.coord_device ~x:1. ~y:0. in
-    let vp_left, _ = Coordinate.to_parent vp.coord_device ~x:0. ~y:0. in
-    Coordinate.translate coord (vp_left -. fixed_right) 0.
-  end in
-  let vp' = make vp init_prop 1. 0. 1. ~redim in
-  (vp_fixed, vp')
-
-let fixed_right init_prop vp =
-  let redim_fixed vp xfactor _ = begin
-    let coord = vp.coord_device in
-    Coordinate.scale coord (1. /. xfactor) 1.;
-    Coordinate.translate
-      coord (-. (fst (Coordinate.to_parent coord ~x:1. ~y:0.))) 0.
-  end in
-  let vp_fixed = make vp init_prop 1. 0. 1. ~redim:redim_fixed in
-  let redim vp xfactor _ = begin
-    let coord = vp.coord_device in
-    Coordinate.scale coord (1. /. xfactor) 1.
-  end in
-  let vp' = make vp 0. init_prop 0. 1. ~redim in
-  (vp_fixed, vp')
-
-let fixed_top init_prop vp =
-  let redim_fixed vp _ yfactor = begin
-    let coord = vp.coord_device in
-    Coordinate.scale coord 1. (1. /. yfactor);
-  end in
-  let vp_fixed = make vp 0. 1. (1. -. init_prop) 1. ~redim:redim_fixed
-  in
-  let rec redim vp _ yfactor = begin
-    let coord = vp.coord_device in
-    Coordinate.scale coord 1. (1. /. yfactor);
-    let _, fixed_bottom =
-      Coordinate.to_parent vp_fixed.coord_device ~x:0. ~y:1. in
-    let _, vp_top = Coordinate.to_parent vp.coord_device ~x:0. ~y:0. in
-    Coordinate.translate coord (vp_top -. fixed_bottom) 0.
-  end in
-  let vp' = make vp 0. 1. 0. (1. -. init_prop) ~redim in
-  (vp_fixed, vp')
-
-let fixed_bottom init_prop vp =
-  let redim_fixed vp _ yfactor = begin
-    let coord = vp.coord_device in
-    Coordinate.scale coord 1. (1. /. yfactor);
-    Coordinate.translate
-      coord 0. (-. (snd (Coordinate.to_parent coord ~x:0. ~y:1.)))
-  end in
-  let vp_fixed = make vp 0. 1. 0. init_prop ~redim:redim_fixed in
-  let rec redim vp _ yfactor = begin
-    let coord = vp.coord_device in
-    Coordinate.scale coord 1. (1. /. yfactor)
-  end in
-  let vp' = make vp 0. 1. init_prop 1. ~redim in
-  (vp_fixed, vp')
-
 (* Border layouts, of desired sizes *)
 let layout_borders ?(north=0.) ?(south=0.) ?(west=0.) ?(east=0.) vp =
   if south +. north >= 1. || east +. west >= 1. then
     invalid_arg "Archimedes.Viewport.layout_borders: \
                    invalid borders dimensions (sum need to be < 1).";
-  let east, vp =
-    if east > 0. then fixed_right east vp else vp, vp
-  in
-  let west, vp =
-    if west > 0. then fixed_left west vp else vp, vp
-  in
-  let south, vp =
-    if south > 0. then fixed_bottom south vp else vp, vp
-  in
-  let north, center =
-    if north > 0. then fixed_top north vp else vp, vp
+  let west =
+    if west > 0. then make vp 0. west 0. 1.
+    else vp
+  and east =
+    if east > 0. then make vp (1. -. east) 1. 0. 1.
+    else vp
+  and south =
+    if south > 0. then make vp west (1. -. east) 0. south
+    else vp
+  and north =
+    if north > 0. then make vp west (1. -. east) (1. -. north) 1.
+    else vp
+  and center =
+    make vp west (1. -. east) east (1. -. north)
   in
   (north, south, west, east, center)
 

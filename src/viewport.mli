@@ -127,21 +127,16 @@ val rows : ?syncs:(bool * bool) -> t -> int -> t array
 *)
 
 val columns : ?syncs:(bool * bool) -> t -> int -> t array
-(** [colimns parent nx] creates [n_cols] viewports layouted in a
+(** [columns parent nx] creates [n_cols] viewports layouted in a
     row and returns them in an array of viewports
 
     @param syncs the axes to synchronize (x, y)
 *)
-(* not in public interface *)
-(*val fixed_left : ?axes_sys:bool -> float -> t -> viewport * viewport
-  val fixed_right : ?axes_sys:bool -> float -> t -> viewport * viewport
-  val fixed_top : ?axes_sys:bool -> float -> t -> viewport * viewport
-  val fixed_bottom : ?axes_sys:bool -> float -> t -> viewport * viewport*)
+
 val layout_borders : ?north:float -> ?south:float -> ?west:float ->
   ?east:float -> t -> t * t * t * t * t
-(** [layout_borders parent] returns a 5-uple of viewports where the 4
-    first viewports are fixed in size towards the center while the fifth
-    one is extensible. The viewports are north, south, west, east, center
+(** [layout_borders parent] returns a 5-uple of viewports.
+    The viewports are north, south, west, east, center
     and are placed conformally to their names.
 
     @param north the size of the north's viewport; if zero (default),
