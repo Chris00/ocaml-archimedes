@@ -225,17 +225,6 @@ let data_norm_log axes_system (x, y) =
   in
   (axis_norm_log axes_system.x x, axis_norm_log axes_system.y y)
 
-let rec ortho_from vp coord_name pos = match coord_name with
-  | `Device ->
-    ortho_from vp `Orthonormal (from_parent vp.coord_orthonormal pos)
-  | `Graph ->
-    ortho_from vp `Device (to_parent vp.coord_graph pos)
-  | `Data ->
-    let pos = data_norm_log vp.axes_system pos in
-    ortho_from vp `Graph (to_parent vp.coord_data pos)
-  | `Orthonormal ->
-    pos
-
 let data_unnorm_log axes_system (x, y) =
   let axis_unnorm_log axis x =
     if axis.log then
@@ -253,6 +242,20 @@ let rec data_from vp coord_name pos = match coord_name with
     from_parent vp.coord_data pos
   | `Data -> pos
   | `Orthonormal -> data_from vp `Device (to_parent vp.coord_orthonormal pos)
+
+let rec ortho_from vp coord_name pos = match coord_name with
+  | `Device -> from_parent vp.coord_orthonormal pos
+  | `Graph -> ortho_from vp `Device (to_parent vp.coord_graph pos)
+  | `Data ->
+    let pos = data_norm_log vp.axes_system pos in
+    ortho_from vp `Graph (to_parent vp.coord_data pos)
+  | `Orthonormal -> pos
+
+let rec ortho_to vp coord_name pos = match coord_name with
+  | `Device -> to_parent vp.coord_orthonormal pos
+  | `Graph -> from_parent vp.coord_graph (ortho_to vp `Device pos)
+  | `Data -> data_from vp `Orthonormal pos
+  | `Orthonormal -> pos
 
 let get_path ?(notransform=false) vp p coord_name =
   let p = match p with
@@ -1004,42 +1007,52 @@ let clip_rectangle vp ~x ~y ~w ~h =
 let select_font_face vp slant weight family =
   add_instruction vp (select_font_face_direct vp slant weight family)
 
-let text vp ?(coord=`Data) ?(rotate=0.) x y ?(pos=Backend.CC) text =
+let text_extents vp ?(coord=`Orthonormal) ?(rotate=0.) ?(pos=Backend.CC) text =
+  (* Compute the extents of the text in Orthonormal coordinates as if
+     it's placed at the origin. *)
+  let ctm = Coordinate.use vp.backend vp.coord_orthonormal in
+  let rect = Backend.text_extents vp.backend text in
+  Coordinate.restore vp.backend ctm;
+  (* Consider the text position in those extents. *)
+  let tr_x = match pos with
+    | Backend.CC | Backend.CT | Backend.CB ->
+      rect.Matrix.x +. 0.5 *. rect.Matrix.w
+    | Backend.RC | Backend.RT | Backend.RB ->
+      rect.Matrix.x
+    | Backend.LC | Backend.LT | Backend.LB ->
+      rect.Matrix.x +. rect.Matrix.w
+  and tr_y = match pos with
+    | Backend.CC | Backend.LC | Backend.RC ->
+      rect.Matrix.y +. 0.5 *. rect.Matrix.h
+    | Backend.CT | Backend.LT | Backend.RT ->
+      rect.Matrix.y +. rect.Matrix.h
+    | Backend.CB | Backend.LB | Backend.RB ->
+      rect.Matrix.y
+  in
+  let mat = Matrix.make_translate (-. tr_x) (-. tr_y) in
+  Matrix.rotate mat rotate;
+  (* The extents relative to the origin in Orthonormal coordinates are
+     the smallest rectangle containing the text box placed according
+     to [pos] and rotated. *)
+  let ortho_ext = Matrix.transform_rectangle mat rect in
+  (* TODO: that mechanism of transformations for a rectangle is too
+     painful, we have to provide something better. *)
+  let x0, y0 = ortho_to vp coord (ortho_ext.Matrix.x, ortho_ext.Matrix.y) in
+  let x1 = ortho_ext.Matrix.x +. ortho_ext.Matrix.w
+  and y1 = ortho_ext.Matrix.y +. ortho_ext.Matrix.h in
+  let x1, y1 = ortho_to vp coord (x1, y1) in
+  { Matrix.x = x0; y = y0; w = x1 -. x0; h = y1 -. y0 }
+
+let text vp ?(coord=`Data) ?(rotate=0.) ?(pos=Backend.CC) x y text =
   (* auto_fit if Data *)
   if coord = `Data then begin
-    (* Compute the extents of the text in Orthonormal coordinates as if
-       it's placed at the origin. *)
-    let ctm = Coordinate.use vp.backend vp.coord_orthonormal in
-    let rect = Backend.text_extents vp.backend text in
-    Coordinate.restore vp.backend ctm;
-    (* Consider the text position in those extents. *)
-    let tr_x = match pos with
-      | Backend.CC | Backend.CT | Backend.CB ->
-        rect.Matrix.x +. 0.5 *. rect.Matrix.w
-      | Backend.RC | Backend.RT | Backend.RB ->
-        rect.Matrix.x
-      | Backend.LC | Backend.LT | Backend.LB ->
-        rect.Matrix.x +. rect.Matrix.w
-    and tr_y = match pos with
-      | Backend.CC | Backend.LC | Backend.RC ->
-        rect.Matrix.y +. 0.5 *. rect.Matrix.h
-      | Backend.CT | Backend.LT | Backend.RT ->
-        rect.Matrix.y +. rect.Matrix.h
-      | Backend.CB | Backend.LB | Backend.RB ->
-        rect.Matrix.y
-    in
-    let mat = Matrix.make_translate (-. tr_x) (-. tr_y) in
-    Matrix.rotate mat rotate;
-    (* The extents relative to the origin in Orthonormal coordinates are
-       the smallest rectangle containing the text box placed according
-       to [pos] and rotated. *)
-    let ortho_extents = Matrix.transform_rectangle mat rect in
-    (* Now transform those extents in Data coordinates. We can't use
-       [data_from vp `Orthonormal] since the auto fitted range acts as a
-       feedback term for the extents ; [data_from] assumes the range is
-       fixed. Here we can have the range updated by [auto_fit] and it
-       then changes the Data coordinates of the text extents. So we have
-       to do something special. *)
+    (* We can't use [text_extents ~coord:`Data] since the auto fitted
+       range acts as a feedback term for the extents ; [text_extents
+       ~coord:`Data] assumes the range is fixed. Here we can have the
+       range updated by [auto_fit] and it then changes the Data
+       coordinates of the text extents. So we have to do something
+       special. *)
+    let ortho_extents = text_extents vp ~rotate ~pos text in
     let ow' = -. ortho_extents.Matrix.x
     and oh' = -. ortho_extents.Matrix.y in
     let ow = ortho_extents.Matrix.w -. ow'

@@ -153,8 +153,9 @@ val layout_borders : ?north:float -> ?south:float -> ?west:float ->
     north if zero
 *)
 
-val ortho_from : t -> coord_name -> float * float -> float * float
 val data_from : t -> coord_name -> float * float -> float * float
+val ortho_from : t -> coord_name -> float * float -> float * float
+val ortho_to : t -> coord_name -> float * float -> float * float
 
 val set_line_width : t -> float -> unit
 (** [set_line_width vp w] set the absolute width of the lines on the
@@ -248,11 +249,29 @@ val clip_rectangle : t -> x:float -> y:float -> w:float -> h:float -> unit
       val restore_vp : t -> unit*)
 val select_font_face : t -> Backend.slant -> Backend.weight -> string -> unit
 
+val text_extents :
+  t -> ?coord:coord_name ->
+  ?rotate:float ->
+  ?pos:Backend.text_position ->
+  string -> Matrix.rectangle
+(** [text_extents vp text] returns the extents of [text] as displayed
+    by !{Archimedes.Viewport.text}.
+
+    @param coord the coordinate system in which the extents will be
+    given. Beware that as soon a coordinate system changes, the
+    extents are obsolete. Note that if you use `Data coordinates and
+    display that text, the extents are likely to immediately obsoleted
+    by an auto fit and those extents won't have much meaning in the
+    case of logarithmic scale neither. *)
+
 val text :
   t -> ?coord:coord_name ->
   ?rotate:float ->
-  float -> float -> ?pos:Backend.text_position -> string -> unit
-(** [text vp x y s] display the string [s] at position [(x, y)].
+  ?pos:Backend.text_position ->
+  float -> float -> string -> unit
+(** [text vp x y s] display the string [s] at position [(x, y)]. The
+    text displayed in an orthonormal space, that means that it won't be
+    stretched by the coordinate system [coord].
 
     @param coord the coordinate system in which the position [(x,y)]
     has to be understood.  Default: [Data].
@@ -260,8 +279,6 @@ val text :
     Default: [0.].
     @param pos the position of the text [s] w.r.t. the position
     [(x,y)].  Default: centering both horizontally and vertically. *)
-
-(*  val text_extents : t -> string -> rectangle*)
 
 val mark : t -> x:float -> y:float -> string -> unit
 (** [mark vp x y m] draw the mark given by [m] on the viewport [vp] at
