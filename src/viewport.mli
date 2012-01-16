@@ -24,7 +24,8 @@
 type t
 (** Viewport handle. *)
 
-type coord_name = [`Device | `Graph | `Data | `Orthonormal]
+type coord_name_rstrct = [ `Device | `Graph | `Orthonormal ]
+type coord_name = [ coord_name_rstrct | `Data ]
 
 val get_coord_from_name : t -> coord_name -> Coordinate.t
 (** [get_coord_from_name viewport coord_name] returns one of the
@@ -197,9 +198,14 @@ val get_font_size : t -> float
 (** [get_font_size vp] return the current size of the font on the
     viewport [vp] *)
 
-val get_mark_size : t -> float
-(** [get_mark_size vp] return the current size of the marks on the
-    viewport [vp] *)
+val get_mark_size : ?coord:coord_name_rstrct -> t -> float * float
+(** [get_mark_size vp] return [(sx, sy)] the current size in x and y
+    of the marks on the viewport [vp].
+
+    @param coord coordinates in which to express the size. Note that
+    for Orthonormal coordinates, [sx = sy]. If undefined, gives the
+    absolute mark size as to be given to {!set_mark_size} (in that
+    case [sx = sy] too). *)
 
 val lower_left_corner  : t -> float * float
 (** The device's coordinates of the viewport's lower left corner *)
@@ -250,7 +256,7 @@ val clip_rectangle : t -> x:float -> y:float -> w:float -> h:float -> unit
 val select_font_face : t -> Backend.slant -> Backend.weight -> string -> unit
 
 val text_extents :
-  t -> ?coord:coord_name ->
+  t -> ?coord:coord_name_rstrct ->
   ?rotate:float ->
   ?pos:Backend.text_position ->
   string -> Matrix.rectangle
@@ -259,10 +265,7 @@ val text_extents :
 
     @param coord the coordinate system in which the extents will be
     given. Beware that as soon a coordinate system changes, the
-    extents are obsolete. Note that if you use `Data coordinates and
-    display that text, the extents are likely to immediately obsoleted
-    by an auto fit and those extents won't have much meaning in the
-    case of logarithmic scale neither. *)
+    extents are obsolete. *)
 
 val text :
   t -> ?coord:coord_name ->
@@ -280,10 +283,12 @@ val text :
     @param pos the position of the text [s] w.r.t. the position
     [(x,y)].  Default: centering both horizontally and vertically. *)
 
-val mark : t -> x:float -> y:float -> string -> unit
+val mark : ?coord:coord_name -> t -> x:float -> y:float -> string -> unit
 (** [mark vp x y m] draw the mark given by [m] on the viewport [vp] at
     position [(x,y)] if both [x] and [y] are finite.  Otherwise, does
-    nothing. *)
+    nothing.
+
+    @param coord coordinate system in which to draw the mark. *)
 
 (* val mark_extents : t -> string -> rectangle *)
 
@@ -340,7 +345,8 @@ val select_font_face_direct : t -> Backend.slant -> Backend.weight ->
   string -> unit -> unit
 val show_text_direct : t -> coord_name -> ?rotate:float ->
   x:float -> y:float -> Backend.text_position -> string -> unit -> unit
-val mark_direct : t -> x:float -> y:float -> string -> unit -> unit
+val mark_direct : ?coord:coord_name -> t -> x:float -> y:float ->
+  string -> unit -> unit
 val save_direct : t -> unit -> unit
 val restore_direct : t -> unit -> unit
 

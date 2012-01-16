@@ -187,8 +187,8 @@ module Axes = struct
 
 end
 
-
-type coord_name = [`Device | `Graph | `Data | `Orthonormal]
+type coord_name_rstrct = [ `Device | `Graph | `Orthonormal ]
+type coord_name = [ coord_name_rstrct | `Data ]
 
 (* Multiplier to get "user-friendly" values (e.g. 12pt instead of 0.024) *)
 let usr_lw, usr_ts, usr_ms = 500., 500., 100.
@@ -347,9 +347,9 @@ let show_text_direct vp coord_name ?(rotate=0.) ~x ~y pos text () =
   Backend.show_text vp.backend ~rotate ~x ~y pos text;
   Coordinate.restore vp.backend ctm
 
-let orthoinstr_direct vp ~x ~y f =
+let orthoinstr_direct vp ~coord ~x ~y f =
   let ms = vp.mark_size /. vp.square_side in
-  let x, y = ortho_from vp `Data (x, y) in
+  let x, y = ortho_from vp coord (x, y) in
     (* FIXME: the idea of coordinate system is that we create them
        and use/update them, not that we create new ones all the time. *)
   let coord = Coordinate.make_translate vp.coord_orthonormal
@@ -359,11 +359,8 @@ let orthoinstr_direct vp ~x ~y f =
   f vp.backend;
   Coordinate.restore vp.backend ctm
 
-let path_direct vp ~x ~y path () =
-  orthoinstr_direct vp ~x ~y (fun b -> Backend.stroke_path_preserve b path)
-
-let mark_direct vp ~x ~y name () =
-  orthoinstr_direct vp ~x ~y (Marker.render name)
+let mark_direct ?(coord=`Data) vp ~x ~y name () =
+  orthoinstr_direct vp ~coord ~x ~y (Marker.render name)
 
 let save_direct vp () =
   let save = {
@@ -474,7 +471,19 @@ let set_rel_mark_size vp ms =
 
 let get_line_width vp = vp.line_width
 let get_font_size vp = vp.font_size
-let get_mark_size vp = vp.mark_size
+let get_mark_size ?coord vp =
+  match coord with
+  | None -> vp.mark_size, vp.mark_size
+  | Some `Orthonormal ->
+    (* fasten the computation for Orthonormal coords *)
+    let ms = vp.mark_size /. vp.square_side in ms, ms
+  | Some coord ->
+    let ms = vp.mark_size /. vp.square_side in
+    let dx, dy = Coordinate.to_device_distance vp.coord_orthonormal ms ms in
+    let dx, dy =
+      Coordinate.to_coord_distance (get_coord_from_name vp coord) dx dy
+    in
+    dx, dy
 
 (* ......................................................................... *)
 
@@ -1092,10 +1101,11 @@ let ylabel vp s =
 let title vp s =
   add_instruction vp (title_direct vp s)
 
-let mark vp ~x ~y name =
+let mark ?(coord=`Data) vp ~x ~y name =
   if is_finite x && is_finite y then (
-    auto_fit vp x y x y;
-    add_instruction vp (mark_direct vp ~x ~y name)
+    if coord = `Data then
+      auto_fit vp x y x y;
+    add_instruction vp (mark_direct vp ~coord ~x ~y name)
   )
 
 
