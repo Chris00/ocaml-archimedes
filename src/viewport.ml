@@ -995,7 +995,7 @@ let stroke_preserve ?path ?fit:(do_fit=true) vp coord_name =
 
 let stroke ?path ?fit vp coord_name =
   stroke_preserve ?path ?fit vp coord_name;
-  if path = None then add_instruction vp (fun () -> Path.clear vp.path)
+  if path = None then Path.clear vp.path
 
 let fill_preserve ?path ?fit:(do_fit=true) vp coord_name =
   let path = get_path ~notransform:true vp path coord_name in
@@ -1005,7 +1005,7 @@ let fill_preserve ?path ?fit:(do_fit=true) vp coord_name =
 
 let fill ?path ?fit vp coord_name =
   fill_preserve ?path ?fit vp coord_name;
-  if path = None then add_instruction vp (fun () -> Path.clear vp.path)
+  if path = None then Path.clear vp.path
 
 let clip_rectangle vp ~x ~y ~w ~h =
   add_instruction vp (clip_rectangle_direct vp ~x ~y ~w ~h)
