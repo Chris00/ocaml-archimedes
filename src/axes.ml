@@ -80,7 +80,7 @@ let draw_x_axis grid major minor start stop tics offset vp =
       | Tics.Major (_, x) -> let path = Path.make() in
                             Path.move_to path x (V.ymin vp);
                             Path.line_to path x (V.ymax vp);
-                            V.stroke_direct vp ~path `Data ()
+                            V.stroke_direct vp `Data path ()
       | Tics.Minor _ -> ()
     in
     let restore = grid_style vp in
@@ -107,7 +107,7 @@ let draw_y_axis grid major minor start stop tics offset vp =
     | Tics.Major (_, y) -> let path = Path.make() in
                           Path.move_to path (V.xmin vp) y;
                           Path.line_to path (V.xmax vp) y;
-                          V.stroke_direct vp ~path `Data ()
+                          V.stroke_direct vp `Data path ()
     | Tics.Minor _ -> ()
   in
   if grid then begin

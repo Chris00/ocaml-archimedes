@@ -11,8 +11,9 @@ let draw bk =
   for x = 0 to 3 do
     for y = 0 to 2 do
       let vp = subvp.(x).(y) in
-      V.rectangle vp ~x:0. ~y:0. ~w:1. ~h:1.;
-      V.stroke vp `Device;
+      let p = Archimedes.Path.make() in
+      Archimedes.Path.rectangle p ~x:0. ~y:0. ~w:1. ~h:1.;
+      V.stroke vp `Device p;
       Archimedes.Axes.cross vp ~tics:(Archimedes.Tics.Equidistants
                                         (Archimedes.Tics.Number 3, 0., 2., 1))
     done;

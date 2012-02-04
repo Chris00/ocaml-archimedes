@@ -225,26 +225,23 @@ val set_global_line_join : t -> Backend.line_join -> unit
 val get_line_cap : t -> Backend.line_cap
 val get_dash : t -> float array * float
 val get_line_join : t -> Backend.line_join
-val move_to : t -> x:float -> y:float -> unit
-val line_to : t -> x:float -> y:float -> unit
-val rel_move_to : t -> x:float -> y:float -> unit
-val rel_line_to : t -> x:float -> y:float -> unit
-val curve_to : t ->
-  x1:float -> y1:float -> x2:float -> y2:float -> x3:float -> y3:float -> unit
-val rectangle : t -> x:float -> y:float -> w:float -> h:float -> unit
-val arc : t -> r:float -> a1:float -> a2:float -> unit
-val close_path : t -> unit
-val clear_path : t -> unit
-(*val path_extents : t -> rectangle*)
-val stroke_preserve : ?path:Path.t -> ?fit:bool -> t -> coord_name -> unit
-(** strokes the path (default: viewport's path) on the specified
-    coordinate system, doesn't clear the viewport's path if no path
-    given *)
-val stroke : ?path:Path.t -> ?fit:bool -> t -> coord_name -> unit
-(** strokes the path (default: viewport's path) on the specified
-    coordinate system, does clear the viewport's path if no path given *)
-val fill_preserve : ?path:Path.t -> ?fit:bool -> t -> coord_name -> unit
-val fill : ?path:Path.t -> ?fit:bool -> t -> coord_name -> unit
+
+
+val stroke : ?fit:bool -> t -> coord_name -> Path.t -> unit
+(** [stroke vp coord p] draw the path [p] on the the viewport [vp] in the
+    coordinate system [coord].  [p] is unchanged.
+
+    @param fit if [true] (the default), adjust the ranges so that the
+    path is visible in its entirety. *)
+
+val fill : ?fit:bool -> t -> coord_name -> Path.t -> unit
+(** [fill vp coord p] fill the region delimited by the path [p] on the
+    the viewport [vp] in the coordinate system [coord].  [p] is
+    unchanged.
+
+    @param fit if [true] (the default), adjust the ranges so that the
+    path is visible in its entirety. *)
+
 val set_clip : t -> bool -> unit
 (** [set_clip vp c] whether to enable or disable clipping for every
     following instructions on [vp]. *)
@@ -310,34 +307,6 @@ val set_xlog : t -> bool -> unit
 val set_ylog : t -> bool -> unit
 (** [set_ylog vp true] set a log scale on OY on the viewport [vp] *)
 
-val set_line_width_direct : t -> float -> unit -> unit
-val set_font_size_direct : t -> float -> unit -> unit
-val set_mark_size_direct : t -> float -> unit -> unit
-val set_rel_line_width_direct : t -> float -> unit -> unit
-val set_rel_font_size_direct : t -> float -> unit -> unit
-val set_rel_mark_size_direct : t -> float -> unit -> unit
-val set_color_direct : t -> Color.t -> unit -> unit
-val set_line_cap_direct : t -> Backend.line_cap -> unit -> unit
-val set_dash_direct : t -> float -> float array -> unit -> unit
-val set_line_join_direct : t -> Backend.line_join -> unit -> unit
-val stroke_direct : ?path:Path.t -> t -> coord_name -> unit -> unit
-val fill_direct : ?path:Path.t -> t -> coord_name -> unit -> unit
-val clip_rectangle_direct : t -> x:float -> y:float -> w:float ->
-  h:float -> unit -> unit
-val select_font_face_direct : t -> Backend.slant -> Backend.weight ->
-  string -> unit -> unit
-val show_text_direct : t -> coord_name -> ?rotate:float ->
-  x:float -> y:float -> Backend.text_position -> string -> unit -> unit
-val mark_direct : t -> x:float -> y:float -> string -> unit -> unit
-val save_direct : t -> unit -> unit
-val restore_direct : t -> unit -> unit
-
-
-val add_instruction : t -> (unit -> unit) -> unit
-val do_instructions : t -> unit
-
-val remove_last_instruction : t -> unit
-val clear_instructions : t -> unit
 
 val auto_fit : t -> float -> float -> float -> float -> unit
 (** [auto_fit vp x0 y0 x1 y1] ensures that the rectangle delimited by
@@ -349,6 +318,37 @@ val fit : t -> Matrix.rectangle -> unit
 
 val save : t -> unit
 val restore : t -> unit
+
+
+(** {2 Internal functions} *)
+
+val set_line_width_direct : t -> float -> unit -> unit
+val set_font_size_direct : t -> float -> unit -> unit
+val set_mark_size_direct : t -> float -> unit -> unit
+val set_rel_line_width_direct : t -> float -> unit -> unit
+val set_rel_font_size_direct : t -> float -> unit -> unit
+val set_rel_mark_size_direct : t -> float -> unit -> unit
+val set_color_direct : t -> Color.t -> unit -> unit
+val set_line_cap_direct : t -> Backend.line_cap -> unit -> unit
+val set_dash_direct : t -> float -> float array -> unit -> unit
+val set_line_join_direct : t -> Backend.line_join -> unit -> unit
+val stroke_direct : t -> coord_name -> Path.t -> unit -> unit
+val fill_direct : t -> coord_name -> Path.t -> unit -> unit
+val clip_rectangle_direct : t -> x:float -> y:float -> w:float ->
+  h:float -> unit -> unit
+val select_font_face_direct : t -> Backend.slant -> Backend.weight ->
+  string -> unit -> unit
+val show_text_direct : t -> coord_name -> ?rotate:float ->
+  x:float -> y:float -> Backend.text_position -> string -> unit -> unit
+val mark_direct : t -> x:float -> y:float -> string -> unit -> unit
+val save_direct : t -> unit -> unit
+val restore_direct : t -> unit -> unit
+
+val add_instruction : t -> (unit -> unit) -> unit
+val do_instructions : t -> unit
+
+val remove_last_instruction : t -> unit
+val clear_instructions : t -> unit
 
 (**/**)
 

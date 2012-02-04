@@ -10,11 +10,12 @@ let half_pi = pi /. 2.
 let two_pi = 2. *. pi
 
 let disk vp x y r =
-  A.Viewport.move_to vp x y;
-  A.Viewport.arc vp ~r ~a1:0. ~a2:two_pi;
   let c = A.Viewport.get_color vp in
   A.set_color vp A.Color.red;
-  A.Viewport.fill vp `Device;
+  let p = A.Path.make() in
+  A.Path.move_to p x y;
+  A.Path.arc p ~r ~a1:0. ~a2:two_pi;
+  A.Viewport.fill vp `Device p;
   A.set_color vp c
 
 let draw bk =

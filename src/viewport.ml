@@ -43,7 +43,7 @@ type t = {
 
   mutable square_side: float;
 
-  path: Path.t; (* current path on this viewport *)
+  (* path: Path.t; (\* current path on this viewport *\) *)
 
   (* Axes system associated to the viewport *)
   mutable axes_system: axes_t;
@@ -255,12 +255,8 @@ let rec data_from vp coord_name pos = match coord_name with
   | `Orthonormal -> data_from vp `Device (to_parent vp.coord_orthonormal pos)
 
 let get_path ?(notransform=false) vp p coord_name =
-  let p = match p with
-    | None -> vp.path
-    | Some p -> p
-  in
   if coord_name = `Data && not notransform &&
-    (vp.axes_system.x.log || vp.axes_system.y.log) then
+       (vp.axes_system.x.log || vp.axes_system.y.log) then
     Path.map p (data_norm_log vp.axes_system)
   else p
 
@@ -314,7 +310,7 @@ let apply_clip vp coord_name =
       Backend.clip_rectangle vp.backend 0. 0. 1. 1.
   )
 
-let stroke_direct ?path vp coord_name () =
+let stroke_direct vp coord_name path () =
   let path = get_path vp path coord_name in
   let coord = get_coord_from_name vp coord_name in
   Backend.save vp.backend;
@@ -323,7 +319,7 @@ let stroke_direct ?path vp coord_name () =
   Backend.stroke_path_preserve vp.backend path;
   Backend.restore vp.backend (* remove CTM and clip *)
 
-let fill_direct ?path vp coord_name () =
+let fill_direct vp coord_name path () =
   let path = get_path vp path coord_name in
   let coord = get_coord_from_name vp coord_name in
   Backend.save vp.backend;
@@ -548,7 +544,6 @@ let init ?(lines=def_lw) ?(text=def_ts) ?(marks=def_ms)
       (* We don't care; will be updated as soon as points are added or we
 	 change axes. *)
     coord_data = Coordinate.make_identity coord_graph;
-    path = Path.make ();
     axes_system = Axes.default_axes_system ();
     xaxis_size = xaxis_size;
     yaxis_size = yaxis_size;
@@ -613,7 +608,6 @@ let make vp ?(lines=def_lw) ?(text=def_ts) ?(marks=def_ms)
       (* We don't care; will be updated as soon as points are added or we
 	 change axes. *)
     coord_data = Coordinate.make_identity coord_graph;
-    path = Path.make ();
     axes_system = Axes.default_axes_system ();
     xaxis_size = xaxis_size;
     yaxis_size = yaxis_size;
@@ -1023,39 +1017,17 @@ let layout_borders ?(north=0.) ?(south=0.) ?(west=0.) ?(east=0.) vp =
 (* Viewport path manipulation
  ***********************************************************************)
 
-let move_to vp = Path.move_to vp.path
-let line_to vp = Path.line_to vp.path
-let rel_move_to vp = Path.rel_move_to vp.path
-let rel_line_to vp = Path.rel_line_to vp.path
-
-let curve_to vp = Path.curve_to vp.path
-let rectangle vp = Path.rectangle vp.path
-let arc vp = Path.arc vp.path
-
-let close_path vp = Path.close vp.path
-let clear_path vp = Path.clear vp.path
-
-let path_extents vp = Path.extents vp.path
-
-let stroke_preserve ?path ?fit:(do_fit=true) vp coord_name =
+let stroke ?fit:(do_fit=true) vp coord_name path =
   let path = get_path ~notransform:true vp path coord_name in
   if do_fit && coord_name = `Data then fit vp (Path.extents path);
   let path = Path.copy path in
-  add_instruction vp (stroke_direct ~path vp coord_name)
+  add_instruction vp (stroke_direct vp coord_name path)
 
-let stroke ?path ?fit vp coord_name =
-  stroke_preserve ?path ?fit vp coord_name;
-  if path = None then add_instruction vp (fun () -> Path.clear vp.path)
-
-let fill_preserve ?path ?fit:(do_fit=true) vp coord_name =
+let fill ?fit:(do_fit=true) vp coord_name path =
   let path = get_path ~notransform:true vp path coord_name in
   if do_fit && coord_name = `Data then fit vp (Path.extents path);
   let path = Path.copy path in
-  add_instruction vp (fill_direct ~path vp coord_name)
-
-let fill ?path ?fit vp coord_name =
-  fill_preserve ?path ?fit vp coord_name;
-  if path = None then add_instruction vp (fun () -> Path.clear vp.path)
+  add_instruction vp (fill_direct vp coord_name path)
 
 let clip_rectangle vp ~x ~y ~w ~h =
   add_instruction vp (clip_rectangle_direct vp ~x ~y ~w ~h)

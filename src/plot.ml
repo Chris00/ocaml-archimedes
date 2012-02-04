@@ -246,7 +246,7 @@ let fx vp ?tlog ?n ?strategy ?cost ?(style=`Lines) ?base
       let color = V.get_color vp in
       V.set_color vp fillcolor;
       (* Do not fit on its extents, because we don't want to fit [base]. *)
-      V.fill ~path:sub_path ~fit:false vp `Data;
+      V.fill vp `Data sub_path ~fit:false;
       V.set_color vp color;
     )
     else do_nothing in
@@ -256,7 +256,7 @@ let fx vp ?tlog ?n ?strategy ?cost ?(style=`Lines) ?base
     fill_subpath;
   V.fit vp (Path.extents path);
   (match style with
-  | `Lines | `Linesmarkers _ -> V.stroke ~path vp `Data
+  | `Lines | `Linesmarkers _ -> V.stroke vp `Data path
   | `Markers _ -> ()); (* Do not usually make sense but convenient
                          so see which data points where chosen. *)
   PlotArray.draw_marks vp style x y (Array.length x)

@@ -23,9 +23,9 @@ let square =
 let shape vp color m =
   let p = A.Path.transform m square in
   A.Viewport.set_color vp color;
-  A.Viewport.fill vp ~path:p `Data;
+  A.Viewport.fill vp `Data p;
   A.Viewport.set_color vp A.Color.dark_green;
-  A.Viewport.stroke vp ~path:p `Data
+  A.Viewport.stroke vp `Data p
 
 let trunks vp color ms = List.iter (shape vp color) ms
 

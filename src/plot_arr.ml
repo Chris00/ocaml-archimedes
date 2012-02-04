@@ -45,7 +45,7 @@ let lines_y vp ~fill ?(const_base=false) ?base ~fillcolor
           Path.close sub_path;
           let color = V.get_color vp in
           V.set_color vp fillcolor;
-          V.fill ~path:sub_path vp `Data ~fit:false;
+          V.fill vp `Data sub_path ~fit:false;
           V.set_color vp color;
         )
       | Some b ->
@@ -55,7 +55,7 @@ let lines_y vp ~fill ?(const_base=false) ?base ~fillcolor
           LINE_OF_ARRAY(sub_path, x, b, i1, i0);
           let color = V.get_color vp in
           V.set_color vp fillcolor;
-          V.fill ~path:sub_path vp `Data ~fit:false;
+          V.fill vp `Data sub_path ~fit:false;
           V.set_color vp color;
         );
       )
@@ -69,11 +69,11 @@ let fill_and_stroke vp path ~fill ~fillcolor =
   if fill then (
     let color = V.get_color vp in
     V.set_color vp fillcolor;
-    V.fill ~path vp `Data ~fit:false;
+    V.fill vp `Data path ~fit:false;
     V.set_color vp color;
   );
   (* Draw (for bars, marks do not make any sense). *)
-  V.stroke ~path vp `Data ~fit:false
+  V.stroke vp `Data path ~fit:false
 
 let bars vp ~fill ?base ~fillcolor (x:t) (y:t) n w =
   let path = Path.make() in
@@ -134,7 +134,7 @@ let unsafe_y vp ?const_base ?base ?(fill=false) ?(fillcolor=default_fillcolor)
     let path =
       lines_y vp ~fill ?const_base ?base ~fillcolor ?const_x x ?const_y y n
     in
-    V.stroke ~path vp `Data ~fit:false
+    V.stroke vp `Data path ~fit:false
   | `Markers mark ->
     ignore(lines_y vp ~fill
              ?const_base ?base ~fillcolor ?const_x x ?const_y y n);
@@ -143,7 +143,7 @@ let unsafe_y vp ?const_base ?base ?(fill=false) ?(fillcolor=default_fillcolor)
     let path =
       lines_y vp ~fill ?const_base ?base ~fillcolor ?const_x x ?const_y y n
     in
-    V.stroke vp ~path `Data ~fit:false;
+    V.stroke vp `Data path ~fit:false;
     draw_marks vp style x y n
   | `Bars w ->
     bars vp ~fill ?base ~fillcolor x y n w
@@ -204,7 +204,7 @@ let lines_xy vp ~fill ~fillcolor
     Path.close path_fill;
     let color = V.get_color vp in
     V.set_color vp fillcolor;
-    V.fill ~path:path_fill vp `Data ~fit:false;
+    V.fill vp `Data path_fill ~fit:false;
     V.set_color vp color;
   );
   path
@@ -215,13 +215,13 @@ let unsafe_xy vp ?(fill=false) ?(fillcolor=default_fillcolor)
   match style with
   | `Lines ->
     let path = lines_xy vp ~fill ~fillcolor ?const_x x ?const_y y n in
-    V.stroke ~path vp `Data ~fit:false
+    V.stroke vp `Data path ~fit:false
   | `Markers mark ->
     ignore(lines_xy vp ~fill ~fillcolor ?const_x x ?const_y y n);
     draw_marks vp style x y n
   | `Linesmarkers mark ->
     let path = lines_xy vp ~fill ~fillcolor ?const_x x ?const_y y n in
-    V.stroke vp ~path `Data ~fit:false;
+    V.stroke vp `Data path ~fit:false;
     draw_marks vp style x y n
   | `Bars w ->
     bars vp ~fill ?base:None ~fillcolor x y n w

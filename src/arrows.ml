@@ -96,17 +96,17 @@ let line_direct ?(size=0.01) ?(head=Simple) ?(tail=Unstyled) vp x0 y0 x y () =
   let path_line = Path.make() in
   Path.move_to path_line x0 y0;
   Path.line_to path_line x y;
-  V.stroke_direct ~path:path_line vp `Data ();
+  V.stroke_direct vp `Data path_line ();
   (* head *)
   let path_head = Path.make() in
   Path.move_to path_head x' y';
   add_to_path path_head size alpha head;
-  V.stroke_direct ~path:path_head vp `Orthonormal ();
+  V.stroke_direct vp `Orthonormal path_head ();
   (* tail *)
   let path_tail = Path.make() in
   Path.move_to path_tail x0' y0';
   add_to_path path_tail size alpha tail;
-  V.stroke_direct ~path:path_tail vp `Orthonormal ()
+  V.stroke_direct vp `Orthonormal path_tail ()
 
 let line ?(size=0.01) ?(head=Simple) ?(tail=Unstyled) vp x0 y0 x y =
   V.auto_fit vp x0 y0 x y;
@@ -125,17 +125,17 @@ let arc_direct ?(size=0.01) ?(head=Simple) ?(tail=Unstyled)
   let path_arc = Path.make() in
   Path.move_to path_arc x0 y0;
   Path.arc path_arc ~r ~a1 ~a2;
-  V.stroke_direct ~path:path_arc vp `Data ();
+  V.stroke_direct vp `Data path_arc ();
   (* head *)
   let path_head = Path.make() in
   Path.move_to path_head headx heady;
   add_to_path path_head size headangle head;
-  V.stroke_direct ~path:path_head vp `Orthonormal ();
+  V.stroke_direct vp `Orthonormal path_head ();
   (* tail *)
   let path_tail = Path.make() in
   Path.move_to path_tail tailx taily;
   add_to_path path_tail size tailangle tail;
-  V.stroke_direct ~path:path_tail vp `Orthonormal ()
+  V.stroke_direct vp `Orthonormal path_tail ()
 
 let arc ?size ?head ?tail vp x0 y0 r a1 a2 =
   let cx, cy = x0 -. cos a1 *. r, y0 -. sin a1 *. r in

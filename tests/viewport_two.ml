@@ -10,13 +10,10 @@ let draw bk =
   let path = Archimedes.Path.make () in
   Archimedes.Path.rectangle path 0. 0. 1. 1.;
 
-  V.stroke ~path vps.(0) `Graph;
-  V.stroke ~path vps.(1) `Graph;
+  V.stroke vps.(0) `Graph path;
+  V.stroke vps.(1) `Graph path;
 
   A.fx vps.(0) (fun x -> sin x *. (cos x +. 1.)) 0. 10.;
   A.fx vps.(1) (fun x -> x ** 2.) 0. 10.;
-
-(*  V.rectangle vps.(1) ~x:0. ~y:0. ~w:1. ~h:1.;*)
-  V.stroke vps.(1) `Device;
 
   Archimedes.close vp
