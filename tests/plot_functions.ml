@@ -29,4 +29,6 @@ let draw backend =
   A.xyf vp.(1).(1) (fun x -> (cos x, sin x)) 0. 6.3 ~n:10;
   A.set_color vp.(1).(1) A.Color.red;
   A.xyf vp.(1).(1) (fun x -> (cos x, sin x)) 0. 6.3;
+  (* Some border cases : *)
+  A.fx vp.(1).(1) (fun x -> if -0.5 < x && x < 0.5  then 0. else nan) 0. 1.;
   A.close p
