@@ -234,7 +234,7 @@ let xy ?tlog ?(fn0=0.1) ?(n=100) ?(strategy=strategy_default) ?(cost=cost_defaul
       x.(k) <- i.x1;
       y.(k) <- i.y1;
     done
-  );
+  ) else warning "sampling a function with no finite point !";
   x, y
 ;;
 

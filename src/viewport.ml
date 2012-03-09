@@ -412,7 +412,7 @@ let rec consume f q =
    children will be redrawn two times. *)
 let rec do_instructions vp =
   vp.instructions_dirtied <- false;
-  if vp.saves <> [] then print_string "Warning: saves list is not empty\n";
+  if vp.saves <> [] then warning "saves list is not empty";
   blank vp;
   Queue.iter (fun f -> f()) vp.instructions;
   (* We've also processed the pending instructions. *)
@@ -438,7 +438,9 @@ let remove_last_instruction vp =
      unit) Queue.t]). *)
   let aux q = ignore (Queue.pop q) in
   aux vp.instructions;
-  try aux vp.pending_instructions with Queue.Empty -> print_string "Warning : removed last instruction, but it was already drawn to device.\n"
+  try aux vp.pending_instructions
+  with Queue.Empty ->
+    warning "removed last instruction but it was already drawn on the backend."
 
 let clear_instructions vp =
   vp.instructions_dirtied <- false;

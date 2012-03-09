@@ -24,9 +24,12 @@
 (* TODO Check multilevel implementation *)
 (* TODO There are warnings in multilevel implementation *)
 
+open Utils
+
 module V = Viewport
 module P = Path
 module M = Matrix
+
 
 let twopi = atan 1. *. 8.
 
@@ -111,8 +114,7 @@ let extents_style style ((cx, cy), radius) = match style with
   | Highlight _ -> (cx, cy), 10. *. radius /. 11.
   | Flat -> (cx, cy), radius
   | Relief ->
-    Printf.printf ("Warning: Relief style extents not yet" ^^
-                      " implemented; badboxes may appear\n%!");
+    warning "relief style extents not yet implemented; badboxes may appear";
     (cx, cy), radius
 
 let rec get_path style cx cy r1 r2 angle_start angle name =
@@ -132,8 +134,7 @@ let rec get_path style cx cy r1 r2 angle_start angle name =
     let path = P.transform (M.make_rotate angle_start) path in
     P.transform (M.make_translate cx cy) path
   | Relief ->
-    Printf.printf ("Warning: Relief style not yet implemented; falling back" ^^
-                      " to Flat style\n%!");
+    warning "relief style not yet implemented; falling back to Flat style";
     get_path Flat cx cy r1 r2 angle_start angle name
 
 let raw_flat style vp cx cy r1 r2 angle_start angle color name =
@@ -161,7 +162,7 @@ let simple ?(style=Relief) ?(colorscheme=Default) ?(keyplacement=Rectangle)
     (pos + 1, angle_start +. angle)
   ) (0, 0.) sorted in
   if abs_float (finalangle -. twopi) > 1E-8
-  then Printf.printf "Warning: large numerical error in pie chart"
+  then warning "large numerical error in pie chart"
 (* FIXME: Cannot simply print things to indicate an error. *)
 
 let rec depth cur = function
