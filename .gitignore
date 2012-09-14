@@ -33,3 +33,5 @@ setup.data
 src/API.odocl
 API.docdir
 tests/tests.ml
+# Misc
+documents/
