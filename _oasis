@@ -1,5 +1,5 @@
 #								-*-conf-*-
-OASISFormat: 0.2
+OASISFormat: 0.3
 Name:        archimedes
 Version:     0.4.12
 Synopsis:    Extensible 2D plotting library.
@@ -32,10 +32,6 @@ Flag cairo
 
 Flag tikz
   Description:  Use the tikz (TeX) plugin?
-  Default:      false
-
-Flag tests
-  Description:  Whether to compile the tests.
   Default:      false
 
 Library "archimedes"
