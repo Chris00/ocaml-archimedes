@@ -2,7 +2,6 @@
 # OASIS_STOP
 
 <**/*.ml>: annot
-<src/{conf,utils,string_utils,priorityQueue,color,matrix,path,backend,coordinate,marker,sampler,tics,viewport,arrows,axes,plot,piechart}.cmx>: for-pack(Archimedes_internals)
 
 <src/plot.ml>: syntax_camlp4o, pkg_camlp4.macro
 <src/path.ml>: syntax_camlp4o, pkg_camlp4.macro

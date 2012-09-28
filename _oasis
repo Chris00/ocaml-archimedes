@@ -14,7 +14,7 @@ Authors:     Christophe Troestler <Christophe.Troestler@umons.ac.be>,
   Xavier Deschuyteneer <xavier.deschuyteneer@gmail.com>
 License:     LGPL-3.0 with OCaml linking exception
 Homepage:    http://forge.ocamlcore.org/projects/archimedes/
-Plugins:     META (0.2), StdFiles (0.2)
+Plugins:     META (0.3), StdFiles (0.3)
 FilesAB:     src/conf.ml.ab,
   src/archimedes_cairo.dep.ab,
   src/archimedes_graphics.dep.ab,
@@ -37,15 +37,22 @@ Flag tikz
 Library "archimedes"
   Path:         src
   BuildTools:   ocamlbuild
-  # src/archimedes_internals.mlpack and _tags contain the list of
-  # modules.  The "internal" functions are potentially useful to
-  # backends; using Archimedes_internals.cmi (not installed) a backend
-  # using these functions can be compiled -- it can be installed
-  # without the cmi needing to be.  Archimedes re-exports some
-  # functions as toplevel ones.
   Modules:      Archimedes
   InternalModules: Archimedes_internals
   BuildDepends: dynlink, bigarray
+
+Library archimedes_internals
+  # "internal" functions, potentially useful to backends
+  Path:		src
+  BuildTools:   ocamlbuild
+  Pack:		true
+  Modules:      Conf, Utils, String_utils, PriorityQueue, Matrix,
+                Color, Path, Backend, Coordinate, Viewport,
+                Marker, Sampler, Arrows, Tics, Axes,
+                Plot, Piechart
+  BuildDepends: dynlink, bigarray
+  FindlibParent: archimedes
+  FindlibName:   internals
 
 Library "archimedes_graphics"
   Build$:       flag(graphics)
@@ -86,7 +93,7 @@ Library "archimedes_toploop"
 
 Document API
   Title:           API reference for Archimedes
-  Type:            OCamlbuild (0.2)
+  Type:            OCamlbuild (0.3)
   InstallDir:      $docdir/api
   BuildTools:      ocamldoc, ocamlbuild
   XOCamlbuildPath: src
