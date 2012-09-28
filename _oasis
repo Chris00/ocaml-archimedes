@@ -38,8 +38,8 @@ Library "archimedes"
   Path:         src
   BuildTools:   ocamlbuild
   Modules:      Archimedes
-  InternalModules: Archimedes_internals
-  BuildDepends: dynlink, bigarray
+  #InternalModules: Archimedes_internals
+  BuildDepends: dynlink, bigarray, archimedes.internals
 
 Library archimedes_internals
   # "internal" functions, potentially useful to backends
@@ -87,6 +87,8 @@ Library "archimedes_toploop"
   Path:         src
   BuildTools:   ocamlbuild
   Modules:      Archimedes_toploop
+  ByteOpt:	-I +compiler-libs
+  NativeOpt:	-I +compiler-libs
   BuildDepends: archimedes
   FindlibParent: archimedes
   FindlibName:   top
