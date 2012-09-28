@@ -47,7 +47,6 @@ clean:
 	-ocaml setup.ml -clean
 	$(RM) $(PKG_TARBALL)
 	$(RM) $(wildcard *~ *.pdf *.ps *.png *.svg) setup.data
-#	$(MAKE) -C doc $@
 
 distclean dist-clean::
 	ocaml setup.ml -distclean
