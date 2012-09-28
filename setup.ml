@@ -53,4 +53,14 @@ let get_destdir() =
 
 let _ = BaseEnv.var_define "ocamlfind_destdir" get_destdir
 
+(* pkg_cairo2 is not defined when --disable-cairo is used.  However,
+   it is required by "src/archimedes_cairo.dep.ab".  Use a dummy
+   value, if configure does not set one. *)
+let () =
+  let args = Array.to_list Sys.argv in
+  let disable_cairo = List.mem "--disable-cairo" args in
+  if disable_cairo then
+    let _ = BaseEnv.var_define "pkg_cairo2" (fun () -> "disabled") in
+    ()
+
 let () = setup ();;
