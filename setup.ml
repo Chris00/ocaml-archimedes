@@ -36,20 +36,11 @@ let get_destdir() =
   with Not_found ->
     let inst = OASISExec.run_read_output
                  ~ctxt:!BaseContext.default
-                 (BaseCheck.ocamlfind ()) ["install"; "-help"] in
+                 (BaseCheck.ocamlfind ()) ["printconf"; "destdir"] in
     match inst with
-    | _ :: destdir :: _ ->
-      (try
-          let path_beg = String.index destdir '/' in
-          let cl_brace = String.index destdir ')' in
-          String.sub destdir path_beg (cl_brace - path_beg)
-        with _ ->
-          printf "ERROR: The line %S does not allow to determine the \
-            installation directory.\n" destdir;
-          exit 1)
-    | _ ->
-      printf "ERROR: 'ocamlfind install -help' output is incompatible.\n";
-      exit 1
+    | destdir :: _ -> destdir
+    | _ -> printf "ERROR: 'ocamlfind printconf destdir' output is empty!\n";
+          exit 1
 
 let _ = BaseEnv.var_define "ocamlfind_destdir" get_destdir
 
