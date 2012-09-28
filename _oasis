@@ -34,6 +34,10 @@ Flag tikz
   Description:  Use the tikz (TeX) plugin?
   Default:      false
 
+Flag tests
+  Description:  Whether to compile the tests.
+  Default:      false
+
 Library "archimedes"
   Path:         src
   BuildTools:   ocamlbuild
@@ -93,12 +97,18 @@ Document API
   XOCamlbuildLibraries: archimedes
 
   
-Executable "Tests"
+Executable "test_main"
   Path:         tests
-  BuildTools:   ocamlbuild
+  Build$:	flag(tests)
   MainIs:       tests.ml
   BuildDepends: archimedes
+  BuildTools:   ocamlbuild
   Install:      false
+
+Test main
+  Type: Custom (0.2)
+  Command: $test_main
+
 
 # Examples
 ######################################################################
@@ -167,6 +177,6 @@ Executable "multi_hue.ml"
   Install:      false
 
 SourceRepository trunk
-  Type:       bzr
-  Location:   https://forge.ocamlcore.org/anonscm/bzr/archimedes/archimedes/trunk/
-  Browser:    http://forge.ocamlcore.org/scm/browser.php?group_id=105
+  Type:       git
+  Location:   http://forge.ocamlcore.org/anonscm/git/archimedes/archimedes.git
+  Browser:    https://forge.ocamlcore.org/scm/browser.php?group_id=105

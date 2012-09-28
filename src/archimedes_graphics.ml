@@ -554,7 +554,7 @@ struct
   let set_font_size t size =
     let st = get_state t in
     st.font_size <- size;
-    (* Graphics.set_text_size (round size) *) (* no effect on unix *)
+    (* Graphics.set_text_size (round size) *) (* FIXME: no effect on unix *)
     Graphics.set_font (string_of_font st)
 
   let text_extents t txt =

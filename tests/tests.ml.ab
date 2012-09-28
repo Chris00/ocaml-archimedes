@@ -2,7 +2,7 @@
 open Printf
 
 (* A list of couples (test_name, description, function_to_run). *)
-let alltests = [ $(tests) ]
+let alltests = [ $(tests_list) ]
 
 let backends = ref []
 let cairo out ext () =

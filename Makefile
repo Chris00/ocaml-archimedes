@@ -12,19 +12,20 @@ DISTFILES = AUTHORS.txt INSTALL.txt README.txt _oasis _tags myocamlbuild.ml \
   $(wildcard $(addprefix src/, *.ml *.mli *.mllib *.mlpack *.ab)) \
   $(wildcard tests/*.ml tests/*.ab)  $(wildcard examples/*.ml)
 
-.PHONY: all byte native configure doc install uninstall reinstall upload-doc
+.PHONY: all byte native configure doc test \
+  install uninstall reinstall upload-doc
 
-all byte native: configure
+all byte native: setup.data
 	ocaml setup.ml -build
 
 configure: setup.data
 setup.data: setup.ml $(FILESAB)
-	ocaml $< -configure
+	ocaml $< -configure --enable-tests
 
-setup.ml: _oasis
-	oasis.dev setup
+setup.ml AUTHORS.txt INSTALL.txt README.txt: _oasis
+	oasis setup -setup-update dynamic
 
-doc install uninstall reinstall: all
+doc install uninstall reinstall test: all
 	ocaml setup.ml -$@
 
 upload-doc: doc
@@ -36,16 +37,14 @@ upload-doc: doc
 dist tar: $(DISTFILES)
 	mkdir $(PKGNAME)-$(PKGVERSION)
 	cp --parents -r $(DISTFILES) $(PKGNAME)-$(PKGVERSION)/
+# Generate a compilation files not depending on oasis:
+	cd $(PKGNAME)-$(PKGVERSION) && oasis setup
 	tar -zcvf $(PKG_TARBALL) $(PKGNAME)-$(PKGVERSION)
 	$(RM) -rf $(PKGNAME)-$(PKGVERSION)
 
-.PHONY: svn
-svn:
-	bzr push svn+ssh://svn.forge.ocamlcore.org/svn/archimedes/trunk
-
 .PHONY: clean distclean dist-clean
 clean:
-	ocaml setup.ml -clean
+	-ocaml setup.ml -clean
 	$(RM) $(PKG_TARBALL)
 	$(RM) $(wildcard *~ *.pdf *.ps *.png *.svg) setup.data
 #	$(MAKE) -C doc $@
