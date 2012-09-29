@@ -38,11 +38,21 @@ let get_destdir() =
                  ~ctxt:!BaseContext.default
                  (BaseCheck.ocamlfind ()) ["printconf"; "destdir"] in
     match inst with
-    | destdir :: _ -> destdir
+    | destdir :: _ ->
+       (* This value will be substituted into a string; it must be
+          properly escaped. *)
+       String.escaped destdir
     | _ -> printf "ERROR: 'ocamlfind printconf destdir' output is empty!\n";
           exit 1
 
-let _ = BaseEnv.var_define "ocamlfind_destdir" get_destdir
+let _ = BaseEnv.var_define "ocamlfind_destdir_escaped" get_destdir
+
+(* Variables that will be substituted in strings in conf.ml.ab and so
+   must be properly escaped (especially for windows). *)
+let _ = BaseEnv.var_define "libdir_escaped"
+                           (fun _ -> String.escaped(BaseStandardVar.libdir()))
+let _ = BaseEnv.var_define "datarootdir_escaped"
+                           (fun _ -> String.escaped(BaseStandardVar.datarootdir()))
 
 (* pkg_cairo2 is not defined when --disable-cairo is used.  However,
    it is required by "src/archimedes_cairo.dep.ab".  Use a dummy

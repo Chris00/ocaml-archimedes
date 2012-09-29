@@ -18,11 +18,11 @@
 (** Configuration values, possibly put by the 'configure' script. *)
 
 let destdirs () =
-  let destdir = [ "$(libdir)"; "$(ocamlfind_destdir)" ] in
+  let destdir = [ "$(libdir_escaped)"; "$(ocamlfind_destdir_escaped)" ] in
   try Sys.getenv "OCAMLPATH" :: destdir
   with Not_found -> destdir
 
 let plugins_dirs () =
   List.map (fun destdir -> Filename.concat destdir "$(pkg_name)") (destdirs ())
 
-let datadirs = [ Filename.concat "$(datarootdir)" "$(pkg_name)" ]
+let datadirs = [ Filename.concat "$(datarootdir_escaped)" "$(pkg_name)" ]
