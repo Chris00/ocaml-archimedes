@@ -534,7 +534,7 @@ struct
    ***********************************************************************)
 
   (* FIXME: What about win32 and mac ? *)
-  let string_of_font st =
+  let unix_string_of_font st =
     let slant = match st.font_slant with
       | A.Backend.Upright -> 'r'
       | A.Backend.Italic -> 'i' in
@@ -544,18 +544,32 @@ struct
     sprintf "-*-%s-%s-%c-normal--%i-*-*-*-*-*-iso10646-*"
       st.font_family weight slant (round st.font_size)
 
+  let graphics_select_font_face, graphics_set_font_size =
+    match Sys.os_type with
+    | "Unix" ->
+       (fun st -> Graphics.set_font (unix_string_of_font st)),
+       (* Graphics.set_text_size has no effect on Unix. *)
+       (fun st -> Graphics.set_font (unix_string_of_font st))
+    | "Win32" ->
+       (fun st -> Graphics.set_font st.font_family),
+       (fun st -> Graphics.set_text_size (round st.font_size))
+    | os ->
+       eprintf "The OS %S is not supported.  Please send a patch for \
+                archimedes_graphics.ml to the Archimedes developers." os;
+       exit 1
+
   let select_font_face t slant weight family =
     let st = get_state t in
     st.font_slant <- slant;
     st.font_weight <- weight;
     st.font_family <- family;
-    Graphics.set_font (string_of_font st)
+    graphics_select_font_face st
 
   let set_font_size t size =
     let st = get_state t in
     st.font_size <- size;
-    (* Graphics.set_text_size (round size) *) (* FIXME: no effect on unix *)
-    Graphics.set_font (string_of_font st)
+    graphics_set_font_size st
+
 
   let text_extents t txt =
     check_valid_handle t;
@@ -714,7 +728,7 @@ let () =
     let w = Graphics.size_x ()
     and h = Graphics.size_y() in
     Graphics.close_graph ();
-    B.ofsw := float (100 - w);
+    B.ofsw := float(abs(100 - w));
     B.ofsh := float (100 - h);
   )
 
