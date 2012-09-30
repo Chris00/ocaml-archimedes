@@ -36,6 +36,14 @@ installation: no additional library is required.
 
 (* OASIS_STOP *)
 
+Windows
+=======
+
+On Windows, you may want to compile Archimedes without Cairo and put
+the data in the OCaml directory.  If so configure with:
+
+    ocaml setup.ml -configure --disable-cairo --datarootdir C:\\OCaml\\data
+
 Links
 =====
 
