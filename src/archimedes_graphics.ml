@@ -62,8 +62,11 @@ struct
   }
 
   type t = {
+    width: float;
+    height: float;
     mutable closed: bool;
     hold: bool; (* on close, hold the windows until a key is pressed *)
+    filename: string; (* filename to save to BMP. "" = do not save *)
     history: state Stack.t; (* saved states *)
     mutable state: state;   (* current state *)
     (* save/restore do not affect the current path. *)
@@ -110,11 +113,23 @@ struct
     if !in_use then failwith "Archimedes_graphics.make: already in use";
     (* Parse options *)
     let hold = ref false in
-    List.iter (fun o ->
-                 if o = "hold" then hold := true;
-              ) options;
-    Graphics.open_graph(sprintf " %.0fx%.0f"
-                          (width +. !ofsw) (height +. !ofsh));
+    let filename = ref "" in
+    let options = ref options in
+    while !options <> [] do
+      let o = String.lowercase(List.hd !options) in
+      if o = "hold" then hold := true;
+      if o = "bmp" then (
+        options := List.tl !options;
+        if !options = [] then
+          failwith "Archimedes(Graphics backend): option \"BMP\" must be \
+                    followed by a filename";
+        filename := List.hd !options;
+      );
+      options := List.tl !options
+    done;
+    (* Open Window and return state *)
+    Graphics.open_graph (
+        sprintf " %ix%i" (round (width +. !ofsw)) (round (height +. !ofsh)));
     Graphics.set_window_title "Archimedes";
     Graphics.auto_synchronize false;
     in_use := true;
@@ -132,8 +147,10 @@ struct
       clip = { A.Matrix.x = nan; y = nan; w = nan; h = nan };
       clip_set = false;
     } in
-    { closed = false;
+    { width = width;  height = height;
+      closed = false;
       hold = !hold;
+      filename = !filename;
       history = Stack.create();
       state = state;
       current_path = A.Path.make();
@@ -142,6 +159,11 @@ struct
   let show _t = Graphics.synchronize()
 
   let close ~options:_ t =
+    if t.filename <> "" then (
+      let img =
+        Graphics.get_image 0 0 (round t.width) (round t.height) in
+      Archimedes_internals.Bmp.write t.filename (Graphics.dump_image img);
+    );
     if not(t.closed) then (
       (* FIXME: Temporary solution, the interactive module must handle this. *)
       if t.hold then (
@@ -533,7 +555,6 @@ struct
   (* Fonts
    ***********************************************************************)
 
-  (* FIXME: What about win32 and mac ? *)
   let unix_string_of_font st =
     let slant = match st.font_slant with
       | A.Backend.Upright -> 'r'
@@ -728,6 +749,7 @@ let () =
     let w = Graphics.size_x ()
     and h = Graphics.size_y() in
     Graphics.close_graph ();
+    (* [abs] instead of [max 0], justified experimenting with M$ Windows *)
     B.ofsw := float(abs(100 - w));
     B.ofsh := float (100 - h);
   )

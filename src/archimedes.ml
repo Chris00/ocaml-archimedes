@@ -26,7 +26,9 @@ let check_suffixes fname s1 s2 =
   Filename.check_suffix fname s1 || Filename.check_suffix fname s2
 
 let backend_of_filename fname =
-  if check_suffixes fname ".png" ".PNG" then
+  if check_suffixes fname ".bmp" ".BMP" then
+    ["graphics"; "BMP"; fname]
+  else if check_suffixes fname ".png" ".PNG" then
     ["cairo"; "PNG"; fname]
   else if check_suffixes fname ".pdf" ".PDF" then
     ["cairo"; "PDF"; fname]

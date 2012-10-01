@@ -6,10 +6,18 @@ val init : ?lines:float -> ?text:float -> ?marks:float ->
 (** [init backend] initializes Archimedes and returns the main viewport
     using the backend specified.  The first element of [backend] is
     the name (case insensitive) of the underlying engine.  It may be
-    followed by one or several options.  For example, ["Graphics"] for
-    the graphics backend or ["Cairo"; "PNG"; filename] for the Cairo
-    backend, using a PNG surface to be saved to [filename].  The empty
-    list selects ["Graphics"; "hold"].
+    followed by one or several options.
+
+    - For the Graphics backend, ["hold"] will display the graphics
+      window until you press a key.  [["BMP"; filename]] will save a
+      copy of the display as a Windows Bitmap image file named
+      [filename].
+
+    - For the Cairo backend, ["Cairo"; "PNG"; filename] uses a PNG
+      surface to be saved to [filename].  You can replace "PNG" with
+      "PDF", "PS" and "SVG".
+
+    The empty list selects ["Graphics"; "hold"].
 
     @param w the width of the main viewport (in backend's unit).
 
@@ -30,7 +38,7 @@ val init : ?lines:float -> ?text:float -> ?marks:float ->
     libraries (cma or cmxs) for dynamically loaded backends.  The
     default is the directory where the backends that come with
     Archimedes were installed.
-*)
+ *)
 
 val backend_of_filename : string -> string list
 (** Selects a backend according to the filename suffix.  If the suffix
