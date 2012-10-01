@@ -59,9 +59,11 @@ let _ = BaseEnv.var_define "datarootdir_escaped"
    value, if configure does not set one. *)
 let () =
   let args = Array.to_list Sys.argv in
-  let disable_cairo = List.mem "--disable-cairo" args in
-  if disable_cairo then
+  if List.mem "--disable-graphics" args then (
+    let _ = BaseEnv.var_define "pkg_graphics" (fun () -> "disabled") in
+    ());
+  if List.mem "--disable-cairo" args then (
     let _ = BaseEnv.var_define "pkg_cairo2" (fun () -> "disabled") in
-    ()
+    ())
 
 let () = setup ();;
