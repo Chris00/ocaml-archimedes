@@ -177,6 +177,13 @@ val add : ?op:operator -> t -> t -> t
 (** Adds the first color to the second color, according to the
     operator [op] (default : [Over]).*)
 
-(* TODO add lighten function *)
+(** {3 Variations of a given color} *)
 
+val lighten : t -> float -> t
+(** [lighten c v] Lighten the color [c] of [v] percent. 0 corresponds to
+    the same color, 1 corresponds to the white color. *)
+
+val darken : t -> float -> t
+(** [darken c v] Darken the color [c] of [v] percent. 0 correspond to the
+    same color, 1 corresponds to the black color. *)
 
