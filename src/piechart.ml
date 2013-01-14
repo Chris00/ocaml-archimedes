@@ -38,6 +38,7 @@ type colorscheme =
       (int -> int -> float -> Color.t -> float -> Color.t)
 
 type keyplacement =
+  | NoKey
   | Rectangle
   | OverPie
   | Outer
@@ -45,7 +46,9 @@ type keyplacement =
 type keylabels =
   | Key
   | WithValues
-  | WithProcents
+  | WithPercents
+  | OnlyValues
+  | OnlyPercents
   | CustomLabels of (string -> float -> float -> string)
 
 let defaultcolors = [|
@@ -58,6 +61,38 @@ let defaultcolors = [|
   Color.black;
   Color.white
 |]
+
+type multidata = {
+  name: string;
+  value: float;
+  children: multidata list
+}
+
+let defaultmultilevelcolorscheme = LevelValueDependant (
+  fun level position parentvalue parentcolor value ->
+    if level = 0 then defaultcolors.(position)
+    else if level < 0 then Color.white
+    else if parentvalue < 1E-8 then Color.white
+    else Color.lighten parentcolor (1. -. value /. parentvalue)
+)
+
+let get_color scheme level position parentvalue parentcolor label value =
+  match scheme with
+  | Default -> defaultcolors.(position mod Array.length defaultcolors)
+  | Monochrome -> Color.white
+  | Black -> Color.darken Color.white (value /. parentvalue)
+  | CustomColors l -> List.assoc label l
+  | ValueDependant f -> f value
+  | LevelValueDependant f -> f level position parentvalue parentcolor value
+
+let get_label config parentvalue label value = match config with
+  | Key -> label
+  | WithValues -> Printf.sprintf "%s (%f)" label value
+  | WithPercents ->
+    Printf.sprintf "%s (%.2g)" label (value /. parentvalue *. 100.)
+  | OnlyValues -> string_of_float value
+  | OnlyPercents -> string_of_float (value /. parentvalue *. 100.)
+  | CustomLabels f -> f label value (value /. parentvalue *. 100.)
 
 let raw_flat vp centerx centery radius_in radius_out angle_start angle color =
   let transformation = Matrix.make_translate centerx centery in
@@ -86,32 +121,15 @@ let simple ?(style=Relief) ?(colorscheme=Default) ?(keyplacement=Rectangle)
   let sorted = List.sort (fun (_, x) (_, y) -> compare y x) data in
   let total = List.fold_left (fun acc (_, x) -> acc +. x) 0. sorted in
   let raw = raw_flat vp centerx centery 0. radius in
-  let _, finalangle = List.fold_left (fun (position, angle_start) (_, value) ->
+  let get_color = get_color colorscheme in
+  let _, finalangle = List.fold_left (fun (pos, angle_start) (label, value) ->
+    let color = get_color 0 pos total Color.white label value in
     let angle = value /. total *. 2. *. pi in
-    (position + 1, raw angle_start angle defaultcolors.(position))
+    (pos + 1, raw angle_start angle color)
   ) (0, 0.) sorted in
   if abs_float (finalangle -. 2. *. pi) > 1E-8
   then Printf.printf "warning: large numerical error in pie chart"
 (* FIXME: Cannot simply print things to indicate an error. *)
-
-type multidata = {
-  name: string;
-  value: float;
-  children: multidata list
-}
-
-let defaultmultilevelcolorscheme = LevelValueDependant (
-  fun level position parentvalue parentcolor value ->
-    if level = 0 then defaultcolors.(position)
-    else if level < 0 then Color.white
-    else if parentvalue < 1E-8 then Color.white
-    else Color.lighten parentcolor (1. -. value /. parentvalue)
-)
-
-let getcolor scheme level position parentvalue parentcolor value =
-  match scheme with
-  | LevelValueDependant f -> f level position parentvalue parentcolor value
-  | _ -> failwith "Not yet implemented"
 
 let multilevel ?(style=Flat) ?(colorscheme=defaultmultilevelcolorscheme)
     ?(keyplacement=OverPie) ?(keylabels=Key)
@@ -123,17 +141,15 @@ let multilevel ?(style=Flat) ?(colorscheme=defaultmultilevelcolorscheme)
   let total = List.fold_left (fun acc x -> acc +. x.value) 0. multidata in
   let position = ref 0 in
   let rec f level parentvalue parentcolor angle_start angle radius_in element =
-    Printf.printf "Level: %i; parentvalue: %f; parentcolor: (%f %f %f); angle_start: %f; angle: %f; radius_in: %f; element.name: %s; element.value: %f; element.#children: %i\n%!" level parentvalue (Color.r parentcolor) (Color.g parentcolor) (Color.b parentcolor) angle_start angle radius_in element.name element.value (List.length element.children);
     let sorted =
       List.sort (fun x y -> compare x.value y.value) element.children
     in
     let radius =
       if sorted = [] then radius_out else (radius_in +. radius_out) /. 2.
     in
-    let color =
-      getcolor colorscheme level !position parentvalue parentcolor element.value
+    let color = get_color colorscheme level !position parentvalue parentcolor
+      element.name element.value
     in
-    Printf.printf "Child color: (%f %f %f)\n%!" (Color.r color) (Color.g color) (Color.b color);
     position := !position + 1;
     raw_flat vp centerx centery radius_in radius angle_start angle color;
     List.fold_left (fun angle_start x ->

@@ -2,6 +2,7 @@ include Tests_common
 
 module V = Archimedes.Viewport
 module PC = Archimedes.Piechart
+module C = Archimedes.Color
 
 let draw bk =
   let vp = Archimedes.init ~w ~h ~dirs bk in
@@ -25,7 +26,13 @@ let draw bk =
   ] in
 
   (* TODO add titles *)
-  PC.simple ~colorscheme:(PC.CustomColors ["blue", Archimedes.Color.blue])vps.(0).(0) data1;
+  let customscheme = PC.CustomColors [
+    "first", C.blue;
+    "second", C.red;
+    "third", C.blue;
+    "crew", C.orange
+  ] in
+  PC.simple ~colorscheme:customscheme vps.(0).(0) data1;
   PC.simple vps.(0).(1) data2;
   PC.multilevel vps.(1).(0) data3;
   PC.multilevel vps.(1).(1) data4;

@@ -25,6 +25,7 @@ type colorscheme =
       elements. *)
 
 type keyplacement =
+| NoKey     (** No key at all *)
 | Rectangle (** A rectangle containing the color followed by the label
                 of each data *)
 | OverPie   (** The labels are drawn directly over the data *)
@@ -34,8 +35,10 @@ type keyplacement =
 type keylabels =
 | Key          (** Just the name of the data *)
 | WithValues   (** The name followed by the value between parentheses *)
-| WithProcents (** The name followed by the procent among all data between
+| WithPercents (** The name followed by the percentage among all data between
                    parentheses *)
+| OnlyValues   (** Only the value *)
+| OnlyPercents (** Only the percentage *)
 | CustomLabels of (string -> float -> float -> string)
 (** A custom label made of the name, the value and the percentage. *)
 
