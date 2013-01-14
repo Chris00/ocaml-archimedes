@@ -236,3 +236,15 @@ let add ?(op=Over) init newc =
    g = merge init.g newc.g;
    b = merge init.b newc.b;
    a = alpha}
+
+let lighten c v =
+  {r = c.r +. (1. -. c.r) *. v;
+   g = c.g +. (1. -. c.g) *. v;
+   b = c.b +. (1. -. c.b) *. v;
+   a = c.a}
+
+let darken c v =
+  {r = c.r *. v;
+   g = c.g *. v;
+   b = c.b *. v;
+   a = c.a}
