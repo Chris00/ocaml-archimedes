@@ -59,6 +59,22 @@ let defaultcolors = [|
   Color.white
 |]
 
+let raw_flat vp centerx centery radius_in radius_out angle_start angle color =
+  let transformation = Matrix.make_translate centerx centery in
+  Matrix.rotate transformation angle_start;
+  let path = Path.make () in
+  Path.move_to path radius_in 0.;
+  Path.line_to path radius_out 0.;
+  Path.arc path radius_out 0. angle;
+  Path.line_to path (cos angle *. radius_in) (sin angle *. radius_in);
+  Path.arc path radius_in angle 0.;
+  let finalpath = Path.transform transformation path in
+  V.set_color vp color;
+    V.fill vp `Graph finalpath;
+  V.set_color vp Color.black;
+  V.stroke vp `Graph finalpath;
+  angle_start +. angle
+
 let simple ?(style=Relief) ?(colorscheme=Default) ?(keyplacement=Rectangle)
     ?(keylabels=WithValues) ?(x0=0.) ?(y0=0.16) ?(xend=1.) ?(yend=1.)
     vp data =
@@ -69,24 +85,11 @@ let simple ?(style=Relief) ?(colorscheme=Default) ?(keyplacement=Rectangle)
   let radius = min (0.5 *. (xend -. x0)) (0.5 *. (yend -. y0)) in
   let sorted = List.sort (fun (_, x) (_, y) -> compare y x) data in
   let total = List.fold_left (fun acc (_, x) -> acc +. x) 0. sorted in
-  let strokepath = Path.make () in
-  let draw_simple_data (position, angle) (label, value) =
-    let path = Path.make() in
-    Path.move_to path centerx centery;
-    let endangle = angle +. value /. total *. 2. *. pi in
-    Path.line_to path
-      (centerx +. radius *. cos angle) (centery +. radius *. sin angle);
-    Path.arc path radius angle endangle;
-    Path.append strokepath path;
-    Viewport.set_color vp defaultcolors.(position);
-    Viewport.fill vp `Graph path;
-    (position + 1, endangle)
-  in
-  let _, finalangle =
-    List.fold_left draw_simple_data (0, 0.) sorted
-  in
-  Viewport.set_color vp Color.black;
-  Viewport.stroke vp `Graph strokepath;
+  let raw = raw_flat vp centerx centery 0. radius in
+  let _, finalangle = List.fold_left (fun (position, angle_start) (_, value) ->
+    let angle = value /. total *. 2. *. pi in
+    (position + 1, raw angle_start angle defaultcolors.(position))
+  ) (0, 0.) sorted in
   if abs_float (finalangle -. 2. *. pi) > 1E-8
   then Printf.printf "warning: large numerical error in pie chart"
 (* FIXME: Cannot simply print things to indicate an error. *)
@@ -101,14 +104,44 @@ let defaultmultilevelcolorscheme = LevelValueDependant (
   fun level position parentvalue parentcolor value ->
     if level = 0 then defaultcolors.(position)
     else if level < 0 then Color.white
-    else parentcolor (* TODO lighten:
-                        value = parentvalue => parentcolor,
-                        (                gradient        ),
-                        value = 0           => white     *)
+    else if parentvalue < 1E-8 then Color.white
+    else Color.lighten parentcolor (1. -. value /. parentvalue)
 )
+
+let getcolor scheme level position parentvalue parentcolor value =
+  match scheme with
+  | LevelValueDependant f -> f level position parentvalue parentcolor value
+  | _ -> failwith "Not yet implemented"
 
 let multilevel ?(style=Flat) ?(colorscheme=defaultmultilevelcolorscheme)
     ?(keyplacement=OverPie) ?(keylabels=Key)
     ?(x0=0.) ?(y0=0.16) ?(xend=1.) ?(yend=1.)
     vp multidata =
-  failwith "FIXME: to be implemented"
+  let centerx = 0.5 *. (x0 +. xend)
+  and centery = 0.5 *. (y0 +. yend) in
+  let radius_out = min (0.5 *. (xend -. x0)) (0.5 *. (yend -. y0)) in
+  let total = List.fold_left (fun acc x -> acc +. x.value) 0. multidata in
+  let position = ref 0 in
+  let rec f level parentvalue parentcolor angle_start angle radius_in element =
+    Printf.printf "Level: %i; parentvalue: %f; parentcolor: (%f %f %f); angle_start: %f; angle: %f; radius_in: %f; element.name: %s; element.value: %f; element.#children: %i\n%!" level parentvalue (Color.r parentcolor) (Color.g parentcolor) (Color.b parentcolor) angle_start angle radius_in element.name element.value (List.length element.children);
+    let sorted =
+      List.sort (fun x y -> compare x.value y.value) element.children
+    in
+    let radius =
+      if sorted = [] then radius_out else (radius_in +. radius_out) /. 2.
+    in
+    let color =
+      getcolor colorscheme level !position parentvalue parentcolor element.value
+    in
+    Printf.printf "Child color: (%f %f %f)\n%!" (Color.r color) (Color.g color) (Color.b color);
+    position := !position + 1;
+    raw_flat vp centerx centery radius_in radius angle_start angle color;
+    List.fold_left (fun angle_start x ->
+      let angle = x.value /. element.value *. angle in
+      f (level + 1) element.value color angle_start angle radius x) angle_start element.children;
+    angle_start +. angle
+  in
+  List.fold_left (fun angle_start x ->
+    let angle = x.value /. total *. 2. *. pi in
+    f 0 total Color.white angle_start angle 0. x) 0. multidata;
+  ()
