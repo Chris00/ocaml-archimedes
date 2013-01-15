@@ -170,6 +170,8 @@ let xy ?tlog ?(n=100) ?(strategy=strategy_default) ?(cost=cost_default) f a b =
   (* Add points (intervals) until the number [n] of evaluations is
      exhausted or all costs are <= 0. *)
   let n = ref(n - n0) in
+  if PQ.is_empty q then
+    failwith "Archimedes.Sampler.xy: initial sampling only returned nan";
   while !n > 0 && PQ.max_priority q > 0. do
     let c0 = PQ.max_priority q in
     let i = PQ.delete_max q in
