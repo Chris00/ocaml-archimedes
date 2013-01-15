@@ -181,6 +181,13 @@ Executable "multi_hue.ml"
   BuildDepends: archimedes
   Install:      false
 
+Executable "files_pie.ml"
+  Path:         examples/
+  BuildTools:   ocamlbuild
+  MainIs:       files_pie.ml
+  BuildDepends: archimedes
+  Install:      false
+
 SourceRepository trunk
   Type:       git
   Location:   http://forge.ocamlcore.org/anonscm/git/archimedes/archimedes.git
