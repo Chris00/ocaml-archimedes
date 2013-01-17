@@ -103,12 +103,14 @@ let extents_key vp x0 y0 xend yend total data label_config = function
     let getwidth = label_width vp label_config total in
     let maxwidth = List.fold_left (fun acc x -> max acc (getwidth x)) 0. data in
     let maxheight = (V.text_extents vp "()").M.h in
-    let centerx = 0.5 *. (x0 +. xend) -. maxwidth
-    and centery = 0.5 *. (y0 +. yend) -. maxheight
+    let center = 0.5 *. (x0 +. xend), 0.5 *. (y0 +. yend)
     and radius =
       min (0.5 *. (xend -. x0) -. maxwidth) (0.5 *. (yend -. y0) -. maxheight)
     in
-    (centerx, centery), radius
+    if radius < 1E-8 then
+      Printf.printf ("Warning: this viewport is too small or the font" ^^
+                        " is too large\n%!");
+    center, radius
 
 let extents_style style ((cx, cy), radius) = match style with
   | Highlight _ -> (cx, cy), 10. *. radius /. 11.
@@ -159,17 +161,24 @@ let draw_label placement vp xend y0 cx cy r1 r2 angle_start angle color position
     let labelcolor = Color.higher_contrast_bw color in
     let basecolor = V.get_color vp in
     V.set_color vp labelcolor;
-    print_float (Color.r labelcolor);
-    print_newline ();
-    print_float (Color.g labelcolor);
-    print_newline ();
-    print_float (Color.b labelcolor);
-    print_newline ();
-    print_newline ();
     V.text vp ~coord:`Graph ~pos:Backend.CC x y label;
     V.set_color vp basecolor;
   | Outer ->
-    failwith "Not yet implemented"
+    let angle = angle_start +. angle /. 2. in
+    let x1 = cx +. (r2 +. r1) *. 2. /. 3. *. cos angle in
+    let y1 = cy +. (r2 +. r1) *. 2. /. 3. *. sin angle in
+    let x2 = cx +. (r2 *. 1.1) *. cos angle in
+    let y2 = cy +. (r2 *. 1.1) *. sin angle in
+    let x3, pos = match x2 with
+      | x2 when x2 > cx -> x2 +. (r2 -. r1) /. 5., Backend.RC
+      | x2 -> x2 -. (r2 -. r1) /. 5., Backend.LC
+    in
+    let path = P.make () in
+    P.move_to path x1 y1;
+    P.line_to path x2 y2;
+    P.line_to path x3 y2;
+    V.stroke vp `Graph path;
+    V.text vp ~coord:`Graph ~pos x3 y2 label
 
 let raw_flat style vp cx cy r1 r2 angle_start angle color name =
   let path = get_path style cx cy r1 r2 angle_start angle name in
