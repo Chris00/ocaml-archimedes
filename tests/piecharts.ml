@@ -21,9 +21,6 @@ let draw bk =
       {PC.name = "18 -> 65"; PC.value = 23.; PC.children = []};
       {PC.name = "> 65"; PC.value = 3.; PC.children = []}]}
   ] in
-  let data4 = [
-    {PC.name = "test"; PC.value = 1.; PC.children = []}
-  ] in
 
   (* TODO add titles *)
   let customscheme = PC.CustomColors [
@@ -34,8 +31,8 @@ let draw bk =
   ] in
   PC.simple ~style:(PC.Highlight ["third"]) ~colorscheme:customscheme
     vps.(0).(0) data1;
-  PC.simple vps.(0).(1) data2;
+  PC.simple ~keylabels:PC.WithPercents vps.(0).(1) data2;
   PC.multilevel vps.(1).(0) data3;
-  PC.multilevel vps.(1).(1) data4;
+  PC.simple ~keyplacement:PC.OverPie ~keylabels:PC.Label vps.(1).(1) data2;
 
   Archimedes.close vp
