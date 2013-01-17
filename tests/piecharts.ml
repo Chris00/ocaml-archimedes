@@ -30,7 +30,7 @@ let draw bk =
     "crew", C.orange
   ] in
   PC.simple ~style:(PC.Highlight ["third"]) ~colorscheme:customscheme
-    vps.(0).(0) data1;
+    ~keyplacement:PC.Outer vps.(0).(0) data1;
   PC.simple ~keylabels:PC.WithPercents vps.(0).(1) data2;
   PC.multilevel vps.(1).(0) data3;
   PC.simple ~keyplacement:PC.OverPie ~keylabels:PC.Label vps.(1).(1) data2;
