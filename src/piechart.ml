@@ -20,8 +20,9 @@
 
 (* TODO some comments would be useful ... *)
 (* TODO implement the Relief style *)
-(* TODO implement key *)
+(* TODO implement OuterPie key *)
 (* TODO Check multilevel implementation *)
+(* TODO implement key for multilevel *)
 (* TODO There are warnings in multilevel implementation *)
 
 module V = Viewport
@@ -75,9 +76,9 @@ let get_color scheme level position parentvalue parentcolor label value =
 
 let get_label config parentvalue (label, value) = match config with
   | Label -> label
-  | WithValues -> Printf.sprintf "%s (%f)" label value
+  | WithValues -> Printf.sprintf "%s (%.2f)" label value
   | WithPercents ->
-    Printf.sprintf "%s (%.2g)" label (value /. parentvalue *. 100.)
+    Printf.sprintf "%s (%.2f%%)" label (value /. parentvalue *. 100.)
   | OnlyValues -> string_of_float value
   | OnlyPercents -> string_of_float (value /. parentvalue *. 100.)
   | CustomLabels f -> f label value (value /. parentvalue *. 100.)
@@ -93,13 +94,15 @@ let extents_key vp x0 y0 xend yend total data label_config = function
   | Rectangle ->
     let getwidth = label_width vp label_config total in
     let maxwidth = List.fold_left (fun acc x -> max acc (getwidth x)) 0. data in
+    let maxheight = (V.text_extents vp "()").M.h in
+    let maxwidth = maxwidth +. 2. *. maxheight in (* place for color box *)
     let center = 0.5 *. (x0 +. xend -. maxwidth), 0.5 *. (y0 +. yend)
     and radius = 0.5 *. min (xend -. x0 -. maxwidth) (yend -. y0) in
     center, radius
   | Outer ->
     let getwidth = label_width vp label_config total in
     let maxwidth = List.fold_left (fun acc x -> max acc (getwidth x)) 0. data in
-    let maxheight = (V.text_extents vp "gX").Matrix.h in
+    let maxheight = (V.text_extents vp "()").M.h in
     let centerx = 0.5 *. (x0 +. xend) -. maxwidth
     and centery = 0.5 *. (y0 +. yend) -. maxheight
     and radius =
@@ -136,6 +139,38 @@ let rec get_path style cx cy r1 r2 angle_start angle name =
                       " to Flat style\n%!");
     get_path Flat cx cy r1 r2 angle_start angle name
 
+let draw_label placement vp xend y0 cx cy r1 r2 angle_start angle color position label =
+  match placement with
+  | NoKey -> ()
+  | Rectangle ->
+    let h = (V.text_extents vp "()").M.h in
+    let y = y0 +. h *. float position *. 1.2 in
+    V.text vp ~coord:`Graph ~pos:Backend.LT (xend -. 2. *. h) y label;
+    let path = Path.make () in
+    P.rectangle path (xend -. h) y h h;
+    let basecolor = V.get_color vp in
+    V.set_color vp color;
+    V.fill vp `Graph path;
+    V.set_color vp basecolor;
+    V.stroke vp `Graph path
+  | OverPie ->
+    let x = cx +. (r2 +. r1) /. 2. *. cos (angle_start +. angle /. 2.) in
+    let y = cy +. (r2 +. r1) /. 2. *. sin (angle_start +. angle /. 2.) in
+    let labelcolor = Color.higher_contrast_bw color in
+    let basecolor = V.get_color vp in
+    V.set_color vp labelcolor;
+    print_float (Color.r labelcolor);
+    print_newline ();
+    print_float (Color.g labelcolor);
+    print_newline ();
+    print_float (Color.b labelcolor);
+    print_newline ();
+    print_newline ();
+    V.text vp ~coord:`Graph ~pos:Backend.CC x y label;
+    V.set_color vp basecolor;
+  | Outer ->
+    failwith "Not yet implemented"
+
 let raw_flat style vp cx cy r1 r2 angle_start angle color name =
   let path = get_path style cx cy r1 r2 angle_start angle name in
   let basecolor = V.get_color vp in
@@ -158,6 +193,9 @@ let simple ?(style=Relief) ?(colorscheme=Default) ?(keyplacement=Rectangle)
     let color = get_color colorscheme 0 pos total Color.white name value in
     let angle = value /. total *. twopi in
     raw angle_start angle color name;
+    let label = get_label keylabels total (name, value) in
+    draw_label keyplacement vp xend y0 centerx centery 0. radius angle_start
+      angle color pos label;
     (pos + 1, angle_start +. angle)
   ) (0, 0.) sorted in
   if abs_float (finalangle -. twopi) > 1E-8
