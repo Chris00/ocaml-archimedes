@@ -20,7 +20,6 @@
 
 (* TODO some comments would be useful ... *)
 (* TODO implement the Relief style *)
-(* TODO implement OuterPie key *)
 (* TODO Check multilevel implementation *)
 (* TODO implement key for multilevel *)
 (* TODO There are warnings in multilevel implementation *)
