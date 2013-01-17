@@ -248,3 +248,6 @@ let darken c v =
    g = c.g *. v;
    b = c.b *. v;
    a = c.a}
+
+let higher_contrast_bw c =
+  if max c.r (max c.g c.b) < 0.5 then white else black
