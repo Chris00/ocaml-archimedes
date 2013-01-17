@@ -18,49 +18,37 @@
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the file
    LICENSE for more details. *)
 
-let pi = atan 1. *. 4.
+(* TODO some comments would be useful ... *)
+(* TODO implement the Relief style *)
+(* TODO implement key *)
+(* TODO Check multilevel implementation *)
+(* TODO There are warnings in multilevel implementation *)
 
 module V = Viewport
+module P = Path
+module M = Matrix
 
-type style =
-  | Flat
-  | Separated
-  | HighlightFlat
-  | Relief
+let twopi = atan 1. *. 8.
+
+type style = Flat | Highlight of string list | Relief
 
 type colorscheme =
-  | Default
-  | Monochrome
-  | Black
-  | CustomColors of (string * Color.t) list
+  | Default | Monochrome | Black | CustomColors of (string * Color.t) list
   | ValueDependant of (float -> Color.t)
-  | LevelValueDependant of
-      (int -> int -> float -> Color.t -> float -> Color.t)
+  | LevelValueDependant of (int -> int -> float -> Color.t -> float -> Color.t)
 
-type keyplacement =
-  | NoKey
-  | Rectangle
-  | OverPie
-  | Outer
+type keyplacement = NoKey | Rectangle | OverPie | Outer
 
 type keylabels =
-  | Key
-  | WithValues
-  | WithPercents
-  | OnlyValues
-  | OnlyPercents
+  | Label | WithValues | WithPercents | OnlyValues | OnlyPercents
   | CustomLabels of (string -> float -> float -> string)
 
-let defaultcolors = [|
-  Color.yellow;
-  Color.red;
-  Color.blue;
-  Color.green;
-  Color.magenta;
-  Color.cyan;
-  Color.black;
-  Color.white
-|]
+let defaultcolors =
+  let open Color in
+  [| yellow; red; blue; green; magenta; cyan; black; white |]
+
+let default_color position =
+  defaultcolors.(position mod Array.length defaultcolors)
 
 type multidata = {
   name: string;
@@ -70,7 +58,7 @@ type multidata = {
 
 let defaultmultilevelcolorscheme = LevelValueDependant (
   fun level position parentvalue parentcolor value ->
-    if level = 0 then defaultcolors.(position)
+    if level = 0 then default_color position
     else if level < 0 then Color.white
     else if parentvalue < 1E-8 then Color.white
     else Color.lighten parentcolor (1. -. value /. parentvalue)
@@ -78,15 +66,15 @@ let defaultmultilevelcolorscheme = LevelValueDependant (
 
 let get_color scheme level position parentvalue parentcolor label value =
   match scheme with
-  | Default -> defaultcolors.(position mod Array.length defaultcolors)
+  | Default -> default_color position
   | Monochrome -> Color.white
   | Black -> Color.darken Color.white (value /. parentvalue)
   | CustomColors l -> List.assoc label l
   | ValueDependant f -> f value
   | LevelValueDependant f -> f level position parentvalue parentcolor value
 
-let get_label config parentvalue label value = match config with
-  | Key -> label
+let get_label config parentvalue (label, value) = match config with
+  | Label -> label
   | WithValues -> Printf.sprintf "%s (%f)" label value
   | WithPercents ->
     Printf.sprintf "%s (%.2g)" label (value /. parentvalue *. 100.)
@@ -94,70 +82,122 @@ let get_label config parentvalue label value = match config with
   | OnlyPercents -> string_of_float (value /. parentvalue *. 100.)
   | CustomLabels f -> f label value (value /. parentvalue *. 100.)
 
-let raw_flat vp centerx centery radius_in radius_out angle_start angle color =
-  let transformation = Matrix.make_translate centerx centery in
-  Matrix.rotate transformation angle_start;
-  let path = Path.make () in
-  Path.move_to path radius_in 0.;
-  Path.line_to path radius_out 0.;
-  Path.arc path radius_out 0. angle;
-  Path.line_to path (cos angle *. radius_in) (sin angle *. radius_in);
-  Path.arc path radius_in angle 0.;
-  let finalpath = Path.transform transformation path in
+let label_width vp label_config total (name, value) =
+  (V.text_extents vp (get_label label_config total (name, value))).Matrix.w
+
+let extents_key vp x0 y0 xend yend total data label_config = function
+  | NoKey | OverPie ->
+    let center = 0.5 *. (x0 +. xend), 0.5 *. (y0 +. yend)
+    and radius = 0.5 *. min (xend -. x0) (yend -. y0) in
+    center, radius
+  | Rectangle ->
+    let getwidth = label_width vp label_config total in
+    let maxwidth = List.fold_left (fun acc x -> max acc (getwidth x)) 0. data in
+    let center = 0.5 *. (x0 +. xend -. maxwidth), 0.5 *. (y0 +. yend)
+    and radius = 0.5 *. min (xend -. x0 -. maxwidth) (yend -. y0) in
+    center, radius
+  | Outer ->
+    let getwidth = label_width vp label_config total in
+    let maxwidth = List.fold_left (fun acc x -> max acc (getwidth x)) 0. data in
+    let maxheight = (V.text_extents vp "gX").Matrix.h in
+    let centerx = 0.5 *. (x0 +. xend) -. maxwidth
+    and centery = 0.5 *. (y0 +. yend) -. maxheight
+    and radius =
+      min (0.5 *. (xend -. x0) -. maxwidth) (0.5 *. (yend -. y0) -. maxheight)
+    in
+    (centerx, centery), radius
+
+let extents_style style ((cx, cy), radius) = match style with
+  | Highlight _ -> (cx, cy), 10. *. radius /. 11.
+  | Flat -> (cx, cy), radius
+  | Relief ->
+    Printf.printf ("Warning: Relief style extents not yet" ^^
+                      " implemented; badboxes may appear\n%!");
+    (cx, cy), radius
+
+let rec get_path style cx cy r1 r2 angle_start angle name =
+  match style with
+  | Highlight l when List.mem name l ->
+    let path = get_path Flat cx cy r1 r2 angle_start angle name in
+    let tr = (r2 -. r1) /. 10. in
+    let angle = angle_start +. angle /. 2. in
+    P.transform (M.make_translate (tr *. cos angle) (tr *. sin angle)) path
+  | Highlight _ | Flat ->
+    let path = P.make () in
+    P.move_to path r1 0.;
+    P.line_to path r2 0.;
+    P.arc path r2 0. angle;
+    P.line_to path (cos angle *. r1) (sin angle *. r1);
+    P.arc path r1 angle 0.;
+    let path = P.transform (M.make_rotate angle_start) path in
+    P.transform (M.make_translate cx cy) path
+  | Relief ->
+    Printf.printf ("Warning: Relief style not yet implemented; falling back" ^^
+                      " to Flat style\n%!");
+    get_path Flat cx cy r1 r2 angle_start angle name
+
+let raw_flat style vp cx cy r1 r2 angle_start angle color name =
+  let path = get_path style cx cy r1 r2 angle_start angle name in
+  let basecolor = V.get_color vp in
   V.set_color vp color;
-    V.fill vp `Graph finalpath;
-  V.set_color vp Color.black;
-  V.stroke vp `Graph finalpath;
-  angle_start +. angle
+  V.fill vp `Graph path;
+  V.set_color vp basecolor;
+  V.stroke vp `Graph path;
+  ()
 
 let simple ?(style=Relief) ?(colorscheme=Default) ?(keyplacement=Rectangle)
     ?(keylabels=WithValues) ?(x0=0.) ?(y0=0.16) ?(xend=1.) ?(yend=1.)
     vp data =
-  let centerx = 0.5 *. (x0 +. xend)
-  and centery = 0.5 *. (y0 +. yend) in
-  (* TODO we consider we have all the space to draw pie, we need to keep
-     space for the key *)
-  let radius = min (0.5 *. (xend -. x0)) (0.5 *. (yend -. y0)) in
   let sorted = List.sort (fun (_, x) (_, y) -> compare y x) data in
   let total = List.fold_left (fun acc (_, x) -> acc +. x) 0. sorted in
-  let raw = raw_flat vp centerx centery 0. radius in
-  let get_color = get_color colorscheme in
-  let _, finalangle = List.fold_left (fun (pos, angle_start) (label, value) ->
-    let color = get_color 0 pos total Color.white label value in
-    let angle = value /. total *. 2. *. pi in
-    (pos + 1, raw angle_start angle color)
+  let (centerx, centery), radius = extents_style style
+    (extents_key vp x0 y0 xend yend total data keylabels keyplacement)
+  in
+  let raw = raw_flat style vp centerx centery 0. radius in
+  let _, finalangle = List.fold_left (fun (pos, angle_start) (name, value) ->
+    let color = get_color colorscheme 0 pos total Color.white name value in
+    let angle = value /. total *. twopi in
+    raw angle_start angle color name;
+    (pos + 1, angle_start +. angle)
   ) (0, 0.) sorted in
-  if abs_float (finalangle -. 2. *. pi) > 1E-8
-  then Printf.printf "warning: large numerical error in pie chart"
+  if abs_float (finalangle -. twopi) > 1E-8
+  then Printf.printf "Warning: large numerical error in pie chart"
 (* FIXME: Cannot simply print things to indicate an error. *)
 
+let rec depth cur = function
+  | [] -> cur
+  | hd :: tl -> max (depth (cur + 1) hd.children) (depth cur tl)
+
 let multilevel ?(style=Flat) ?(colorscheme=defaultmultilevelcolorscheme)
-    ?(keyplacement=OverPie) ?(keylabels=Key)
+    ?(keyplacement=OverPie) ?(keylabels=Label)
     ?(x0=0.) ?(y0=0.16) ?(xend=1.) ?(yend=1.)
     vp multidata =
   let centerx = 0.5 *. (x0 +. xend)
   and centery = 0.5 *. (y0 +. yend) in
-  let radius_out = min (0.5 *. (xend -. x0)) (0.5 *. (yend -. y0)) in
+  let radius_total = min (0.5 *. (xend -. x0)) (0.5 *. (yend -. y0)) in
+  let radius_slice = radius_total /. float (depth 1 multidata + 1) in
   let total = List.fold_left (fun acc x -> acc +. x.value) 0. multidata in
   let position = ref 0 in
-  let rec f level parentvalue parentcolor angle_start angle radius_in element =
+  let rec f level parentvalue parentcolor angle_start angle element =
+    (* Level 0 has twice the place allowed for other levels *)
+    let radius_in = float level *. radius_slice in
+    let radius_in = radius_in +. if level = 0 then 0. else radius_slice in
+    let radius_out = radius_in +. radius_slice in
+    let radius_out = radius_out +. if level = 0 then radius_slice else 0. in
     let sorted =
       List.sort (fun x y -> compare x.value y.value) element.children
-    in
-    let radius =
-      if sorted = [] then radius_out else (radius_in +. radius_out) /. 2.
     in
     let color = get_color colorscheme level !position parentvalue parentcolor
       element.name element.value
     in
     position := !position + 1;
-    raw_flat vp centerx centery radius_in radius angle_start angle color;
+    raw_flat style vp centerx centery radius_in radius_out angle_start angle color element.name;
     List.fold_left (fun angle_start x ->
       let angle = x.value /. element.value *. angle in
-      f (level + 1) element.value color angle_start angle radius x) angle_start element.children;
+      f (level + 1) element.value color angle_start angle x) angle_start sorted;
     angle_start +. angle
   in
   List.fold_left (fun angle_start x ->
-    let angle = x.value /. total *. 2. *. pi in
-    f 0 total Color.white angle_start angle 0. x) 0. multidata;
+    let angle = x.value /. total *. twopi in
+    f 0 total Color.white angle_start angle x) 0. multidata;
   ()

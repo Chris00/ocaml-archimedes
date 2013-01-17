@@ -32,7 +32,8 @@ let draw bk =
     "third", C.blue;
     "crew", C.orange
   ] in
-  PC.simple ~colorscheme:customscheme vps.(0).(0) data1;
+  PC.simple ~style:(PC.Highlight ["third"]) ~colorscheme:customscheme
+    vps.(0).(0) data1;
   PC.simple vps.(0).(1) data2;
   PC.multilevel vps.(1).(0) data3;
   PC.multilevel vps.(1).(1) data4;

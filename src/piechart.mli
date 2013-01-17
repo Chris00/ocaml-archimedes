@@ -1,9 +1,8 @@
 
 type style =
 | Flat          (** A simple circle separated in regions *)
-| Separated     (** The regions are separated by a gap *)
-| HighlightFlat (** One of the regions is separated by a gap, and so
-                    highlighted toward the others *)
+| Highlight of string list (** The named region is separated by a gap, and so
+                               highlighted toward the others *)
 | Relief        (** A simple 3D pie *)
 
 type colorscheme =
@@ -33,7 +32,7 @@ type keyplacement =
                 point out *)
 
 type keylabels =
-| Key          (** Just the name of the data *)
+| Label        (** Just the name of the data *)
 | WithValues   (** The name followed by the value between parentheses *)
 | WithPercents (** The name followed by the percentage among all data between
                    parentheses *)
