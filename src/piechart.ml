@@ -23,6 +23,9 @@
 (* TODO Check multilevel implementation *)
 (* TODO implement key for multilevel *)
 (* TODO There are warnings in multilevel implementation *)
+(* FIXME Several errors are just printed out instead of being leveraged by
+   any kind of exception mechanism (the idea is to let the user take another
+   action if a problem of this kind occur) *)
 
 module V = Viewport
 module P = Path
@@ -33,15 +36,15 @@ let twopi = atan 1. *. 8.
 type style = Flat | Highlight of string list | Relief
 
 type colorscheme =
-  | Default | Monochrome | Black | CustomColors of (string * Color.t) list
-  | ValueDependant of (float -> Color.t)
-  | LevelValueDependant of (int -> int -> float -> Color.t -> float -> Color.t)
+| Default | Monochrome | Black | CustomColors of (string * Color.t) list
+| ValueDependant of (float -> Color.t)
+| LevelValueDependant of (int -> int -> float -> Color.t -> float -> Color.t)
 
 type keyplacement = NoKey | Rectangle | OverPie | Outer | Selective of float
 
 type keylabels =
-  | Label | WithValues | WithPercents | OnlyValues | OnlyPercents
-  | CustomLabels of (string -> float -> float -> string)
+| Label | WithValues | WithPercents | OnlyValues | OnlyPercents
+| CustomLabels of (string -> float -> float -> string)
 
 let defaultcolors =
   let open Color in
@@ -148,7 +151,8 @@ let rec get_path style cx cy r1 r2 angle_start angle name =
                       " to Flat style\n%!");
     get_path Flat cx cy r1 r2 angle_start angle name
 
-let rec draw_label placement vp xend y0 cx cy r1 r2 angle_start angle color position label =
+let rec draw_label placement vp xend y0 cx cy r1 r2 angle_start angle color
+    position label =
   match placement with
   | NoKey -> ()
   | Rectangle ->
@@ -187,10 +191,8 @@ let rec draw_label placement vp xend y0 cx cy r1 r2 angle_start angle color posi
     V.stroke vp `Graph path;
     V.text vp ~coord:`Graph ~pos x3 y2 label
   | Selective limit ->
-    if angle < limit then
-      draw_label Outer vp xend y0 cx cy r1 r2 angle_start angle color position label
-    else
-      draw_label OverPie vp xend y0 cx cy r1 r2 angle_start angle color position label
+    let p = if angle < limit then Outer else OverPie in
+    draw_label p vp xend y0 cx cy r1 r2 angle_start angle color position label
 
 let raw_flat style vp cx cy r1 r2 angle_start angle color name =
   let path = get_path style cx cy r1 r2 angle_start angle name in
@@ -198,8 +200,7 @@ let raw_flat style vp cx cy r1 r2 angle_start angle color name =
   V.set_color vp color;
   V.fill vp `Graph path;
   V.set_color vp basecolor;
-  V.stroke vp `Graph path;
-  ()
+  V.stroke vp `Graph path
 
 let simple ?(style=Relief) ?(colorscheme=Default) ?(keyplacement=Rectangle)
     ?(keylabels=WithValues) ?(x0=0.) ?(y0=0.16) ?(xend=1.) ?(yend=1.)
