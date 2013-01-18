@@ -188,6 +188,13 @@ Executable "files_pie.ml"
   BuildDepends: archimedes
   Install:      false
 
+Executable "incremental_drawing.ml"
+  Path:         examples/
+  BuildTools:   ocamlbuild
+  MainIs:       incremental_drawing.ml
+  BuildDepends: archimedes
+  Install:      false
+
 SourceRepository trunk
   Type:       git
   Location:   http://forge.ocamlcore.org/anonscm/git/archimedes/archimedes.git
