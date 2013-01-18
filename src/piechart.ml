@@ -37,7 +37,7 @@ type colorscheme =
   | ValueDependant of (float -> Color.t)
   | LevelValueDependant of (int -> int -> float -> Color.t -> float -> Color.t)
 
-type keyplacement = NoKey | Rectangle | OverPie | Outer
+type keyplacement = NoKey | Rectangle | OverPie | Outer | Selective of float
 
 type keylabels =
   | Label | WithValues | WithPercents | OnlyValues | OnlyPercents
@@ -75,7 +75,7 @@ let get_color scheme level position parentvalue parentcolor label value =
 
 let get_label config parentvalue (label, value) = match config with
   | Label -> label
-  | WithValues -> Printf.sprintf "%s (%.2f)" label value
+  | WithValues -> Printf.sprintf "%s (%g)" label value
   | WithPercents ->
     Printf.sprintf "%s (%.2f%%)" label (value /. parentvalue *. 100.)
   | OnlyValues -> string_of_float value
@@ -85,7 +85,7 @@ let get_label config parentvalue (label, value) = match config with
 let label_width vp label_config total (name, value) =
   (V.text_extents vp (get_label label_config total (name, value))).Matrix.w
 
-let extents_key vp x0 y0 xend yend total data label_config = function
+let rec extents_key vp x0 y0 xend yend total data label_config = function
   | NoKey | OverPie ->
     let center = 0.5 *. (x0 +. xend), 0.5 *. (y0 +. yend)
     and radius = 0.5 *. min (xend -. x0) (yend -. y0) in
@@ -110,6 +110,14 @@ let extents_key vp x0 y0 xend yend total data label_config = function
       Printf.printf ("Warning: this viewport is too small or the font" ^^
                         " is too large\n%!");
     center, radius
+  | Selective limitrad ->
+    let limitvalue = limitrad *. total /. twopi in
+    let outerdata = List.filter (fun (_, x) -> x < limitvalue) data in
+    let outertotal = List.fold_left (fun acc (_, x) -> acc +. x) 0. outerdata in
+    if outertotal > total /. 4. then
+      extents_key vp x0 y0 xend yend total data label_config Outer
+    else
+      extents_key vp x0 y0 xend yend total data label_config Rectangle
 
 let extents_style style ((cx, cy), radius) = match style with
   | Highlight _ -> (cx, cy), 10. *. radius /. 11.
@@ -140,7 +148,7 @@ let rec get_path style cx cy r1 r2 angle_start angle name =
                       " to Flat style\n%!");
     get_path Flat cx cy r1 r2 angle_start angle name
 
-let draw_label placement vp xend y0 cx cy r1 r2 angle_start angle color position label =
+let rec draw_label placement vp xend y0 cx cy r1 r2 angle_start angle color position label =
   match placement with
   | NoKey -> ()
   | Rectangle ->
@@ -178,6 +186,11 @@ let draw_label placement vp xend y0 cx cy r1 r2 angle_start angle color position
     P.line_to path x3 y2;
     V.stroke vp `Graph path;
     V.text vp ~coord:`Graph ~pos x3 y2 label
+  | Selective limit ->
+    if angle < limit then
+      draw_label Outer vp xend y0 cx cy r1 r2 angle_start angle color position label
+    else
+      draw_label OverPie vp xend y0 cx cy r1 r2 angle_start angle color position label
 
 let raw_flat style vp cx cy r1 r2 angle_start angle color name =
   let path = get_path style cx cy r1 r2 angle_start angle name in

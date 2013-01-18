@@ -24,12 +24,14 @@ type colorscheme =
       elements. *)
 
 type keyplacement =
-| NoKey     (** No key at all *)
-| Rectangle (** A rectangle containing the color followed by the label
-                of each data *)
-| OverPie   (** The labels are drawn directly over the data *)
-| Outer     (** The labels are drawn around the pie, next to the data they
-                point out *)
+| NoKey              (** No key at all *)
+| Rectangle          (** A rectangle containing the color followed by the
+                         label of each data *)
+| OverPie            (** The labels are drawn directly over the data *)
+| Outer              (** The labels are drawn around the pie, next to the
+                         data they point out *)
+| Selective of float (** Outer when the angle formed by a region is lower
+                         than the given angle (in radians). *)
 
 type keylabels =
 | Label        (** Just the name of the data *)
