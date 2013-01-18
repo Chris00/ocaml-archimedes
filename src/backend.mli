@@ -236,19 +236,21 @@ val close : t -> unit
     complete until this function is called. *)
 
 val height : t -> float
-  (** Returns the width of the backend canvas. *)
+(** Returns the width of the backend canvas. *)
 
 val width : t -> float
-  (** Returns the height of the backend canvas. *)
+(** Returns the height of the backend canvas. *)
 
 val name : t -> string
 (** Returns the name under which the backend was registered. *)
 
 val registered: unit -> string list
-  (** Return the list of registered (i.e. loaded) backends. *)
+(** Return the list of registered (i.e. loaded) backends. *)
 
-val available : dirs:string list -> string list
-(** Return the list of available backends in the given directories. *)
+val available : ?dirs:string list -> unit -> string list
+(** Returns the list of available backends in the given
+    directories. Default directories are selected from compile time
+    paths and runtime OCAMLPATH. *)
 
 
 (************************************************************************)

@@ -18,6 +18,7 @@
 
 (** TikZ Archimedes plugin *)
 
+open Utils
 open Printf
 open Archimedes
 
@@ -226,8 +227,8 @@ struct
   let close ~options:_ t =
     if not t.closed then (
       if not (Queue.is_empty t.curr_path) then
-        printf "Archimedes_tikz -- warning : closing a backend which contains \
-          a non-empty path.\n%!";
+        warning "Archimedes-TikZ: closing a backend which contains \
+          a non-empty path.";
       close_out t.fh;
       t.closed <- true;
     )

@@ -59,9 +59,12 @@ type t = {
   (* An instruction is a "thing" to plot on the device, we memorize
      their order to replot in case of necessity *)
   mutable instructions: (unit -> unit) Queue.t;
-
-  (* Draw immediately or wait for closing ? *)
-  mutable immediate_drawing: bool;
+  (* Instructions that are not drawn on the device yet. *)
+  mutable pending_instructions: (unit -> unit) Queue.t;
+  (* The instructions are dirtied if something has changed their
+     graphical appearance, and all instructions have to be
+     reprocessed. *)
+  mutable instructions_dirtied: bool;
 
   (* Redimension function: when the parent viewport grows of x and y,
      what should subsequent coordinates become ? This function must set
@@ -398,15 +401,33 @@ let blank vp =
   Backend.restore vp.backend;
   Coordinate.restore vp.backend ctm
 
-let add_instruction vp f = Queue.push f vp.instructions
+let add_instruction vp f =
+  Queue.push f vp.instructions;
+  Queue.push f vp.pending_instructions
+
+let rec consume f q =
+  try f (Queue.pop q); consume f q with Queue.Empty -> ()
 
 (* Note: if a vp is synchronized with one of its children, this
    children will be redrawn two times. *)
 let rec do_instructions vp =
-  if vp.saves <> [] then print_string "Warning: saves list is not empty\n";
+  vp.instructions_dirtied <- false;
+  if vp.saves <> [] then warning "saves list is not empty";
   blank vp;
-  Queue.iter (fun f -> f ()) vp.instructions;
+  Queue.iter (fun f -> f()) vp.instructions;
+  (* We've also processed the pending instructions. *)
+  Queue.clear vp.pending_instructions;
   List.iter do_instructions (List.rev vp.children)
+
+let rec do_pending_instructions vp =
+  if vp.instructions_dirtied then begin
+    do_instructions vp;
+    vp.instructions_dirtied <- false;
+  end else begin
+    consume (fun f -> f()) vp.pending_instructions;
+    (* Update the children too. *)
+    List.iter do_pending_instructions (List.rev vp.children)
+  end
 
 let save vp = add_instruction vp (save_direct vp)
 let restore vp = add_instruction vp (restore_direct vp)
@@ -416,12 +437,23 @@ let remove_last_instruction vp =
      partial evaluation (because [vp.instructions] is a [(unit ->
      unit) Queue.t]). *)
   let aux q = ignore (Queue.pop q) in
-  aux vp.instructions
-let clear_instructions vp = Queue.clear vp.instructions
+  aux vp.instructions;
+  try aux vp.pending_instructions
+  with Queue.Empty ->
+    warning "removed last instruction but it was already drawn on the backend."
+
+let clear_instructions vp =
+  vp.instructions_dirtied <- false;
+  Queue.clear vp.instructions;
+  Queue.clear vp.pending_instructions
 
 let show vp =
-  do_instructions vp; (* => also for children *)
-    Backend.show vp.backend
+  do_pending_instructions vp; (* => also for children *)
+  Backend.show vp.backend
+
+let redraw vp =
+  do_instructions vp;
+  Backend.show vp.backend
 
 let close vp =
   let parent = vp.parent in
@@ -564,7 +596,8 @@ let init ?(lines=def_lw) ?(text=def_ts) ?(marks=def_ms)
     mark_size = nan;
     color = def_color;
     instructions = Queue.create ();
-    immediate_drawing = false;
+    pending_instructions = Queue.create ();
+    instructions_dirtied = false;
     redim = (fun _ _ _ -> ());
     square_side = size0;
     clip = true;
@@ -628,7 +661,8 @@ let make vp ?(lines=def_lw) ?(text=def_ts) ?(marks=def_ms)
     font_size = text;
     color = vp.color;
     instructions = Queue.create ();
-    immediate_drawing = false;
+    pending_instructions = Queue.create ();
+    instructions_dirtied = false;
     redim = redim;
     square_side = size0;
     clip = true;
@@ -664,10 +698,9 @@ let update_coordinate_system vp =
 
 (* Updates gx0 and gxend for an axes system and then redraw them. *)
 let update_axes_system vp =
+  vp.instructions_dirtied <- true;
   Axes.update_axes_system vp.axes_system vp.xaxis_size vp.yaxis_size;
-  update_coordinate_system vp;
-  if vp.immediate_drawing then
-    do_instructions vp
+  update_coordinate_system vp
 
 let update_ratio vp ratio =
   let sync = vp.axes_system.ratio in

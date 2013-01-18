@@ -188,7 +188,7 @@ type t = {
 module type Capabilities =
 sig
   include T
-  val name: string
+  val name : string
   val make : options:string list -> float -> float -> t
   val close : options:string list -> t -> unit
 end
@@ -398,8 +398,8 @@ let make ?(dirs=Conf.plugins_dirs () @ Conf.datadirs) b width height =
   in
   make options width height
 
-let available ~dirs =
-  let ext = if Dynlink.is_native then ".cmxs" else ".cmo" in
+let available ?(dirs=Conf.plugins_dirs () @ Conf.datadirs) () =
+  let ext = if Dynlink.is_native then ".cmxs" else ".cma" in
   List.fold_left begin fun bk d ->
     try
       let files = Sys.readdir d in

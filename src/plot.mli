@@ -27,7 +27,7 @@ type style =
 | `HBars of float ]
 
 (** Plotting functions. *)
-val fx : Viewport.t -> ?tlog:bool -> ?n:int ->
+val fx : Viewport.t -> ?tlog:bool -> ?fn0:float -> ?n:int ->
   ?strategy:Sampler.strategy -> ?cost:Sampler.cost ->
   ?style:[`Lines | `Linesmarkers of string | `Markers of string ] ->
   ?base:(float -> float) -> ?fill:bool -> ?fillcolor:Color.t ->
@@ -42,11 +42,14 @@ val fx : Viewport.t -> ?tlog:bool -> ?n:int ->
     @param base the second function for delimiting the filling
     region.  Default: the identically zero function.
 
+    @param fn0 the fraction of the maximum number of function
+    evaluations used to create an initial sampling of the function
+    that will later be refined by the adaptive autosampling. Default: [0.1].
     @param n the maximum number of function evaluations.  Default: [100].
     @param strategy see {!Sampler.strategy}.
     @param cost see {!Sampler.cost}. *)
 
-val xyf : Viewport.t -> ?tlog:bool -> ?n:int ->
+val xyf : Viewport.t -> ?tlog:bool -> ?fn0:float -> ?n:int ->
   ?strategy:Sampler.strategy -> ?cost:Sampler.cost ->
   ?style:[`Lines | `Linesmarkers of string | `Markers of string ] ->
   ?fill:bool -> ?fillcolor:Color.t ->

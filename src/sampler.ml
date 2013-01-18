@@ -159,13 +159,15 @@ let initial_sampling n0 f a b =
   q, bb
 
 (* FIXME: need to manage NaNs *)
-let xy ?tlog ?(n=100) ?(strategy=strategy_default) ?(cost=cost_default) f a b =
+let xy ?tlog ?(fn0=0.1) ?(n=100) ?(strategy=strategy_default) ?(cost=cost_default) f a b =
   if n < 2 then
     invalid_arg "Archimedes.Sampler.xy: must at least evaluate 3 points \
       to sensibly graph a function";
   if not(is_finite a && is_finite b) then
     invalid_arg "Archimedes.Sampler.xy: bounds of the interval must be finite";
-  let n0 = max 2 (truncate(0.1 *. float n)) in
+  if not (0. < fn0 && fn0 <= 1.) then
+    invalid_arg "Archimedes.Sampler.xy: fn0 must be between 0 < fn0 <= 1";
+  let n0 = max 2 (truncate(fn0 *. float n)) in
   let q, bb = initial_sampling n0 f a b in
   (* Add points (intervals) until the number [n] of evaluations is
      exhausted or all costs are <= 0. *)
@@ -218,25 +220,27 @@ let xy ?tlog ?(n=100) ?(strategy=strategy_default) ?(cost=cost_default) f a b =
   if a <= b then PQ.iter q (fun i -> incr ni; PQ.add qt (-. i.t0) i)
   else PQ.iter q (fun i -> incr ni; PQ.add qt i.t0 i);
   let n = !ni + 1 in
-  let x = Array.make n 0.
-  and y = Array.make n 0. in
+  let x = Array.make n nan
+  and y = Array.make n nan in
   (* We were careful above to make sure that if there is a gap,
      intervals around the gap will have a not-finite endoint.
      FIXME: double check. *)
-  let first_i = PQ.max qt in
-  x.(0) <- first_i.x0;
-  y.(0) <- first_i.y0;
-  for k = 1 to !ni do
-    let i = PQ.delete_max qt in
-    x.(k) <- i.x1;
-    y.(k) <- i.y1;
-  done;
+  if n <> 1 then (
+    let first_i = PQ.max qt in
+    x.(0) <- first_i.x0;
+    y.(0) <- first_i.y0;
+    for k = 1 to !ni do
+      let i = PQ.delete_max qt in
+      x.(k) <- i.x1;
+      y.(k) <- i.y1;
+    done
+  ) else warning "sampling a function with no finite point !";
   x, y
 ;;
 
-let x ?tlog ?(n=100)
+let x ?tlog ?fn0 ?(n=100)
     ?(strategy=strategy_center_random) ?(cost=cost_default) f a b =
-  xy ?tlog ~n ~strategy ~cost (fun x -> (x, f x)) a b
+  xy ?tlog ?fn0 ~n ~strategy ~cost (fun x -> (x, f x)) a b
 
 
 (* Local Variables: *)

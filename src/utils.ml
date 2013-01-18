@@ -36,6 +36,7 @@ let ba_copy x =
   x'
 
 let failwithf fmt = Printf.ksprintf failwith fmt
+let warning fmt = Printf.eprintf ("WARNING: "^^fmt^^"\n%!")
 
 (* Merges two non-sorted lists without duplicates. *)
 let merge l1 l2 =

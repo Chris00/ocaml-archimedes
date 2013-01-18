@@ -35,13 +35,18 @@ type cost = Matrix.rectangle ->
     close (in relative measure).  A cost [<= 0.] means one is satisfied
     with drawing straight lines connecting the three points. *)
 
-val xy : ?tlog:bool -> ?n:int -> ?strategy:strategy -> ?cost:cost ->
+val xy : ?tlog:bool -> ?fn0:float -> ?n:int ->
+  ?strategy:strategy -> ?cost:cost ->
   (float -> float * float) -> float -> float -> float array * float array
 (** [xy f t1 t2] samples the parametric function [f] on the
     interval going from [t1] to [t2].  Returns a list of the points in
     the sample.
 
     @param tlog do we need to step in a logarithmic way ?
+
+    @param fn0 fraction of [n] defining the number of steps for the
+    initial sampling of the function (that will later be
+    refined). Must be [0 < fn0 <= 1]. Default: [0.1].
 
     @param min_step don't increment precision more than this threshold
 
@@ -51,7 +56,8 @@ val xy : ?tlog:bool -> ?n:int -> ?strategy:strategy -> ?cost:cost ->
     @param cost a customized cost.
 *)
 
-val x : ?tlog:bool -> ?n:int -> ?strategy:strategy -> ?cost:cost ->
+val x : ?tlog:bool -> ?fn0:float -> ?n:int ->
+  ?strategy:strategy -> ?cost:cost ->
   (float -> float) -> float -> float -> float array * float array
 (** [x f x1 x2] same as {!Sampler.xy} but for the scalar function [f]
     on the interval going from [x1] to [x2]. *)

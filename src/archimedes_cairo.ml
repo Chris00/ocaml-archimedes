@@ -142,25 +142,40 @@ struct
 
   let path_to_cairo cr = function
     | P.Move_to(x, y) -> Cairo.move_to cr x y
-    | P.Line_to(x, y) -> Cairo.line_to cr x y
+    | P.Line_to(x, y) ->
+      (* FIXME: Maybe it souldn't be to the backend to handle that. *)
+      if x = x && y = y then
+        Cairo.line_to cr x y
     | P.Curve_to(_, _, x1, y1, x2, y2, x3, y3) ->
       Cairo.curve_to cr x1 y1 x2 y2 x3 y3
     | P.Close(_, _) -> Cairo.Path.close cr
     | P.Array(x, y, i0, i1) ->
-      if i0 <= i1 then
-        for i = i0 to i1 do Cairo.line_to cr x.(i) y.(i) done
-      else
-        for i = i0 downto i1 do Cairo.line_to cr x.(i) y.(i) done
+        if i0 <= i1 then
+          for i = i0 to i1 do
+            if x.(i) = x.(i) && y.(i) = y.(i) then Cairo.line_to cr x.(i) y.(i)
+          done
+        else
+          for i = i0 downto i1 do
+            if x.(i) = x.(i) && y.(i) = y.(i) then Cairo.line_to cr x.(i) y.(i)
+          done
     | P.Fortran(x, y, i0, i1) ->
       if i0 <= i1 then
-        for i = i0 to i1 do Cairo.line_to cr x.{i} y.{i} done
+        for i = i0 to i1 do
+          if x.{i} = x.{i} && y.{i} = y.{i} then Cairo.line_to cr x.{i} y.{i}
+        done
       else
-        for i = i0 downto i1 do Cairo.line_to cr x.{i} y.{i} done
+        for i = i0 downto i1 do
+          if x.{i} = x.{i} && y.{i} = y.{i} then Cairo.line_to cr x.{i} y.{i}
+        done
     | P.C(x, y, i0, i1) ->
       if i0 <= i1 then
-        for i = i0 to i1 do Cairo.line_to cr x.{i} y.{i} done
+        for i = i0 to i1 do
+          if x.{i} = x.{i} && y.{i} = y.{i} then Cairo.line_to cr x.{i} y.{i}
+        done
       else
-        for i = i0 downto i1 do Cairo.line_to cr x.{i} y.{i} done
+        for i = i0 downto i1 do
+          if x.{i} = x.{i} && y.{i} = y.{i} then Cairo.line_to cr x.{i} y.{i}
+        done
 
   (* The clipping is taken care of by the cairo backend. *)
   let stroke_path_preserve cr p =
