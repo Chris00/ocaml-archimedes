@@ -119,8 +119,7 @@ let rec extents_key vp x0 y0 xend yend total data label_config = function
       min (0.5 *. (xend -. x0) -. maxwidth) (0.5 *. (yend -. y0) -. maxheight)
     in
     if radius < 1E-8 then
-      Printf.printf ("Warning: this viewport is too small or the font" ^^
-                        " is too large\n%!");
+      warning "this viewport is too small or the font is too large";
     center, radius
   | Selective limitrad ->
     let limitvalue = limitrad *. total /. twopi in
