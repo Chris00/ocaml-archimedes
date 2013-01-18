@@ -59,6 +59,10 @@ type multidata = {
   children: multidata list
 }
 
+(* The default multi level color scheme. It takes the usual default colors
+   at the center (level 0) elements, then the color attenuates depending on
+   the subsequent values. This is more an example than a really useful
+   setting. Perhaps we could find a better one ? *)
 let defaultmultilevelcolorscheme = LevelValueDependant (
   fun level position parentvalue parentcolor value ->
     if level = 0 then default_color position
@@ -88,6 +92,7 @@ let get_label config parentvalue (label, value) = match config with
 let label_width vp label_config total (name, value) =
   (V.text_extents vp (get_label label_config total (name, value))).Matrix.w
 
+(* Computes the center and radius of the pie, depending on the key position *)
 let rec extents_key vp x0 y0 xend yend total data label_config = function
   | NoKey | OverPie ->
     let center = 0.5 *. (x0 +. xend), 0.5 *. (y0 +. yend)
@@ -95,6 +100,7 @@ let rec extents_key vp x0 y0 xend yend total data label_config = function
     center, radius
   | Rectangle ->
     let getwidth = label_width vp label_config total in
+    (* max label width and height *)
     let maxwidth = List.fold_left (fun acc x -> max acc (getwidth x)) 0. data in
     let maxheight = (V.text_extents vp "()").M.h in
     let maxwidth = maxwidth +. 2. *. maxheight in (* place for color box *)
@@ -122,6 +128,7 @@ let rec extents_key vp x0 y0 xend yend total data label_config = function
     else
       extents_key vp x0 y0 xend yend total data label_config Rectangle
 
+(* Adjusts the center and radius of the pie, depending on the style *)
 let extents_style style ((cx, cy), radius) = match style with
   | Highlight _ -> (cx, cy), 10. *. radius /. 11.
   | Flat -> (cx, cy), radius
@@ -130,6 +137,11 @@ let extents_style style ((cx, cy), radius) = match style with
                       " implemented; badboxes may appear\n%!");
     (cx, cy), radius
 
+(* Computes the path of an element of the pie. An element is a "triangle"
+   in the case of a simple pie chart, or a truncated "triangle" in the case
+   of a multi level pie. r1 is the inner radius, r2 the outer radius, (cx,
+   cy) is the center of the pie. The other parameters are
+   self-explanatory. *)
 let rec get_path style cx cy r1 r2 angle_start angle name =
   match style with
   | Highlight l when List.mem name l ->
@@ -151,6 +163,7 @@ let rec get_path style cx cy r1 r2 angle_start angle name =
                       " to Flat style\n%!");
     get_path Flat cx cy r1 r2 angle_start angle name
 
+(* Draws a label on the pie according to the key placement. *)
 let rec draw_label placement vp xend y0 cx cy r1 r2 angle_start angle color
     position label =
   match placement with
@@ -194,7 +207,7 @@ let rec draw_label placement vp xend y0 cx cy r1 r2 angle_start angle color
     let p = if angle < limit then Outer else OverPie in
     draw_label p vp xend y0 cx cy r1 r2 angle_start angle color position label
 
-let raw_flat style vp cx cy r1 r2 angle_start angle color name =
+let draw_quarter style vp cx cy r1 r2 angle_start angle color name =
   let path = get_path style cx cy r1 r2 angle_start angle name in
   let basecolor = V.get_color vp in
   V.set_color vp color;
@@ -210,7 +223,7 @@ let simple ?(style=Relief) ?(colorscheme=Default) ?(keyplacement=Rectangle)
   let (centerx, centery), radius = extents_style style
     (extents_key vp x0 y0 xend yend total data keylabels keyplacement)
   in
-  let raw = raw_flat style vp centerx centery 0. radius in
+  let raw = draw_quarter style vp centerx centery 0. radius in
   let _, finalangle = List.fold_left (fun (pos, angle_start) (name, value) ->
     let color = get_color colorscheme 0 pos total Color.white name value in
     let angle = value /. total *. twopi in
@@ -229,35 +242,31 @@ let rec depth cur = function
   | hd :: tl -> max (depth (cur + 1) hd.children) (depth cur tl)
 
 let multilevel ?(style=Flat) ?(colorscheme=defaultmultilevelcolorscheme)
-    ?(keyplacement=OverPie) ?(keylabels=Label)
-    ?(x0=0.) ?(y0=0.16) ?(xend=1.) ?(yend=1.)
+    ?(keylabels=Label) ?(x0=0.) ?(y0=0.16) ?(xend=1.) ?(yend=1.)
     vp multidata =
-  let centerx = 0.5 *. (x0 +. xend)
-  and centery = 0.5 *. (y0 +. yend) in
-  let radius_total = min (0.5 *. (xend -. x0)) (0.5 *. (yend -. y0)) in
-  let radius_slice = radius_total /. float (depth 1 multidata + 1) in
   let total = List.fold_left (fun acc x -> acc +. x.value) 0. multidata in
-  let position = ref 0 in
-  let rec f level parentvalue parentcolor angle_start angle element =
+  let (cx, cy), radius_total = extents_style style
+    (extents_key vp x0 y0 xend yend total [] keylabels OverPie)
+  in
+  let radius_slice = radius_total /. float (depth 1 multidata + 1) in
+  let rec f level parentvalue parentcolor (position, angle_start) angle element =
     (* Level 0 has twice the place allowed for other levels *)
-    let radius_in = float level *. radius_slice in
-    let radius_in = radius_in +. if level = 0 then 0. else radius_slice in
-    let radius_out = radius_in +. radius_slice in
-    let radius_out = radius_out +. if level = 0 then radius_slice else 0. in
+    let r1 = float level *. radius_slice in
+    let r1 = r1 +. if level = 0 then 0. else radius_slice in
+    let r2 = r1 +. radius_slice in
+    let r2 = r2 +. if level = 0 then radius_slice else 0. in
     let sorted =
       List.sort (fun x y -> compare x.value y.value) element.children
     in
-    let color = get_color colorscheme level !position parentvalue parentcolor
-      element.name element.value
-    in
-    position := !position + 1;
-    raw_flat style vp centerx centery radius_in radius_out angle_start angle color element.name;
-    List.fold_left (fun angle_start x ->
+    let color = get_color colorscheme level position parentvalue parentcolor
+      element.name element.value in
+    draw_quarter style vp cx cy r1 r2 angle_start angle color element.name;
+    ignore (List.fold_left (fun pos_anglestart x ->
       let angle = x.value /. element.value *. angle in
-      f (level + 1) element.value color angle_start angle x) angle_start sorted;
-    angle_start +. angle
+      f (level + 1) element.value color pos_anglestart angle x)
+              (0, angle_start) sorted);
+    position + 1, angle_start +. angle
   in
-  List.fold_left (fun angle_start x ->
+  ignore (List.fold_left (fun pos_anglestart x ->
     let angle = x.value /. total *. twopi in
-    f 0 total Color.white angle_start angle x) 0. multidata;
-  ()
+    f 0 total Color.white pos_anglestart angle x) (0, 0.) multidata)

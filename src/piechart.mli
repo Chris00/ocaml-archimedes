@@ -75,7 +75,7 @@ type multidata = {
 }
 
 val multilevel : ?style:style -> ?colorscheme:colorscheme ->
-  ?keyplacement:keyplacement -> ?keylabels:keylabels ->
+  ?keylabels:keylabels ->
   ?x0:float -> ?y0:float -> ?xend:float -> ?yend:float ->
   Viewport.t -> multidata list -> unit
 (** [multilevel vp data] draws a multilevel pie chart on [vp]. The
@@ -89,9 +89,6 @@ val multilevel : ?style:style -> ?colorscheme:colorscheme ->
     in the "Default" way, children colors are derived from their
     parent color and their value. Inner levels (those who contains
     only one data) are filled with blank
-
-    @param keyplacement default is OverPie, this is usually the better
-    way to visualize data over a multilevel pie chart
 
     @param keylabels default is Key, because the color scheme gives an
     idea of the values, it is preferable to save space by hiding the
