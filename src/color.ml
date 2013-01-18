@@ -250,4 +250,8 @@ let darken c v =
    a = c.a}
 
 let higher_contrast_bw c =
-  if max c.r (max c.g c.b) < 0.5 then white else black
+  (*
+    http://stackoverflow.com/questions/3942878/
+    how-to-decide-font-color-in-white-or-black-depending-on-background-color
+  *)
+  if luma c > 69. /. 255. then black else white
