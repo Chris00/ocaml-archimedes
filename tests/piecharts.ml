@@ -4,6 +4,8 @@ module V = Archimedes.Viewport
 module PC = Archimedes.Piechart
 module C = Archimedes.Color
 
+let pi = 4. *. atan 1.
+
 let draw bk =
   let vp = Archimedes.init ~w ~h ~dirs bk in
   let vps = V.grid vp 2 2 in
@@ -30,7 +32,7 @@ let draw bk =
     "crew", C.orange
   ] in
   PC.simple ~style:(PC.Highlight ["third"]) ~colorscheme:customscheme
-    ~keyplacement:PC.Outer vps.(0).(0) data1;
+    ~keyplacement:(PC.Selective (0.5 *. pi)) vps.(0).(0) data1;
   PC.simple ~keylabels:PC.WithPercents vps.(0).(1) data2;
   PC.multilevel vps.(1).(0) data3;
   PC.simple ~keyplacement:PC.OverPie ~keylabels:PC.Label vps.(1).(1) data2;
