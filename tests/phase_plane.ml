@@ -4,7 +4,7 @@ let description = "Phase plane (test nan)"
 
 let rec range_hue a b n =
   let h = (b -. a) /. float(n - 1) in
-  let hue = 360. /. float n in
+  let hue = 240. /. float n in
   Array.init n (fun i -> (a +. float i *. h, Archimedes.Color.hue(float i *. hue)))
 
 let f u =
