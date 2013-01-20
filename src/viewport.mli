@@ -262,7 +262,7 @@ val text_extents :
   ?pos:Backend.text_position ->
   string -> Matrix.rectangle
 (** [text_extents vp text] returns the extents of [text] as displayed
-    by !{Archimedes.Viewport.text}.
+    by {!Archimedes.Viewport.text}.
 
     @param coord the coordinate system in which the extents will be
     given. Beware that as soon a coordinate system changes, the
