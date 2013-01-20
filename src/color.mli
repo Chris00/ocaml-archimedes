@@ -189,6 +189,6 @@ val darken : t -> float -> t
 (** [darken c v] Darken the color [c] of [v] percent. 0 correspond to the
     same color, 1 corresponds to the black color. *)
 
-val higher_contrast_bw : t -> t
+val highest_contrast_bw : t -> t
 (** returns black or white depending on which of the two is better to
     write on the given color. *)

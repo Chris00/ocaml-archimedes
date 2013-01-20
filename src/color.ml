@@ -306,7 +306,7 @@ let darken c v =
    b = c.b *. v;
    a = c.a}
 
-let higher_contrast_bw c =
+let highest_contrast_bw c =
   (*
     http://stackoverflow.com/questions/3942878/
     how-to-decide-font-color-in-white-or-black-depending-on-background-color

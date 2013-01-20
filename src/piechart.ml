@@ -182,7 +182,7 @@ let rec draw_label placement vp xend y0 cx cy r1 r2 angle_start angle color
   | OverPie ->
     let x = cx +. (r2 +. r1) /. 2. *. cos (angle_start +. angle /. 2.) in
     let y = cy +. (r2 +. r1) /. 2. *. sin (angle_start +. angle /. 2.) in
-    let labelcolor = Color.higher_contrast_bw color in
+    let labelcolor = Color.highest_contrast_bw color in
     let basecolor = V.get_color vp in
     V.set_color vp labelcolor;
     V.text vp ~coord:`Graph ~pos:Backend.CC x y label;
