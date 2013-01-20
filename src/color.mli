@@ -60,6 +60,9 @@ val cyan : t
 val white : t
 val dark_slate_grey : t
 
+val colors : t list
+(** The list of all predefined colors. *)
+
 (** {4 Shades of Blue} *)
 
 val deep_sky_blue : t
@@ -131,7 +134,6 @@ val light_gray : t
 val gainsboro : t
 val silver : t
 val trolley_grey : t
-
 
 (** {3 Merging colors} *)
 

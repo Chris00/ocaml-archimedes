@@ -151,6 +151,63 @@ let silver = {r = 0.752941176470588225; g = 0.752941176470588225;
 let trolley_grey = {r = 0.501960784313725483; g = 0.501960784313725483;
                     b = 0.501960784313725483; a = 1. }
 
+let colors = [
+  black;
+  red;
+  green;
+  blue;
+  yellow;
+  magenta;
+  cyan;
+  white;
+  dark_slate_grey;
+  deep_sky_blue;
+  dodger_blue;
+  aquamarine;
+  light_blue;
+  medium_blue;
+  navy_blue;
+  royal_blue;
+  burlywood;
+  chocolate;
+  tan;
+  dark_green;
+  dark_olive_green;
+  forest_green;
+  green_yellow;
+  sea_green;
+  dark_orange;
+  peach_puff;
+  coral;
+  orange;
+  hot_pink;
+  indian_red;
+  light_pink;
+  misty_rose;
+  orange_red;
+  firebrick;
+  dark_orchid;
+  lavender_blush;
+  plum;
+  orchid;
+  purple;
+  thistle;
+  antique_white;
+  old_lace;
+  ivory;
+  linen;
+  wheat;
+  white_smoke;
+  lemon_chiffon;
+  light_goldenrod;
+  cornsilk;
+  gold;
+  light_gray;
+  gainsboro;
+  silver;
+  trolley_grey
+]
+
 type operator =
     Over
   | Source
