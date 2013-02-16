@@ -1,4 +1,9 @@
 (* OASIS_START *)
+
+let () =
+  try Topdirs.dir_directory (Sys.getenv "OCAML_TOPLEVEL_PATH")
+  with Not_found -> ();;
+
 (* DO NOT EDIT (digest: 7f47a529f70709161149c201ccd90f0b) *)
 #use "topfind";;
 #require "oasis.dynrun";;
