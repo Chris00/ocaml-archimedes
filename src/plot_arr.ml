@@ -21,7 +21,7 @@ let index_array n =
     (* FIXME: do we want to replace x_index ?? *)
     let m = CREATE(n) in
     for i = FIRST to LAST(n) do
-      SET(x_index, i, float i)
+      SET(m, i, float i)
     done;
     m
   )
