@@ -48,7 +48,7 @@ clean:
 	$(RM) $(PKG_TARBALL)
 	$(RM) $(wildcard *~ *.pdf *.ps *.png *.svg) setup.data
 
-distclean dist-clean::
+distclean dist-clean:: clean
 	ocaml setup.ml -distclean
 	$(RM) $(wildcard *.ba[0-9] *.bak *~ *.odocl)
 	$(RM) $(subst .ab,,$(FILESAB))
