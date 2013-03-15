@@ -21,7 +21,7 @@ let int c =
 
 let hue h =
   let f, hi = modf (h /. 60.) in
-  match hi with
+  match mod_float hi 6. with
   | 0. -> {r = 1.; g = f; b = 0.; a = 1.}
   | 1. -> {r = (1. -. f); g = 1.; b = 0.; a = 1.}
   | 2. -> {r = 0.; g = 1.; b = f; a = 1.}

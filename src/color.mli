@@ -22,8 +22,8 @@ val int : int -> t
     It is the form used by [Graphics]. *)
 
 val hue : float -> t
-(** [hue h] returns a color of given hue [h] in the interval \[0 : 360.\[
-    and of maximal luminance. *)
+(** [hue h] returns a color of given hue [h] in the interval \[0 .. 360.\[
+    ([h] is reduced modulo 360.) and of maximal luminance. *)
 
 val r : t -> float
 (** Returns the red component of a color.*)
