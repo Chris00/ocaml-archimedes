@@ -4,6 +4,8 @@
 
 The Y label does not work (graphics).  Should also remove the debugging.
 
+UTF-8 font in Cairo.
+
 Palettes should be offered (and being possible to create from
 gradients with as many levels as we like) in the Color module.
 
