@@ -115,6 +115,14 @@ val arc: t -> r:float -> a1:float -> a2:float -> unit
     radians.  The above holds provided the three values [r], [a1], and
     [a2] are finite.  The function does nothing otherwise.  *)
 
+val arc_center: t -> r:float -> a1:float -> a2:float -> unit
+(** [arc p r a1 a2] same as {!arc} but the current point defines the
+    arc center of radius instead of start point *)
+
+val circle: t -> r:float -> unit
+(** [circle p r] draws a circle of radius [r] with its center on the
+    path's current point. *)
+
 val close: t -> unit
 (** [close p] Closes the path. It is usually not required to close a
     path, this is useful only to ensure the path won't be extended. *)
