@@ -427,6 +427,16 @@ let arc p ~r ~a1 ~a2 =
   if is_finite r && is_finite a1 && is_finite a2 then
     bezier_of_arc p curve_to_with_curr_pt ~x0:p.x ~y0:p.y ~r ~a1 ~a2
 
+let arc_center p ~r ~a1 ~a2 =
+  if not p.curr_pt then failwith "archimedes_graphics.arc: no current point";
+  if is_finite r && is_finite a1 && is_finite a2 then
+    let x0 = p.x +. r *. cos a1
+    and y0 = p.y +. r *. sin a1 in
+    move_to p x0 y0;
+    bezier_of_arc p curve_to_with_curr_pt ~x0 ~y0 ~r ~a1 ~a2
+
+let circle p ~r =
+  arc_center p ~r ~a1:0. ~a2:(2. *. pi)
 
 let close p =
   if p.curr_pt then begin
