@@ -80,14 +80,17 @@ let bars vp ~fill ?base ~fillcolor (x:t) (y:t) n w =
   (match base with
   | None ->
     for i = FIRST to LAST(n) do
-      (* Does nothing if its arguments are not finite: *)
-      Path.rectangle path ~x:(GET(x,i) -. w *. 0.5) ~y:0. ~w ~h:(GET(y,i))
+      (* When h = 0, show nothing even if the line width is large. *)
+      if GET(y,i) <> 0. then
+        (* Does nothing if its arguments are not finite: *)
+        Path.rectangle path ~x:(GET(x,i) -. w *. 0.5) ~y:0. ~w ~h:(GET(y,i))
     done
   | Some b ->
     if DIM(b) <> n then invalid_arg(MOD ^ ".y: wrong length for \"base\"");
     for i = FIRST to LAST(n) do
-      Path.rectangle path
-        ~x:(GET(x,i) -. w *. 0.5) ~y:(GET(b,i)) ~w ~h:(GET(y,i) -. GET(b,i))
+      let h = GET(y,i) -. GET(b,i) in
+      if h <> 0. then
+        Path.rectangle path ~x:(GET(x,i) -. w *. 0.5) ~y:(GET(b,i)) ~w ~h
     done);
   (* For bars, one certainly wants to see everything.  Moreover some
      space to the left and to the right is nice to have. *)
