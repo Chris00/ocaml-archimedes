@@ -28,8 +28,7 @@ let hue h =
   | 3. -> {r = 0.; g = (1. -. f); b = 1.; a = 1.}
   | 4. -> {r = f; g = 0.; b = 1.; a = 1.}
   | 5. -> {r = 1.; g = 0.; b = (1. -. f); a = 1.}
-  | _ -> invalid_arg
-    (sprintf "Archimedes.Color.hue: hue not in range; h=%g" h)
+  | _ -> assert false
 
 let r t = t.r
 
