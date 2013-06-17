@@ -20,7 +20,7 @@ let int c =
   rgb (float r /. 255.) (float g /. 255.) (float b /. 255.)
 
 let hue h =
-  let f, hi = modf (h /. 60.) in
+  let f, hi = modf (abs_float h /. 60.) in
   match mod_float hi 6. with
   | 0. -> {r = 1.; g = f; b = 0.; a = 1.}
   | 1. -> {r = (1. -. f); g = 1.; b = 0.; a = 1.}
