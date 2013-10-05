@@ -20,7 +20,7 @@ all byte native: setup.data
 
 configure: setup.data
 setup.data: setup.ml $(FILESAB)
-	ocaml $< -configure --enable-tests
+	ocaml $< -configure --enable-tests --enable-cairo2
 
 setup.ml AUTHORS.txt INSTALL.txt README.txt: _oasis
 	oasis setup -setup-update dynamic

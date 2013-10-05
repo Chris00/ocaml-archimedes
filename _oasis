@@ -12,6 +12,7 @@ Authors:     Christophe Troestler <Christophe.Troestler@umons.ac.be>,
   Noémie Meunier <noemie_6462@hotmail.com>,
   Bertrand Desmons <bibi-6@hotmail.fr>,
   Xavier Deschuyteneer <xavier.deschuyteneer@gmail.com>
+Maintainers: Christophe Troestler <Christophe.Troestler@umons.ac.be>
 License:     LGPL-3.0 with OCaml linking exception
 Homepage:    http://forge.ocamlcore.org/projects/archimedes/
 Plugins:     META (0.3), StdFiles (0.3)
@@ -26,9 +27,9 @@ Flag graphics
   Description:  Use the graphics plugin?
   Default:      true
 
-Flag cairo
+Flag cairo2
   Description:  Use the cairo (PNG, PS, PDF) plugin?
-  Default:      true
+  Default:      false
 
 Flag tikz
   Description:  Use the tikz (TeX) plugin?
@@ -65,7 +66,7 @@ Library "archimedes_graphics"
   FindlibName:   graphics
 
 Library "archimedes_cairo"
-  Build$:       flag(cairo)
+  Build$:       flag(cairo2)
   Path:         src
   BuildTools:   ocamlbuild
   Modules:      Archimedes_cairo
