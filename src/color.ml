@@ -20,7 +20,7 @@ let int c =
   rgb (float r /. 255.) (float g /. 255.) (float b /. 255.)
 
 let hue h =
-  let f, hi = modf (h /. 60.) in
+  let f, hi = modf (abs_float h /. 60.) in
   match mod_float hi 6. with
   | 0. -> {r = 1.; g = f; b = 0.; a = 1.}
   | 1. -> {r = (1. -. f); g = 1.; b = 0.; a = 1.}
@@ -28,8 +28,7 @@ let hue h =
   | 3. -> {r = 0.; g = (1. -. f); b = 1.; a = 1.}
   | 4. -> {r = f; g = 0.; b = 1.; a = 1.}
   | 5. -> {r = 1.; g = 0.; b = (1. -. f); a = 1.}
-  | _ -> invalid_arg
-    (sprintf "Archimedes.Color.hue: hue not in range; h=%g" h)
+  | _ -> assert false
 
 let r t = t.r
 

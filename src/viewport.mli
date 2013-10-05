@@ -116,7 +116,7 @@ val grid : ?syncs:(bool * bool * bool * bool) -> t -> int -> int -> t array arra
 (** [grid parent nx ny] returns [vp] an array of [nx] * [ny]
     sub-viewports of [parent]  arranged in a grid of [nx] columns and
     [ny] rows.  The bottom left viewport is [vp.(0).(0)], the one to
-    its right (resp. abobve) is [vp.(1).(0)] (resp. [vp.(0).(1)]).
+    its right (resp. above) is [vp.(1).(0)] (resp. [vp.(0).(1)]).
 
     @param syncs (cx, cy, rx, ry) where [cx] (resp. [cy]) says whether
     to synchronize the X-axis (resp. the [Y-axis]) along the columns
