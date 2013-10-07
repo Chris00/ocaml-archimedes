@@ -66,7 +66,8 @@ let () =
   if List.mem "--disable-graphics" args then (
     let _ = BaseEnv.var_define "pkg_graphics" (fun () -> "disabled") in
     ());
-  if List.mem "--disable-cairo2" args then (
+  if not(List.mem "--enable-cairo2" args) then (
+    (* Default is false, must be enabled explicitly. *)
     let _ = BaseEnv.var_define "pkg_cairo2" (fun () -> "disabled") in
     ())
 
