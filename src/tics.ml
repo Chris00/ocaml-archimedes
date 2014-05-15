@@ -71,7 +71,7 @@ let nicenum x round =
 let label_of_float label x = match label with
   | No_label -> ""
   | Text _ -> failwith "FIXME: Not yet implemented"
-  | Number n -> Printf.sprintf "%.*g" n x
+  | Number n -> Printf.sprintf "%.*g" n (if x = 0. then 0. else x)
   | Expnumber _ -> failwith "FIXME: Not yet implemented"
   | Expnumber_named _ -> failwith "FIXME: Not yet implemented"
   | Custom f -> f x
