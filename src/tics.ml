@@ -76,6 +76,10 @@ let label_of_float label x = match label with
   | Expnumber_named _ -> failwith "FIXME: Not yet implemented"
   | Custom f -> f x
 
+let fixed_labels xmin xmax labels tics =
+  tics |> List.filter (fun t -> xmin <= t && t <= xmax)
+  |> List.map (fun t -> Major (label_of_float labels t, t))
+
 (* FIXME: log in unused for now, we have to take it into account. *)
 let loose_labels ?(ntics=5) log xmin xmax label =
   let range = nicenum (xmax -. xmin) false in
@@ -117,7 +121,7 @@ let equi_labels log offset d_major num_minor xmin xmax labels =
   if d_major > 0. then aux_tics d_minor [] (- minors_before) first_tic else []
 
 let tics ?(log=false) xmin xmax = function
-  | Fixed _ -> failwith "FIXME: Not yet implemented"
+  | Fixed (labels, tics) -> fixed_labels xmin xmax labels tics
   | Fixed_norm _ -> failwith "FIXME: Not yet implemented"
   | Equidistants (labels, offset, d_major, num_minor) ->
     equi_labels log offset d_major num_minor xmin xmax labels

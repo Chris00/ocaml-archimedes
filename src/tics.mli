@@ -32,24 +32,25 @@ type labels =
 
 type t =
 | Fixed of labels * float list
-(** Not Yet implemented *)
+(** [Archimedes.Tics.Fixed (label, tics)] draws major tics at values
+    specified by the [tics] list and labels them using [label]. *)
 | Fixed_norm of labels * float list
 (** Not Yet implemented *)
 | Equidistants of labels * float * float * int
-(** [Archimede.Tics.Equidistants (label, start, step, n)]
+(** [Archimedes.Tics.Equidistants (label, start, step, n)]
     draws [Major Tics] from [start] equidistants of [step] along the axe
     and with [n] [Minor Tics] between each of them and the labels defined
     with [label] *)
 | Auto of labels
-(** [Archimede.Tics.Auto label] draws [Major Tics] to fit the axe and the
+(** [Archimedes.Tics.Auto label] draws [Major Tics] to fit the axe and the
     [label] automaticaly*)
 
 (**/**)
 type tic =
 | Major of string * float
-(** Major Tic is a big vertical bar on a axe *)
+(** Major Tic is a big vertical bar on an axe *)
 | Minor of float
-(** Minor Tic is a little vertical bar on a axe *)
+(** Minor Tic is a little vertical bar on an axe *)
 
 val tics: ?log:bool -> float -> float -> t -> tic list
 (** [tics xmin xmax spec] return a description of the tics for the
