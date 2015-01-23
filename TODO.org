@@ -6,6 +6,12 @@ The Y label does not work (graphics).  Should also remove the debugging.
 
 UTF-8 font in Cairo.
 
+For the following functions on [-2, 5], the automatic sampling does
+not work:
+
+  let f a x = a *. (tan x -. 1.) -. log x
+  let df a x = a *. (1. +. (tan x)**2.) -. 1. /. x
+
 Palettes should be offered (and being possible to create from
 gradients with as many levels as we like) in the Color module.
 
