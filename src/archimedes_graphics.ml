@@ -417,7 +417,7 @@ struct
       let x1, y1 = to_bk x1 y1
       and x2, y2 = to_bk x2 y2
       and x3, y3 = to_bk x3 y3 in
-      (* FIXME: clip Bézier curve *)
+      (* FIXME: clip BÃ©zier curve *)
       Graphics.curveto
         (round x1, round y1) (round x2, round y2) (round x3, round y3)
 
