@@ -24,9 +24,6 @@ module A = Archimedes
 module Matrix = A.Matrix
 module P = Archimedes_internals.Path
 
-let min a b = if (a:float) < b then a else b
-let max a b = if (a:float) > b then a else b
-
 let round x = truncate(if x < 0. then x -. 0.5 else x +. 0.5)
 
 let fourth_pi = atan 1.
@@ -591,92 +588,90 @@ struct
     st.font_size <- size;
     graphics_set_font_size st
 
-
   let text_extents t txt =
     check_valid_handle t;
     let w, h = Graphics.text_size txt in
     { A.Matrix.x = 0.; y = 0.; w = float w ; h = float h }
 
-  let rotate_extents angle x0 y0 w h =
-    (* Printf.printf "DEBUG: Before: %f %f %f %f\n%!" x0 y0 w h; *)
-    let angle = mod_float angle (2. *. pi) in
-    let sina = sin angle and cosa = cos angle in
-    let x = -. w /. 2. and y = -. h /. 2. in
-    (* Printf.printf "DEBUG: Normalized: %f %f %f %f\n%!" x y w h; *)
-    let xproj x y = cosa *. x -. sina *. y in
-    let yproj x y = sina *. x +. cosa *. y in
-    let x =
-      if angle < half_pi then xproj x (y +. h)
-      else if angle < pi then xproj (x +. w) (y +. h)
-      else if angle < 1.5 *. pi then xproj (x +. w) y
-      else xproj x y
-    and y =
-      if angle < half_pi then yproj x y
-      else if angle < pi then yproj x (y +. h)
-      else if angle < 1.5 *. pi then yproj (x +. w) (y +. h)
-      else yproj (x +. w) y
-    in
-    (* Printf.printf "DEBUG: %f %f\n%!" x y; *)
-    let retw, reth = -. 2. *. x, -. 2. *. y in
-    let retx, rety = x0 -. (retw -. w) /. 2., y0 -. (reth -. h) /. 2. in
-    (* Printf.printf "DEBUG: After: %f %f %f %f\n%!" retx rety retw reth; *)
-    retx, rety, retw, reth
-
-  (* Rotation of a color matrix image from center point using nearest
-     neightbor sampling. Also gives the position of some point from source
-     image in the new image. *)
+  (* [rotate_image simg angle] returns the rotation of a color
+     matrix image [simg] around the center point using nearest
+     neightbor sampling. Will return [oimg, tfm] with [oimg] being the
+     rotated image and [tfm] the transformation matrix that goes from
+     matrix pixel coordinates in the source image to their
+     corresponding coordinates in the ouput image. *)
   (* FIXME: Use Graphics Gems shearing rotation. GG 1, p. 179 *)
-  let rotate_image simg px py angle =
+  let rotate_image simg angle =
+    let open Matrix in
     (* FIXME: If angle is a multiple of PI/2, use trivial transposition
        and symmetry. *)
     assert (Array.length simg > 0 && Array.length simg.(0) > 0);
-    (* Source Width/Height. We measure distances between center of pixels,
-       so a line of 3 pixels is of width 2. *)
-    let sw = float (pred (Array.length simg.(0)))
-    and sh = float (pred (Array.length simg)) in
-    (* Output Width/Height. *)
-    (* FIXME: having to set 0. 0. is totally useless; refactor that ! *)
-    let _, _, ow, oh = rotate_extents angle 0. 0. sw sh in
-    let ow', oh' = round ow, round oh in
-    let swc, shc = sw *. 0.5, sh *. 0.5
-    and owc, ohc = ow *. 0.5, oh *. 0.5
-    and sina = -. sin angle and cosa = cos angle in
-    (* Get color in source [simg] for (x, y) pixel in output image. *)
-    let rot x y =
-      (* dump_image gives a color matrix with coordinates as :
-         [| [| (0, 1); (1, 1) |];
-         [| (0, 0); (1, 0) |] |] *)
-      let x', y' = x -. owc, float oh' -. y -. ohc in
-      (* Output coords to source coords => inverse rotation. *)
-      let xrot = cosa *. x' -. sina *. y'
-      and yrot = sina *. x' +. cosa *. y' in
-      (xrot +. swc, sh -. yrot -. shc)
+    let sw = float (Array.length simg.(0) - 1)
+    and sh = float (Array.length simg - 1) in
+    let swc, shc = sw *. 0.5, sh *. 0.5 in
+    (* Build the transformation matrix for the rotation in the source
+       image array coordinates. *)
+    let tfm =
+      (* Move to the center of the matrix. *)
+      let t = make_translate ~x:swc ~y:shc in
+      (* Make the rotation [-angle] because the y-axis is flipped here. *)
+      rotate t ~angle:(-.angle);
+      (* Move back to the corner. *)
+      translate t ~x:(-.swc) ~y:(-.shc);
+      t
     in
+    (* Apply the transformation on the image extents to obtain the
+       output image size. *)
+    let { x = _; y = _; w = ow; h = oh } =
+      transform_rectangle ?dist_basepoint:None
+        tfm { x = 0.; y = 0.; w = sw +. 1.; h = sh +. 1. }
+    in
+    let ow = round ow
+    and oh = round oh in
+    let owc, ohc = float (ow - 1) *. 0.5, float (oh - 1) *. 0.5 in
+    (* We want the transformation to go from output matrix to input
+       matrix coordinates to apply the sampling. *)
+    invert tfm;
+    translate tfm ~x:(swc -. owc) ~y:(shc -. ohc);
+    (* Conveniently sample the color. *)
     let get_color x y =
       try
-        let sx, sy = rot (float x) (float y) in
+        let sx, sy = transform_point tfm (float x) (float y) in
         simg.(round sy).(round sx)
       with Invalid_argument _ -> Graphics.transp
     in
-    (Array.init (succ oh')
-       (fun y -> Array.init (succ ow')
-         (fun x -> get_color x y)),
-    rot px py)
+    (* Build the ouput pixel matrix. *)
+    let oimg =
+      Array.init oh
+        (fun y -> Array.init ow
+            (fun x -> get_color x y))
+    in
+    (* Use the input -> output transformation to apply the
+       transformation on the supplied point. *)
+    invert tfm;
+    oimg, tfm
+
+  let get_image_to_matrix_tfm img =
+    let h = float (Array.length img) in
+    let tfm = Matrix.make_translate ~x:(-0.5) ~y:(h -. 0.5) in
+    Matrix.scale tfm ~x:1. ~y:(-1.);
+    tfm
 
   (* Returns the color matrix with [str] printed in [color]. *)
   let string_img str color =
     let w, h = Graphics.text_size str in
     let buf = Array.make_matrix h w Graphics.transp in
     let max_w, max_h = Graphics.size_x (), Graphics.size_y () in
-    let piece_w, piece_h = Pervasives.min w max_w, Pervasives.min h max_h in
+    let piece_w, piece_h = min w max_w, min h max_h in
     let w_pieces, h_pieces = piece_w / max_w, piece_h / max_h in
     let w_lst_piece, h_lst_piece = piece_w mod max_w, piece_h mod max_h in
     (* Save graphic work area. *)
     let backup = Graphics.get_image 0 0 piece_w piece_h in
     (* Setup graphic work area. *)
-    let transp = abs (pred color) in
+    let transp = abs (color - 1) in
     Graphics.set_color transp;
-    Graphics.fill_rect 0 0 w h;
+    (* Shrink sizes by 1 because graphics extends the filling rect by
+       one pixel -_- *)
+    Graphics.fill_rect 0 0 (w - 1) (h - 1);
     Graphics.set_color color;
     (* Copy pieces of the string image to [buf]. *)
     let x_offset, y_offset = ref 0, ref 0 in
@@ -731,9 +726,14 @@ struct
         (Graphics.moveto (round (x' -. px)) (round (y' -. py));
          Graphics.draw_string txt)
       else
-        let rimg, (rx, ry) =
-          rotate_image (string_img txt st.color) px py rotate
-        in
+        let text_img = string_img txt st.color in
+        let tfm_img = get_image_to_matrix_tfm text_img
+        and rimg, rtfm = rotate_image text_img rotate in
+        let tfm_rimg = get_image_to_matrix_tfm rimg in
+        Matrix.mul_in rtfm rtfm tfm_img;
+        Matrix.invert tfm_rimg;
+        Matrix.mul_in tfm_img tfm_rimg rtfm;
+        let rx, ry = Matrix.transform_point tfm_img px py in
         Graphics.draw_image (Graphics.make_image rimg)
           (round (x' -. rx)) (round (y' -. ry))
     )
