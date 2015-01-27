@@ -89,7 +89,7 @@ let range_bezier x0 x1 x2 x3 =
         else min x0 x3, max x0 x3
 ;;
 
-(** Return the smaller rectangle containing [r] and the Bézier curve
+(** Return the smaller rectangle containing [r] and the BÃ©zier curve
     given by the control points. *)
 let update_curve r x0 y0 x1 y1 x2 y2 x3 y3 =
   let xmin, xmax = range_bezier x0 x1 x2 x3 in

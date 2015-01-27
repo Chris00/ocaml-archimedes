@@ -265,7 +265,7 @@ sig
 
   val make : options:string list -> float -> float -> t
     (** [create options width height] must creates a new handle of
-        size [width]×[height] (in units proper to the module) on which
+        size [width]Ã—[height] (in units proper to the module) on which
         the subsequent drawing functions operate.  [options] allows to
         pass options to the backend (this is backend specific). *)
 
