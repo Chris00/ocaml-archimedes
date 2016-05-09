@@ -199,7 +199,7 @@ let () =
              for i = 0 to 4 do
                let angle = (float i) *. two_pi /. 5. in
                let cosa = cos angle /.2.
-               and sina = sin angle  /.2.in
+               and sina = sin angle  /. 2. in
                  (*We want (0,1) and other points uniformly. It is
                    equivalent to get the axes rotated.*)
                  B.rel_line_to handle (-.sina) cosa;
@@ -215,7 +215,7 @@ let () =
                if i < 5 then
                  (let angle = (float i) *. two_pi /. 5. in
                   let cosa = cos angle /.2.
-                  and sina = sin angle /.2.in
+                  and sina = sin angle /.2. in
                     (*We want (0,1) as vertex, then all the others
                       uniformly. We have to make a rotation of pi/2; or
                       equivalently, switching sin and cos, and take the
