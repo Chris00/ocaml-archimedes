@@ -9,6 +9,7 @@ FILESAB = $(subst $(COMA),,$(shell oasis query FilesAB))
 
 DISTFILES = AUTHORS.txt INSTALL.txt README.txt _oasis _tags myocamlbuild.ml \
   setup.ml Makefile src/META src/API.odocl \
+  archimedes.install _oasis_remove_.ml \
   $(wildcard $(addprefix src/, *.ml *.mli *.mllib *.mlpack *.ab)) \
   $(wildcard tests/*.ml tests/*.ab)  $(wildcard examples/*.ml)
 
