@@ -77,8 +77,8 @@ let label_of_float label x = match label with
   | Custom f -> f x
 
 let fixed_labels xmin xmax labels tics =
-  tics |> List.filter (fun t -> xmin <= t && t <= xmax)
-  |> List.map (fun t -> Major (label_of_float labels t, t))
+  let tics = List.filter (fun t -> xmin <= t && t <= xmax) tics in
+  List.map (fun t -> Major (label_of_float labels t, t)) tics
 
 (* FIXME: log in unused for now, we have to take it into account. *)
 let loose_labels ?(ntics=5) log xmin xmax label =
