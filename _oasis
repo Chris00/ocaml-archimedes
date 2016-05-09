@@ -120,6 +120,7 @@ Test main
 ######################################################################
 
 Executable "pythagoras_tree"
+  Build$:       flag(tests)
   Path:	        examples/
   BuildTools:   ocamlbuild
   MainIs:       pythagoras_tree.ml
@@ -127,6 +128,7 @@ Executable "pythagoras_tree"
   Install:      false
 
 Executable "coordinate_pairs"
+  Build$:       flag(tests)
   Path:	        examples/
   BuildTools:   ocamlbuild
   MainIs:       coordinate_pairs.ml
@@ -134,6 +136,7 @@ Executable "coordinate_pairs"
   Install:      false
 
 Executable "pkg_chart"
+  Build$:       flag(tests)
   Path:	        examples/
   BuildTools:   ocamlbuild
   MainIs:       pkg_chart.ml
@@ -141,6 +144,7 @@ Executable "pkg_chart"
   Install:      false
 
 Executable "anscombe"
+  Build$:       flag(tests)
   Path:	        examples/
   BuildTools:   ocamlbuild
   MainIs:       anscombe.ml
@@ -148,6 +152,7 @@ Executable "anscombe"
   Install:      false
 
 Executable "scatter_hist"
+  Build$:       flag(tests)
   Path:	        examples/
   BuildTools:   ocamlbuild
   MainIs:       scatter_hist.ml
@@ -155,6 +160,7 @@ Executable "scatter_hist"
   Install:      false
 
 Executable "coords_report.ml"
+  Build$:       flag(tests)
   Path:	        examples/
   BuildTools:   ocamlbuild
   MainIs:       coords_report.ml
@@ -162,6 +168,7 @@ Executable "coords_report.ml"
   Install:      false
 
 Executable "taylor.ml"
+  Build$:       flag(tests)
   Path:	        examples/
   BuildTools:   ocamlbuild
   MainIs:       taylor.ml
@@ -169,6 +176,7 @@ Executable "taylor.ml"
   Install:      false
 
 Executable "spiral.ml"
+  Build$:       flag(tests)
   Path:	        examples/
   BuildTools:   ocamlbuild
   MainIs:       spiral.ml
@@ -176,6 +184,7 @@ Executable "spiral.ml"
   Install:      false
 
 Executable "multi_hue.ml"
+  Build$:       flag(tests)
   Path:	        examples/
   BuildTools:   ocamlbuild
   MainIs:       multi_hue.ml
@@ -183,6 +192,7 @@ Executable "multi_hue.ml"
   Install:      false
 
 Executable "files_pie.ml"
+  Build$:       flag(tests)
   Path:         examples/
   BuildTools:   ocamlbuild
   MainIs:       files_pie.ml
@@ -190,6 +200,7 @@ Executable "files_pie.ml"
   Install:      false
 
 Executable "incremental_drawing.ml"
+  Build$:       flag(tests)
   Path:         examples/
   BuildTools:   ocamlbuild
   MainIs:       incremental_drawing.ml
