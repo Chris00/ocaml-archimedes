@@ -51,7 +51,7 @@ Library archimedes_internals
                 Color, Path, Backend, Coordinate, Viewport,
                 Marker, Sampler, Arrows, Tics, Axes,
                 Plot, Piechart
-  BuildDepends: dynlink, bigarray
+  BuildDepends: dynlink, bigarray, camlp4
   FindlibParent: archimedes
   FindlibName:   internals
 
