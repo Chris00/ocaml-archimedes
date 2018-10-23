@@ -1,7 +1,7 @@
 #								-*-conf-*-
 OASISFormat: 0.3
 Name:        archimedes
-Version:     0.4.18
+Version:     0.4.19
 Synopsis:    Extensible 2D plotting library.
 Description: Archimedes is a high quality, platform-independent,
   extensible 2D plotting library.  It provides dynamically loaded
