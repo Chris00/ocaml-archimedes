@@ -57,10 +57,10 @@ sig
   val get_dash: t -> float array * float
   val get_line_join: t -> line_join
 
-  val move_to : t -> x:float -> y:float -> unit
+  val move_to : t -> float -> float -> unit
   (** Begin a new sub-path.  After this call the current point will be
       [(x, y)]. *)
-  val line_to : t -> x:float -> y:float -> unit
+  val line_to : t -> float -> float -> unit
   (** [line_to bk x y] Adds a line to the path from the current point
       to position [(x, y)] in the current backend coordinates.  After
       this call the current point will be [(x, y)].
@@ -68,18 +68,16 @@ sig
       If there is no current point before the call to [line_to] this
       function will behave as {!move_to}[ bk x y]. *)
 
-  val rel_move_to : t -> x:float -> y:float -> unit
-  val rel_line_to : t -> x:float -> y:float -> unit
+  val rel_move_to : t -> float -> float -> unit
+  val rel_line_to : t -> float -> float -> unit
 
-  val curve_to : t ->
-    x1:float -> y1:float ->
-    x2:float -> y2:float ->
-    x3:float -> y3:float -> unit
+  val curve_to : t -> float -> float -> float -> float ->
+                 float -> float -> unit
   (** [curve_to bk x1 y1 x2 y2 x3 y3] adds an Bezier curve to the
       path, starting at the current point, ending at point
       [(x3,y3)], with control points [(x1,y1)] and [(x2,y2)]. *)
 
-  val rectangle : t -> x:float -> y:float -> w:float -> h:float -> unit
+  val rectangle : t -> float -> float -> w:float -> h:float -> unit
   (** [rectangle bk x y w h] adds to the current path of [bk] a
       rectangle whose lower left corner is at [(x,y)] and width
       and height are respectively [w] and [h]. *)
@@ -141,7 +139,7 @@ sig
       because it is expensive but also to avoid flicker during
       animations).  [show bk] forces the backend to update.  *)
 
-  val clip_rectangle : t -> x:float -> y:float -> w:float -> h:float -> unit
+  val clip_rectangle : t -> float -> float -> w:float -> h:float -> unit
   (** Establishes a new clip rectangle by intersecting the current
       clip rectangle.  This {i may clear} the current path.  Calling
       {clip_rectangle} can only make the clip region smaller, never
@@ -157,14 +155,14 @@ sig
   val restore : t -> unit
   (** Restore the saved state of the backend. *)
 
-  val translate : t -> x:float -> y:float -> unit
+  val translate : t -> float -> float -> unit
   (** [translate cr tx ty] modifies the current transformation
       matrix by translating the user-space origin by ([tx],[ty]). *)
-  val scale : t -> x:float -> y:float -> unit
+  val scale : t -> float -> float -> unit
   (** [scale sx sy] modifies the current transformation matrix by
       scaling the X and Y user-space axes by [sx] and [sy]
       respectively. *)
-  val rotate : t -> angle:float -> unit
+  val rotate : t -> float -> unit
   (** Modifies the current transformation matrix by rotating the
       user-space axes by [angle] radians. *)
   val set_matrix : t -> Matrix.t -> unit

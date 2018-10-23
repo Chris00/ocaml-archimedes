@@ -215,27 +215,27 @@ struct
   let get_line_join t = check_valid_handle t; A.Backend.JOIN_MITER
   let set_miter_limit t _ = check_valid_handle t
 
-  let move_to t ~x ~y =
+  let move_to t x y =
     let st = get_state t in
     let x', y' = A.Matrix.transform_point st.ctm x y in
     A.Path.move_to t.current_path x' y'
 
-  let line_to t ~x ~y =
+  let line_to t x y =
     let st = get_state t in
     let x', y' = A.Matrix.transform_point st.ctm x y in
     A.Path.line_to t.current_path x' y'
 
-  let rel_move_to t ~x ~y =
+  let rel_move_to t x y =
     let st = get_state t in
     let x, y = A.Matrix.transform_distance st.ctm x y in
     A.Path.rel_move_to t.current_path x y
 
-  let rel_line_to t ~x ~y =
+  let rel_line_to t x y =
     let st = get_state t in
     let x',y' = A.Matrix.transform_distance st.ctm x y in
     A.Path.rel_line_to t.current_path x' y'
 
-  let rectangle t ~x ~y ~w ~h =
+  let rectangle t x y ~w ~h =
     let st = get_state t in
     let x', y' = A.Matrix.transform_point st.ctm x y
     and w'x, w'y = A.Matrix.transform_distance st.ctm w 0.
@@ -254,7 +254,7 @@ struct
     let x3', y3' = A.Matrix.transform_point st.ctm x3 y3 in
     A.Path.curve_to t.current_path x1' y1' x2' y2' x3' y3'
 
-  let curve_to t ~x1 ~y1 ~x2 ~y2 ~x3 ~y3 =
+  let curve_to t x1 y1 x2 y2 x3 y3 =
     internal_curve_to t (get_state t) ~x1 ~y1 ~x2 ~y2 ~x3 ~y3
 
   let arc_add_piece t st ~x0 ~y0 ~x1 ~y1 ~x2 ~y2 ~x3 ~y3 =
@@ -276,18 +276,18 @@ struct
 
   let path_extents t = A.Path.extents t.current_path
 
-  let clip_rectangle t ~x ~y ~w ~h =
+  let clip_rectangle t x y ~w ~h =
     let st = get_state t in
     let x, y = A.Matrix.transform_point st.ctm x y in
     let w, h = A.Matrix.transform_distance st.ctm w h in
     st.clip <- { A.Matrix.x = x; y = y; w = w; h = h };
     st.clip_set <- true
 
-  let translate t ~x ~y = A.Matrix.translate (get_state t).ctm x y
+  let translate t x y = A.Matrix.translate (get_state t).ctm x y
 
-  let scale t ~x ~y = A.Matrix.scale (get_state t).ctm x y
+  let scale t x y = A.Matrix.scale (get_state t).ctm x y
 
-  let rotate t ~angle = A.Matrix.rotate (get_state t).ctm ~angle
+  let rotate t angle = A.Matrix.rotate (get_state t).ctm ~angle
 
   let set_matrix t m =
     (*Replaces the ctm with a *copy* of m so that modifying m does not

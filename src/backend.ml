@@ -69,15 +69,14 @@ sig
   val get_dash: t -> float array * float
   val get_line_join: t -> line_join
 
-  val move_to : t -> x:float -> y:float -> unit
-  val line_to : t -> x:float -> y:float -> unit
-  val rel_move_to : t -> x:float -> y:float -> unit
-  val rel_line_to : t -> x:float -> y:float -> unit
+  val move_to : t -> float -> float -> unit
+  val line_to : t -> float -> float -> unit
+  val rel_move_to : t -> float -> float -> unit
+  val rel_line_to : t -> float -> float -> unit
 
-  val curve_to : t ->
-    x1:float -> y1:float -> x2:float -> y2:float -> x3:float -> y3:float -> unit
+  val curve_to : t -> float -> float -> float -> float -> float -> float -> unit
 
-  val rectangle : t -> x:float -> y:float -> w:float -> h:float -> unit
+  val rectangle : t -> float -> float -> w:float -> h:float -> unit
 
   val arc : t -> r:float -> a1:float -> a2:float -> unit
     (* Do we need arc_negative (path orientation)? *)
@@ -99,14 +98,14 @@ sig
   val fill_with_color : t -> Color.t -> unit
   val show : t -> unit
 
-  val clip_rectangle : t -> x:float -> y:float -> w:float -> h:float -> unit
+  val clip_rectangle : t -> float -> float -> w:float -> h:float -> unit
 
   val save : t -> unit
   val restore : t -> unit
 
-  val translate : t -> x:float -> y:float -> unit
-  val scale : t -> x:float -> y:float -> unit
-  val rotate : t -> angle:float -> unit
+  val translate : t -> float -> float -> unit
+  val scale : t -> float -> float -> unit
+  val rotate : t -> float -> unit
   val set_matrix : t -> Matrix.t -> unit
   val get_matrix : t -> Matrix.t
   val flipy : t -> bool
@@ -141,14 +140,13 @@ type t = {
   get_dash: unit -> float array * float;
   get_line_join: unit -> line_join;
 
-  move_to : x:float -> y:float -> unit;
-  line_to : x:float -> y:float -> unit;
-  rel_move_to : x:float -> y:float -> unit;
-  rel_line_to : x:float -> y:float -> unit;
+  move_to : float -> float -> unit;
+  line_to : float -> float -> unit;
+  rel_move_to : float -> float -> unit;
+  rel_line_to : float -> float -> unit;
 
-  curve_to: x1:float -> y1:float -> x2:float -> y2:float ->
-                                            x3:float -> y3:float -> unit;
-  rectangle : x:float -> y:float -> w:float -> h:float -> unit;
+  curve_to: float -> float -> float -> float -> float -> float -> unit;
+  rectangle : float -> float -> w:float -> h:float -> unit;
   arc : r:float -> a1:float -> a2:float -> unit;
   close_path : unit -> unit;
   clear_path : unit -> unit;
@@ -162,14 +160,14 @@ type t = {
   fill_path_preserve : Path.t -> unit;
   fill_with_color : Color.t -> unit;
   show : unit -> unit;
-  clip_rectangle : x:float -> y:float -> w:float -> h:float -> unit;
+  clip_rectangle : float -> float -> w:float -> h:float -> unit;
 
   save: unit -> unit;
   restore: unit -> unit;
 
-  translate : x:float -> y:float -> unit;
-  scale : x:float -> y:float -> unit;
-  rotate : angle:float -> unit;
+  translate : float -> float -> unit;
+  scale : float -> float -> unit;
+  rotate : float -> unit;
   set_matrix : Matrix.t -> unit;
   get_matrix : unit -> Matrix.t;
   flipy : bool;

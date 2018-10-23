@@ -27,7 +27,7 @@ let draw bk =
   (* Curve to *)
   Backend.set_color bk (Archimedes.Color.rgb 1. 0.7 0.);
   Backend.move_to bk 150. 200.;
-  Backend.curve_to bk ~x1:250. ~y1:250. ~x2:100. ~y2:100. ~x3:0. ~y3:0.;
+  Backend.curve_to bk 250. 250.  100. 100.  0. 0.;
   Backend.set_line_width bk 15.;
   Backend.stroke bk;
 

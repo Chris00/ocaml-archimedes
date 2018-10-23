@@ -83,7 +83,7 @@ struct
     let x,y = Cairo.Path.get_current_point t in
     let x = x -. r *. cos a1
     and y = y -. r *. sin a1 in
-    arc t ~x ~y ~r ~a1 ~a2
+    arc t x y ~r ~a1 ~a2
 
   (* identity CTM -- never modified *)
   let id = { Cairo.xx = 1.; xy = 0.;  yx = 0.; yy = 1.;  x0 = 0.; y0 = 0. }
@@ -91,9 +91,9 @@ struct
   let show t =
     Cairo.Surface.flush (get_target t)
 
-  let clip_rectangle t ~x ~y ~w ~h =
+  let clip_rectangle t x y ~w ~h =
     Cairo.Path.clear t;
-    Cairo.rectangle t ~x ~y ~w ~h;
+    Cairo.rectangle t x y ~w ~h;
     Cairo.clip t
 
   (* FIXME: better error message for options *)
@@ -101,7 +101,7 @@ struct
     let surface = match options with
       | ["PDF"; fname] -> PDF.create fname width height
       | ["PS"; fname] -> PS.create fname width height
-      | ["SVG"; fname] -> SVG.create ~fname ~width ~height
+      | ["SVG"; fname] -> SVG.create fname ~w:width ~h:height
       | ["PNG"; _] -> (* saving done by the close function *)
           Image.create Image.ARGB32 (truncate width) (truncate height)
       | [] -> (* interactive display. FIXME: when ready *)
