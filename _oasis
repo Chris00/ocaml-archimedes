@@ -46,7 +46,6 @@ Library archimedes_internals
   # "internal" functions, potentially useful to backends
   Path:		src
   BuildTools:   ocamlbuild
-  Pack:		true
   Modules:      Conf, Utils, String_utils, PriorityQueue, Matrix, Bmp,
                 Color, Path, Backend, Coordinate, Viewport,
                 Marker, Sampler, Arrows, Tics, Axes,
