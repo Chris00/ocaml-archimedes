@@ -1,15 +1,15 @@
 # OASIS_START
-# DO NOT EDIT (digest: a76c39ee4b41667d6b77f0a0927d6e04)
-version = "0.4.12"
+# DO NOT EDIT (digest: bad812f49ac6721563e59734cc3335d1)
+version = "0.4.19"
 description = "Extensible 2D plotting library."
-requires = "dynlink bigarray"
+requires = "dynlink bigarray archimedes.internals"
 archive(byte) = "archimedes.cma"
 archive(byte, plugin) = "archimedes.cma"
 archive(native) = "archimedes.cmxa"
 archive(native, plugin) = "archimedes.cmxs"
 exists_if = "archimedes.cma"
 package "top" (
- version = "0.4.12"
+ version = "0.4.19"
  description = "Extensible 2D plotting library."
  requires = "archimedes"
  archive(byte) = "archimedes_toploop.cma"
@@ -20,7 +20,7 @@ package "top" (
 )
 
 package "tikz" (
- version = "0.4.12"
+ version = "0.4.19"
  description = "Extensible 2D plotting library."
  requires = "archimedes"
  archive(byte) = "archimedes_tikz.cma"
@@ -30,8 +30,19 @@ package "tikz" (
  exists_if = "archimedes_tikz.cma"
 )
 
+package "internals" (
+ version = "0.4.19"
+ description = "Extensible 2D plotting library."
+ requires = "dynlink bigarray camlp4"
+ archive(byte) = "archimedes_internals.cma"
+ archive(byte, plugin) = "archimedes_internals.cma"
+ archive(native) = "archimedes_internals.cmxa"
+ archive(native, plugin) = "archimedes_internals.cmxs"
+ exists_if = "archimedes_internals.cma"
+)
+
 package "graphics" (
- version = "0.4.12"
+ version = "0.4.19"
  description = "Extensible 2D plotting library."
  requires = "graphics archimedes"
  archive(byte) = "archimedes_graphics.cma"
@@ -42,7 +53,7 @@ package "graphics" (
 )
 
 package "cairo" (
- version = "0.4.12"
+ version = "0.4.19"
  description = "Extensible 2D plotting library."
  requires = "cairo2 archimedes"
  archive(byte) = "archimedes_cairo.cma"

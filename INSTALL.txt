@@ -1,14 +1,16 @@
 (* OASIS_START *)
-(* DO NOT EDIT (digest: fc623889844ff17f42a694098990d3bf) *)
+(* DO NOT EDIT (digest: 964286acf79c8222bc8b3da9d21b583e) *)
+
 This is the INSTALL file for the archimedes distribution.
 
 This package uses OASIS to generate its build system. See section OASIS for
-full information. 
+full information.
 
 Dependencies
 ============
 
 In order to compile this package, you will need:
+
 * ocaml for all, doc API
 * findlib
 * cairo2 for library archimedes_cairo
@@ -24,7 +26,7 @@ Installing
 Uninstalling
 ============
 
-1. Go to the root of the package 
+1. Go to the root of the package
 2. Run 'ocaml setup.ml -uninstall'
 
 OASIS

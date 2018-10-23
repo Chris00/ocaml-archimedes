@@ -1,4 +1,142 @@
 # OASIS_START
+# DO NOT EDIT (digest: 6810f6fb501ed5a1f8aee27541aee384)
+# Ignore VCS directories, you can use the same kind of rule outside
+# OASIS_START/STOP if you want to exclude directories that contains
+# useless stuff for the build process
+true: annot, bin_annot
+<**/.svn>: -traverse
+<**/.svn>: not_hygienic
+".bzr": -traverse
+".bzr": not_hygienic
+".hg": -traverse
+".hg": not_hygienic
+".git": -traverse
+".git": not_hygienic
+"_darcs": -traverse
+"_darcs": not_hygienic
+# Library archimedes_internals
+"src/archimedes_internals.cmxs": use_archimedes_internals
+"src/conf.cmx": for-pack(Archimedes_internals)
+"src/utils.cmx": for-pack(Archimedes_internals)
+"src/string_utils.cmx": for-pack(Archimedes_internals)
+"src/priorityQueue.cmx": for-pack(Archimedes_internals)
+"src/matrix.cmx": for-pack(Archimedes_internals)
+"src/bmp.cmx": for-pack(Archimedes_internals)
+"src/color.cmx": for-pack(Archimedes_internals)
+"src/path.cmx": for-pack(Archimedes_internals)
+"src/backend.cmx": for-pack(Archimedes_internals)
+"src/coordinate.cmx": for-pack(Archimedes_internals)
+"src/viewport.cmx": for-pack(Archimedes_internals)
+"src/marker.cmx": for-pack(Archimedes_internals)
+"src/sampler.cmx": for-pack(Archimedes_internals)
+"src/arrows.cmx": for-pack(Archimedes_internals)
+"src/tics.cmx": for-pack(Archimedes_internals)
+"src/axes.cmx": for-pack(Archimedes_internals)
+"src/plot.cmx": for-pack(Archimedes_internals)
+"src/piechart.cmx": for-pack(Archimedes_internals)
+# Library archimedes
+"src/archimedes.cmxs": use_archimedes
+# Library archimedes_graphics
+"src/archimedes_graphics.cmxs": use_archimedes_graphics
+<src/*.ml{,i,y}>: pkg_graphics
+# Library archimedes_cairo
+"src/archimedes_cairo.cmxs": use_archimedes_cairo
+<src/*.ml{,i,y}>: pkg_cairo2
+# Library archimedes_tikz
+"src/archimedes_tikz.cmxs": use_archimedes_tikz
+# Library archimedes_toploop
+"src/archimedes_toploop.cmxs": use_archimedes_toploop
+<src/archimedes_toploop.{cma,cmxa}>: oasis_library_archimedes_toploop_byte
+<src/*.ml{,i,y}>: oasis_library_archimedes_toploop_byte
+<src/archimedes_toploop.{cma,cmxa}>: oasis_library_archimedes_toploop_native
+<src/*.ml{,i,y}>: oasis_library_archimedes_toploop_native
+<src/*.ml{,i,y}>: pkg_bigarray
+<src/*.ml{,i,y}>: pkg_camlp4
+<src/*.ml{,i,y}>: pkg_dynlink
+<src/*.ml{,i,y}>: use_archimedes
+<src/*.ml{,i,y}>: use_archimedes_internals
+# Executable test_main
+"tests/tests.byte": pkg_bigarray
+"tests/tests.byte": pkg_camlp4
+"tests/tests.byte": pkg_dynlink
+"tests/tests.byte": use_archimedes
+"tests/tests.byte": use_archimedes_internals
+<tests/*.ml{,i,y}>: pkg_bigarray
+<tests/*.ml{,i,y}>: pkg_camlp4
+<tests/*.ml{,i,y}>: pkg_dynlink
+<tests/*.ml{,i,y}>: use_archimedes
+<tests/*.ml{,i,y}>: use_archimedes_internals
+# Executable pythagoras_tree
+"examples/pythagoras_tree.byte": pkg_bigarray
+"examples/pythagoras_tree.byte": pkg_camlp4
+"examples/pythagoras_tree.byte": pkg_dynlink
+"examples/pythagoras_tree.byte": use_archimedes
+"examples/pythagoras_tree.byte": use_archimedes_internals
+# Executable coordinate_pairs
+"examples/coordinate_pairs.byte": pkg_bigarray
+"examples/coordinate_pairs.byte": pkg_camlp4
+"examples/coordinate_pairs.byte": pkg_dynlink
+"examples/coordinate_pairs.byte": use_archimedes
+"examples/coordinate_pairs.byte": use_archimedes_internals
+# Executable pkg_chart
+"examples/pkg_chart.byte": pkg_bigarray
+"examples/pkg_chart.byte": pkg_camlp4
+"examples/pkg_chart.byte": pkg_dynlink
+"examples/pkg_chart.byte": use_archimedes
+"examples/pkg_chart.byte": use_archimedes_internals
+# Executable anscombe
+"examples/anscombe.byte": pkg_bigarray
+"examples/anscombe.byte": pkg_camlp4
+"examples/anscombe.byte": pkg_dynlink
+"examples/anscombe.byte": use_archimedes
+"examples/anscombe.byte": use_archimedes_internals
+# Executable scatter_hist
+"examples/scatter_hist.byte": pkg_bigarray
+"examples/scatter_hist.byte": pkg_camlp4
+"examples/scatter_hist.byte": pkg_dynlink
+"examples/scatter_hist.byte": use_archimedes
+"examples/scatter_hist.byte": use_archimedes_internals
+# Executable coords_report.ml
+"examples/coords_report.byte": pkg_bigarray
+"examples/coords_report.byte": pkg_camlp4
+"examples/coords_report.byte": pkg_dynlink
+"examples/coords_report.byte": use_archimedes
+"examples/coords_report.byte": use_archimedes_internals
+# Executable taylor.ml
+"examples/taylor.byte": pkg_bigarray
+"examples/taylor.byte": pkg_camlp4
+"examples/taylor.byte": pkg_dynlink
+"examples/taylor.byte": use_archimedes
+"examples/taylor.byte": use_archimedes_internals
+# Executable spiral.ml
+"examples/spiral.byte": pkg_bigarray
+"examples/spiral.byte": pkg_camlp4
+"examples/spiral.byte": pkg_dynlink
+"examples/spiral.byte": use_archimedes
+"examples/spiral.byte": use_archimedes_internals
+# Executable multi_hue.ml
+"examples/multi_hue.byte": pkg_bigarray
+"examples/multi_hue.byte": pkg_camlp4
+"examples/multi_hue.byte": pkg_dynlink
+"examples/multi_hue.byte": use_archimedes
+"examples/multi_hue.byte": use_archimedes_internals
+# Executable files_pie.ml
+"examples/files_pie.byte": pkg_bigarray
+"examples/files_pie.byte": pkg_camlp4
+"examples/files_pie.byte": pkg_dynlink
+"examples/files_pie.byte": use_archimedes
+"examples/files_pie.byte": use_archimedes_internals
+# Executable incremental_drawing.ml
+"examples/incremental_drawing.byte": pkg_bigarray
+"examples/incremental_drawing.byte": pkg_camlp4
+"examples/incremental_drawing.byte": pkg_dynlink
+"examples/incremental_drawing.byte": use_archimedes
+"examples/incremental_drawing.byte": use_archimedes_internals
+<examples/*.ml{,i,y}>: pkg_bigarray
+<examples/*.ml{,i,y}>: pkg_camlp4
+<examples/*.ml{,i,y}>: pkg_dynlink
+<examples/*.ml{,i,y}>: use_archimedes
+<examples/*.ml{,i,y}>: use_archimedes_internals
 # OASIS_STOP
 
 <**/*.ml>: annot
