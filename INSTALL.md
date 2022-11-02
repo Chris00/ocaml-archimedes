@@ -1,6 +1,3 @@
-(* OASIS_START *)
-(* DO NOT EDIT (digest: 964286acf79c8222bc8b3da9d21b583e) *)
-
 This is the INSTALL file for the archimedes distribution.
 
 This package uses OASIS to generate its build system. See section OASIS for
@@ -12,8 +9,8 @@ Dependencies
 In order to compile this package, you will need:
 
 * ocaml for all, doc API
-* findlib
-* cairo2 for library archimedes_cairo
+* [findlib][]
+* [cairo2][] for library archimedes_cairo (this in turn requires the C libray cairo http://cairographics.org/)
 
 Installing
 ==========
@@ -36,8 +33,6 @@ OASIS is a program that generates a setup.ml file using a simple '_oasis'
 configuration file. The generated setup only depends on the standard OCaml
 installation: no additional library is required.
 
-(* OASIS_STOP *)
-
 Windows
 =======
 
@@ -46,13 +41,6 @@ the data in the OCaml directory.  If so configure with:
 
     ocaml setup.ml -configure --disable-cairo --datarootdir C:\\OCaml\\data
 
-Links
-=====
 
-The above mentioned packages possibly are present in the package
-system (if any exists) of your OS or can be downloaded through OASIS.
-You can also find them at the following locations:
-
-findlib: http://projects.camlcity.org/projects/findlib.html
-cairo2:  https://forge.ocamlcore.org/projects/cairo/
-         (this in turn requires the C libray cairo http://cairographics.org/)
+[findlib]: http://projects.camlcity.org/projects/findlib.html
+[cairo2]: https://github.com/Chris00/ocaml-cairo

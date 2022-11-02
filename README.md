@@ -1,24 +1,18 @@
-(* OASIS_START *)
-(* DO NOT EDIT (digest: 1df5d97d361593aa9e858cb383a7abd6) *)
-
 archimedes - Extensible 2D plotting library.
 ============================================
 
 Archimedes is a high quality, platform-independent, extensible 2D plotting
 library.  It provides dynamically loaded backends such as Graphics and Cairo.
 
-See the file [INSTALL.txt](INSTALL.txt) for building and installation
+See the file [INSTALL](INSTALL.md) for building and installation
 instructions.
 
-[Home page](http://forge.ocamlcore.org/projects/archimedes/)
 
 Copyright and license
 ---------------------
 
 archimedes is distributed under the terms of the GNU Lesser General Public
 License version 3.0 with OCaml linking exception.
-
-(* OASIS_STOP *)
 
 Acknowledgments
 ---------------
